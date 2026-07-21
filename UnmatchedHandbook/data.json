@@ -1,0 +1,479 @@
+{
+  "tabs": [
+    { "id": "policies", "name": "Policies", "icon": "📄" },
+    { "id": "clinical", "name": "Clinical", "icon": "🩺" },
+    { "id": "vitals", "name": "Vitals", "icon": "💓" },
+    { "id": "meds", "name": "Meds", "icon": "💊" },
+    { "id": "driving", "name": "BlueLights", "icon": "🚨" },
+    { "id": "mechanics", "name": "Mechanics", "icon": "🛠️" }
+  ],
+  "content": {
+    "policies": [
+      { "type": "h2", "text": "Operational Standard v2.0" },
+      {
+        "type": "accordion",
+        "title": "1. Purpose & 2. Scope",
+        "paragraphs": [
+          "<strong>Purpose:</strong> Outlines operational standards, professional expectations, and clinical procedures for all staff working within the UHS Ambulance and Hospital Service to ensure safe, effective, and professional care.",
+          "<strong>Scope:</strong> Applies to all UHS personnel, including Student Paramedics, Emergency Care Assistants/Technicians, Paramedics, Senior Paramedics, Critical Care/HEMS, HARTS, Nurses, Doctors, Hospital-based clinical staff, and Supervisors/Command leads."
+        ]
+      },
+      {
+        "type": "accordion",
+        "title": "3. Professional Uniform Standards",
+        "paragraphs": ["All personnel must maintain a clean, professional appearance at all times."],
+        "subsections": [
+          {
+            "h3": "3.1 General",
+            "list": [
+              "Uniform must be clean, well-fitted, and appropriate to the role.",
+              "High-visibility jackets must be worn at roadside, outdoor, or hazardous incidents.",
+              "Footwear must be black, enclosed, and suitable for emergencies.",
+              "ID badges visible at all times.",
+              "PPE used appropriately. No unauthorised headgear or non-issued clothing."
+            ]
+          },
+          {
+            "h3": "3.2 Role-Specific",
+            "list": [
+              "<strong>Ambulance:</strong> Green operational uniform, hi-vis for outdoors, stab vest where issued, clinical PPE.",
+              "<strong>HEMS:</strong> Aviation-approved flight suit, specialist PPE.",
+              "<strong>HARTS:</strong> Technical uniform, BA equipment when required, specialist PPE (CBRN, water, confined spaces), helmets, harnesses.",
+              "<strong>Hospital:</strong> Scrubs/tunics, appropriate PPE, hair tied back, no loose jewellery."
+            ]
+          }
+        ]
+      },
+      {
+        "type": "accordion",
+        "title": "4. Equipment Use Policy",
+        "subsections": [
+          { "h3": "4.1 General Rules", "paragraphs": ["Use for intended purpose only. Maintain competency. Report faults immediately. Replenish medical bags after every incident."] },
+          {
+            "h3": "4.2 Clinical Equipment",
+            "list": [
+              "<strong>Defibrillators:</strong> Cardiac arrest or clinically indicated arrhythmias only.",
+              "<strong>Airway & Monitoring:</strong> Use according to condition/competency; apply monitoring to unresponsive/unwell patients.",
+              "<strong>Immobilisation:</strong> Scoop stretchers/spinal boards for trauma.",
+              "<strong>Controlled Drugs:</strong> Handled per legislation and policy."
+            ]
+          },
+          { "h3": "4.3 Vehicle Equipment", "paragraphs": ["Radios must be used professionally. Blue-lights activated only as required. Check medical equipment at shift start."] }
+        ]
+      },
+      {
+        "type": "accordion",
+        "title": "5. Vehicle Operation & Driver Standards",
+        "subsections": [
+          { "h3": "5.1 Standard Road Driving", "paragraphs": ["Follow all road traffic laws, speed limits, and drive with consideration. Park safely without obstructing access."] },
+          { 
+            "h3": "5.2 Emergency Driving", 
+            "paragraphs": [
+              "Blue-light response ONLY for: Immediately life-threatening emergencies, urgent inter-facility transfers, major incidents, and rapid deployments (HARTS, cardiac arrest, serious trauma).",
+              "<strong>Principles:</strong> Maintain full control, slow down at junctions/red lights, avoid collisions, use appropriate siren tone, and prioritize public/crew safety."
+            ] 
+          }
+        ]
+      },
+      {
+        "type": "accordion",
+        "title": "6. Health & Safety",
+        "subsections": [
+          { "h3": "6.1 Staff Safety", "paragraphs": ["Wear PPE based on risk assessment. Remove yourself from unsafe scenes until supported. Maintain situational awareness."] },
+          { "h3": "6.2 Patient Safety", "paragraphs": ["Assess scenes before approaching. Use safe lifting. Secure patients during transport. Communicate before procedures."] },
+          { "h3": "6.3 Workplace Safety", "paragraphs": ["Report hazards/faults. Maintain cleanliness. Do not obstruct exits/equipment."] }
+        ]
+      },
+      {
+        "type": "accordion",
+        "title": "7. HARTS Operations",
+        "paragraphs": [
+          "HARTS responds to CBRN/HAZMAT, water rescue, confined spaces, major incidents, and structural collapse.",
+          "<strong>Equipment:</strong> BA used only by trained staff. Carry out dynamic risk assessments before entering hazardous zones.",
+          "<strong>Team Safety:</strong> Operate in pairs/teams, maintain radio contact, follow command structure during major incidents."
+        ]
+      },
+      {
+        "type": "accordion",
+        "title": "8. Conduct & 9. Discipline",
+        "subsections": [
+          { "h3": "8. Conduct & Attitude", "paragraphs": ["Treat patients respectfully, remain calm, avoid conflict, and uphold confidentiality. Use clear radio comms and accurate SBAR handovers. Follow national guidelines and participate in training."] },
+          { "h3": "9. Supervision & Discipline", "paragraphs": ["Leaders promote safe practice; staff are accountable for actions. Breaches may result in: Verbal advice, written warnings, temporary suspension, removal from duties, or review of professional status."] }
+        ]
+      },
+      { "type": "h2", "text": "General Hospital Policies" },
+      {
+        "type": "accordion",
+        "title": "Hospital Lockdown Policy",
+        "alert": "<strong>Notice:</strong> A hospital lockdown may only be initiated by UHS Command. No other member of UHS staff has the authority to order this.",
+        "paragraphs": ["<strong>Continuity of Care:</strong> Triage tents must be established without delay. Treat members of the public within tents. No staff should remain idle; focus on patient care and public safety."]
+      },
+      {
+        "type": "accordion",
+        "title": "Required On-Duty Items",
+        "list": [
+          "1x Badge & 1x Radio", "1x Medical Bag & 1x First Aid Kit", "10x Bandages & 1x Quick Clot", 
+          "1x Defib & 1x ECG", "1x Sedative, 1x Morphine", "1x Suture Kit, 1x Sewing Kit, 1x Tweezers", 
+          "1x Blood Bag & 1x Saline IV", "1x Tourniquet & 1x Elastic Bandage", "1x Medical Needle", 
+          "5x Emergency Revive Kit", "2x Medical Crutch", "1x Flashlight, 1x Prescription Pad", 
+          "1x UHS Key Card", "1x Axon Body Camera & 1x Cleaning Kit"
+        ]
+      },
+      {
+        "type": "accordion",
+        "title": "MDT & Admin",
+        "subsections": [
+          {
+            "h3": "MDT Report Template",
+            "list": ["Where? Postal/Hospital", "What they said happened", "What you found upon examination", "Pain scale (1-10)", "Treatment Notes", "Medication given (with dosage)", "X-ray/MRI (Yes/No & Results)", "Sign with Callsign", "Follow up required?"]
+          },
+          { "h3": "Leave Requests", "paragraphs": ["Post in the LOA Request channel. Must include: Start Date, End Date, Reason."] },
+          { "h3": "Complaints", "paragraphs": ["All complaints are confidential. File via the UHS Internal Complaints Form."] }
+        ],
+        "download": { "link": "student_touchportal.tpz2", "label": "Download Student Touchportal" }
+      }
+    ],
+
+    "clinical": [
+      { "type": "h2", "text": "Clinical Procedures" },
+      {
+        "type": "accordion",
+        "title": "Primary Survey (CABCDE)",
+        "list": [
+          "<strong>C (Catastrophic Haemorrhage):</strong> Direct pressure, field dressing, Celox, Tourniquet, TXA.",
+          "<strong>A (Airway):</strong> Patent/Clear/Occluded. Jaw lift/chin thrust. Use adjuncts.",
+          "<strong>B (Breathing):</strong> Rate and effort. Auscultation. SpO2. Consider oxygen.",
+          "<strong>C (Circulation):</strong> Skin colour/cap refill. Pulse rate/quality. BP.",
+          "<strong>D (Disability):</strong> BM, AVPU, GCS, PERRLa.",
+          "<strong>E (Expose):</strong> Undress to check injuries. Cover up ASAP to prevent hypothermia."
+        ]
+      },
+      {
+        "type": "accordion",
+        "title": "Airway Management & CPR",
+        "subsections": [
+          { "h3": "Airways", "paragraphs": ["<strong>Head Tilt-Chin Lift:</strong> Standard method.", "<strong>Jaw Thrust:</strong> Use for suspected spinal injuries.", "<strong>OPA:</strong> \"Invert, Insert, Rotate, Locate.\" Use on unconscious patients.", "<strong>NPA:</strong> Insert in nostril, bevel toward septum."] },
+          { "h3": "CPR / BLS", "paragraphs": ["Start if unconscious and not breathing. 30 compressions : 2 breaths. Connect Defib/AED and shock if advised. Repeat for 3 sets. If no ROSC after 10 minutes, reassess."] },
+          { "h3": "DNR (Do Not Resuscitate)", "paragraphs": ["Valid for chronic illnesses, terminal age. NOT valid for acts of violence (stabbing) or young healthy individuals (Police/Fire)."] }
+        ]
+      },
+      {
+        "type": "accordion",
+        "title": "Common Emergencies",
+        "paragraphs": [
+          "<strong>Heart Attack (MI):</strong> Chest pain, sweating, left arm pain. Give 300mg Aspirin, GTN (if BP safe), O2.",
+          "<strong>Anaphylaxis:</strong> Swelling, wheeze, low BP. Give IM Adrenaline (0.5mg), high-flow O2.",
+          "<strong>Asthma Attack:</strong> Wheeze, short of breath. Give Salbutamol (Neb/MDI), O2.",
+          "<strong>Hypoglycaemia:</strong> Confusion, sweating, collapse. Give Oral Glucose if awake.",
+          "<strong>Opioid Overdose:</strong> Slow/absent breathing, pinpoint pupils. Give Naloxone, ventilate."
+        ],
+        "alert": "<strong>Transport Immediately If:</strong> Chest pain, Major Trauma, Anaphylaxis, Severe Asthma, Stroke, Unconscious, Serious bleeding, Seizure > 5 mins."
+      },
+      {
+        "type": "accordion",
+        "title": "Trauma & Burns",
+        "paragraphs": [
+          "<strong>Major Bleeding:</strong> Direct pressure, bandage, tourniquet.",
+          "<strong>Head Injury:</strong> Keep airway clear, minimise movement, X-ray/MRI needed.",
+          "<strong>Spinal Precautions:</strong> Use if high-energy mechanism, neck/back pain, unconscious. MRI required."
+        ],
+        "subsections": [
+          {
+            "h3": "Burns (Rule of Nines)",
+            "list": ["Head/Neck: 9% | Arms: 9% each", "Chest: 18% | Abdomen: 18%", "Upper Back: 9% | Lower Back/Buttocks: 18%", "Legs: 18% each"]
+          }
+        ]
+      }
+    ],
+
+    "vitals": [
+      { "type": "h2", "text": "Vitals & Assessment" },
+      {
+        "type": "accordion",
+        "title": "Vital Sign Ranges",
+        "table": {
+          "headers": ["Vital", "Normal", "Low / High Danger"],
+          "rows": [
+            ["Heart Rate", "60 - 100 BPM", "&lt;40 or &gt;120"],
+            ["Respiratory Rate", "12 - 20", "&lt;8 or &gt;28"],
+            ["Blood Pressure", "120/80 mmHg", "&lt;90/60 or &gt;150/100"],
+            ["O2 (SpO2)", "95 - 100%", "&lt;80%"],
+            ["Blood Glucose", "4 - 8 mmol/L", "&lt;2 or &gt;12"],
+            ["Temperature", "36.5°C", "&lt;35°C or &gt;39°C"],
+            ["GCS", "15", "&lt;8 (Coma)"]
+          ]
+        }
+      },
+      {
+        "type": "accordion",
+        "title": "Assessment Acronyms",
+        "subsections": [
+          { "h3": "AVPU (Consciousness)", "paragraphs": ["<strong>A:</strong> Alert | <strong>V:</strong> Voice | <strong>P:</strong> Pain | <strong>U:</strong> Unresponsive"] },
+          { "h3": "SAMPLE (History)", "paragraphs": ["Signs/Symptoms, Allergies, Medications, Past Medical Hx, Last Oral Intake, Events leading up."] },
+          { "h3": "OPQRST (Pain)", "paragraphs": ["Onset, Provoking factors, Quality, Region & Radiation, Severity (0-10), Time."] },
+          { "h3": "BEFAST (Stroke)", "paragraphs": ["Balance, Eyes, Face, Arms, Speech, Time."] },
+          { "h3": "ATMIST (Handover)", "paragraphs": ["Age, Time, Mechanism of Injury, Injuries, Signs (Vitals), Treatment administered."] }
+        ]
+      }
+    ],
+
+    "meds": [
+      { "type": "search" },
+      { "type": "alert", "text": "Staff may administer medications listed under their current grade, <strong>as well as all medications from the grades below them.</strong>" },
+      {
+        "type": "accordion",
+        "title": "Student Paramedic",
+        "isMed": true,
+        "table": {
+          "headers": ["Medication", "Indication", "Form/Dose"],
+          "rows": [
+            ["Oxygen", "Cardiac arrest, trauma, sepsis, shock", "Gas"],
+            ["Aspirin", "Suspected MI / ACS", "300mg"],
+            ["Paracetamol", "Mild/moderate pain, fever", "1g (1000mg)"],
+            ["Ibuprofen", "Mild/moderate pain, inflammation", "400mg"],
+            ["Glucose (Oral)", "Hypoglycemia (conscious patient)", "Oral Gel / Tablet"]
+          ]
+        }
+      },
+      {
+        "type": "accordion",
+        "title": "Paramedic",
+        "isMed": true,
+        "table": {
+          "headers": ["Medication", "Indication", "Form/Dose"],
+          "rows": [
+            ["Adrenaline", "Cardiac arrest, anaphylaxis", "1mg/10ml (IV) / 0.5mg (IM)"],
+            ["Amiodarone", "Cardiac arrest (pulseless VT/VF)", "300mg/10ml"],
+            ["Atropine", "Symptomatic bradycardia (&lt;40 pulse)", "600 mcg"],
+            ["Diazepam", "Acute muscle spasms, seizure control", "5mg"],
+            ["Ipratropium Bromide", "Life-threatening asthma, COPD", "250mcg/3ml"],
+            ["Morphine Sulfate", "Moderate to severe pain relief", "10mg/1ml"],
+            ["TXA", "Major trauma, catastrophic bleeding", "100mg/1ml"],
+            ["Glucose (IV)", "Hypoglycemia (unconscious)", "10% or 50g/500ml"]
+          ]
+        }
+      },
+      {
+        "type": "accordion",
+        "title": "Advanced Paramedic",
+        "isMed": true,
+        "table": {
+          "headers": ["Medication", "Indication", "Form/Dose"],
+          "rows": [
+            ["Ketamine", "Severe pain management, sedation", "10mg/1ml"],
+            ["Midazolam", "Status epilepticus (seizures), sedation", "5mg/5ml"],
+            ["Prednisolone", "Moderate acute asthma, croup", "5mg"],
+            ["Fentanyl", "Severe pain management", "100mcg/2ml"],
+            ["Propofol", "Induction of anaesthesia, sedation", "10mg/1ml"],
+            ["Suxamethonium", "Paralytic for rapid sequence intubation", "100mg/2ml"],
+            ["Ondansetron", "Nausea and vomiting", "4mg/2ml"],
+            ["Noradrenaline", "Severe hypotension, shock", "4mg/4ml"],
+            ["Sodium Bicarbonate", "Severe acidosis, hyperkalaemia", "8.4%"],
+            ["Calcium Chloride", "Hyperkalaemia, calcium channel blocker OD", "10%"],
+            ["Magnesium Sulfate", "Eclampsia, severe asthma, arrhythmias", "50%"],
+            ["Hypertonic Saline", "Raised intracranial pressure (TBI)", "3%"],
+            ["Mannitol", "Raised intracranial pressure", "20%"]
+          ]
+        }
+      },
+      {
+        "type": "accordion",
+        "title": "HEMS",
+        "isMed": true,
+        "table": {
+          "headers": ["Medication", "Indication", "Form/Dose"],
+          "rows": [
+            ["Oxygen", "Hypoxia, major trauma, shock", "Gas"],
+            ["Fentanyl", "Severe pain management", "100mcg/2ml"],
+            ["Morphine Sulfate", "Moderate to severe pain relief", "10mg/1ml"],
+            ["Midazolam", "Sedation, status epilepticus", "5mg/5ml"],
+            ["Ketamine", "Severe pain, procedural sedation", "10mg/1ml"],
+            ["Tranexamic Acid (TXA)", "Major trauma, catastrophic bleeding", "100mg/1ml"],
+            ["Rocuronium", "Paralytic for advanced intubation (RSI)", "50mg/5ml"],
+            ["Propofol", "Induction of anaesthesia, sedation", "10mg/1ml"],
+            ["Suxamethonium", "Paralytic for rapid sequence intubation", "100mg/2ml"],
+            ["Ondansetron", "Nausea and vomiting", "4mg/2ml"],
+            ["PRBC", "Massive haemorrhage, severe trauma", "1 unit"],
+            ["FFP", "Coagulopathy in major bleeding", "1 unit"],
+            ["Noradrenaline", "Severe hypotension, shock", "4mg/4ml"],
+            ["Sodium Bicarbonate", "Severe acidosis, hyperkalaemia", "8.4%"],
+            ["Calcium Chloride", "Hyperkalaemia, calcium channel blocker OD", "10%"],
+            ["Magnesium Sulfate", "Eclampsia, severe asthma, arrhythmias", "50%"],
+            ["Hypertonic Saline", "Raised intracranial pressure (TBI)", "3%"],
+            ["Mannitol", "Raised intracranial pressure", "20%"]
+          ]
+        }
+      },
+      {
+        "type": "accordion",
+        "title": "Doctor",
+        "isMed": true,
+        "table": {
+          "headers": ["Medication", "Indication", "Form/Dose"],
+          "rows": [
+            ["Oxygen", "Cardiac arrest, major trauma, sepsis, shock, and breathing difficulties", "Gas"],
+            ["Adrenaline", "Cardiac arrest", "Ampoule Injection (1mg/10ml)"],
+            ["Amoxicillin", "Infections", "Tablet (500mg)"],
+            ["Aspirin", "Suspected heart attack / ACS", "Tablet (300mg)"],
+            ["Chlorphenamine", "Allergic reaction", "Ampoule Injection (10mg/1ml)"],
+            ["Co-amoxiclav", "Open fracture to prevent infections", "Oral Solution (1200mg)"],
+            ["Codeine", "Mild to severe pain", "Tablet (15mg)"],
+            ["Diazepam", "Acute muscle spasms", "Tablet (5mg)"],
+            ["Glucose", "Hypoglycemia / low blood sugar", "Solution Infusion (50g/500ml)"],
+            ["GTN", "Cardiac chest pain, angina", "Inhaler (400 mcg/spray)"],
+            ["Ibuprofen", "Mild to moderate pain relief", "Tablet (400mg)"],
+            ["Ipratropium Bromide", "Life threatening asthma and COPD", "Nebuliser (250mcg/3ml)"],
+            ["Metoclopramide", "Nausea and vomiting", "Ampoule Injection (10mg/2ml)"],
+            ["Midazolam", "Seizure control", "Ampoule Injection (5mg/5ml)"],
+            ["Morphine Sulfate", "Moderate pain relief", "Ampoule Injection (10mg/1ml)"],
+            ["Naloxone IV", "Drug overdose", "Ampoule Injection (400mcg/1ml)"],
+            ["Naloxone IM", "Drug overdose", "Ampoule Injection (400mcg/1ml)"],
+            ["Naproxen", "Acute and chronic musculoskeletal pain", "Tablet (250mg)"],
+            ["Paracetamol IV", "Mild to moderate pain relief", "Solution Infusion (1000mg/100mls)"],
+            ["Paracetamol 1g", "Mild to moderate pain relief", "Tablet (500mg per tablet)"],
+            ["Prednisolone", "Moderate acute asthma problem", "Tablet (5mg)"],
+            ["Salbutamol Neb", "Asthma attack and COPD", "Nebuliser (2.5mg/2.5ml)"],
+            ["Sodium Chloride", "Fluids", "Solution Infusion (500ml)"],
+            ["TXA", "Major trauma, blood control", "Ampoule Injection (100mg/1ml)"]
+          ]
+        }
+      },
+      {
+        "type": "accordion",
+        "title": "Disease Outbreak / Pharmacy",
+        "isMed": true,
+        "table": {
+          "headers": ["Disease", "Symptoms", "Approved Meds"],
+          "rows": [
+            ["Cold", "Sneezing, coughing", "Tylacare, DayRelief, PainAway"],
+            ["Headache", "Head pain, visual discomfort", "Tylacare, Ibrofenix, PainAway"],
+            ["Flu", "Coughing, fever, weakness", "Flurimax, DayRelief, Ibrofenix, Zithromed"],
+            ["Food Poisoning", "Vomiting, nausea", "GutGuard, StopDiaril, Loprexin"],
+            ["Migraine", "Severe headache, blurred vision", "Triptaril, Ibrofenix, Tylacare"],
+            ["Allergies", "Sneezing, irritated eyes, rash", "AllerBlock, ClearAirin, PainAway"],
+            ["Dizziness", "Loss of balance, vertigo", "Motionex, Meklirin, PainAway"],
+            ["DBI", "Persistent coughing, fever", "Vironix, Ibrofenix, Zithromed, Vaxora"],
+            ["Fatigue", "Extreme tiredness", "Ibrofenix"]
+          ]
+        }
+      },
+      {
+        "type": "accordion",
+        "title": "Prescription Pad Guide",
+        "orderedList": [
+          "Fill in the patient's full name and CSN number (address not needed).",
+          "Select the correct medication based on the Outbreak Treatment list.",
+          "Fill out treatment days (Max 4 days currently).",
+          "Sign at the bottom and save.",
+          "Hand to the patient and direct them to the pharmacy."
+        ]
+      }
+    ],
+
+    "driving": [
+      { "type": "h2", "text": "Driving & Comms" },
+      {
+        "type": "accordion",
+        "title": "State Codes & Comms",
+        "table": {
+          "headers": ["Code", "Status"],
+          "rows": [
+            ["State 0", "Urgent Assistance"],
+            ["State 1", "On duty"],
+            ["State 2", "On patrol"],
+            ["State 3", "At hospital (Available)"],
+            ["State 4", "Taking a break"],
+            ["State 5", "En-route to incident"],
+            ["State 6", "On Scene"],
+            ["State 7", "Committed/Busy (Can divert)"],
+            ["State 8", "Committed/Busy (Not deployable)"],
+            ["State 9", "Patient transport"],
+            ["State 10", "Gov situation"],
+            ["State 11", "Off duty"]
+          ]
+        }
+      },
+      {
+        "type": "accordion",
+        "title": "Emergency Driving Exemptions",
+        "paragraphs": ["Blue-lights should only be used for: Life-threatening emergencies, urgent transfers, major incidents, and rapid deployments."],
+        "subsections": [
+          {
+            "h3": "Allowed Exemptions:",
+            "list": [
+              "Exceeding speed limits (See warning below)",
+              "Travelling on the wrong side of the road",
+              "Treating RED lights as give way",
+              "Stopping on a motorway"
+            ]
+          }
+        ],
+        "alert": "<strong>Speed Rule:</strong> Driving at a speed exceeding 20 mph above the speed limit is NOT recommended. Breaching this may result in loss of CERAD certification."
+      },
+      {
+        "type": "accordion",
+        "title": "Controls & Sirens",
+        "paragraphs": [
+          "<strong>Q:</strong> Primary 360 Lights<br><strong>K:</strong> Rear Red emergency lights<br><strong>Y:</strong> Additional lighting<br><strong>G:</strong> Toggle Sirens<br><strong>R:</strong> Cycle Siren Tones<br><strong>E:</strong> Bullhorn"
+        ],
+        "subsections": [
+          {
+            "h3": "Siren Tones",
+            "list": [
+              "<strong>Wail:</strong> Normal siren, for high-speed roads to warn traffic far ahead.",
+              "<strong>Yelp:</strong> Short range, use when approaching junctions.",
+              "<strong>Phaser:</strong> Very loud, use crossing busy intersections.",
+              "<strong>Bull-Horn:</strong> Additional warning in heavy traffic."
+            ]
+          }
+        ]
+      },
+      {
+        "type": "accordion",
+        "title": "Motorways & Convoys",
+        "subsections": [
+          {
+            "h3": "Motorway Parking",
+            "list": [
+              "<strong>Flowing Traffic:</strong> Approach in lanes 2/3 with ALL equipment on.",
+              "<strong>Slow Traffic:</strong> Approach on hard shoulder with visual warnings only.",
+              "<strong>Stationary Traffic:</strong> Approach on hard shoulder with ALL equipment on."
+            ]
+          },
+          {
+            "h3": "Tandem Driving (Convoy)",
+            "paragraphs": ["Keep a reasonable distance. Utilize DIFFERENT siren tones than the lead vehicle. If transporting to ED, remain behind the box ambulance at all times."]
+          },
+          {
+            "h3": "Lane Discipline",
+            "paragraphs": ["Remain in lane three (closest to central reservation) under blue lights. DO NOT mount pavements to get around vehicles unless entering a property."]
+          }
+        ]
+      }
+    ],
+
+    "mechanics": [
+      { "type": "h2", "text": "Treatment Mechanics" },
+      {
+        "type": "accordion",
+        "title": "Standing & Bed Height",
+        "paragraphs": ["When treating someone at bed height or through a car window, use the following command to ensure the animation looks correct to everyone else in the scene:"],
+        "code": "/e mechanic"
+      },
+      {
+        "type": "accordion",
+        "title": "Floor Level & Overturned Car",
+        "paragraphs": ["When treating someone at floor level or near an overturned car, use the following command to ensure the animation looks correct to everyone else in the scene:"],
+        "code": "/e mechanic 4"
+      },
+      {
+        "type": "accordion",
+        "title": "Uniform Configurations",
+        "list": [
+          "<strong>Bag:</strong> Item 119 (Unisex)",
+          "<strong>Stabvests/Helmets:</strong> ONLY to be used during scenes where weapons or dangerous situations are present."
+        ]
+      }
+    ]
+  }
+}

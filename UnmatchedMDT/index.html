@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grade Selection - Unmatched ePCR System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <img src="uhs.png" alt="Trust Logo" onerror="this.style.display='none'">
+                <h1>Unmatched ePCR System</h1>
+            </div>
+            <ul class="nav-links">
+                <li class="nav-item active"><a href="index.html">🩺 Medic Grade</a></li>
+                <li class="nav-item"><a href="incident.html">📋 Incident</a></li>
+                <li class="nav-item"><a href="injury.html">🩹 Injury</a></li>
+                <li class="nav-item"><a href="treatment.html">💊 Treatment</a></li>
+                <li class="nav-item"><a href="export.html">📤 Export</a></li>
+                <li class="nav-item"><a href="https://notwasooked.github.io" target="_blank" rel="noopener noreferrer">🧰 View More Tools ↗</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button class="theme-toggle-btn" onclick="toggleTheme()">
+                    <span id="themeLabel">🌙 Dark Mode</span>
+                </button>
+            </div>
+        </aside>
+
+        <div class="main-wrapper">
+            <header class="dashboard-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="mobile-menu-toggle" onclick="toggleSidebar()">☰</button>
+                    <div class="dash-title-group"><h2>Unmatched Health Service</h2></div>
+                </div>
+                <div class="dash-meta">
+                    <div class="meta-pill"><span>Medic Grade:</span><strong id="dashGradeDisplay">Unselected</strong></div>
+                    <div class="meta-pill"><span id="dashClock">--:--:--</span></div>
+                </div>
+            </header>
+
+            <div class="content-container">
+                <div class="fluent-card">
+                    <div class="card-header"><h3>🩺 Select Medic Grade</h3></div>
+                    <div class="card-body">
+                        <div class="form-group" style="max-width: 400px; margin: 0 auto;">
+                            <select id="grade" onchange="handleGradeChange()">
+                                <option value="" disabled selected>-- Choose Grade --</option>
+                                <option value="Student Paramedic">Student Paramedic</option>
+                                <option value="Paramedic">Paramedic</option>
+                                <option value="Advanced Paramedic">Advanced Paramedic</option>
+                                <option value="HEMS">HEMS</option>
+                                <option value="HART">HART</option>
+                                <option value="Junior Doctor">Junior Doctor</option>
+                                <option value="Doctor">Doctor</option>
+                                <option value="Silver Command">Silver Command</option>
+                                <option value="Gold Command">Gold Command</option>
+                            </select>
+                        </div>
+                        
+                        <div id="hartSubSelect" class="form-group" style="display:none; max-width: 400px; margin: 16px auto 0 auto;">
+                            <label style="text-align: center;">HART Qualification Scope</label>
+                            <select id="hartGrade" onchange="handleGradeChange()">
+                                <option value="Paramedic">HART Paramedic</option>
+                                <option value="Advanced Paramedic">HART Advanced Paramedic</option>
+                            </select>
+                        </div>
+
+                        <div style="text-align: center; margin-top: 24px;">
+                            <a href="incident.html" class="btn btn-primary">Continue to Incident →</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

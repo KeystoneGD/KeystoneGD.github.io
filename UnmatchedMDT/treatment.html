@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treatment & Medications - Unmatched ePCR System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <img src="uhs.png" alt="Trust Logo" onerror="this.style.display='none'">
+                <h1>Unmatched ePCR System</h1>
+            </div>
+            <ul class="nav-links">
+                <li class="nav-item"><a href="index.html">🩺 Medic Grade</a></li>
+                <li class="nav-item"><a href="incident.html">📋 Incident</a></li>
+                <li class="nav-item"><a href="injury.html">🩹 Injury</a></li>
+                <li class="nav-item active"><a href="treatment.html">💊 Treatment</a></li>
+                <li class="nav-item"><a href="export.html">📤 Export</a></li>
+                <li class="nav-item"><a href="https://notwasooked.github.io" target="_blank" rel="noopener noreferrer">🧰 View More Tools ↗</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button class="theme-toggle-btn" onclick="toggleTheme()">
+                    <span id="themeLabel">🌙 Dark Mode</span>
+                </button>
+            </div>
+        </aside>
+
+        <div class="main-wrapper">
+            <header class="dashboard-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="mobile-menu-toggle" onclick="toggleSidebar()">☰</button>
+                    <div class="dash-title-group"><h2>Unmatched Health Service</h2></div>
+                </div>
+                <div class="dash-meta">
+                    <div class="meta-pill"><span id="dashClock">--:--:--</span></div>
+                </div>
+            </header>
+
+            <div class="content-container">
+                <form id="epcrForm" oninput="saveLocalData()">
+                    <div class="fluent-card">
+                        <div class="card-header"><h3>💊 Treatment & Medications</h3></div>
+                        <div class="card-body">
+                            
+                            <!-- Allergies -->
+                            <label class="checkbox-label" style="margin-bottom: 12px;">
+                                <input type="checkbox" id="allergiesToggle" onchange="toggleAllergiesUI()"> 
+                                Allergies Declared?
+                            </label>
+
+                            <div id="allergiesLoggerUI" class="allergies-logger status-box" style="margin-bottom: 16px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <h4 style="margin: 0;">Known Allergies</h4>
+                                    <button type="button" class="btn btn-primary" onclick="openAllergyModal()">+ Add Allergy</button>
+                                </div>
+                                <ul id="loggedAllergiesList" class="logged-list"></ul>
+                            </div>
+
+                            <!-- Medication -->
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="medsToggle" onchange="toggleMedsUI()"> 
+                                Medication Administered?
+                            </label>
+
+                            <div id="medsLoggerUI" class="meds-logger status-box" style="margin-top: 12px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <h4 style="margin: 0;">Administered Medications</h4>
+                                    <button type="button" class="btn btn-primary" onclick="openMedModal()">+ Add Medication</button>
+                                </div>
+                                <ul id="loggedMedsList" class="logged-list"></ul>
+                            </div>
+
+                            <!-- HART Panel -->
+                            <div class="hart-only status-box hart-panel">
+                                <h4>HART Operations</h4>
+                                <div class="form-group">
+                                    <label>Use HART Equipment?</label>
+                                    <select id="hartEquipSelect" onchange="toggleHiddenDiv('hartEquipSelect', 'hartEquipDetails')">
+                                        <option value="No">No</option>
+                                        <option value="Yes">Yes</option>
+                                    </select>
+                                </div>
+                                <div id="hartEquipDetails" class="hidden-detail-box" style="margin-top: 12px;">
+                                    <div class="grid-2" style="align-items: end;">
+                                        <div class="form-group">
+                                            <label>Select Gear</label>
+                                            <select id="hartEquipDropdown">
+                                                <option value="Tripod">Tripod</option>
+                                                <option value="Basket Stretcher">Basket Stretcher</option>
+                                                <option value="MTFA Gear">MTFA Gear</option>
+                                                <option value="CBRN Gear">CBRN Gear</option>
+                                                <option value="Diving Gear">Diving Gear</option>
+                                            </select>
+                                        </div>
+                                        <button type="button" class="btn btn-primary" onclick="logHart()">Add Gear</button>
+                                    </div>
+                                    <ul id="loggedHartList" class="logged-list"></ul>
+                                </div>
+                            </div>
+
+                            <!-- HEMS RSI Panel -->
+                            <div class="hems-doc-only status-box rsi-panel">
+                                <h4>Rapid Sequence Intubation (RSI)</h4>
+                                <div class="form-group">
+                                    <label>Rapid Sequence Intubation (RSI) Performed?</label>
+                                    <select id="rsiSelect" onchange="toggleHiddenDiv('rsiSelect', 'rsiDetails')">
+                                        <option value="No">No</option>
+                                        <option value="Yes">Yes</option>
+                                    </select>
+                                </div>
+                                <div id="rsiDetails" class="hidden-detail-box" style="margin-top: 12px;">
+                                    <div class="grid-3" style="align-items: end;">
+                                        <div class="form-group">
+                                            <label>RSI Medication</label>
+                                            <select id="rsiMedSelect">
+                                                <option value="Ketamine (Induction) 10mg/1ml">Ketamine (Induction) 10mg/1ml</option>
+                                                <option value="Rocuronium Bromide (Paralytic) 10mg/1ml">Rocuronium Bromide (Paralytic) 10mg/1ml</option>
+                                                <option value="Midazolam (Sedation) 5mg/5ml">Midazolam (Sedation) 5mg/5ml</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Time</label>
+                                            <input type="time" id="rsiTimeInput">
+                                        </div>
+                                        <button type="button" class="btn btn-danger" onclick="logRsi()">Log RSI</button>
+                                    </div>
+                                    <ul id="loggedRsiList" class="logged-list"></ul>
+                                </div>
+                            </div>
+
+                            <!-- Critical Status Section -->
+                            <div class="status-box critical-panel" style="margin-top: 16px;">
+                                <h4 style="margin-top: 0;">Critical Care & Status</h4>
+                                <div class="grid-2">
+                                    <div class="form-group">
+                                        <label>ROLE (Recognition of Life Extinct)?</label>
+                                        <select id="roleSelect" onchange="toggleHiddenDiv('roleSelect', 'roleDetails')">
+                                            <option value="No">No</option>
+                                            <option value="Yes">Yes</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Time</label>
+                                        <input type="time" id="roleTime">
+                                    </div>
+                                </div>
+                                
+                                <div id="roleDetails" class="hidden-detail-box" style="margin-top: 12px;">
+                                    <div class="grid-2">
+                                        <div class="form-group">
+                                            <label>Patient Shocked?</label>
+                                            <select id="shockSelect" onchange="toggleHiddenDiv('shockSelect', 'shockCountBox')">
+                                                <option value="No">No</option>
+                                                <option value="Yes">Yes</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group" id="shockCountBox" style="display: none;">
+                                            <label>How many times?</label>
+                                            <input type="number" id="shockCount" min="1" placeholder="e.g. 3">
+                                        </div>
+                                    </div>
+                                    <div class="grid-2" style="margin-top: 12px;">
+                                        <div class="form-group">
+                                            <label>Taken to Morgue?</label>
+                                            <select id="morgueSelect">
+                                                <option value="No">No</option>
+                                                <option value="Yes">Yes</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Time</label>
+                                            <input type="time" id="morgueTime">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="grid-2" style="margin-top: 12px;">
+                                    <div class="form-group">
+                                        <label>Patient Placed in Coma?</label>
+                                        <select id="comaSelect">
+                                            <option value="No">No</option>
+                                            <option value="Yes">Yes</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Time</label>
+                                        <input type="time" id="comaTime">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-top: 16px;">
+                                <label>Treatment Notes</label>
+                                <textarea id="treatmentNotes" placeholder="General care, transport details..."></textarea>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; margin-top: 24px;">
+                                <a href="injury.html" class="btn btn-outline">← Back</a>
+                                <a href="export.html" class="btn btn-primary">Next: Export →</a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Allergy Modal -->
+    <div class="modal-overlay" id="allergyModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Add Allergy</h3>
+                <button type="button" class="modal-close" onclick="closeAllergyModal()">✖</button>
+            </div>
+            <div class="form-group">
+                <label>Select Allergy</label>
+                <select id="allergySelect" onchange="checkCustomAllergy()">
+                    <option value="Penicillin">Penicillin</option>
+                    <option value="Latex">Latex</option>
+                    <option value="Aspirin">Aspirin</option>
+                    <option value="NSAIDs">NSAIDs</option>
+                    <option value="Morphine / Opioids">Morphine / Opioids</option>
+                    <option value="Peanuts / Nuts">Peanuts / Nuts</option>
+                    <option value="Adhesive / Tape">Adhesive / Tape</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group" id="customAllergyGroup" style="display: none;">
+                <label>Specify Allergy</label>
+                <input type="text" id="customAllergyInput" placeholder="e.g. Bee Stings">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                <button type="button" class="btn btn-outline" onclick="closeAllergyModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="logAllergy()">Add to Record</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Medication Modal -->
+    <div class="modal-overlay" id="medModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Add Medication</h3>
+                <button type="button" class="modal-close" onclick="closeMedModal()">✖</button>
+            </div>
+            <div class="form-group">
+                <label>Search & Select Medication</label>
+                <input type="text" id="medSearch" placeholder="🔍 Search med..." oninput="filterMedList()">
+                <div id="medListContainer" class="custom-select-list"></div>
+            </div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Dosage</label>
+                    <input type="text" id="medDose" placeholder="e.g. 10mg">
+                </div>
+                <div class="form-group">
+                    <label>Time</label>
+                    <input type="time" id="medTime">
+                </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                <button type="button" class="btn btn-outline" onclick="closeMedModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="logMedication()">Add Medication</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

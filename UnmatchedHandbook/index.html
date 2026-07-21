@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>UHS ALL IN ONE Handbook</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <header>
+        <div class="header-left">
+            <button class="icon-btn" onclick="toggleMenu()" aria-label="Open Menu">☰</button>
+            <h1>UHS Handbook</h1>
+        </div>
+        <button class="icon-btn" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle Theme">🌙</button>
+    </header>
+
+    <!-- Overlay backdrop -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
+
+    <!-- Slide-Out Side Navigation Menu -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Navigation</h3>
+            <button class="close-btn" onclick="toggleMenu()" aria-label="Close Menu">✕</button>
+        </div>
+        <nav class="sidebar-nav" id="sidebarNav"></nav>
+        <div class="sidebar-footer">
+            <a href="https://notwasooked.github.io" target="_blank" rel="noopener noreferrer" class="external-link">
+                <span>🛠️</span> View More Tools ↗
+            </a>
+        </div>
+    </aside>
+
+    <div class="container" id="appContainer">
+        <!-- Content dynamically rendered from data.json -->
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

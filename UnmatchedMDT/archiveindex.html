@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unmatched ePCR System</title>
+    <style>
+        :root {
+            --bg-base: #f3f3f3;
+            --bg-surface: #ffffff;
+            --bg-card: #f9f9f9;
+            --bg-glass: rgba(255, 255, 255, 0.75);
+            --border-color: #e5e5e5;
+            --border-hover: #d1d1d1;
+            --text-primary: #1a1a1a;
+            --text-secondary: #5f5f5f;
+            --accent-color: #0067b8;
+            --accent-hover: #005a9e;
+            --accent-light: #e5f3ff;
+            --danger: #c42b1c;
+            --danger-bg: #fde8e8;
+            --success: #107c41;
+            --success-bg: #dff6dd;
+            --hart-color: #d83b01;
+            --hart-bg: #fff4ce;
+            --rsi-color: #a80000;
+            --rsi-bg: #fde8e8;
+            --radius-s: 4px;
+            --radius-m: 8px;
+            --radius-l: 12px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+            --shadow-hover: 0 8px 16px rgba(0, 0, 0, 0.08);
+            --transition: all 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg-base: #202020;
+            --bg-surface: #2c2c2c;
+            --bg-card: #333333;
+            --bg-glass: rgba(44, 44, 44, 0.75);
+            --border-color: #3d3d3d;
+            --border-hover: #505050;
+            --text-primary: #ffffff;
+            --text-secondary: #adadad;
+            --accent-color: #60cdff;
+            --accent-hover: #4cc2ff;
+            --accent-light: rgba(96, 205, 255, 0.15);
+            --danger: #ff99a4;
+            --danger-bg: rgba(196, 43, 28, 0.25);
+            --success: #6ccb5f;
+            --success-bg: rgba(16, 124, 65, 0.25);
+            --hart-color: #ffaa44;
+            --hart-bg: rgba(216, 59, 1, 0.25);
+            --rsi-color: #ff8888;
+            --rsi-bg: rgba(168, 0, 0, 0.25);
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            --shadow-hover: 0 8px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI Variable', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: rgba(0,0,0,0.05);
+            z-index: 1000;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--accent-color);
+            transition: width 0.3s ease;
+        }
+
+        /* App Layout */
+        .app-container {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            z-index: 90;
+            transition: var(--transition);
+        }
+
+        .sidebar-header {
+            padding: 20px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-header img {
+            max-width: 36px;
+            height: auto;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .nav-links {
+            list-style: none;
+            padding: 12px 8px;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex-grow: 1;
+        }
+
+        .nav-item a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: var(--radius-m);
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .nav-item a:hover {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active a {
+            background: var(--accent-light);
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .theme-toggle-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-m);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        /* Main Content */
+        .main-wrapper {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            padding-bottom: 80px;
+        }
+
+        /* Dashboard Header */
+        .dashboard-header {
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            position: sticky;
+            top: 0;
+            z-index: 80;
+            backdrop-filter: blur(10px);
+        }
+
+        .dash-title-group h2 {
+            margin: 0;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .dash-meta {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .meta-pill {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .content-container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 24px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Fluent Card Sections */
+        .fluent-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-l);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .fluent-card:hover {
+            border-color: var(--border-hover);
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .card-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .collapse-icon {
+            transition: transform 0.2s ease;
+        }
+
+        .fluent-card.collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+
+        .fluent-card.collapsed .card-body {
+            display: none;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* Form Grid System */
+        .grid-1 { display: grid; grid-template-columns: 1fr; gap: 16px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="time"],
+        input[type="datetime-local"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-m);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px var(--accent-light);
+            background: var(--bg-surface);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Custom Checkbox Container */
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 10px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-m);
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent-color);
+            cursor: pointer;
+        }
+
+        /* Specialized Status Panels */
+        .status-box {
+            padding: 16px;
+            border-radius: var(--radius-m);
+            border: 1px solid var(--border-color);
+            margin-top: 12px;
+            transition: var(--transition);
+        }
+
+        .hart-panel {
+            background: var(--hart-bg);
+            border-color: var(--hart-color);
+        }
+        .hart-panel label, .hart-panel h4 { color: var(--hart-color); }
+
+        .rsi-panel {
+            background: var(--rsi-bg);
+            border-color: var(--rsi-color);
+        }
+        .rsi-panel label, .rsi-panel h4 { color: var(--rsi-color); }
+
+        .critical-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+        }
+
+        /* Buttons & Actions */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px 16px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            border-radius: var(--radius-m);
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+        }
+
+        .btn:hover { transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
+
+        .btn-primary { background: var(--accent-color); color: #fff; }
+        .btn-primary:hover { background: var(--accent-hover); }
+
+        .btn-success { background: var(--success); color: #fff; }
+        .btn-danger { background: var(--danger); color: #fff; }
+
+        .btn-outline {
+            background: transparent;
+            border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+        .btn-outline:hover { background: var(--bg-card); }
+
+        /* Logger Lists */
+        .logged-list {
+            list-style: none;
+            padding: 0;
+            margin: 12px 0 0 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .logged-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-m);
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        .delete-btn {
+            color: var(--danger);
+            cursor: pointer;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: var(--radius-s);
+        }
+        .delete-btn:hover { background: var(--danger-bg); }
+
+        /* Modal Popups */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-l);
+            box-shadow: var(--shadow-hover);
+            width: 100%;
+            max-width: 500px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        /* Custom Styled Select List for Meds Modal */
+        .custom-select-list {
+            max-height: 180px;
+            overflow-y: auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-m);
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 6px;
+        }
+
+        .custom-select-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-select-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-select-list::-webkit-scrollbar-thumb {
+            background: var(--border-hover);
+            border-radius: 3px;
+        }
+
+        .med-option {
+            padding: 10px 12px;
+            border-radius: var(--radius-s);
+            font-size: 0.88rem;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid transparent;
+        }
+
+        .med-option:hover {
+            background: var(--accent-light);
+            color: var(--accent-color);
+        }
+
+        .med-option.selected {
+            background: var(--accent-color);
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .no-meds-found {
+            padding: 12px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        /* Sticky Action Footer */
+        .sticky-action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 260px;
+            right: 0;
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid var(--border-color);
+            padding: 12px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            transition: left 0.3s ease;
+        }
+
+        .action-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Dynamic Visibility Helpers */
+        #hiddenFields, .hidden-detail-box, .hems-doc-only, .hart-only, .meds-logger, .allergies-logger {
+            display: none;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 900px) {
+            .sidebar {
+                position: fixed;
+                left: -260px;
+            }
+            .sidebar.mobile-open {
+                left: 0;
+            }
+            .sticky-action-bar {
+                left: 0;
+            }
+            .grid-2, .grid-3 {
+                grid-template-columns: 1fr;
+            }
+            .dashboard-header {
+                padding: 12px 16px;
+            }
+            .content-container {
+                padding: 16px;
+            }
+            .mobile-menu-toggle {
+                display: block !important;
+            }
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Progress Indicator -->
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <img src="uhs.png" alt="Trust Logo" onerror="this.style.display='none'">
+                <h1>Unmatched ePCR System</h1>
+            </div>
+            <ul class="nav-links">
+                <li class="nav-item active"><a href="#incidentSection">📋 Incident</a></li>
+                <li class="nav-item"><a href="#injurySection">🩹 Injury</a></li>
+                <li class="nav-item"><a href="#treatmentSection">💊 Treatment</a></li>
+                <li class="nav-item"><a href="#criticalSection">❤️ Critical Care</a></li>
+                <li class="nav-item"><a href="#exportSection">📤 Export</a></li>
+                <li class="nav-item"><a href="https://notwasooked.github.io" target="_blank" rel="noopener noreferrer">🧰 View More Tools ↗</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button class="theme-toggle-btn" onclick="toggleTheme()">
+                    <span id="themeLabel">🌙 Dark Mode</span>
+                    <span id="themeIcon">☀️</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Wrapper -->
+        <div class="main-wrapper">
+            <!-- Dashboard Header -->
+            <header class="dashboard-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="mobile-menu-toggle" onclick="toggleSidebar()">☰</button>
+                    <div class="dash-title-group">
+                        <h2>Unmatched Health Service</h2>
+                    </div>
+                </div>
+                <div class="dash-meta">
+                    <div class="meta-pill">
+                        <span>Medic Grade:</span>
+                        <strong id="dashGradeDisplay">Unselected</strong>
+                    </div>
+                    <div class="meta-pill">
+                        <span id="dashClock">--:--:--</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-container">
+                <form id="epcrForm" oninput="saveLocalData(); updateProgress();">
+                    
+                    <!-- Grade Selection -->
+                    <div class="fluent-card" id="mainSection">
+                        <div class="card-header">
+                            <h3>🩺 Select Medic Grade</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group" style="max-width: 400px; margin: 0 auto;">
+                                <select id="grade" onchange="revealFormAndPopulateMeds(); saveLocalData();">
+                                    <option value="" disabled selected>-- Choose Grade --</option>
+                                    <option value="Student Paramedic">Student Paramedic</option>
+                                    <option value="Paramedic">Paramedic</option>
+                                    <option value="Advanced Paramedic">Advanced Paramedic</option>
+                                    <option value="HEMS">HEMS</option>
+                                    <option value="HART">HART</option>
+                                    <option value="Junior Doctor">Junior Doctor</option>
+                                    <option value="Doctor">Doctor</option>
+                                    <option value="Silver Command">Silver Command</option>
+                                    <option value="Gold Command">Gold Command</option>
+                                </select>
+                            </div>
+                            
+                            <div id="hartSubSelect" class="form-group" style="display:none; max-width: 400px; margin: 16px auto 0 auto;">
+                                <label style="text-align: center;">HART Qualification Scope</label>
+                                <select id="hartGrade" onchange="revealFormAndPopulateMeds(); saveLocalData();">
+                                    <option value="Paramedic">HART Paramedic</option>
+                                    <option value="Advanced Paramedic">HART Advanced Paramedic</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden Wrapper containing the rest of the form -->
+                    <div id="hiddenFields">
+
+                        <!-- Incident Details -->
+                        <div class="fluent-card" id="incidentSection">
+                            <div class="card-header" onclick="toggleCard(this)">
+                                <h3>📋 Incident Details</h3>
+                                <span class="collapse-icon">▼</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="grid-2">
+                                    <div class="form-group">
+                                        <label>Unit / Call Sign</label>
+                                        <input type="text" id="callsign" placeholder="e.g. Medic 1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Date & Time</label>
+                                        <input type="datetime-local" id="date">
+                                    </div>
+                                </div>
+                                <div class="grid-2" style="margin-top: 12px;">
+                                    <div class="form-group hems-doc-only">
+                                        <label>Deployment Method</label>
+                                        <select id="deployMethod">
+                                            <option value="HEMS">HEMS (Helicopter)</option>
+                                            <option value="RRV">RRV (Car)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Attendance Method</label>
+                                        <select id="attendance">
+                                            <option value="Attended Scene">Attended Scene</option>
+                                            <option value="Self Presented">Self Presented</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Injury Section -->
+                        <div class="fluent-card" id="injurySection">
+                            <div class="card-header" onclick="toggleCard(this)">
+                                <h3>🩹 Injury Information</h3>
+                                <span class="collapse-icon">▼</span>
+                            </div>
+                            <div class="card-body">
+                                <!-- HEMS Scene Findings -->
+                                <div class="hems-doc-only status-box" style="margin-bottom: 16px;">
+                                    <h4 style="margin-top:0; margin-bottom: 12px;">Scene Findings</h4>
+                                    <div class="grid-2">
+                                        <div class="form-group">
+                                            <label>Location</label>
+                                            <input type="text" id="sceneLocation" placeholder="Enter location...">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Clinical Scene Command</label>
+                                            <input type="text" id="sceneCommand" placeholder="Who is command?">
+                                        </div>
+                                    </div>
+                                    <div class="form-group" style="margin-top: 12px;">
+                                        <label>Original Call Information</label>
+                                        <textarea id="originalCall" placeholder="Dispatch details..."></textarea>
+                                    </div>
+                                    <div class="grid-2" style="margin-top: 12px;">
+                                        <div class="form-group">
+                                            <label>Major Incident?</label>
+                                            <select id="majorIncidentSelect" onchange="toggleHiddenDiv('majorIncidentSelect', 'majorIncidentDetails')">
+                                                <option value="No">No</option>
+                                                <option value="Yes">Yes</option>
+                                            </select>
+                                            <div id="majorIncidentDetails" class="hidden-detail-box" style="margin-top: 8px;">
+                                                <label>Major Incident Details:</label>
+                                                <input type="text" id="majorIncidentDesc" placeholder="Specify details...">
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Tactical Commander Present?</label>
+                                            <select id="tacticalSelect" onchange="toggleHiddenDiv('tacticalSelect', 'tacticalDetails')">
+                                                <option value="No">No</option>
+                                                <option value="Yes">Yes</option>
+                                            </select>
+                                            <div id="tacticalDetails" class="hidden-detail-box" style="margin-top: 8px;">
+                                                <label>Who is Tactical Commander?</label>
+                                                <input type="text" id="tacticalName" placeholder="Commander name...">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group" style="margin-top: 12px;">
+                                        <label>Additional Scene Findings</label>
+                                        <textarea id="sceneFindings" placeholder="Other details found on arrival..."></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Primary Injury / Complaint</label>
+                                    <textarea id="injuryInfo" placeholder="Nature of illness/injury..."></textarea>
+                                </div>
+
+                                <div class="grid-2" style="margin-top: 12px;">
+                                    <div class="form-group">
+                                        <label>X-Ray Performed?</label>
+                                        <select id="xraySelect" onchange="toggleHiddenDiv('xraySelect', 'xrayDetails')">
+                                            <option value="No">No</option>
+                                            <option value="Yes">Yes</option>
+                                        </select>
+                                        <div id="xrayDetails" class="hidden-detail-box" style="margin-top: 8px;">
+                                            <label>Findings:</label>
+                                            <input type="text" id="xrayResults" placeholder="e.g. Fractured tibia">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>MRI Performed?</label>
+                                        <select id="mriSelect" onchange="toggleHiddenDiv('mriSelect', 'mriDetails')">
+                                            <option value="No">No</option>
+                                            <option value="Yes">Yes</option>
+                                        </select>
+                                        <div id="mriDetails" class="hidden-detail-box" style="margin-top: 8px;">
+                                            <label>Findings:</label>
+                                            <input type="text" id="mriResults" placeholder="e.g. Tissue damage">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Treatment Section -->
+                        <div class="fluent-card" id="treatmentSection">
+                            <div class="card-header" onclick="toggleCard(this)">
+                                <h3>💊 Treatment & Medications</h3>
+                                <span class="collapse-icon">▼</span>
+                            </div>
+                            <div class="card-body">
+                                
+                                <!-- Allergies Toggle & Display -->
+                                <label class="checkbox-label" style="margin-bottom: 12px;">
+                                    <input type="checkbox" id="allergiesToggle" onchange="toggleAllergiesUI()"> 
+                                    Allergies Declared?
+                                </label>
+
+                                <div id="allergiesLoggerUI" class="allergies-logger status-box" style="margin-bottom: 16px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <h4 style="margin: 0;">Known Allergies</h4>
+                                        <button type="button" class="btn btn-primary" onclick="openAllergyModal()">+ Add Allergy</button>
+                                    </div>
+                                    <ul id="loggedAllergiesList" class="logged-list"></ul>
+                                </div>
+
+                                <!-- Medication Toggle & Display -->
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="medsToggle" onchange="toggleMedsUI()"> 
+                                    Medication Administered?
+                                </label>
+
+                                <div id="medsLoggerUI" class="meds-logger status-box" style="margin-top: 12px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <h4 style="margin: 0;">Administered Medications</h4>
+                                        <button type="button" class="btn btn-primary" onclick="openMedModal()">+ Add Medication</button>
+                                    </div>
+                                    <ul id="loggedMedsList" class="logged-list"></ul>
+                                </div>
+
+                                <!-- HART Panel -->
+                                <div class="hart-only status-box hart-panel">
+                                    <h4>HART Operations</h4>
+                                    <div class="form-group">
+                                        <label>Use HART Equipment?</label>
+                                        <select id="hartEquipSelect" onchange="toggleHiddenDiv('hartEquipSelect', 'hartEquipDetails')">
+                                            <option value="No">No</option>
+                                            <option value="Yes">Yes</option>
+                                        </select>
+                                    </div>
+                                    <div id="hartEquipDetails" class="hidden-detail-box" style="margin-top: 12px;">
+                                        <div class="grid-2" style="align-items: end;">
+                                            <div class="form-group">
+                                                <label>Select Gear</label>
+                                                <select id="hartEquipDropdown">
+                                                    <option value="Tripod">Tripod</option>
+                                                    <option value="Basket Stretcher">Basket Stretcher</option>
+                                                    <option value="MTFA Gear">MTFA Gear</option>
+                                                    <option value="CBRN Gear">CBRN Gear</option>
+                                                    <option value="Diving Gear">Diving Gear</option>
+                                                </select>
+                                            </div>
+                                            <button type="button" class="btn btn-primary" onclick="logHart()">Add Gear</button>
+                                        </div>
+                                        <ul id="loggedHartList" class="logged-list"></ul>
+                                    </div>
+                                </div>
+
+                                <!-- HEMS RSI Panel -->
+                                <div class="hems-doc-only status-box rsi-panel">
+                                    <h4>Rapid Sequence Intubation (RSI)</h4>
+                                    <div class="form-group">
+                                        <label>Rapid Sequence Intubation (RSI) Performed?</label>
+                                        <select id="rsiSelect" onchange="toggleHiddenDiv('rsiSelect', 'rsiDetails')">
+                                            <option value="No">No</option>
+                                            <option value="Yes">Yes</option>
+                                        </select>
+                                    </div>
+                                    <div id="rsiDetails" class="hidden-detail-box" style="margin-top: 12px;">
+                                        <div class="grid-3" style="align-items: end;">
+                                            <div class="form-group">
+                                                <label>RSI Medication</label>
+                                                <select id="rsiMedSelect">
+                                                    <option value="Ketamine (Induction) 10mg/1ml">Ketamine (Induction) 10mg/1ml</option>
+                                                    <option value="Rocuronium Bromide (Paralytic) 10mg/1ml">Rocuronium Bromide (Paralytic) 10mg/1ml</option>
+                                                    <option value="Midazolam (Sedation) 5mg/5ml">Midazolam (Sedation) 5mg/5ml</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Time</label>
+                                                <input type="time" id="rsiTimeInput">
+                                            </div>
+                                            <button type="button" class="btn btn-danger" onclick="logRsi()">Log RSI</button>
+                                        </div>
+                                        <ul id="loggedRsiList" class="logged-list"></ul>
+                                    </div>
+                                </div>
+
+                                <!-- Critical Status Section -->
+                                <div class="status-box critical-panel" id="criticalSection" style="margin-top: 16px;">
+                                    <h4 style="margin-top: 0;">Critical Care & Status</h4>
+                                    <div class="grid-2">
+                                        <div class="form-group">
+                                            <label>ROLE (Recognition of Life Extinct)?</label>
+                                            <select id="roleSelect" onchange="toggleHiddenDiv('roleSelect', 'roleDetails')">
+                                                <option value="No">No</option>
+                                                <option value="Yes">Yes</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Time</label>
+                                            <input type="time" id="roleTime">
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="roleDetails" class="hidden-detail-box" style="margin-top: 12px;">
+                                        <div class="grid-2">
+                                            <div class="form-group">
+                                                <label>Patient Shocked?</label>
+                                                <select id="shockSelect" onchange="toggleHiddenDiv('shockSelect', 'shockCountBox')">
+                                                    <option value="No">No</option>
+                                                    <option value="Yes">Yes</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group" id="shockCountBox" style="display: none;">
+                                                <label>How many times?</label>
+                                                <input type="number" id="shockCount" min="1" placeholder="e.g. 3">
+                                            </div>
+                                        </div>
+                                        <div class="grid-2" style="margin-top: 12px;">
+                                            <div class="form-group">
+                                                <label>Taken to Morgue?</label>
+                                                <select id="morgueSelect">
+                                                    <option value="No">No</option>
+                                                    <option value="Yes">Yes</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Time</label>
+                                                <input type="time" id="morgueTime">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid-2" style="margin-top: 12px;">
+                                        <div class="form-group">
+                                            <label>Patient Placed in Coma?</label>
+                                            <select id="comaSelect">
+                                                <option value="No">No</option>
+                                                <option value="Yes">Yes</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Time</label>
+                                            <input type="time" id="comaTime">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group" style="margin-top: 16px;">
+                                    <label>Treatment Notes</label>
+                                    <textarea id="treatmentNotes" placeholder="General care, transport details..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Allergy Modal -->
+    <div class="modal-overlay" id="allergyModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Add Allergy</h3>
+                <button type="button" class="modal-close" onclick="closeAllergyModal()">✖</button>
+            </div>
+            <div class="form-group">
+                <label>Select Allergy</label>
+                <select id="allergySelect" onchange="checkCustomAllergy()">
+                    <option value="Penicillin">Penicillin</option>
+                    <option value="Latex">Latex</option>
+                    <option value="Aspirin">Aspirin</option>
+                    <option value="NSAIDs">NSAIDs</option>
+                    <option value="Morphine / Opioids">Morphine / Opioids</option>
+                    <option value="Peanuts / Nuts">Peanuts / Nuts</option>
+                    <option value="Adhesive / Tape">Adhesive / Tape</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group" id="customAllergyGroup" style="display: none;">
+                <label>Specify Allergy</label>
+                <input type="text" id="customAllergyInput" placeholder="e.g. Bee Stings">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                <button type="button" class="btn btn-outline" onclick="closeAllergyModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="logAllergy()">Add to Record</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Medication Modal -->
+    <div class="modal-overlay" id="medModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Add Medication</h3>
+                <button type="button" class="modal-close" onclick="closeMedModal()">✖</button>
+            </div>
+            <div class="form-group">
+                <label>Search & Select Medication</label>
+                <input type="text" id="medSearch" placeholder="🔍 Search med..." oninput="filterMedList()">
+                
+                <!-- Custom Styled List Container -->
+                <div id="medListContainer" class="custom-select-list"></div>
+            </div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Dosage</label>
+                    <input type="text" id="medDose" placeholder="e.g. 10mg">
+                </div>
+                <div class="form-group">
+                    <label>Time</label>
+                    <input type="time" id="medTime">
+                </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                <button type="button" class="btn btn-outline" onclick="closeMedModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="logMedication()">Add Medication</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sticky Action Bar -->
+    <div class="sticky-action-bar" id="exportSection">
+        <div>
+            <button type="button" class="btn btn-danger" onclick="resetForm()">🔄 Reset Form</button>
+        </div>
+        <div class="action-group">
+            <button type="button" class="btn btn-primary" onclick="copyInjuryMDT(this)">📋 Copy Injury</button>
+            <button type="button" class="btn btn-success" onclick="copyTreatmentMDT(this)">📋 Copy Treatment</button>
+        </div>
+    </div>
+
+<script>
+    const medMap = { 
+        "Student Paramedic": [
+            "Oxygen (Cardiac arrest/trauma) (GAS)", 
+            "Aspirin (Suspected heart attack) 300mg (TABLET)", 
+            "Codeine [supervised] (Mild to severe pain) 15mg (TABLET)", 
+            "Glucose (Hypoglycemia) 50g/500ml (INFUSION)", 
+            "GTN (Cardiac chest pain/Angina) 400mcg/spray (INHALER)", 
+            "Ibuprofen (Mild to mod pain) 400mg (TABLET)", 
+            "Ipratropium Bromide (Life threatening asthma/COPD) 250mcg/3ml (NEB)", 
+            "Naproxen (Acute/chronic MSK pain) 250mg (TABLET)", 
+            "Paracetamol (Mild to mod pain) 1g (TABLET)", 
+            "Salbutamol (Asthma attack/COPD) 2.5mg/2.5ml (NEB)"
+        ], 
+        "Paramedic": [
+            "Oxygen (Cardiac arrest/trauma) (GAS)", 
+            "Adrenaline (Cardiac arrest) 1mg/10ml (INJ)", 
+            "Amiodarone (Pulseless VT only) 300mg/10ml (INJ)", 
+            "Aspirin (Suspected heart attack) 300mg (TABLET)", 
+            "Atropine Sulfate (<40 pulse symptomatic) 600mcg (INJ)", 
+            "Chlorphenamine (Allergic reaction) 10mg/1ml (INJ)", 
+            "Codeine (Mild to severe pain) 15mg (TABLET)", 
+            "Glucose (Hypoglycemia) 50g/500ml (INFUSION)", 
+            "GTN (Cardiac chest pain/Angina) 400mcg/spray (INHALER)", 
+            "Ibuprofen (Mild to mod pain) 400mg (TABLET)", 
+            "Ipratropium Bromide (Life threatening asthma/COPD) 250mcg/3ml (NEB)", 
+            "Metoclopramide (Nausea/vomiting) 10mg/2ml (INJ)", 
+            "Midazolam (Seizure control) 5mg/5ml (INJ)", 
+            "Morphine Sulfate (Moderate pain) 10mg/1ml (INJ)", 
+            "Naloxone IV (Drug overdose) 400mcg/1ml (INJ)", 
+            "Naloxone IM (Drug overdose) 400mcg/1ml (INJ)", 
+            "Naproxen (Acute/chronic MSK pain) 250mg (TABLET)", 
+            "Paracetamol IV (Mild to mod pain) 1000mg/100ml (INFUSION)", 
+            "Paracetamol (Mild to mod pain) 1g (TABLET)", 
+            "Prednisolone (Moderate acute asthma) 5mg (TABLET)", 
+            "Salbutamol (Asthma attack/COPD) 2.5mg/2.5ml (NEB)", 
+            "Sodium Chloride (Fluids) 500ml (INFUSION)", 
+            "TXA (Major trauma/blood control) 100mg/1ml (INJ)"
+        ], 
+        "Advanced Paramedic": [
+            "Ketamine (Severe pain management) 10mg/1ml (INJ)"
+        ], 
+        "HEMS": [
+            "Amoxicillin (Infections) 500mg (TABLET)", 
+            "Fentanyl (Pain relief) 50mcg/1ml (INJ)",
+            "Rocuronium Bromide (RSI Intubation) 10mg/1ml (INJ)"
+        ], 
+        "Doctor": [
+            "Co-amoxiclav (Open fracture infections) 1200mg (ORAL)", 
+            "Diazepam (Acute muscle spasms) 5mg (TABLET)"
+        ] 
+    };
+    
+    medMap["Advanced Paramedic"] = medMap["Paramedic"].concat(medMap["Advanced Paramedic"]);
+    medMap["HEMS"] = medMap["Advanced Paramedic"].concat(medMap["HEMS"]);
+    medMap["Doctor"] = medMap["HEMS"].concat(medMap["Doctor"]);
+    medMap["Junior Doctor"] = medMap["Doctor"];
+    medMap["Silver Command"] = medMap["Doctor"];
+    medMap["Gold Command"] = medMap["Doctor"];
+
+    let meds = [], allergies = [], hart = [], rsiLog = [];
+    let currentMedList = [];
+    let selectedMedication = "";
+
+    // Theme Toggle Functionality
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const targetTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', targetTheme);
+        localStorage.setItem('epcr_theme', targetTheme);
+        updateThemeUI(targetTheme);
+    }
+
+    function updateThemeUI(theme) {
+        document.getElementById('themeLabel').innerText = theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+    }
+
+    // Sidebar Toggle for Mobile
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('mobile-open');
+    }
+
+    // Card Collapsible Interface
+    function toggleCard(header) {
+        const card = header.parentElement;
+        card.classList.toggle('collapsed');
+    }
+
+    // Live Clock Display
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('dashClock').innerText = now.toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Grade Selection and Field Visibility logic
+    function revealFormAndPopulateMeds() {
+        const g = document.getElementById('grade').value;
+        const hartSub = document.getElementById('hartSubSelect');
+        
+        document.getElementById('dashGradeDisplay').innerText = g || "Unselected";
+        hartSub.style.display = (g === "HART") ? "block" : "none";
+        const effectiveGrade = (g === "HART") ? document.getElementById('hartGrade').value : g;
+
+        if(!g) return;
+
+        document.getElementById('hiddenFields').style.display = "block";
+        const isHD = (g === "HEMS" || g === "Junior Doctor" || g === "Doctor" || g === "Gold Command" || g === "Silver Command");
+        document.querySelectorAll('.hems-doc-only').forEach(el => el.style.display = isHD ? "block" : "none");
+        document.querySelectorAll('.hart-only').forEach(el => el.style.display = (g === "HART" || g === "Gold Command" || g === "Silver Command") ? "block" : "none");
+        
+        currentMedList = medMap[effectiveGrade] ? medMap[effectiveGrade].sort() : [];
+        filterMedList();
+        updateProgress();
+    }
+
+    function filterMedList() {
+        const query = document.getElementById('medSearch').value.toLowerCase();
+        const container = document.getElementById('medListContainer');
+        container.innerHTML = "";
+
+        const filtered = currentMedList.filter(m => m.toLowerCase().includes(query));
+
+        if (filtered.length === 0) {
+            container.innerHTML = `<div class="no-meds-found">No matching medications found</div>`;
+            return;
+        }
+
+        filtered.forEach(m => {
+            const item = document.createElement('div');
+            item.className = `med-option ${selectedMedication === m ? 'selected' : ''}`;
+            item.textContent = m;
+            item.onclick = function() {
+                selectedMedication = m;
+                document.querySelectorAll('.med-option').forEach(el => el.classList.remove('selected'));
+                item.classList.add('selected');
+            };
+            container.appendChild(item);
+        });
+    }
+
+    function toggleHiddenDiv(s, d) { 
+        document.getElementById(d).style.display = (document.getElementById(s).value === "Yes") ? "block" : "none"; 
+        updateProgress();
+    }
+
+    function toggleMedsUI() { 
+        document.getElementById('medsLoggerUI').style.display = document.getElementById('medsToggle').checked ? "block" : "none"; 
+        updateProgress();
+    }
+
+    function toggleAllergiesUI() {
+        document.getElementById('allergiesLoggerUI').style.display = document.getElementById('allergiesToggle').checked ? "block" : "none";
+        updateProgress();
+    }
+
+    // Modal Control Functions
+    function openMedModal() {
+        document.getElementById('medSearch').value = "";
+        selectedMedication = "";
+        filterMedList();
+        document.getElementById('medModal').classList.add('active');
+    }
+
+    function closeMedModal() {
+        document.getElementById('medModal').classList.remove('active');
+    }
+
+    function openAllergyModal() {
+        document.getElementById('allergyModal').classList.add('active');
+    }
+
+    function closeAllergyModal() {
+        document.getElementById('allergyModal').classList.remove('active');
+    }
+
+    function checkCustomAllergy() {
+        const val = document.getElementById('allergySelect').value;
+        document.getElementById('customAllergyGroup').style.display = (val === 'Other') ? 'flex' : 'none';
+    }
+
+    function logAllergy() {
+        const sel = document.getElementById('allergySelect').value;
+        let entry = sel;
+        if (sel === 'Other') {
+            const custom = document.getElementById('customAllergyInput').value.trim();
+            if (!custom) return;
+            entry = custom;
+        }
+        allergies.push(entry);
+        render();
+        saveLocalData();
+        closeAllergyModal();
+        document.getElementById('customAllergyInput').value = '';
+    }
+
+    function logMedication() { 
+        if(!selectedMedication) {
+            alert("Please select a medication from the list.");
+            return;
+        }
+        
+        const time = document.getElementById('medTime').value || 'N/A';
+        const dose = document.getElementById('medDose').value || 'N/A';
+        
+        meds.push(`[${time}] ${selectedMedication} (${dose})`); 
+        render(); 
+        saveLocalData();
+        closeMedModal();
+    }
+
+    function logHart() { 
+        hart.push(document.getElementById('hartEquipDropdown').value); 
+        render(); 
+        saveLocalData();
+    }
+
+    function logRsi() { 
+        rsiLog.push(`[${document.getElementById('rsiTimeInput').value || 'N/A'}] ${document.getElementById('rsiMedSelect').value}`); 
+        render(); 
+        saveLocalData();
+    }
+
+    function render() {
+        const l1 = document.getElementById('loggedMedsList'), 
+              l2 = document.getElementById('loggedHartList'), 
+              l3 = document.getElementById('loggedRsiList'),
+              l4 = document.getElementById('loggedAllergiesList');
+
+        l1.innerHTML = ""; meds.forEach((m, i) => l1.innerHTML += `<li class="logged-item"><span>${m}</span> <span class="delete-btn" onclick="meds.splice(${i},1); render(); saveLocalData();">✖</span></li>`);
+        l2.innerHTML = ""; hart.forEach((h, i) => l2.innerHTML += `<li class="logged-item"><span>${h}</span> <span class="delete-btn" onclick="hart.splice(${i},1); render(); saveLocalData();">✖</span></li>`);
+        l3.innerHTML = ""; rsiLog.forEach((r, i) => l3.innerHTML += `<li class="logged-item"><span>${r}</span> <span class="delete-btn" onclick="rsiLog.splice(${i},1); render(); saveLocalData();">✖</span></li>`);
+        l4.innerHTML = ""; allergies.forEach((a, i) => l4.innerHTML += `<li class="logged-item"><span>${a}</span> <span class="delete-btn" onclick="allergies.splice(${i},1); render(); saveLocalData();">✖</span></li>`);
+    }
+    
+    function resetForm() { 
+        if(confirm("Are you sure you want to clear the entire form?")) { 
+            document.getElementById('epcrForm').reset(); 
+            meds = []; allergies = []; hart = []; rsiLog = []; 
+            render(); 
+            document.getElementById('hiddenFields').style.display = "none"; 
+            document.querySelectorAll('.hidden-detail-box').forEach(el => el.style.display = "none");
+            document.getElementById('dashGradeDisplay').innerText = "Unselected";
+            localStorage.removeItem('epcr_saved_data');
+            updateProgress();
+        } 
+    }
+
+    // Completion Tracker calculation
+    function updateProgress() {
+        const form = document.getElementById('epcrForm');
+        const inputs = form.querySelectorAll('input:not([type="hidden"]), select, textarea');
+        let filled = 0;
+        let total = 0;
+
+        inputs.forEach(input => {
+            if (input.offsetParent !== null) {
+                total++;
+                if (input.type === 'checkbox') {
+                    if (input.checked) filled++;
+                } else if (input.value.trim() !== '') {
+                    filled++;
+                }
+            }
+        });
+
+        const percentage = total > 0 ? Math.round((filled / total) * 100) : 0;
+        document.getElementById('progressBar').style.width = percentage + '%';
+    }
+
+    // Auto-Saving to Local Storage
+    function saveLocalData() {
+        const formData = {
+            inputs: {},
+            meds: meds,
+            allergies: allergies,
+            hart: hart,
+            rsiLog: rsiLog
+        };
+
+        const elements = document.getElementById('epcrForm').querySelectorAll('input, select, textarea');
+        elements.forEach(el => {
+            if(el.id) {
+                formData.inputs[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+            }
+        });
+
+        localStorage.setItem('epcr_saved_data', JSON.stringify(formData));
+    }
+
+    function loadLocalData() {
+        const savedTheme = localStorage.getItem('epcr_theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeUI(savedTheme);
+
+        const data = localStorage.getItem('epcr_saved_data');
+        if(!data) return;
+
+        try {
+            const parsed = JSON.parse(data);
+            meds = parsed.meds || [];
+            allergies = parsed.allergies || [];
+            hart = parsed.hart || [];
+            rsiLog = parsed.rsiLog || [];
+
+            Object.keys(parsed.inputs).forEach(id => {
+                const el = document.getElementById(id);
+                if(el) {
+                    if(el.type === 'checkbox') el.checked = parsed.inputs[id];
+                    else el.value = parsed.inputs[id];
+                }
+            });
+
+            if(document.getElementById('grade').value) {
+                revealFormAndPopulateMeds();
+            }
+
+            // Restore hidden triggers
+            ['majorIncidentSelect', 'tacticalSelect', 'xraySelect', 'mriSelect', 'hartEquipSelect', 'rsiSelect', 'roleSelect', 'shockSelect'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el && el.onchange) el.onchange();
+            });
+
+            toggleMedsUI();
+            toggleAllergiesUI();
+            render();
+            updateProgress();
+        } catch(e) {
+            console.error("Error restoring local state", e);
+        }
+    }
+
+    function copyInjuryMDT(btn) {
+        const xray = (document.getElementById('xraySelect').value === "Yes") ? document.getElementById('xrayResults').value : "No";
+        const mri = (document.getElementById('mriSelect').value === "Yes") ? document.getElementById('mriResults').value : "No";
+        const grade = document.getElementById('grade').value;
+        const callsign = document.getElementById('callsign').value || "N/A";
+        
+        let sceneText = "\n\n";
+        if (grade.match(/HEMS|Doctor|Gold Command|Silver Command/)) {
+            const loc = document.getElementById('sceneLocation').value || "N/A";
+            const callInfo = document.getElementById('originalCall').value || "N/A";
+            const sceneCmd = document.getElementById('sceneCommand').value || "N/A";
+            
+            let majorInc = document.getElementById('majorIncidentSelect').value;
+            if(majorInc === "Yes") majorInc += ` (${document.getElementById('majorIncidentDesc').value || "No details provided"})`;
+            
+            let tactCmd = document.getElementById('tacticalSelect').value;
+            if(tactCmd === "Yes") tactCmd += ` (${document.getElementById('tacticalName').value || "Unknown"})`;
+            
+            const extra = document.getElementById('sceneFindings').value || "None";
+            
+            sceneText = `\n\n--- SCENE FINDINGS ---\nLocation: ${loc}\nOriginal Call Info: ${callInfo}\nMajor Incident: ${majorInc}\nClinical Scene Command: ${sceneCmd}\nTactical Commander: ${tactCmd}\nAdditional Findings: ${extra}\n\n`;
+        }
+        
+        const out = `*** ePCR: INJURY REPORT ***\nUNIT: ${callsign} | GRADE: ${grade} | DATE: ${document.getElementById('date').value}${sceneText}PRIMARY COMPLAINT:\n${document.getElementById('injuryInfo').value}\n\n--- IMAGING ---\nX-RAY: ${xray}\nMRI: ${mri}`;
+        
+        navigator.clipboard.writeText(out).then(() => {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "✅ Copy Complete!";
+            setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+        });
+    }
+
+    function copyTreatmentMDT(btn) {
+        let rsiText = "";
+        if (document.getElementById('rsiSelect').value === "Yes" && rsiLog.length > 0) {
+            rsiText = `\n\n--- RSI ADMINISTERED ---\n${rsiLog.join('\n')}`;
+        }
+
+        const hEq = (hart.length > 0) ? `\n\n--- HART EQUIPMENT ---\n${hart.join(', ')}` : "";
+        const callsign = document.getElementById('callsign').value || "N/A";
+        
+        let roleText = "";
+        if (document.getElementById('roleSelect').value === "Yes") {
+            roleText = `\n\n--- CRITICAL STATUS ---\nROLE (Recognition of Life Extinct): Confirmed @ ${document.getElementById('roleTime').value || "Unknown Time"}`;
+            
+            const shocked = document.getElementById('shockSelect').value;
+            if (shocked === "Yes") {
+                const shocks = document.getElementById('shockCount').value || "0";
+                roleText += `\nSHOCKS DELIVERED: Yes (${shocks} times)`;
+            } else {
+                roleText += `\nSHOCKS DELIVERED: No`;
+            }
+
+            const morgue = document.getElementById('morgueSelect').value;
+            if (morgue === "Yes") {
+                roleText += `\nTAKEN TO MORGUE: Yes @ ${document.getElementById('morgueTime').value || "Unknown Time"}`;
+            } else {
+                roleText += `\nTAKEN TO MORGUE: No`;
+            }
+        }
+
+        let comaText = "";
+        if (document.getElementById('comaSelect').value === "Yes") {
+            comaText = `\n\nPATIENT PLACED IN COMA: Yes @ ${document.getElementById('comaTime').value || "Unknown Time"}`;
+        }
+
+        const allergyText = (document.getElementById('allergiesToggle').checked && allergies.length > 0) ? `\n\n--- ALLERGIES ---\n${allergies.join(', ')}` : "";
+
+        const out = `*** ePCR: TREATMENT REPORT ***\nUNIT: ${callsign} | PROVIDER: ${document.getElementById('grade').value}${allergyText}\n${hEq}\n\n--- MEDICATIONS ---\n${meds.length > 0 ? meds.join('\n') : "None"}${rsiText}${roleText}${comaText}\n\n--- NOTES ---\n${document.getElementById('treatmentNotes').value || "No additional notes."}`;
+        
+        navigator.clipboard.writeText(out).then(() => {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "✅ Copy Complete!";
+            setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+        });
+    }
+
+    window.onload = loadLocalData;
+</script>
+</body>
+</html>

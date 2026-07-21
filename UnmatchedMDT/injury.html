@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Injury Information - Unmatched ePCR System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <img src="uhs.png" alt="Trust Logo" onerror="this.style.display='none'">
+                <h1>Unmatched ePCR System</h1>
+            </div>
+            <ul class="nav-links">
+                <li class="nav-item"><a href="index.html">🩺 Medic Grade</a></li>
+                <li class="nav-item"><a href="incident.html">📋 Incident</a></li>
+                <li class="nav-item active"><a href="injury.html">🩹 Injury</a></li>
+                <li class="nav-item"><a href="treatment.html">💊 Treatment</a></li>
+                <li class="nav-item"><a href="export.html">📤 Export</a></li>
+                <li class="nav-item"><a href="https://notwasooked.github.io" target="_blank" rel="noopener noreferrer">🧰 View More Tools ↗</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button class="theme-toggle-btn" onclick="toggleTheme()">
+                    <span id="themeLabel">🌙 Dark Mode</span>
+                </button>
+            </div>
+        </aside>
+
+        <div class="main-wrapper">
+            <header class="dashboard-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="mobile-menu-toggle" onclick="toggleSidebar()">☰</button>
+                    <div class="dash-title-group"><h2>Unmatched Health Service</h2></div>
+                </div>
+                <div class="dash-meta">
+                    <div class="meta-pill"><span id="dashClock">--:--:--</span></div>
+                </div>
+            </header>
+
+            <div class="content-container">
+                <form id="epcrForm" oninput="saveLocalData()">
+                    <div class="fluent-card">
+                        <div class="card-header"><h3>🩹 Injury Information</h3></div>
+                        <div class="card-body">
+                            
+                            <!-- HEMS Scene Findings -->
+                            <div class="hems-doc-only status-box" style="margin-bottom: 16px;">
+                                <h4 style="margin-top:0; margin-bottom: 12px;">Scene Findings</h4>
+                                <div class="grid-2">
+                                    <div class="form-group">
+                                        <label>Location</label>
+                                        <input type="text" id="sceneLocation" placeholder="Enter location...">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Clinical Scene Command</label>
+                                        <input type="text" id="sceneCommand" placeholder="Who is command?">
+                                    </div>
+                                </div>
+                                <div class="form-group" style="margin-top: 12px;">
+                                    <label>Original Call Information</label>
+                                    <textarea id="originalCall" placeholder="Dispatch details..."></textarea>
+                                </div>
+                                <div class="grid-2" style="margin-top: 12px;">
+                                    <div class="form-group">
+                                        <label>Major Incident?</label>
+                                        <select id="majorIncidentSelect" onchange="toggleHiddenDiv('majorIncidentSelect', 'majorIncidentDetails')">
+                                            <option value="No">No</option>
+                                            <option value="Yes">Yes</option>
+                                        </select>
+                                        <div id="majorIncidentDetails" class="hidden-detail-box" style="margin-top: 8px;">
+                                            <label>Major Incident Details:</label>
+                                            <input type="text" id="majorIncidentDesc" placeholder="Specify details...">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Tactical Commander Present?</label>
+                                        <select id="tacticalSelect" onchange="toggleHiddenDiv('tacticalSelect', 'tacticalDetails')">
+                                            <option value="No">No</option>
+                                            <option value="Yes">Yes</option>
+                                        </select>
+                                        <div id="tacticalDetails" class="hidden-detail-box" style="margin-top: 8px;">
+                                            <label>Who is Tactical Commander?</label>
+                                            <input type="text" id="tacticalName" placeholder="Commander name...">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group" style="margin-top: 12px;">
+                                    <label>Additional Scene Findings</label>
+                                    <textarea id="sceneFindings" placeholder="Other details found on arrival..."></textarea>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Primary Injury / Complaint</label>
+                                <textarea id="injuryInfo" placeholder="Nature of illness/injury..."></textarea>
+                            </div>
+
+                            <div class="grid-2" style="margin-top: 12px;">
+                                <div class="form-group">
+                                    <label>X-Ray Performed?</label>
+                                    <select id="xraySelect" onchange="toggleHiddenDiv('xraySelect', 'xrayDetails')">
+                                        <option value="No">No</option>
+                                        <option value="Yes">Yes</option>
+                                    </select>
+                                    <div id="xrayDetails" class="hidden-detail-box" style="margin-top: 8px;">
+                                        <label>Findings:</label>
+                                        <input type="text" id="xrayResults" placeholder="e.g. Fractured tibia">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>MRI Performed?</label>
+                                    <select id="mriSelect" onchange="toggleHiddenDiv('mriSelect', 'mriDetails')">
+                                        <option value="No">No</option>
+                                        <option value="Yes">Yes</option>
+                                    </select>
+                                    <div id="mriDetails" class="hidden-detail-box" style="margin-top: 8px;">
+                                        <label>Findings:</label>
+                                        <input type="text" id="mriResults" placeholder="e.g. Tissue damage">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; margin-top: 24px;">
+                                <a href="incident.html" class="btn btn-outline">← Back</a>
+                                <a href="treatment.html" class="btn btn-primary">Next: Treatment →</a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

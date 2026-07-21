@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App Directory</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #06070a;
+      background-image: 
+        radial-gradient(at 50% 0%, rgba(120, 119, 198, 0.3) 0px, transparent 60%),
+        radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.15) 0px, transparent 50%),
+        radial-gradient(at 0% 100%, rgba(236, 72, 153, 0.12) 0px, transparent 50%);
+      color: #fff;
+      padding: 24px;
+    }
+
+    /* Main Glass Container */
+    .folder-container {
+      width: 100%;
+      max-width: 440px;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 36px;
+      padding: 32px 24px;
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    .folder-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .folder-title {
+      font-size: clamp(20px, 5vw, 26px);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.75) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .folder-subtitle {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      margin-top: 4px;
+      font-weight: 400;
+      letter-spacing: 0.2px;
+    }
+
+    /* Apps Grid */
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .app-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-decoration: none;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 24px;
+      padding: 18px 12px;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+    }
+
+    .app-item:hover {
+      transform: translateY(-4px) scale(1.02);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .app-item:active {
+      transform: scale(0.96);
+    }
+
+    /* Icon Container with Glow */
+    .icon-wrapper {
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .app-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      z-index: 2;
+    }
+
+    /* Icon Ambient Glow on Hover */
+    .app-item:hover .icon-glow {
+      opacity: 0.6;
+      transform: scale(1.2);
+    }
+
+    .icon-glow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      filter: blur(14px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 1;
+    }
+
+    /* Icon Gloss Overlay */
+    .app-icon::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 45%;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.25), rgba(255,255,255,0));
+      pointer-events: none;
+    }
+
+    .app-label {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.25;
+      color: rgba(255, 255, 255, 0.95);
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    /* GitHub Status Metadata Badge */
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.55);
+      background: rgba(0, 0, 0, 0.25);
+      padding: 4px 8px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      width: 100%;
+      justify-content: center;
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      background-color: #34c759;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #34c759;
+      animation: pulse 2s infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(52, 199, 89, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52, 199, 89, 0); }
+    }
+
+    /* Color Gradients */
+    .bg-blue   { background: linear-gradient(135deg, #007aff, #00c6ff); }
+    .bg-purple { background: linear-gradient(135deg, #5856d6, #b83280); }
+    .bg-orange { background: linear-gradient(135deg, #ff9500, #ff5e3a); }
+    .bg-green  { background: linear-gradient(135deg, #34c759, #11998e); }
+    .bg-red    { background: linear-gradient(135deg, #ff3b30, #ff2a6d); }
+    .bg-dark   { background: linear-gradient(135deg, #2c3e50, #000000); }
+
+    /* Footer Status Card */
+    .footer-status {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.4);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="folder-container">
+    <div class="folder-header">
+      <h1 class="folder-title" id="folder-title">UHS Toolbox</h1>
+      <div class="folder-subtitle">Helping get the job done right</div>
+    </div>
+
+    <!-- App Grid -->
+    <div class="app-grid" id="app-grid"></div>
+
+    <div class="footer-status">
+      <span>Created by B.Evans</span>
+      <span>UHS Toolbox</span>
+    </div>
+  </div>
+
+  <script>
+    const folderConfig = {
+      title: "UHS Toolbox",
+      apps: [
+        {
+          name: "Unmatched ePCR",
+          url: "https://notwasooked.github.io/UnmatchedMDT",
+          repoOwner: "notwasooked",
+          repoName: "notwasooked.github.io",
+          icon: "🚑",
+          colorClass: "bg-red",
+          active: true
+        },
+        {
+          name: "Health Handbook",
+          url: "https://notwasooked.github.io/UnmatchedHandbook",
+          repoOwner: "notwasooked",
+          repoName: "notwasooked.github.io",
+          icon: "⚡",
+          colorClass: "bg-orange",
+          active: true
+        },
+        {
+          name: "Live Chat",
+          url: "https://example.com",
+          repoOwner: "",
+          repoName: "",
+          icon: "💬",
+          colorClass: "bg-green",
+          active: false
+        },
+        {
+          name: "Developer Tools",
+          url: "https://example.com",
+          repoOwner: "",
+          repoName: "",
+          icon: "🛠️",
+          colorClass: "bg-dark",
+          active: false
+        }
+      ]
+    };
+
+    document.getElementById("folder-title").textContent = folderConfig.title;
+    const gridContainer = document.getElementById("app-grid");
+
+    // Convert ISO timestamp to relative time (e.g., "Updated 2h ago")
+    function timeAgo(dateString) {
+      if (!dateString) return "Updated recently";
+      const date = new Date(dateString);
+      const now = new Date();
+      const seconds = Math.floor((now - date) / 1000);
+
+      let interval = Math.floor(seconds / 31536000);
+      if (interval >= 1) return `Updated ${interval}y ago`;
+      
+      interval = Math.floor(seconds / 2592000);
+      if (interval >= 1) return `Updated ${interval}mo ago`;
+      
+      interval = Math.floor(seconds / 86400);
+      if (interval >= 1) return `Updated ${interval}d ago`;
+      
+      interval = Math.floor(seconds / 3600);
+      if (interval >= 1) return `Updated ${interval}h ago`;
+      
+      interval = Math.floor(seconds / 60);
+      if (interval >= 1) return `Updated ${interval}m ago`;
+      
+      return "Updated just now";
+    }
+
+    // Fetch GitHub commit timestamp
+    async function fetchLastCommitTime(owner, repo, statusElement) {
+      if (!owner || !repo) {
+        statusElement.textContent = "Online";
+        return;
+      }
+
+      try {
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits/main`);
+        if (!response.ok) {
+          // Fallback if branch is 'master' or default branch differs
+          const fallbackRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits`);
+          if (!fallbackRes.ok) throw new Error("Repo fetch failed");
+          const data = await fallbackRes.json();
+          const lastDate = data[0]?.commit?.committer?.date;
+          statusElement.textContent = timeAgo(lastDate);
+          return;
+        }
+        const data = await response.json();
+        const lastDate = data?.commit?.committer?.date;
+        statusElement.textContent = timeAgo(lastDate);
+      } catch (err) {
+        statusElement.textContent = "Online";
+      }
+    }
+
+    // Render cards
+    folderConfig.apps.forEach((app, index) => {
+      if (app.active) {
+        const appElement = document.createElement("a");
+        appElement.href = app.url;
+        appElement.className = "app-item";
+        appElement.target = "_blank";
+        appElement.rel = "noopener noreferrer";
+
+        const statusId = `status-${index}`;
+
+        appElement.innerHTML = `
+          <div class="icon-wrapper">
+            <div class="icon-glow ${app.colorClass}"></div>
+            <div class="app-icon ${app.colorClass}">
+              <span>${app.icon}</span>
+            </div>
+          </div>
+          <span class="app-label">${app.name}</span>
+          <div class="status-badge">
+            <span class="pulse-dot"></span>
+            <span id="${statusId}">Fetching...</span>
+          </div>
+        `;
+
+        gridContainer.appendChild(appElement);
+
+        // Fetch GitHub activity asynchronously
+        const statusSpan = document.getElementById(statusId);
+        fetchLastCommitTime(app.repoOwner, app.repoName, statusSpan);
+      }
+    });
+  </script>
+</body>
+</html>

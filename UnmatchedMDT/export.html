@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Export Data - Unmatched ePCR System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <img src="uhs.png" alt="Trust Logo" onerror="this.style.display='none'">
+                <h1>Unmatched ePCR System</h1>
+            </div>
+            <ul class="nav-links">
+                <li class="nav-item"><a href="index.html">🩺 Medic Grade</a></li>
+                <li class="nav-item"><a href="incident.html">📋 Incident</a></li>
+                <li class="nav-item"><a href="injury.html">🩹 Injury</a></li>
+                <li class="nav-item"><a href="treatment.html">💊 Treatment</a></li>
+                <li class="nav-item active"><a href="export.html">📤 Export</a></li>
+                <li class="nav-item"><a href="https://notwasooked.github.io" target="_blank" rel="noopener noreferrer">🧰 View More Tools ↗</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button class="theme-toggle-btn" onclick="toggleTheme()">
+                    <span id="themeLabel">🌙 Dark Mode</span>
+                </button>
+            </div>
+        </aside>
+
+        <div class="main-wrapper">
+            <header class="dashboard-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="mobile-menu-toggle" onclick="toggleSidebar()">☰</button>
+                    <div class="dash-title-group"><h2>Unmatched Health Service</h2></div>
+                </div>
+                <div class="dash-meta">
+                    <div class="meta-pill"><span id="dashClock">--:--:--</span></div>
+                </div>
+            </header>
+
+            <div class="content-container">
+                <div class="fluent-card">
+                    <div class="card-header"><h3>📤 Export Report</h3></div>
+                    <div class="card-body">
+                        <p>Copy formatted reports to clipboard or reset current record state below.</p>
+                        
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px;">
+                            <button type="button" class="btn btn-primary" onclick="copyInjuryMDT(this)">📋 Copy Injury Report</button>
+                            <button type="button" class="btn btn-success" onclick="copyTreatmentMDT(this)">📋 Copy Treatment Report</button>
+                            <button type="button" class="btn btn-danger" onclick="resetForm()">🔄 Reset Complete Form</button>
+                        </div>
+
+                        <div style="margin-top: 24px;">
+                            <a href="treatment.html" class="btn btn-outline">← Back to Treatment</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
