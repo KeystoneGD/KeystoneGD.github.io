@@ -1,0 +1,157 @@
+/* Marquee Event System — shared foundation.
+   One dark system across three very different surfaces: an operator console meant to be
+   poked with a finger, a display meant to be read from the back of a room, and a phone. */
+
+:root{
+  --ink:#06080D;
+  --ground:#0A0E16;
+  --panel:#121824;
+  --panel-2:#1A2231;
+  --panel-3:#232D3F;
+  --line:rgba(255,255,255,.09);
+  --line-2:rgba(255,255,255,.05);
+  --line-hi:rgba(255,255,255,.18);
+
+  --amber:#FFB020;
+  --amber-deep:#C77C00;
+  --mint:#3DDC97;
+  --rose:#FF4D6A;
+  --violet:#8B7BFF;
+  --sky:#4FB0FF;
+
+  --text:#EAEFF7;
+  --text-2:#C2CCDC;
+  --muted:#8593A9;
+  --faint:#5E6B80;
+
+  --r:14px;
+  --r-lg:20px;
+  --ease:cubic-bezier(.2,.9,.3,1);
+
+  --touch:56px;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--ground);color:var(--text);
+  font-family:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px;line-height:1.4;
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+}
+h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+p{margin:0}
+a{color:inherit;text-decoration:none}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:none;cursor:pointer;padding:0}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:8px}
+.hide{display:none !important}
+
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.cond{font-family:"Barlow Condensed","Archivo",sans-serif}
+.up{text-transform:uppercase;letter-spacing:.14em}
+
+/* ---------------------------------------------------------------- atoms */
+.panel{
+  background:var(--panel);border:1px solid var(--line-2);border-radius:var(--r);
+}
+.panel-h{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;border-bottom:1px solid var(--line-2);
+  font-family:"Barlow Condensed",sans-serif;font-size:14px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.16em;color:var(--muted);
+}
+.panel-h .sp{flex:1}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  min-height:var(--touch);padding:0 20px;border-radius:12px;
+  background:var(--panel-2);border:1px solid var(--line);
+  font-family:"Barlow Condensed",sans-serif;
+  font-size:19px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--text-2);
+  transition:background .15s, border-color .15s, transform .1s, color .15s;
+  user-select:none;
+}
+.btn:hover{background:var(--panel-3);color:var(--text)}
+.btn:active{transform:scale(.975)}
+.btn[disabled]{opacity:.32;cursor:not-allowed;transform:none}
+.btn.go{background:var(--amber);border-color:var(--amber);color:#1A1200;font-weight:700}
+.btn.go:hover{background:#FFC24D}
+.btn.ok{background:rgba(61,220,151,.14);border-color:rgba(61,220,151,.4);color:var(--mint)}
+.btn.ok:hover{background:rgba(61,220,151,.22)}
+.btn.stop{background:rgba(255,77,106,.13);border-color:rgba(255,77,106,.38);color:var(--rose)}
+.btn.stop:hover{background:rgba(255,77,106,.2)}
+.btn.ghost{background:transparent;border-color:var(--line-2);color:var(--muted)}
+.btn.ghost:hover{color:var(--text);border-color:var(--line)}
+.btn.sm{min-height:40px;font-size:15px;padding:0 14px;border-radius:10px}
+.btn.wide{width:100%}
+
+.chip{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--line);
+  font-family:"Barlow Condensed",sans-serif;font-size:14px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.12em;color:var(--muted);white-space:nowrap;
+}
+.chip i{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.chip.on{color:var(--mint);border-color:rgba(61,220,151,.35);background:rgba(61,220,151,.08)}
+.chip.off{color:var(--faint)}
+.chip.warn{color:var(--amber);border-color:rgba(255,176,32,.35);background:rgba(255,176,32,.08)}
+.chip.bad{color:var(--rose);border-color:rgba(255,77,106,.35);background:rgba(255,77,106,.08)}
+
+.field{
+  width:100%;min-height:46px;padding:10px 13px;border-radius:11px;
+  background:var(--ink);border:1px solid var(--line);color:var(--text);font-size:16px;
+}
+.field:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px rgba(255,176,32,.16)}
+.field::placeholder{color:var(--faint)}
+label.lbl{
+  display:block;font-family:"Barlow Condensed",sans-serif;font-size:13px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.16em;color:var(--faint);margin-bottom:6px;
+}
+
+/* the ball, wherever it appears */
+.ball{
+  border-radius:50%;display:grid;place-items:center;position:relative;flex:none;
+  background:radial-gradient(circle at 34% 26%, #FFF7E2 0%, #FFE0A0 26%, #F5B740 58%, #A96C00 100%);
+  color:#2A1A00;font-weight:800;font-variant-numeric:tabular-nums;
+  font-family:"Archivo",sans-serif;font-variation-settings:"wdth" 112;
+  box-shadow:inset 0 -8px 16px -6px rgba(90,55,0,.55), 0 10px 30px -12px rgba(255,176,32,.55);
+  letter-spacing:-.03em;
+}
+.ball::after{content:"";position:absolute;inset:7%;border-radius:50%;border:2px solid rgba(60,40,0,.2)}
+.ball.blank{
+  background:radial-gradient(circle at 34% 26%, #26313F 0%, #1A2230 60%, #131A25 100%);
+  color:var(--faint);box-shadow:inset 0 0 0 1px var(--line);
+}
+.ball.blank::after{display:none}
+
+@keyframes ballDrop{
+  0%{transform:translateY(-40px) scale(.6);opacity:0}
+  62%{transform:translateY(6px) scale(1.06);opacity:1}
+  100%{transform:none;opacity:1}
+}
+.ball.drop{animation:ballDrop .5s var(--ease)}
+
+/* flashboard */
+.board{display:grid;grid-template-columns:repeat(10,1fr);gap:var(--bgap,4px)}
+.board b{
+  aspect-ratio:1;display:grid;place-items:center;border-radius:6px;font-weight:700;
+  font-variant-numeric:tabular-nums;
+  color:var(--faint);background:rgba(255,255,255,.035);border:1px solid transparent;
+  transition:background .3s, color .3s, box-shadow .3s;
+}
+.board b.on{
+  color:#2A1A00;background:linear-gradient(180deg,#FFD98A,var(--amber));
+  box-shadow:0 0 14px -2px rgba(255,176,32,.5);
+}
+.board b.now{box-shadow:0 0 0 3px var(--text), 0 0 20px rgba(255,176,32,.8)}
+
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+
+/* scrollbars, since these screens live in kiosk mode */
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--panel-3);border-radius:10px}
+::-webkit-scrollbar-thumb:hover{background:#31405A}
