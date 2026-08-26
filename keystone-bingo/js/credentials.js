@@ -7,7 +7,7 @@
 export const CREDENTIALS = {
   v: 1,
   iterations: 310000,
-  salt: "A0pehtfKeqN9CywrdjOY3A==",
-  iv: "fvdDEu/DPsb8V7E1",
-  token: "/FvZ0bTfXzoTwQlbZkFMmQDUJl07T00sJhjzz5ZabniCKEoq"
+  salt: "XeUkkmfjpfmfHpdCbdHBDA==",
+  iv: "ZhYlCtP5LISdAj9t",
+  token: "JiVdC5+sfgkQy/t88yZ9esmCVKYVwfedCnWab/GAZI8vkIYq"
 };
