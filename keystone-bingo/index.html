@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Palace Bingo</title>
+<meta name="description" content="A 90-ball bingo hall you can host from a link. Six tickets to a sheet, dab your own numbers, claim before the next ball.">
+<meta name="theme-color" content="#170A0E">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%F0%9F%8E%B1</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Archivo:wdth,wght@75..112,400..800&display=swap">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ============================ the door ============================ -->
+<div class="doors" id="doors">
+  <div class="doorcard">
+    <div class="stub">
+      <h1>Palace Bingo</h1>
+      <span>90&#8209;ball &middot; admit one</span>
+    </div>
+    <form class="doorbody" id="joinForm" autocomplete="off">
+      <div>
+        <label for="nameIn">Your name</label>
+        <input id="nameIn" name="name" maxlength="18" placeholder="What shall the host call you?" required autocomplete="nickname">
+      </div>
+      <div>
+        <label for="codeIn">Room code</label>
+        <input id="codeIn" class="roomcode" name="room" maxlength="5" placeholder="&middot; &middot; &middot; &middot; &middot;" inputmode="text" autocapitalize="characters" spellcheck="false">
+      </div>
+      <div class="doormsg info" id="doorMsg">Ask the host for tonight&rsquo;s room code. No code? You can still take a practice round on your own.</div>
+      <button class="bigbtn" id="joinBtn" type="submit">Take my seat</button>
+    </form>
+    <div class="doorfoot">
+      <button type="button" id="practiceBtn">Play a practice round instead</button>
+      <a href="host.html">Host sign&#8209;in</a>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ the hall ============================ -->
+<div id="game" class="hide">
+
+  <div class="topbar">
+    <div class="brand">
+      <h1>Palace Bingo</h1>
+      <span class="est">90&#8209;ball&nbsp;&middot;&nbsp;eyes down</span>
+    </div>
+    <div class="spacer"></div>
+    <span class="chip" id="stageChip">Game <b>1</b></span>
+    <span class="chip" id="countChip"><b id="calledCount">0</b>&nbsp;of 90</span>
+    <span class="chip link off" id="linkChip">Offline</span>
+    <button class="iconbtn" id="soundBtn" aria-pressed="false" title="The caller reads each number aloud">Voice</button>
+    <button class="iconbtn" id="settingsBtn">Sheet</button>
+    <button class="iconbtn" id="rulesBtn">Rules</button>
+  </div>
+
+  <div class="stage-wrap">
+    <div class="rail">
+      <div class="panel caller-panel">
+        <div class="panel-h"><span>The Caller</span><span id="stageLabel">Not started</span></div>
+        <div class="caller">
+          <div class="ball-holder">
+            <svg class="ball-ring" viewBox="0 0 150 150" aria-hidden="true">
+              <circle class="bg" cx="75" cy="75" r="70"></circle>
+              <circle class="fg" id="ring" cx="75" cy="75" r="70" stroke-dasharray="439.8" stroke-dashoffset="439.8"></circle>
+            </svg>
+            <div class="ball idle" id="ball">Eyes down</div>
+          </div>
+          <div class="call-text">
+            <div class="call-name" id="callName">Waiting for the host</div>
+            <div class="call-sub" id="callSub"></div>
+          </div>
+        </div>
+        <div class="recent" id="recent"></div>
+      </div>
+
+      <div class="panel prizes-panel">
+        <div class="panel-h"><span>Tonight&rsquo;s prizes</span></div>
+        <ol class="prizes" id="prizes">
+          <li><span class="pname">One line</span><span class="pstate">To come</span></li>
+          <li><span class="pname">Two lines</span><span class="pstate">To come</span></li>
+          <li><span class="pname">Full house</span><span class="pstate">To come</span></li>
+        </ol>
+      </div>
+
+      <div class="panel board-panel">
+        <div class="panel-h"><span>Board</span><span id="remaining">90 left</span></div>
+        <div class="board" id="board"></div>
+      </div>
+    </div>
+
+    <div class="sheet-col">
+      <div class="panel">
+        <div class="sheet-head">
+          <span class="who">Your sheet</span>
+          <span class="whoami" id="whoami">&mdash;</span>
+          <div class="spacer" style="flex:1"></div>
+          <button class="iconbtn" id="newSheetBtn">New sheet</button>
+        </div>
+        <div class="strip" id="strip"></div>
+      </div>
+
+      <div class="claimbar">
+        <button class="bingo" id="bingoBtn" disabled>BINGO!</button>
+        <div class="claim-msg" id="claimMsg">Dab your numbers as they&rsquo;re called. The button lights up the moment you&rsquo;re on.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>The Bingo Host&rsquo;s decision is final &middot; <a href="host.html">Host sign&#8209;in</a></footer>
+</div>
+
+<!-- ============================ dialogs ============================ -->
+<dialog id="rulesDlg">
+  <div class="d-head"><h2>House rules</h2><button class="btn ghost" data-close>Close</button></div>
+  <div class="d-body">
+    <ol class="rules">
+      <li>One sheet per player, six tickets to a sheet. Every ticket carries fifteen numbers.</li>
+      <li>Dab your own numbers. Nothing marks itself &mdash; miss one and it stays missed.</li>
+      <li>Shout <b>BINGO</b> the moment you&rsquo;re on. A claim only stands while the winning number is still up: once the next ball drops, that prize has gone.</li>
+      <li>Your claim goes straight to the host, who rebuilds your ticket from it and checks it against the numbers actually called.</li>
+      <li>A false claim costs nothing the first time. Keep doing it and you&rsquo;re out of the room.</li>
+      <li>Two callers at once share the prize, at the host&rsquo;s discretion.</li>
+      <li>Quiet during the calls, please. The host&rsquo;s decision is final.</li>
+    </ol>
+    <h3>The stages</h3>
+    <p>Numbers keep coming through the whole game. First a <b>line</b> &mdash; any five across on one ticket. Then <b>two lines</b> on that same ticket. Then the <b>full house</b>: all fifteen.</p>
+  </div>
+</dialog>
+
+<dialog id="settingsDlg">
+  <div class="d-head"><h2>Your sheet</h2><button class="btn ghost" data-close>Close</button></div>
+  <div class="d-body">
+    <h3>Dabber</h3>
+    <div class="swatches" id="swatches"></div>
+    <h3>The caller&rsquo;s voice</h3>
+    <p>Each number read aloud, nickname and all. Some browsers stay silent until you&rsquo;ve clicked the page once.</p>
+    <div class="row"><button class="btn" id="voiceToggle" aria-pressed="false">Voice off</button></div>
+    <h3>A fresh sheet</h3>
+    <p>Swaps all six tickets. Only between games &mdash; never mid&#8209;call.</p>
+    <h3>Leave the room</h3>
+    <div class="row"><button class="btn ghost" id="leaveBtn">Back to the door</button></div>
+  </div>
+</dialog>
+
+<dialog id="claimDlg">
+  <div class="d-head"><h2>Claiming</h2><button class="btn ghost" data-close>Close</button></div>
+  <div class="d-body">
+    <p id="claimWhat">You&rsquo;re on for a line.</p>
+    <div id="claimSent" class="hide">
+      <p>Sent to the host. Keep your sheet on screen &mdash; they&rsquo;ll call it out in a moment.</p>
+    </div>
+    <div id="claimManual" class="hide">
+      <h3>Read this out to the host</h3>
+      <div class="code" id="claimCode">&mdash;</div>
+      <p>You&rsquo;re not connected to the room, so the host will need the code. They type it in and it rebuilds your exact ticket.</p>
+    </div>
+    <div class="row"><button class="btn primary" data-close>Got it</button></div>
+  </div>
+</dialog>
+
+<script type="module" src="js/player.js"></script>
+</body>
+</html>

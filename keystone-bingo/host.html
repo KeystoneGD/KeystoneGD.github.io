@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Palace Bingo — Caller's Box</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#170A0E">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%F0%9F%8E%A4</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Archivo:wdth,wght@75..112,400..800&display=swap">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ============================ the staff door ============================ -->
+<div class="doors" id="gate">
+  <div class="doorcard">
+    <div class="stub">
+      <h1>Caller&rsquo;s Box</h1>
+      <span>Staff only</span>
+    </div>
+    <form class="doorbody" id="gateForm" autocomplete="off">
+      <div>
+        <label for="userIn">Username</label>
+        <input id="userIn" name="username" autocomplete="username" required>
+      </div>
+      <div>
+        <label for="passIn">Password</label>
+        <input id="passIn" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="doormsg info" id="gateMsg">Sign in to open a room and take the microphone.</div>
+      <button class="bigbtn" id="gateBtn" type="submit">Sign in</button>
+    </form>
+    <div class="doorfoot">
+      <a href="index.html">Back to the hall</a>
+      <span id="gateHint"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ the console ============================ -->
+<div id="console" class="hide">
+
+  <div class="topbar">
+    <div class="brand">
+      <h1>Caller&rsquo;s Box</h1>
+      <span class="est">Palace Bingo</span>
+    </div>
+    <div class="spacer"></div>
+    <span class="chip" id="stageChip">Game <b>1</b></span>
+    <span class="chip" id="countChip"><b id="calledCount">0</b>&nbsp;of 90</span>
+    <span class="chip link off" id="linkChip">Doors shut</span>
+    <button class="iconbtn" id="soundBtn" aria-pressed="false" title="Read each number aloud">Voice</button>
+    <button class="iconbtn" id="signOutBtn">Sign out</button>
+  </div>
+
+  <div class="stage-wrap">
+    <div class="rail">
+      <div class="panel caller-panel">
+        <div class="panel-h"><span>The Caller</span><span id="stageLabel">Not started</span></div>
+        <div class="caller">
+          <div class="ball-holder">
+            <svg class="ball-ring" viewBox="0 0 150 150" aria-hidden="true">
+              <circle class="bg" cx="75" cy="75" r="70"></circle>
+              <circle class="fg" id="ring" cx="75" cy="75" r="70" stroke-dasharray="439.8" stroke-dashoffset="439.8"></circle>
+            </svg>
+            <div class="ball idle" id="ball">Eyes down</div>
+          </div>
+          <div class="call-text">
+            <div class="call-name" id="callName">Nothing running</div>
+            <div class="call-sub" id="callSub"></div>
+          </div>
+        </div>
+        <div class="recent" id="recent"></div>
+      </div>
+
+      <div class="panel prizes-panel">
+        <div class="panel-h"><span>Tonight&rsquo;s prizes</span></div>
+        <ol class="prizes" id="prizes">
+          <li><span class="pname">One line</span><span class="pstate">To come</span></li>
+          <li><span class="pname">Two lines</span><span class="pstate">To come</span></li>
+          <li><span class="pname">Full house</span><span class="pstate">To come</span></li>
+        </ol>
+      </div>
+
+      <div class="panel board-panel">
+        <div class="panel-h"><span>Board</span><span id="remaining">90 left</span></div>
+        <div class="board" id="board"></div>
+      </div>
+    </div>
+
+    <div class="sheet-col">
+      <div class="panel host-panel">
+        <div class="panel-h"><span>The room</span><span id="playerCount">nobody in yet</span></div>
+        <div class="host-grid">
+
+          <div class="roomline">
+            <span class="lbl">Room code</span>
+            <span class="code" id="roomCode">&mdash; &mdash; &mdash; &mdash; &mdash;</span>
+            <div class="spacer" style="flex:1"></div>
+            <button class="btn small" id="copyJoin">Copy join link</button>
+            <button class="btn small ghost" id="copyWatch">Copy watch link</button>
+          </div>
+
+          <div class="players" id="players"></div>
+
+          <h3>The game</h3>
+          <div class="row">
+            <button class="btn primary" id="hStart">Start game</button>
+            <button class="btn" id="hPause">Pause for a check</button>
+            <button class="btn" id="hNext">Award &amp; next stage</button>
+          </div>
+          <div class="row">
+            <select class="field" id="hSpeed">
+              <option value="4000">Brisk &mdash; a ball every 4 seconds</option>
+              <option value="7000" selected>Hall pace &mdash; every 7 seconds</option>
+              <option value="10000">Steady &mdash; every 10 seconds</option>
+              <option value="15000">Gentle &mdash; every 15 seconds</option>
+            </select>
+            <button class="btn ghost" id="hReset">New game</button>
+          </div>
+
+          <h3>Claims</h3>
+          <div class="claims" id="claims"><div class="empty">Nothing claimed yet.</div></div>
+
+          <h3>Check a code by hand</h3>
+          <div class="row">
+            <input class="field" id="hCode" placeholder="For players on a watch link, e.g. 1Z3K9P-R" autocomplete="off" spellcheck="false">
+            <button class="btn" id="hCheck">Check</button>
+          </div>
+
+          <div class="hostnote" id="hostNote">Open the doors, read the room code out, and they can take their seats.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Palace Bingo &middot; <a href="index.html">The hall</a></footer>
+</div>
+
+<script type="module" src="js/host.js"></script>
+</body>
+</html>
