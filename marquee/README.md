@@ -18,14 +18,19 @@ index.html     the phone — a book of six tickets, dab and claim
 ## Getting it up
 
 1. Put these files in a repo, **Settings → Pages → deploy from `main`, `/ (root)`**.
-2. Open `set-password.html` on the live site, create the first **admin**, and paste what it
-   gives you over `js/credentials.js`. Push.
+2. Open `set-password.html` — either on the live site or by double-clicking it in the
+   folder; it carries its own crypto and needs nothing else. Create the first **admin**,
+   copy the block it gives you over the whole of `js/credentials.js`, and push.
 3. Open `console.html`, sign in, and press **Open display**. Drag that window to the big
    screen and press F11.
 
 More operators are added from the console itself — see *Who can sign in* below.
 
 The `.nojekyll` file stops GitHub's build step touching anything.
+
+The other three pages are ES modules, so they need to be served — from GitHub Pages, or
+locally with `python3 -m http.server 8000` and `http://localhost:8000`. Only
+`set-password.html` works straight off the disk.
 
 ## Running a session
 
