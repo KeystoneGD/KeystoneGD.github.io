@@ -74,12 +74,7 @@ window.WILLOW_CONFIG = {
     defaultPrize: 250,
     autoCallSeconds: 6,
     codePrefix: 'WLW',
-    linkedByDefault: ['Main Hall', 'Lounge Bar'],
-
-    /* opening / closing ticket numbers announced at the start of a game */
-    ticketFrom: 1,
-    ticketTo: 500,
-    maxCardsPerPlayer: 6          // patrons may buy up to this many cards
+    linkedByDefault: ['Main Hall', 'Lounge Bar']
   },
 
   /* ---- BiGD (equipment interface) -------------------------------- */

@@ -48,87 +48,19 @@
       (s.entsTicker ? '<div class="ticker">' + esc(ticker()) + '</div>' : '') + '</div>';
   }
 
-  function pausedBar(b) {
-    return b.paused ? '<div class="pausedbar">GAME PAUSED — NO NUMBERS ARE BEING CALLED</div>' : '';
-  }
-
-  /* Opening card: everything a player needs before the first call —
-     game number, what wins, the prize, and the ticket book in play. */
-  function bingoOpening(s, b) {
-    var to = b.called.length ? lastTicketSold(b) : b.ticketTo;
-    return '<div class="stage">' + pausedBar(b) + '<div class="open-stage">' +
-      '<div class="mono" style="font-size:18px;opacity:.6;letter-spacing:.18em">' + esc(s.venueName) + '</div>' +
-      '<div class="gameno">GAME ' + b.game + '</div>' +
-      '<div class="lookrow">' +
-        '<div class="lookbox"><div class="lbl">LOOKING FOR</div><div class="val">' + esc(b.pattern) + '</div></div>' +
-        '<div class="lookbox"><div class="lbl">PRIZE</div><div class="val">' + money(b.prize) + '</div></div>' +
-      '</div>' +
-      '<div class="lookrow">' +
-        '<div class="lookbox wide"><div class="lbl">TICKETS IN PLAY</div>' +
-          '<div class="val">' + esc(b.ticketFrom) + ' &ndash; ' + esc(to) + '</div>' +
-          '<div class="sub">book runs to ' + esc(b.ticketTo) + ' &middot; closing number is the last ticket sold</div></div>' +
-      '</div>' +
-      '<div class="join"><div class="mono" style="font-size:16px;opacity:.7">JOIN AT ' + esc(s.joinDomain) + '</div>' +
-        '<div class="code">' + esc(b.code) + '</div>' +
-        '<div class="mono" style="font-size:15px;color:var(--w-accent)">TICKETS ON SALE NOW</div></div>' +
-      '<div class="legal">' + esc(s.venueName) + ' &middot; licence ' + esc(CFG.licence) +
-        ' &middot; ' + CFG.bingo.ballCount + '-ball game &middot; all numbers drawn at random and displayed on this screen' +
-        ' &middot; claims must be made before the next number is called &middot; the caller\u2019s decision is final</div>' +
-    '</div></div>';
-  }
-
-  function lastTicketSold(b) {
-    /* the console records the highest ticket issued; fall back to the book end */
-    return b.lastTicket || b.ticketTo;
-  }
-
-  /* Winning card, shown with every number verified against the calls */
-  function bingoWinner(s, b) {
-    var w = b.winner, cells = '';
-    (w.rows || []).forEach(function (row) {
-      row.forEach(function (n) {
-        if (!n) { cells += '<div class="wc blank"></div>'; return; }
-        var hit = b.called.indexOf(n) >= 0;
-        cells += '<div class="wc' + (hit ? ' hit' : '') + '">' + n + '</div>';
-      });
-    });
-    return '<div class="stage">' + pausedBar(b) + '<div class="win-stage">' +
-      '<div class="mono" style="font-size:18px;opacity:.6;letter-spacing:.18em">GAME ' + esc(w.game || b.game) +
-        ' &middot; ' + esc(b.pattern) + '</div>' +
-      '<div class="winword">' + esc(b.pattern.toUpperCase()) + '!</div>' +
-      '<div class="winname">' + esc(w.name) + '</div>' +
-      '<div class="mono" style="font-size:22px;color:var(--w-accent)">TICKET ' + esc(w.serial) +
-        (w.room ? ' &middot; ' + esc(w.room) : '') + ' &middot; ' + money(w.prize || b.prize) + '</div>' +
-      '<div class="wincard">' + cells + '</div>' +
-      '<div class="legal">Winning ticket verified against all ' + b.called.length +
-        ' numbers called this game &middot; every marked square was drawn and displayed' +
-        ' &middot; ' + esc(s.venueName) + ' licence ' + esc(CFG.licence) + '</div>' +
-    '</div></div>';
-  }
-
   function bingo() {
     var s = S.get(), b = s.bingo;
-    if (b.winner) return bingoWinner(s, b);
-    if (b.showOpening) return bingoOpening(s, b);
-
-    /* game in play: no join code on screen, full 90-number matrix */
-    return '<div class="stage">' + pausedBar(b) + '<div class="bingo-stage">' +
-      '<div style="display:flex;flex-direction:column;justify-content:center;gap:20px;min-width:0">' +
+    return '<div class="stage"><div class="bingo-stage">' +
+      '<div style="display:flex;flex-direction:column;justify-content:center;gap:18px">' +
         '<div style="text-align:center">' +
-          '<div class="mono" style="font-size:15px;opacity:.55">GAME ' + b.game + '</div>' +
+          '<div class="mono" style="font-size:14px;opacity:.55">GAME ' + b.game + ' — ' + esc(b.pattern) + '</div>' +
           '<div class="hero">' + (b.current || '--') + '</div>' +
-          '<div class="big" style="font-size:26px;color:var(--w-accent)">' +
-            esc(b.paused ? 'PAUSED' : (nickname(b.current) || 'ready to call')) + '</div>' +
+          '<div class="big" style="font-size:26px;color:var(--w-accent)">' + esc(nickname(b.current) || 'ready to call') + '</div>' +
         '</div>' +
-        '<div class="mono" style="text-align:center;font-size:16px;opacity:.85">PREVIOUS ' +
-          esc(b.called.slice(-6).reverse().join('   ') || '-') + '</div>' +
-        '<div class="playbox">' +
-          '<div class="pb"><div class="lbl">LOOKING FOR</div><div class="val">' + esc(b.pattern) + '</div></div>' +
-          '<div class="pb"><div class="lbl">PRIZE</div><div class="val">' + money(b.prize) + '</div></div>' +
-          '<div class="pb"><div class="lbl">TICKETS</div><div class="val">' + esc(b.ticketFrom) + '&ndash;' + esc(lastTicketSold(b)) + '</div></div>' +
-          '<div class="pb"><div class="lbl">CALLED</div><div class="val">' + b.called.length + ' / ' + CFG.bingo.ballCount + '</div></div>' +
-        '</div>' +
-        '<div class="legal">Claims must be made before the next number is called &middot; the caller\u2019s decision is final</div>' +
+        '<div class="mono" style="text-align:center;font-size:15px;opacity:.8">' + esc(b.called.slice(-6).reverse().join('   ') || 'no numbers called') + '</div>' +
+        '<div class="join"><div class="mono" style="font-size:13px;opacity:.7">JOIN AT ' + esc(s.joinDomain) + '</div>' +
+          '<div class="code">' + esc(b.code) + '</div>' +
+          '<div class="mono" style="font-size:13px;color:var(--w-accent)">' + players() + ' PLAYERS · ' + rooms().length + ' ROOMS LINKED · ' + money(b.prize) + '</div></div>' +
       '</div>' + board(10) + '</div></div>';
   }
 

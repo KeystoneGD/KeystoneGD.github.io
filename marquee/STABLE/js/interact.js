@@ -3,16 +3,10 @@
    ---------------------------------------------------------------------
    Point patrons at  <your-site>/interact.html  (host it at /interact
    with a rewrite if you prefer the shorter address). They can:
-       * buy up to six bingo cards when the operator opens sales
-       * dab their own numbers by hand, and claim — right or wrong
+       * join bingo when the operator opens sales, and play a real card
        * send shoutouts to the venue screens (operator moderates)
        * upload photos for the Interactions photo wall
    Everything reaches the console through js/net.js.
-
-   Ticket numbers come from the range the operator sets on the console
-   (e.g. 10110–90999). Each card issued takes the next number in
-   sequence; the console reports the last one sold as the closing
-   number for the game.
    ===================================================================== */
 (function () {
   var CFG = window.WILLOW_CONFIG, N = window.WillowNet;
@@ -21,7 +15,6 @@
 
   var me = load();
   var tab = 'bingo';
-  var buyQty = 1;
   var draft = { shout: '', photo: null };
   var flash = { shout: '', photo: '', bingo: '' };
 
@@ -34,8 +27,6 @@
     return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;')
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
-  function money(n) { return '£' + Number(n || 0).toLocaleString('en-GB'); }
-
   function venue() {
     var v = N.venue() || {};
     return {
@@ -49,38 +40,22 @@
       prize: v.prize || 0,
       called: v.called || [],
       current: v.current || null,
-      paused: !!v.paused,
-      ticketFrom: Number(v.ticketFrom || CFG.bingo.ticketFrom || 1),
-      ticketTo: Number(v.ticketTo || CFG.bingo.ticketTo || 999),
-      maxCards: Number(v.maxCards || CFG.bingo.maxCardsPerPlayer || 6),
-      winner: v.winner || null
+      rooms: v.rooms || CFG.rooms.map(function (r) { return { name: r.name, code: r.code }; })
     };
   }
-
+  function money(n) { return '£' + Number(n || 0).toLocaleString('en-GB'); }
   function mine(kind) {
     return N.feed().filter(function (x) { return x.kind === kind && x.player === me.id; });
   }
 
-  /* ---- cards -------------------------------------------------------
-     me.cards = [{ t: ticketNumber, rows: [[..],[..],[..]], dabs: [] }]
-     ------------------------------------------------------------------ */
-  function cards() { return me.cards || (me.cards = []); }
-
-  /* next free ticket number: the range start plus however many cards
-     the whole room has already taken for this game */
-  function nextTicket(v, offset) {
-    var sold = N.feed().filter(function (x) {
-      return x.kind === 'card' && x.game === v.game;
-    }).length;
-    return v.ticketFrom + sold + (offset || 0);
-  }
-  function ticketsLeft(v) { return Math.max(0, v.ticketTo - nextTicket(v, 0) + 1); }
-
-  function dabbed(card, n) { return (card.dabs || []).indexOf(n) >= 0; }
-  function toggleDab(card, n) {
-    var d = card.dabs || (card.dabs = []), i = d.indexOf(n);
-    if (i >= 0) d.splice(i, 1); else d.push(n);
-    save();
+  /* ticket serial — what the operator asks for when checking a claim */
+  function makeSerial(id, game) {
+    var v = venue(), room = (v.code || 'WLW000').replace(/\D/g, '') || '000';
+    var h = 0;
+    var seed = id + ':' + game;
+    for (var i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+    var block = h.toString(36).toUpperCase().slice(-4).padStart(4, 'X');
+    return 'WLW-' + room + '-' + block + '-' + String(game).padStart(2, '0');
   }
 
   /* latest operator control aimed at this device */
@@ -91,6 +66,12 @@
   }
   function banActive(c) {
     return c && c.action === 'ban' && (c.until === 'forever' || Number(c.until) > Date.now());
+  }
+  function awayText(m, pattern) {
+    if (/full house/i.test(pattern)) return (15 - m.hits) + ' from a full house';
+    var need = m.rows.map(function (r) { return r.tot - r.got; }).sort(function (a, b) { return a - b; });
+    if (/two lines/i.test(pattern)) return (need[0] + need[1]) + ' from two lines';
+    return need[0] + ' from a line';
   }
 
   /* ---------------- sign in ---------------------------------------- */
@@ -108,109 +89,66 @@
         '<input id="pRoom" class="mono" maxlength="8" autocapitalize="characters" placeholder="WLW341" value="' + esc(pre) + '">' +
         '<div style="height:16px"></div>' +
         '<button class="btn" id="pGo">Enter</button>' +
-        '<div class="note">Codes are shown on the screens in the room. Nothing is charged here — tickets are issued by the operator.</div>' +
+        '<div class="note">Codes are shown on the screens in the room. Nothing is charged here — cards are issued by the operator.</div>' +
       '</div></div>';
   }
 
   /* ---------------- bingo ------------------------------------------ */
-  function vGetReady(v) {
-    return '<h2>Bingo</h2><div class="card">' +
-      '<div class="pill off">Sales closed</div>' +
-      '<div class="big" style="margin:14px 0 4px;font-size:26px">Getting everything ready</div>' +
-      '<div class="note" style="margin:0">The caller is setting up game ' + v.game +
-        '. Tickets go on sale in a moment — keep this page open and it will open by itself.</div>' +
-      '<div style="height:14px"></div>' +
-      '<div class="note">Coming up: ' + esc(v.pattern || 'one line') + ' for ' + money(v.prize) + '.</div>' +
-    '</div>';
-  }
-
-  function vBuy(v) {
-    var left = ticketsLeft(v);
-    var max = Math.min(v.maxCards, left);
-    if (buyQty > max) buyQty = Math.max(1, max);
-    if (!left) {
-      return '<h2>Bingo</h2><div class="card"><div class="pill off">Sold out</div>' +
-        '<div class="note">Every ticket in this book has gone. The caller will start shortly.</div></div>';
-    }
-    var qty = '';
-    for (var i = 1; i <= v.maxCards; i++) {
-      var off = i > left;
-      qty += '<div class="qty' + (buyQty === i ? ' on' : '') + (off ? ' off' : '') + '" data-qty="' + i + '">' + i + '</div>';
-    }
-    return '<h2>Bingo</h2><div class="card">' +
-      '<div class="pill on">Sales open</div>' +
-      '<div class="big" style="margin:12px 0 2px">Game ' + v.game + '</div>' +
-      '<div class="note" style="margin:0">' + esc(v.pattern) + ' · ' + money(v.prize) + ' prize</div>' +
-      '<label>How many cards?</label>' +
-      '<div class="qtyrow">' + qty + '</div>' +
-      '<div style="height:14px"></div>' +
-      '<button class="btn" id="bGet">Get ' + buyQty + ' card' + (buyQty === 1 ? '' : 's') + '</button>' +
-      '<div class="note">Up to ' + v.maxCards + ' per person. ' + left + ' ticket' + (left === 1 ? '' : 's') +
-        ' left in the book. Your ticket numbers appear on each card — the caller asks for them when you claim.</div>' +
-    '</div>';
-  }
-
-  function strip(card, idx, v) {
-    var cells = '';
-    card.rows.forEach(function (row) {
-      row.forEach(function (n) {
-        if (!n) { cells += '<div class="cell blank"></div>'; return; }
-        cells += '<div class="cell' + (dabbed(card, n) ? ' dab' : '') +
-          '" data-n="' + n + '" data-card="' + idx + '">' + n + '</div>';
-      });
+  function marks(card, called) {
+    var hits = 0, rows = card.map(function (row) {
+      var got = 0, tot = 0;
+      row.forEach(function (n) { if (n) { tot++; if (called.indexOf(n) >= 0) { got++; hits++; } } });
+      return { got: got, tot: tot };
     });
-    var claims = mine('claim').filter(function (c) { return String(c.serial) === String(card.t); });
-    var last = claims[claims.length - 1];
-    var pending = last && last.status === 'pending';
-    var refused = last && last.status === 'rejected';
-    return '<div class="card" style="margin-top:12px">' +
-      '<div class="ticketrow"><div class="mono tno">TICKET ' + esc(card.t) + '</div>' +
-        '<div class="mono" style="font-size:12px;color:var(--dim)">' + (card.dabs || []).length + ' dabbed</div></div>' +
-      '<div class="strip">' + cells + '</div>' +
-      '<div style="height:12px"></div>' +
-      (pending
-        ? '<div class="pill on">Claim sent — hold this ticket up</div>'
-        : '<button class="btn" data-claim="' + idx + '">CLAIM ON ' + esc(card.t) + '</button>') +
-      (refused
-        ? '<div class="status no">That claim was not allowed. Check your dabs against the called numbers — you can claim again.</div>'
-        : '') +
-      '<div style="height:8px"></div>' +
-      '<button class="btn ghost" data-clear="' + idx + '">Clear dabs on this ticket</button>' +
-    '</div>';
-  }
-
-  function vPlay(v) {
-    var head = '<h2>Game ' + v.game + ' — ' + esc(v.pattern) + '</h2>' +
-      '<div class="card">' +
-        (v.paused
-          ? '<div class="pill off">Game paused</div><div class="note">The caller has paused. Nothing is being called — hold on to your tickets.</div>'
-          : '<div class="calls"><div class="cur">' + (v.current || '--') + '</div>' +
-            '<div class="note mono" style="margin:0">last calls ' +
-              esc(v.called.slice(-6).reverse().join(' · ') || '-') + '</div></div>' +
-            '<div class="note">Tap your numbers to dab them · ' + v.called.length + ' called · ' +
-              money(v.prize) + ' for ' + esc(v.pattern) + '</div>') +
-      '</div>';
-    var strips = cards().map(function (c, i) { return strip(c, i, v); }).join('');
-    var extra = (v.salesOpen && cards().length < v.maxCards && ticketsLeft(v) > 0)
-      ? '<div class="card" style="margin-top:12px"><button class="btn ghost" id="bMore">Buy another card</button>' +
-        '<div class="note">You have ' + cards().length + ' of ' + v.maxCards + '.</div></div>'
-      : '';
-    return head + strips + extra +
-      (flash.bingo ? '<div class="status ok">' + esc(flash.bingo) + '</div>' : '') +
-      '<div class="card" style="margin-top:12px"><button class="btn ghost" id="bDrop">Leave this game</button></div>';
+    return { hits: hits, rows: rows, lines: rows.filter(function (r) { return r.got === r.tot; }).length };
   }
 
   function vBingo() {
     var v = venue();
-    if (v.winner && !cards().length) {
-      return '<h2>Bingo</h2><div class="card"><div class="pill on">We have a winner</div>' +
-        '<div class="big" style="margin:12px 0 2px;font-size:26px">' + esc(v.winner.name) + '</div>' +
-        '<div class="note" style="margin:0">Ticket ' + esc(v.winner.serial) + ' took ' + money(v.winner.prize || v.prize) +
-          '. The winning card is on the screens.</div></div>';
+    if (!v.salesOpen && !me.card) {
+      return '<h2>Bingo</h2><div class="card">' +
+        '<div class="pill off">Sales closed</div>' +
+        '<div class="note">Cards are not on sale yet. Keep this page open — it opens automatically when the operator starts selling for game ' + v.game + '.</div>' +
+      '</div>';
     }
-    if (cards().length) return vPlay(v);
-    if (!v.salesOpen) return vGetReady(v);
-    return vBuy(v);
+    if (!me.card) {
+      return '<h2>Bingo</h2><div class="card">' +
+        '<div class="pill on">Sales open</div>' +
+        '<div class="big" style="margin:12px 0 2px">Game ' + v.game + '</div>' +
+        '<div class="note" style="margin:0">' + esc(v.pattern) + ' · ' + money(v.prize) + ' prize</div>' +
+        '<div style="height:16px"></div>' +
+        '<button class="btn" id="bGet">Get my card</button>' +
+        '<div class="note">One card per person. The operator sees your name join the game.</div>' +
+      '</div>';
+    }
+    var card = me.card, m = marks(card, v.called);
+    var full = m.hits === 15;
+    var claimed = mine('claim').length > 0;
+    var cells = '';
+    card.forEach(function (row) {
+      row.forEach(function (n) {
+        if (!n) { cells += '<div class="cell blank"></div>'; return; }
+        cells += '<div class="cell' + (v.called.indexOf(n) >= 0 ? ' hit' : '') + '">' + n + '</div>';
+      });
+    });
+    var can = (m.lines >= 1 && /line/i.test(v.pattern)) || full || m.lines >= 2;
+    return '<h2>Game ' + v.game + ' — ' + esc(v.pattern) + '</h2><div class="card">' +
+      '<div class="mono" style="font-size:12px;color:var(--dim);letter-spacing:.06em">TICKET ' +
+        esc(me.serial || makeSerial(me.id, v.game)) + '</div>' +
+      '<div class="calls"><div class="cur">' + (v.current || '--') + '</div>' +
+        '<div class="note mono" style="margin:0">last calls ' + esc(v.called.slice(-6).reverse().join(' · ') || '-') + '</div></div>' +
+      '<div class="strip">' + cells + '</div>' +
+      '<div class="note">' + m.hits + ' of 15 marked · <b style="color:var(--accent)">' +
+        esc(awayText(m, v.pattern)) + '</b> · ' + money(v.prize) + '</div>' +
+      '<div style="height:14px"></div>' +
+      (claimed
+        ? '<div class="pill on">Claim sent to the operator</div>'
+        : '<button class="btn" id="bClaim"' + (can ? '' : ' disabled') + '>' +
+            (full ? 'Claim full house!' : m.lines ? 'Claim line!' : 'Claim (when you have a line)') + '</button>') +
+      '<div style="height:10px"></div>' +
+      '<button class="btn ghost" id="bDrop">Leave this game</button>' +
+      (flash.bingo ? '<div class="status ok">' + esc(flash.bingo) + '</div>' : '') +
+    '</div>';
   }
 
   /* ---------------- shoutouts -------------------------------------- */
@@ -275,7 +213,7 @@
       '<div class="wrap"><h2>Removed</h2><div class="card">' +
         '<div class="pill off">Session ended</div>' +
         '<div class="note">' + esc(c.text || 'The operator has removed you from this session.') +
-          ' Your tickets have been withdrawn.</div>' +
+          ' Your card has been withdrawn.</div>' +
         '<div style="height:16px"></div>' +
         '<button class="btn ghost" id="dAck">Start again</button>' +
       '</div></div>';
@@ -287,22 +225,18 @@
     var c = myControl();
     if (banActive(c)) { app.innerHTML = vBanned(c); return; }
     if (c && c.action === 'drop' && !(me.ackTs >= c.ts)) {
-      if (cards().length) { me.cards = []; save(); }
+      if (me.card) { delete me.card; delete me.serial; save(); }
       app.innerHTML = vDropped(c);
       var ack = document.getElementById('dAck');
       if (ack) ack.addEventListener('click', function () { me.ackTs = c.ts; save(); render(); });
       return;
     }
     var v = venue();
-    /* operator moved to a new game — last game's tickets are spent */
-    if (cards().length && me.game && me.game !== v.game) { me.cards = []; save(); }
-
     var body = tab === 'shout' ? vShout() : tab === 'photo' ? vPhoto() : vBingo();
     app.innerHTML =
       '<header><div class="venue">' + esc(v.venueName) + '</div>' +
         '<div class="room mono">' + esc(me.room || '—') + '</div>' +
         '<div class="who">' + esc(me.name) + ' · <a href="#" id="signout">change</a></div></header>' +
-      (v.paused && cards().length ? '<div class="pausebar">GAME PAUSED</div>' : '') +
       '<div class="wrap">' + body + '</div>' +
       '<nav>' +
         '<div class="' + (tab === 'bingo' ? 'on' : '') + '" data-tab="bingo">Bingo</div>' +
@@ -313,31 +247,10 @@
   }
 
   function on(id, fn) { var el = document.getElementById(id); if (el) el.addEventListener('click', fn); }
-  function each(sel, fn) { Array.prototype.forEach.call(document.querySelectorAll(sel), fn); }
-
-  function issue(qty) {
-    var v = venue();
-    var left = ticketsLeft(v);
-    qty = Math.max(1, Math.min(qty, v.maxCards - cards().length, left));
-    for (var i = 0; i < qty; i++) {
-      var t = nextTicket(v, i);
-      if (t > v.ticketTo) break;
-      var card = { t: t, rows: N.makeCard(me.id + ':' + v.game + ':' + t), dabs: [] };
-      cards().push(card);
-      N.push({ kind: 'card', player: me.id, name: me.name, room: me.room, game: v.game,
-               serial: String(t), rows: card.rows, status: 'approved' });
-    }
-    me.game = v.game;
-    save();
-    flash.bingo = qty === 1 ? 'Ticket issued. Good luck!' : qty + ' tickets issued. Good luck!';
-    render();
-  }
 
   function wire() {
-    each('nav div', function (d) {
-      d.addEventListener('click', function () {
-        tab = d.getAttribute('data-tab'); flash = { shout:'', photo:'', bingo:'' }; render();
-      });
+    Array.prototype.forEach.call(document.querySelectorAll('nav div'), function (d) {
+      d.addEventListener('click', function () { tab = d.getAttribute('data-tab'); flash = { shout:'', photo:'', bingo:'' }; render(); });
     });
     on('signout', function (e) { e.preventDefault(); me = {}; save(); render(); });
 
@@ -345,50 +258,31 @@
       var name = (document.getElementById('pName').value || '').trim();
       var room = (document.getElementById('pRoom').value || '').trim().toUpperCase();
       if (!name) { document.getElementById('pName').focus(); return; }
-      me = { id: N.uid(), name: name, room: room, cards: [] };
+      me = { id: N.uid(), name: name, room: room };
       save();
       N.push({ kind: 'join', player: me.id, name: name, room: room, status: 'approved' });
       render();
     });
 
-    each('.qty[data-qty]', function (q) {
-      q.addEventListener('click', function () {
-        if (q.className.indexOf('off') >= 0) return;
-        buyQty = Number(q.getAttribute('data-qty')); render();
-      });
+    on('bGet', function () {
+      var v = venue();
+      me.card = N.makeCard(me.id + ':' + v.game);
+      me.serial = makeSerial(me.id, v.game);
+      save();
+      N.push({ kind: 'card', player: me.id, name: me.name, room: me.room, game: v.game,
+               serial: me.serial, rows: me.card, status: 'approved' });
+      flash.bingo = 'Card issued. Good luck!';
+      render();
     });
-    on('bGet', function () { issue(buyQty); });
-    on('bMore', function () { issue(1); });
-    on('bDrop', function () { me.cards = []; save(); render(); });
-
-    /* tap a cell to dab or undab it */
-    each('.cell[data-n]', function (c) {
-      c.addEventListener('click', function () {
-        var card = cards()[Number(c.getAttribute('data-card'))];
-        if (!card) return;
-        toggleDab(card, Number(c.getAttribute('data-n')));
-        render();
-      });
-    });
-
-    each('[data-clear]', function (b) {
-      b.addEventListener('click', function () {
-        var card = cards()[Number(b.getAttribute('data-clear'))];
-        if (card) { card.dabs = []; save(); render(); }
-      });
-    });
-
-    each('[data-claim]', function (b) {
-      b.addEventListener('click', function () {
-        var v = venue(), card = cards()[Number(b.getAttribute('data-claim'))];
-        if (!card) return;
-        N.push({ kind: 'claim', player: me.id, name: me.name, room: me.room,
-                 serial: String(card.t), dabs: (card.dabs || []).slice(),
-                 text: 'Claim on ticket ' + card.t + ' — ' + (card.dabs || []).length + ' dabbed',
-                 game: v.game, status: 'pending' });
-        flash.bingo = 'Claim sent on ticket ' + card.t + ' — hold it up.';
-        render();
-      });
+    on('bDrop', function () { delete me.card; delete me.serial; save(); render(); });
+    on('bClaim', function () {
+      var v = venue(), m = marks(me.card, v.called);
+      N.push({ kind: 'claim', player: me.id, name: me.name, room: me.room,
+               serial: me.serial,
+               text: (m.hits === 15 ? 'FULL HOUSE' : m.lines + ' line') + ' on game ' + v.game,
+               game: v.game, status: 'pending' });
+      flash.bingo = 'Claim sent — hold your card up. Ticket ' + me.serial;
+      render();
     });
 
     var sText = document.getElementById('sText');

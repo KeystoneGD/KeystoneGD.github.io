@@ -68,13 +68,7 @@
         pattern: CFG.bingo.defaultPattern, prize: CFG.bingo.defaultPrize,
         speed: CFG.bingo.autoCallSeconds, auto: false,
         code: CFG.rooms[0].code, locked: false,
-        linked: CFG.bingo.linkedByDefault.slice(),
-        /* game admin */
-        paused: false,
-        ticketFrom: CFG.bingo.ticketFrom,
-        ticketTo: CFG.bingo.ticketTo,
-        showOpening: true,        /* opening card on the screens before the first call */
-        winner: null              /* {name, serial, rows, dabs} once a claim is paid */
+        linked: CFG.bingo.linkedByDefault.slice()
       },
 
       /* karaoke */
@@ -117,25 +111,7 @@
     };
   }
 
-  /* Merge saved state over the defaults, one level into the nested
-     sections. A plain Object.assign would replace a whole section, so a
-     terminal that signed on before a new field existed would come back
-     with that field missing — hence the per-section merge. */
-  function hydrate() {
-    var base = defaults(), saved = read();
-    Object.keys(saved).forEach(function (k) {
-      var d = base[k], v = saved[k];
-      if (d && v && typeof d === 'object' && typeof v === 'object' &&
-          !Array.isArray(d) && !Array.isArray(v)) {
-        base[k] = Object.assign({}, d, v);
-      } else {
-        base[k] = v;
-      }
-    });
-    return base;
-  }
-
-  var state = hydrate();
+  var state = Object.assign(defaults(), read());
   var listeners = [];
   var bus = ('BroadcastChannel' in window) ? new BroadcastChannel(CFG.channel) : null;
   var writing = false;

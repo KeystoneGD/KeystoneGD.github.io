@@ -344,11 +344,9 @@
           esc(b.current ? (DATA.nicknames[b.current] || 'Number ' + b.current) : 'ready to call') + '</div>' +
       '</div>' +
       '<div class="col gap6 grow">' +
-        '<div class="btn bold grow" style="display:flex;align-items:center;justify-content:center;font-size:15px" ' + act('bingo.call') + '>' +
-          (b.paused ? 'GAME PAUSED' : 'CALL NEXT NUMBER') + '</div>' +
+        '<div class="btn bold grow" style="display:flex;align-items:center;justify-content:center;font-size:15px" ' + act('bingo.call') + '>CALL NEXT NUMBER</div>' +
         '<div class="row">' +
           '<div class="btn grow' + (b.auto ? ' down' : '') + '" ' + act('bingo.auto') + '>Auto ' + (b.auto ? 'ON' : 'OFF') + '</div>' +
-          '<div class="btn grow bold' + (b.paused ? ' down' : '') + '" ' + act('bingo.pause') + '>' + (b.paused ? 'RESUME' : 'PAUSE') + '</div>' +
           '<div class="btn grow" ' + act('bingo.check') + '>Check Claim</div>' +
           '<div class="btn grow" ' + act('bingo.new') + '>New Game</div>' +
         '</div>' +
@@ -359,16 +357,8 @@
     var controls = '<div class="row wrap mt6" style="gap:12px">' +
       '<div class="row"><div>Pattern</div><select ' + bind('bingo.pattern') + '>' + opt(CFG.bingo.patterns, b.pattern) + '</select></div>' +
       '<div class="row"><div>Prize £</div><input type="number" style="width:72px" value="' + b.prize + '" ' + bind('bingo.prize','int') + '></div>' +
-      '<div class="row"><div>Tickets</div><input type="number" style="width:56px" value="' + b.ticketFrom + '" ' + bind('bingo.ticketFrom','int') + '>' +
-        '<div>to</div><input type="number" style="width:56px" value="' + b.ticketTo + '" ' + bind('bingo.ticketTo','int') + '></div>' +
       '<div class="row"><div>Auto speed</div><input type="number" min="2" max="20" style="width:52px" value="' + b.speed + '" ' + bind('bingo.speed','int') + '><div>s</div></div>' +
-      '<div class="mono dim">' + b.called.length + ' of ' + CFG.bingo.ballCount + ' called</div></div>' +
-      '<div class="row wrap mt6" style="gap:8px">' +
-        '<div class="btn' + (b.showOpening ? ' down' : '') + '" ' + act('bingo.opening') + '>' +
-          (b.showOpening ? 'Opening card SHOWING' : 'Show opening card') + '</div>' +
-        (b.winner ? '<div class="btn" ' + act('bingo.clearwin') + '>Clear winner from screens</div>' : '') +
-        '<div class="mono dim">' + (b.winner ? 'WINNER: ' + esc(b.winner.name) + ' · ' + esc(b.winner.serial || '') : '') + '</div>' +
-      '</div>';
+      '<div class="mono dim">' + b.called.length + ' of ' + CFG.bingo.ballCount + ' called</div></div>';
 
     var join = '<div class="disp pad center">' +
         '<div class="mono" style="font-size:10px;opacity:.65">' + esc(s.joinDomain) + '</div>' +
@@ -727,24 +717,15 @@
       if (!joins[j.player]) order.push(j.player);
       joins[j.player] = { id: j.player, name: j.name, room: j.room, ts: j.ts };
     });
-    /* a patron may hold several tickets — keep them all */
     var cardsFor = {};
-    feedBy('card').forEach(function (c) {
-      if (c.game !== s.bingo.game) return;
-      (cardsFor[c.player] || (cardsFor[c.player] = [])).push(c);
-    });
+    feedBy('card').forEach(function (c) { cardsFor[c.player] = c; });
     var bn = bans(), dr = dropped();
     return order.map(function (id) {
-      var p = joins[id], cs = cardsFor[id] || [];
-      var gos = cs.map(function (c) { return toGo(c.rows, called, patt); })
-        .filter(function (n) { return n !== null; });
+      var p = joins[id], c = cardsFor[id];
       return {
         id: id, name: p.name, room: p.room,
-        cards: cs,
-        serial: cs.length ? cs.map(function (c) { return c.serial; }).join(', ') : '',
-        rows: cs.length ? cs[0].rows : null,
-        game: cs.length ? cs[0].game : null,
-        toGo: gos.length ? Math.min.apply(null, gos) : null,
+        serial: c ? c.serial : '', rows: c ? c.rows : null, game: c ? c.game : null,
+        toGo: c ? toGo(c.rows, called, patt) : null,
         ban: bn[id] || null, off: !!dr[id]
       };
     });
@@ -776,28 +757,6 @@
   }
 
   /* players connected + serials + claim check — lives in Bingo Mode */
-  /* pending claims for the game in play, newest first */
-  function pendingClaims() {
-    var g = S.get().bingo.game;
-    return feedBy('claim').filter(function (c) {
-      return c.status === 'pending' && (c.game === undefined || c.game === g);
-    }).reverse();
-  }
-
-  /* a ticket drawn out for checking, with every square judged against
-     the real call list */
-  function cardMini(rows, called) {
-    if (!rows) return '';
-    var out = '';
-    rows.forEach(function (row) {
-      row.forEach(function (n) {
-        if (!n) { out += '<div class="mc blank"></div>'; return; }
-        out += '<div class="mc' + (called.indexOf(n) >= 0 ? ' hit' : '') + '">' + n + '</div>';
-      });
-    });
-    return '<div class="minicard">' + out + '</div>';
-  }
-
   function playersPanel() {
     var s = S.get(), i = s.interact, list = playerRows();
     var live = list.filter(function (p) { return !p.off && !p.ban; });
@@ -808,9 +767,7 @@
         list.map(function (p) {
           var go = p.toGo === null ? '-' : (p.toGo === 0 ? 'CLAIM' : p.toGo);
           var hot = p.toGo !== null && p.toGo <= 1;
-          var sub = p.ban ? banText(p.ban) : p.off ? 'dropped'
-            : p.cards && p.cards.length ? p.cards.length + (p.cards.length === 1 ? ' ticket' : ' tickets')
-            : 'no ticket';
+          var sub = p.ban ? banText(p.ban) : p.off ? 'dropped' : p.rows ? 'ticket issued' : 'no card';
           return '<div class="td" style="overflow:hidden' + (p.ban || p.off ? ';opacity:.55' : '') + '">' +
               '<div class="nowrap" style="overflow:hidden;text-overflow:ellipsis">' + esc(p.name) + '</div>' +
               '<div class="mono dim" style="font-size:10px">' + esc((p.room || '') + ' · ' + sub) + '</div></div>' +
@@ -823,7 +780,7 @@
     var infoBox = info
       ? '<div class="field groove mt6" style="padding:8px;background:var(--w-field);color:var(--w-fieldtext)">' +
           '<div class="bold nowrap" style="overflow:hidden;text-overflow:ellipsis">' + esc(info.name) + '</div>' +
-          '<div class="mono" style="font-size:11px;margin-top:3px;white-space:normal">TICKETS <b>' + esc(info.serial || 'none issued') + '</b></div>' +
+          '<div class="mono" style="font-size:11px;margin-top:3px">TICKET <b>' + esc(info.serial || 'no card issued') + '</b></div>' +
           '<div class="mono" style="font-size:10px;opacity:.75;margin-top:2px">room ' + esc(info.room || '-') +
             ' · game ' + esc(info.game || '-') + ' · ' +
             (info.toGo === null ? 'no card' : info.toGo + ' from ' + esc(s.bingo.pattern)) + '</div>' +
@@ -839,41 +796,19 @@
         '</div>'
       : '';
 
-    var pend = pendingClaims();
-    var claimList = pend.length
-      ? '<div class="field groove mt6" style="padding:6px;background:var(--w-field);color:var(--w-fieldtext)">' +
-          '<div class="mono bold" style="font-size:10px;letter-spacing:.08em">' + pend.length +
-            ' CLAIM' + (pend.length === 1 ? '' : 'S') + ' WAITING — GAME HELD</div>' +
-          pend.map(function (c) {
-            return '<div class="row" style="gap:6px;padding:3px 0;align-items:baseline">' +
-              '<div class="grow nowrap" style="overflow:hidden;text-overflow:ellipsis">' + esc(c.name) + '</div>' +
-              '<div class="mono bold" ' + act('claim.pick', c.serial) + ' style="cursor:pointer;text-decoration:underline">' +
-                esc(c.serial || '(no ticket)') + '</div></div>';
-          }).join('') +
-          '<div class="note" style="margin-top:4px">Tap a ticket number to pull the card.</div>' +
-        '</div>'
-      : '';
-
     var c = claimCheck ? serialLookup(claimCheck) : null;
-    var check = claimList +
-      '<div class="row mt6" style="min-width:0">' +
-        '<input class="grow mono" id="serialBox" style="min-width:0" placeholder="ticket number" value="' + esc(claimCheck || '') + '">' +
+    var check = '<div class="row mt6" style="min-width:0">' +
+        '<input class="grow mono" id="serialBox" style="min-width:0" placeholder="ticket serial" value="' + esc(claimCheck || '') + '">' +
         '<div class="btn bold" style="flex:none" ' + act('int.check') + '>Check</div></div>' +
       (c ? (c.miss
-        ? '<div class="note" style="color:#a3213c">No ticket ' + esc(c.serial) + ' issued for this game. Ask them to read it again off the top of their card.</div>'
+        ? '<div class="note" style="color:#a3213c">No ticket ' + esc(c.serial) + '. Ask them to read it again off the top of their card.</div>'
         : '<div class="field groove mt6" style="padding:8px;background:var(--w-field);color:var(--w-fieldtext)">' +
-            '<div class="bold">' + (c.valid ? 'VALID CLAIM' : 'NOT A VALID CLAIM') + ' — ' + esc(c.name) + '</div>' +
-            '<div class="mono" style="font-size:11px;margin-top:3px">ticket ' + esc(c.serial) + ' · game ' + esc(c.game) +
-              ' · ' + c.marked + '/' + c.total + ' called · ' + c.lines + ' line(s)</div>' +
-            cardMini(c.rows, S.get().bingo.called) +
-            '<div class="mono" style="font-size:11px;margin-top:4px;white-space:normal">still needs: ' +
-              esc(c.missing.length ? c.missing.join(' ') : 'nothing — full house') + '</div>' +
-            '<div class="row wrap mt6" style="gap:4px">' +
-              '<div class="btn bold" ' + act('claim.pay', c.serial) + '>Pay out · to screens</div>' +
-              '<div class="btn" ' + act('claim.reject', c.serial) + '>Not valid</div>' +
-              '<div class="btn" ' + act('bingo.pause') + '>' + (s.bingo.paused ? 'Resume game' : 'Hold game') + '</div>' +
-            '</div></div>')
-        : '<div class="note">Type a ticket number, or tap one from a claim above, to check it against the numbers actually called.</div>');
+            '<div class="bold">' + (c.valid ? 'VALID' : 'NOT YET') + ' — ' + esc(c.name) + '</div>' +
+            '<div class="mono" style="font-size:11px;margin-top:3px">' + c.marked + '/' + c.total + ' marked · ' +
+              c.lines + ' line(s) · game ' + esc(c.game) + '</div>' +
+            '<div class="mono" style="font-size:11px;margin-top:3px;white-space:normal">needs: ' +
+              esc(c.missing.length ? c.missing.join(' ') : 'nothing — full house') + '</div></div>')
+        : '<div class="note">Type the serial off a patron’s ticket to verify their claim.</div>');
 
     return '<div class="checkrow mb6" ' + act('int.sales') + '>' + chk(i.salesOpen) +
         '<div>Sales open — patrons can take a card</div></div>' +
@@ -1104,12 +1039,10 @@
 
   function callNumber() {
     var b = S.get().bingo, left = [];
-    if (b.paused) { message('Game paused', 'Press RESUME before calling the next number.'); return; }
     for (var n = 1; n <= CFG.bingo.ballCount; n++) if (b.called.indexOf(n) < 0) left.push(n);
     if (!left.length) { S.setIn('bingo', { auto: false }); message('Game Complete', 'All ' + CFG.bingo.ballCount + ' numbers called. Start a new game.'); return; }
     var pick = left[Math.floor(Math.random() * left.length)];
-    S.setIn('bingo', { called: b.called.concat([pick]), current: pick,
-                       showOpening: false, winner: null });
+    S.setIn('bingo', { called: b.called.concat([pick]), current: pick });
     if (S.get().duck) {
       window.WillowMusic.duck(true);
       setTimeout(function () { window.WillowMusic.duck(false); }, 3000);
@@ -1229,67 +1162,15 @@
     },
 
     'bingo.call': function () { callNumber(); },
-    'bingo.pause': function () {
-      var p = !S.get().bingo.paused;
-      S.setIn('bingo', { paused: p, auto: p ? false : S.get().bingo.auto });
-      S.log('Game ' + (p ? 'PAUSED' : 'resumed'));
-    },
-    'bingo.opening': function () {
-      S.setIn('bingo', { showOpening: !S.get().bingo.showOpening });
-    },
-    'bingo.clearwin': function () { S.setIn('bingo', { winner: null }); },
-    'bingo.auto': function () {
-      var b = S.get().bingo;
-      if (b.paused) { message('Game paused', 'Resume the game before turning auto-call on.'); return; }
-      S.setIn('bingo', { auto: !b.auto });
-    },
+    'bingo.auto': function () { S.setIn('bingo', { auto: !S.get().bingo.auto }); },
     'bingo.check': function () {
-      var pend = pendingClaims();
-      if (pend.length) {
-        claimCheck = pend[0].serial || '';
-        S.setIn('bingo', { paused: true, auto: false });
-        render();
-        return;
-      }
-      claimCheck = '';
-      message('Check Claim', 'No claims waiting. Type a ticket number in the Player Join & Tickets panel to check any card against the ' +
-        S.get().bingo.called.length + ' numbers called so far.');
-    },
-    'claim.pick': function (serial) {
-      claimCheck = String(serial || '');
-      S.setIn('bingo', { paused: true, auto: false });
-      render();
-    },
-    'claim.pay': function (serial) {
-      var v = serialLookup(serial);
-      if (!v || v.miss) { message('Ticket not found', 'No ticket ' + serial + ' on file.'); return; }
-      N.feed().forEach(function (x) {
-        if (x.kind === 'claim' && String(x.serial) === String(serial) && x.status === 'pending') {
-          N.patch(x.id, { status: 'approved' });
-        }
-      });
-      S.setIn('bingo', {
-        winner: { name: v.name, room: v.room, serial: v.serial, rows: v.rows,
-                  game: v.game, prize: S.get().bingo.prize },
-        showOpening: false, auto: false, paused: true
-      });
-      S.log('WINNER paid: ' + v.name + ' on ticket ' + v.serial);
-      render();
-    },
-    'claim.reject': function (serial) {
-      N.feed().forEach(function (x) {
-        if (x.kind === 'claim' && String(x.serial) === String(serial) && x.status === 'pending') {
-          N.patch(x.id, { status: 'rejected' });
-        }
-      });
-      S.log('Claim on ticket ' + serial + ' refused');
-      claimCheck = '';
-      render();
+      var b = S.get().bingo;
+      message('Check Claim', 'Claim check for ' + b.pattern + ' on game ' + b.game + '. ' + b.called.length +
+        ' numbers called: ' + (b.called.join(', ') || 'none') + '.');
     },
     'bingo.new': function () {
       var b = S.get().bingo;
-      S.setIn('bingo', { game: b.game + 1, called: [], current: null, auto: false,
-                         paused: false, showOpening: true, winner: null });
+      S.setIn('bingo', { game: b.game + 1, called: [], current: null, auto: false });
       S.log('New game started (game ' + (b.game + 1) + ')');
     },
     'bingo.code': function () {
@@ -1405,29 +1286,15 @@
       var item = N.feed().filter(function (x) { return x.id === id; })[0];
       if (!item) return;
       if (item.kind === 'claim') {
-        claimCheck = item.serial || '';
-        if (!claimCheck) {
-          var anyCard = N.feed().filter(function (c) { return c.kind === 'card' && c.player === item.player; })[0];
-          claimCheck = anyCard ? anyCard.serial : '';
-        }
+        var card = N.feed().filter(function (c) { return c.kind === 'card' && c.player === item.player; })[0];
+        claimCheck = card ? card.serial : '';
         var v = claimCheck ? serialLookup(claimCheck) : null;
-        var called = S.get().bingo.called;
-        var badDabs = (item.dabs || []).filter(function (n) { return called.indexOf(n) < 0; });
-        N.patch(id, { status: (v && v.valid) ? 'approved' : 'rejected' });
-        if (v && v.valid) {
-          S.setIn('bingo', {
-            winner: { name: item.name, room: item.room, serial: v.serial, rows: v.rows,
-                      dabs: item.dabs || [], game: v.game, prize: S.get().bingo.prize },
-            showOpening: false, auto: false
-          });
-          S.log('WINNER: ' + item.name + ' on ' + v.serial);
-        }
-        message((v && v.valid ? 'VALID CLAIM — ' : 'FALSE CLAIM — ') + item.name,
+        N.patch(id, { status: 'approved' });
+        message('Claim from ' + item.name,
           (v && !v.miss
-            ? 'Ticket ' + v.serial + '. ' + v.marked + ' of ' + v.total +
-              ' numbers genuinely called, ' + v.lines + ' full line(s) against ' + S.get().bingo.pattern + '. ' +
-              (v.valid ? 'Winning card is now on the screens.' : 'Still needs: ' + (v.missing.length ? v.missing.join(' ') : 'nothing') + '.') +
-              (badDabs.length ? ' They dabbed ' + badDabs.length + ' number(s) never called: ' + badDabs.join(' ') + '.' : '')
+            ? (v.valid ? 'VALID CLAIM. ' : 'NOT A VALID CLAIM YET. ') +
+              'Ticket ' + v.serial + ' — ' + v.marked + ' of ' + v.total + ' marked, ' + v.lines +
+              ' full line(s). Still needs: ' + (v.missing.length ? v.missing.join(' ') : 'nothing.')
             : 'No card on file for this patron.'));
         return;
       }
@@ -1631,7 +1498,7 @@
     }
     if (Object.keys(patch).length) S.set(patch);
 
-    if (s.bingo.auto && !s.bingo.paused) {
+    if (s.bingo.auto) {
       beat.bingo++;
       if (beat.bingo >= (s.bingo.speed || 6)) { beat.bingo = 0; callNumber(); }
     }
@@ -1662,16 +1529,6 @@
   /* ---------------- boot ------------------------------------------- */
   if (!S.get().signedOn) { location.replace('index.html'); return; }
   render();
-  /* highest ticket number issued for the current game — the closing
-     number announced on screen once sales stop */
-  function lastTicketSold() {
-    var g = S.get().bingo;
-    var nums = feedBy('card').filter(function (c) { return c.game === g.game; })
-      .map(function (c) { return Number(c.serial); })
-      .filter(function (n) { return !isNaN(n); });
-    return nums.length ? Math.max.apply(null, nums) : null;
-  }
-
   /* ---- publish a venue snapshot for the patron site --------------- */
   var lastVenue = '';
   function publishVenue() {
@@ -1681,10 +1538,6 @@
       salesOpen: !!i.salesOpen, shoutoutsOpen: !!i.shoutoutsOpen, photosOpen: !!i.photosOpen,
       code: s.bingo.code, game: s.bingo.game, pattern: s.bingo.pattern, prize: s.bingo.prize,
       called: s.bingo.called, current: s.bingo.current, mode: s.mode,
-      paused: !!s.bingo.paused,
-      ticketFrom: s.bingo.ticketFrom, ticketTo: s.bingo.ticketTo,
-      maxCards: CFG.bingo.maxCardsPerPlayer,
-      winner: s.bingo.winner || null,
       rooms: rooms().filter(function (r) { return r.linked; }).map(function (r) { return { name: r.name, code: r.code }; })
     };
     var j = JSON.stringify(snap);
@@ -1694,16 +1547,7 @@
   }
 
   S.subscribe(function () { window.WillowMusic.setVolume(); publishVenue(); if (!editing()) render(); });
-  N.subscribe(function () {
-    var lt = lastTicketSold();
-    if (lt && S.get().bingo.lastTicket !== lt) S.setIn('bingo', { lastTicket: lt });
-    /* a claim holds the game the moment it arrives */
-    if (pendingClaims().length && !S.get().bingo.paused) {
-      S.setIn('bingo', { paused: true, auto: false });
-      S.log('Game held — claim received');
-    }
-    if ((S.get().view === 'interact' || S.get().view === 'bingo') && !editing()) render();
-  });
+  N.subscribe(function () { if (S.get().view === 'interact' && !editing()) render(); });
   publishVenue();
   window.WillowMusic.subscribe(function (st) {
     var s = S.get(), patch = {};

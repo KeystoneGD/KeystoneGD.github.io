@@ -209,39 +209,6 @@ input[type=color]{width:34px;height:19px;padding:0;border:0;cursor:default;backg
   color:rgba(255,255,255,.28);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
 .bingo-stage .board .c.hit{background:rgba(255,255,255,.18);color:var(--w-dispfg)}
 .bingo-stage .board .c.cur{background:var(--w-accent);color:#fff;box-shadow:inset 0 0 0 3px var(--w-dispfg)}
-
-/* ---- bingo: paused / opening / winner --------------------------------- */
-.pausedbar{background:#a3213c;color:#fff;text-align:center;font-family:"Arial Black",Impact,sans-serif;
-  font-size:26px;letter-spacing:.16em;padding:10px 20px;flex:none}
-.legal{font-family:"Courier New",monospace;font-size:13px;line-height:1.5;opacity:.55;text-align:center;
-  max-width:96%;margin:0 auto;text-wrap:pretty}
-.playbox{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.playbox .pb{padding:10px 12px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}
-.playbox .lbl{font-family:"Courier New",monospace;font-size:12px;opacity:.6;letter-spacing:.12em}
-.playbox .val{font-family:"Arial Black",Impact,sans-serif;font-size:30px;line-height:1.1}
-
-.open-stage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:22px;padding:34px;text-align:center}
-.open-stage .gameno{font-family:"Arial Black",Impact,sans-serif;font-size:96px;line-height:.95}
-.open-stage .lookrow{display:flex;gap:22px;justify-content:center;width:100%;max-width:1180px}
-.open-stage .lookbox{flex:1;padding:16px 20px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.2)}
-.open-stage .lookbox.wide{flex:none;min-width:60%}
-.open-stage .lookbox .lbl{font-family:"Courier New",monospace;font-size:15px;opacity:.6;letter-spacing:.16em}
-.open-stage .lookbox .val{font-family:"Arial Black",Impact,sans-serif;font-size:52px;line-height:1.05;margin-top:4px}
-.open-stage .lookbox .sub{font-family:"Courier New",monospace;font-size:13px;opacity:.55;margin-top:6px}
-.open-stage .join{padding:14px 40px;box-shadow:inset 0 0 0 2px var(--w-accent)}
-.open-stage .join .code{font-family:"Arial Black",Impact,sans-serif;font-size:56px;letter-spacing:8px}
-
-.win-stage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:16px;padding:30px;text-align:center}
-.win-stage .winword{font-family:"Arial Black",Impact,sans-serif;font-size:86px;line-height:.95;color:var(--w-accent)}
-.win-stage .winname{font-family:"Arial Black",Impact,sans-serif;font-size:58px;line-height:1}
-.wincard{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;width:min(1080px,92%)}
-.wincard .wc{aspect-ratio:1;display:flex;align-items:center;justify-content:center;
-  font-family:"Arial Black",Impact,sans-serif;font-size:34px;color:rgba(255,255,255,.3);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
-.wincard .wc.hit{background:var(--w-accent);color:#fff}
-.wincard .wc.blank{box-shadow:none}
 .karaoke-stage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:0 40px}
 .karaoke-stage .l{text-align:center;font-family:"Arial Black",Impact,sans-serif;font-size:26px;opacity:.4;line-height:1.15}
 .karaoke-stage .l.n1{font-size:34px;opacity:.72}

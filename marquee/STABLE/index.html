@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WILLOW Event System — Sign On</title>
+<link rel="stylesheet" href="css/willow.css">
+</head>
+<body>
+<div class="signon-wrap">
+  <div class="signon">
+    <div style="padding:2px 4px;font-weight:bold;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext)">
+      WILLOW Event System — Sign On
+    </div>
+    <div style="padding:16px">
+      <div class="row mb8" style="gap:13px;margin-bottom:15px">
+        <div class="logo">W</div>
+        <div>
+          <div class="big" style="font-size:17px;letter-spacing:.5px">WILLOW 4.2</div>
+          <div class="dim">Venue Event &amp; Games Control</div>
+        </div>
+      </div>
+      <div class="col gap8">
+        <div class="row"><div class="lbl" style="width:60px">Operator</div>
+          <select id="operator" class="grow"></select></div>
+        <div class="row"><div class="lbl" style="width:60px">PIN</div>
+          <input id="pin" type="password" inputmode="numeric" maxlength="4" class="mono" style="width:86px;letter-spacing:5px"></div>
+        <div class="err mono" id="err"></div>
+      </div>
+      <div class="row" style="justify-content:flex-end;margin-top:9px">
+        <div class="btn bold" style="padding:4px 20px" id="signon">Sign On</div>
+        <div class="btn" style="padding:4px 20px" id="screen">Screen Output</div>
+      </div>
+      <div class="mono" style="margin-top:11px;font-size:10px;opacity:.6" id="foot"></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/theme.js"></script>
+<script>
+(function () {
+  var CFG = window.WILLOW_CONFIG, S = window.WillowStore;
+  var sel = document.getElementById('operator');
+  var pin = document.getElementById('pin');
+  var err = document.getElementById('err');
+
+  CFG.operators.forEach(function (o) {
+    var el = document.createElement('option');
+    el.textContent = o.name;
+    sel.appendChild(el);
+  });
+  sel.value = S.get().operator || CFG.operators[0].name;
+  document.getElementById('foot').textContent =
+    'Build ' + CFG.build + ' · terminal ' + CFG.terminal + ' · PINs set in js/config.js';
+
+  function signOn() {
+    var who = CFG.operators.filter(function (o) { return o.name === sel.value; })[0];
+    if (!who || pin.value !== who.pin) { err.textContent = 'Incorrect PIN for ' + sel.value; pin.value = ''; pin.focus(); return; }
+    S.set({ signedOn: true, operator: who.name });
+    S.log('Operator signed on: ' + who.name);
+    location.href = 'console.html';
+  }
+
+  document.getElementById('signon').addEventListener('click', signOn);
+  pin.addEventListener('keydown', function (e) { if (e.key === 'Enter') signOn(); });
+  document.getElementById('screen').addEventListener('click', function () { location.href = 'display.html'; });
+  pin.focus();
+})();
+</script>
+</body>
+</html>
