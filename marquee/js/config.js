@@ -17,9 +17,9 @@ window.WILLOW_CONFIG = {
   channel: 'willow-bus',               // BroadcastChannel name (console -> display)
 
   /* ---- venue ----------------------------------------------------- */
-  venueName: 'Marquee Test Server',
+  venueName: 'Ravensworth Social Club',
   licence: 'GB/OPS/44827-1',
-  joinDomain: 'keystonegd.github.io/marquee/interact',
+  joinDomain: 'willowplay.link/join',
 
   /* ---- operators. PINs are for terminal sign-on only ------------- */
   operators: [
@@ -127,7 +127,7 @@ window.WILLOW_CONFIG = {
     spotify: {
       clientId: '',                       // <-- paste your Spotify app client ID
       redirectUri: '',                    // blank = current console URL
-      deviceName: 'MARQUEE Console',
+      deviceName: 'WILLOW Console',
       scopes: [
         'streaming', 'user-read-email', 'user-read-private',
         'user-read-playback-state', 'user-modify-playback-state', 'playlist-read-private'
