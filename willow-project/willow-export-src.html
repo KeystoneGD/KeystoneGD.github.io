@@ -1,0 +1,2124 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<template id="__bundler_thumbnail" data-bg-color="#3a6ea5">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#3a6ea5"/>
+    <rect x="150" y="180" width="900" height="440" fill="#d4d0c8" stroke="#0a0a0a" stroke-width="8"/>
+    <rect x="166" y="196" width="868" height="56" fill="#0a246a"/>
+    <rect x="190" y="212" width="24" height="24" fill="#008080"/>
+    <rect x="190" y="300" width="240" height="290" fill="#ffffff" stroke="#808080" stroke-width="6"/>
+    <rect x="470" y="300" width="544" height="290" fill="#0d1218"/>
+    <text x="742" y="480" font-family="Arial Black, Impact, sans-serif" font-size="150" fill="#f2efe6" text-anchor="middle">W</text>
+  </svg>
+</template>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+:root{
+  --w-face:#d4d0c8; --w-light:#ffffff; --w-shadow:#808080; --w-dark:#0a0a0a;
+  --w-text:#000000; --w-title1:#0a246a; --w-title2:#a6caf0; --w-titletext:#ffffff;
+  --w-sel:#0a246a; --w-seltext:#ffffff; --w-field:#ffffff; --w-fieldtext:#000000;
+  --w-accent:#008080; --w-dispbg:#0d1218; --w-dispfg:#f2efe6;
+}
+html,body{margin:0;padding:0;height:100%}
+body{background:#3a6ea5;font-family:Tahoma,Verdana,"MS Sans Serif",sans-serif;font-size:11px;color:var(--w-text);-webkit-font-smoothing:none}
+*{box-sizing:border-box}
+input,select,textarea{font-family:Tahoma,Verdana,sans-serif;font-size:11px}
+a{color:var(--w-title1);text-decoration:underline}
+a:hover{color:var(--w-accent)}
+::selection{background:var(--w-sel);color:var(--w-seltext)}
+</style>
+</helmet>
+
+<div style="min-height:100vh;padding:6px;background:#3a6ea5;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.03) 0 2px,transparent 2px 4px)">
+
+<div style="max-width:1320px;margin:0 auto;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);padding:3px;display:flex;flex-direction:column;height:calc(100vh - 12px);min-height:720px">
+
+  <div style="display:flex;align-items:center;gap:4px;padding:2px 2px 2px 3px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));height:22px;flex:none">
+    <div style="width:14px;height:14px;background:var(--w-accent);box-shadow:inset -1px -1px 0 rgba(0,0,0,.5),inset 1px 1px 0 rgba(255,255,255,.6);flex:none"></div>
+    <div style="color:var(--w-titletext);font-weight:bold;letter-spacing:.2px;flex:1;overflow:hidden;white-space:nowrap">WILLOW Event System 4.2.117 &nbsp;-&nbsp; {{ venueName }} &nbsp;[{{ modeLabel }}]</div>
+    <div style="display:flex;gap:2px">
+      <div style="width:16px;height:14px;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light);display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px;cursor:default"><div style="width:8px;height:2px;background:var(--w-text)"></div></div>
+      <div style="width:16px;height:14px;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light);display:flex;align-items:center;justify-content:center;cursor:default"><div style="width:8px;height:7px;border:1px solid var(--w-text);border-top-width:2px"></div></div>
+      <div onClick="{{ logOff }}" title="Sign off" style="width:16px;height:14px;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;cursor:default">x</div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:stretch;height:19px;flex:none;box-shadow:inset 0 -1px 0 var(--w-shadow)">
+    <sc-for list="{{ menus }}" as="m" hint-placeholder-count="6">
+      <div style="position:relative">
+        <div onClick="{{ m.toggle }}" onMouseEnter="{{ m.hover }}" style="padding:3px 7px;cursor:default;white-space:nowrap;background:{{ m.bg }};color:{{ m.fg }}">{{ m.name }}</div>
+        <sc-if value="{{ m.open }}">
+          <div style="position:absolute;top:19px;left:0;min-width:186px;z-index:60;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face),3px 3px 4px rgba(0,0,0,.35);padding:2px">
+            <sc-for list="{{ m.items }}" as="it" hint-placeholder-count="4">
+              <div onClick="{{ it.run }}" style="display:flex;gap:14px;padding:3px 16px 3px 20px;cursor:default;white-space:nowrap" style-hover="background:var(--w-sel);color:var(--w-seltext)">
+                <div style="flex:1">{{ it.label }}</div>
+                <div style="opacity:.6">{{ it.key }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:2px;padding:3px 2px;flex:none;box-shadow:inset 0 -1px 0 var(--w-shadow),inset 0 -2px 0 var(--w-light)">
+    <sc-for list="{{ toolbar }}" as="t" hint-placeholder-count="9">
+      <div onClick="{{ t.run }}" title="{{ t.label }}" style="display:flex;align-items:center;gap:4px;padding:3px 6px;cursor:default;background:var(--w-face);box-shadow:{{ t.bevel }}">
+        <div style="width:12px;height:12px;background:{{ t.swatch }};box-shadow:inset -1px -1px 0 rgba(0,0,0,.45),inset 1px 1px 0 rgba(255,255,255,.5)"></div>
+        <div style="white-space:nowrap">{{ t.label }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="flex:1;display:flex;gap:3px;min-height:0;padding:2px 0">
+
+    <div style="width:214px;flex:none;display:flex;flex-direction:column;gap:3px;min-height:0">
+      <div style="background:var(--w-face);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);padding:2px 5px;font-weight:bold;flex:none">Venue Explorer</div>
+      <div style="flex:1;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);overflow:auto;padding:3px 0;min-height:0">
+        <sc-for list="{{ tree }}" as="n" hint-placeholder-count="14">
+          <div onClick="{{ n.run }}" style="display:flex;align-items:center;gap:5px;padding:1px 4px 1px {{ n.pad }}px;cursor:default;background:{{ n.bg }};color:{{ n.fg }}">
+            <div style="width:8px;text-align:center;font-family:'Courier New',monospace;font-size:10px;opacity:.75">{{ n.glyph }}</div>
+            <div style="width:9px;height:9px;flex:none;background:{{ n.swatch }};box-shadow:inset -1px -1px 0 rgba(0,0,0,.4)"></div>
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ n.label }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex:none;background:var(--w-face);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);padding:5px 6px">
+        <div style="font-weight:bold;margin-bottom:4px">Screen Output</div>
+        <div style="display:flex;gap:4px;margin-bottom:5px">
+          <div onClick="{{ openOutput }}" style="flex:1;text-align:center;padding:4px 2px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Show</div>
+          <div onClick="{{ toggleBlackout }}" style="flex:1;text-align:center;padding:4px 2px;cursor:default;background:var(--w-face);box-shadow:{{ blackoutBevel }}">Blackout</div>
+        </div>
+        <div style="height:76px;background:var(--w-dispbg);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);display:flex;align-items:center;justify-content:center;color:var(--w-dispfg);font-family:'Courier New',monospace;font-size:10px;text-align:center;padding:5px;overflow:hidden;line-height:1.5">{{ outputPreviewText }}</div>
+      </div>
+    </div>
+
+    <div style="flex:1;display:flex;flex-direction:column;min-width:0;background:var(--w-face);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);min-height:0">
+      <div style="flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 6px;box-shadow:inset 0 -1px 0 var(--w-shadow)">
+        <div style="font-weight:bold;font-size:12px">{{ viewTitle }}</div>
+        <div style="font-family:'Courier New',monospace;opacity:.8">{{ viewHint }}</div>
+      </div>
+      <div style="flex:1;overflow:auto;padding:8px;min-height:0">
+
+        <sc-if value="{{ vDash }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <div style="grid-column:span 2;box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+              <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Tonight — {{ todayLong }}</div>
+              <div style="padding:7px">
+                <div style="display:grid;grid-template-columns:62px 1fr 96px 96px 76px;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                  <sc-for list="{{ tonightCols }}" as="c" hint-placeholder-count="5">
+                    <div style="padding:3px 5px;font-weight:bold;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">{{ c }}</div>
+                  </sc-for>
+                  <sc-for list="{{ tonight }}" as="e" hint-placeholder-count="4">
+                    <div onClick="{{ e.run }}" style="padding:3px 5px;font-family:'Courier New',monospace;cursor:default;background:{{ e.bg }};color:{{ e.fg }}">{{ e.time }}</div>
+                    <div onClick="{{ e.run }}" style="padding:3px 5px;cursor:default;background:{{ e.bg }};color:{{ e.fg }}">{{ e.name }}</div>
+                    <div onClick="{{ e.run }}" style="padding:3px 5px;cursor:default;background:{{ e.bg }};color:{{ e.fg }}">{{ e.room }}</div>
+                    <div onClick="{{ e.run }}" style="padding:3px 5px;cursor:default;background:{{ e.bg }};color:{{ e.fg }}">{{ e.mode }}</div>
+                    <div onClick="{{ e.run }}" style="padding:3px 5px;cursor:default;background:{{ e.bg }};color:{{ e.fg }}">{{ e.status }}</div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+              <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Music — {{ musicSource }}</div>
+              <div style="padding:8px">
+                <div style="background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);padding:6px;margin-bottom:6px">
+                  <div style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ trackTitle }}</div>
+                  <div style="opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ trackArtist }}</div>
+                  <div style="margin-top:6px;height:9px;background:var(--w-face);box-shadow:inset 1px 1px 0 var(--w-shadow)">
+                    <div style="height:100%;width:{{ trackPct }}%;background:var(--w-accent)"></div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:3px;margin-bottom:6px">
+                  <div onClick="{{ musicPrev }}" style="flex:1;text-align:center;padding:4px 0;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">|&lt;&lt;</div>
+                  <div onClick="{{ musicToggle }}" style="flex:2;text-align:center;padding:4px 0;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);font-weight:bold">{{ musicBtn }}</div>
+                  <div onClick="{{ musicNext }}" style="flex:1;text-align:center;padding:4px 0;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">&gt;&gt;|</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="width:42px">Volume</div>
+                  <input type="range" min="0" max="100" value="{{ volume }}" onChange="{{ setVolume }}" style="flex:1;accent-color:var(--w-accent)" />
+                  <div style="width:24px;text-align:right;font-family:'Courier New',monospace">{{ volume }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="grid-column:span 3;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+                <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Mode Control</div>
+                <div style="padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:5px">
+                  <sc-for list="{{ modeButtons }}" as="b" hint-placeholder-count="5">
+                    <div onClick="{{ b.run }}" style="display:flex;align-items:center;gap:7px;padding:7px 8px;cursor:default;background:var(--w-face);box-shadow:{{ b.bevel }}">
+                      <div style="width:14px;height:14px;flex:none;background:{{ b.swatch }};box-shadow:inset -1px -1px 0 rgba(0,0,0,.45),inset 1px 1px 0 rgba(255,255,255,.5)"></div>
+                      <div>
+                        <div style="font-weight:bold">{{ b.label }}</div>
+                        <div style="opacity:.7;font-size:10px">{{ b.sub }}</div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+                <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">System Log</div>
+                <div style="padding:8px">
+                  <div style="background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);padding:4px;font-family:'Courier New',monospace;font-size:10px;height:136px;overflow:auto">
+                    <sc-for list="{{ syslog }}" as="l" hint-placeholder-count="8">
+                      <div style="white-space:nowrap">{{ l.line }}</div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ vEvents }}">
+          <div>
+            <div style="display:flex;gap:4px;margin-bottom:7px;flex-wrap:wrap">
+              <div onClick="{{ newEventBtn }}" style="padding:4px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">New Event...</div>
+              <div onClick="{{ editEventBtn }}" style="padding:4px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Edit...</div>
+              <div onClick="{{ deleteEventBtn }}" style="padding:4px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Delete</div>
+              <div onClick="{{ loadEventBtn }}" style="padding:4px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);font-weight:bold">Load to Screen</div>
+              <div style="flex:1"></div>
+              <input type="text" value="{{ eventFilter }}" onChange="{{ setEventFilter }}" placeholder="Filter..." style="width:154px;padding:3px 4px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" />
+            </div>
+            <div style="background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+              <div style="display:grid;grid-template-columns:100px 62px 1fr 112px 104px 66px 84px">
+                <sc-for list="{{ eventCols }}" as="c" hint-placeholder-count="7">
+                  <div onClick="{{ c.sort }}" style="padding:4px 5px;font-weight:bold;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light);cursor:default;white-space:nowrap">{{ c.label }}</div>
+                </sc-for>
+                <sc-for list="{{ eventRows }}" as="e" hint-placeholder-count="7">
+                  <div onClick="{{ e.run }}" onDoubleClick="{{ e.edit }}" style="padding:3px 5px;font-family:'Courier New',monospace;cursor:default;background:{{ e.bg }};color:{{ e.fg }}">{{ e.date }}</div>
+                  <div onClick="{{ e.run }}" onDoubleClick="{{ e.edit }}" style="padding:3px 5px;font-family:'Courier New',monospace;cursor:default;background:{{ e.bg }};color:{{ e.fg }}">{{ e.time }}</div>
+                  <div onClick="{{ e.run }}" onDoubleClick="{{ e.edit }}" style="padding:3px 5px;cursor:default;background:{{ e.bg }};color:{{ e.fg }}">{{ e.name }}</div>
+                  <div onClick="{{ e.run }}" onDoubleClick="{{ e.edit }}" style="padding:3px 5px;cursor:default;background:{{ e.bg }};color:{{ e.fg }}">{{ e.room }}</div>
+                  <div onClick="{{ e.run }}" onDoubleClick="{{ e.edit }}" style="padding:3px 5px;cursor:default;background:{{ e.bg }};color:{{ e.fg }}">{{ e.mode }}</div>
+                  <div onClick="{{ e.run }}" onDoubleClick="{{ e.edit }}" style="padding:3px 5px;text-align:right;font-family:'Courier New',monospace;cursor:default;background:{{ e.bg }};color:{{ e.fg }}">{{ e.capacity }}</div>
+                  <div onClick="{{ e.run }}" onDoubleClick="{{ e.edit }}" style="padding:3px 5px;cursor:default;background:{{ e.bg }};color:{{ e.fg }}">{{ e.status }}</div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="margin-top:6px;display:flex;justify-content:space-between;opacity:.85">
+              <div>{{ eventCount }} record(s) — double-click a row to edit</div>
+              <div>{{ selEventNotes }}</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ vEnts }}">
+          <div style="display:grid;grid-template-columns:1fr 322px;gap:8px">
+            <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+              <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Advertising Rotation — {{ mediaPath }}</div>
+              <div style="padding:8px">
+                <div style="background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);max-height:296px;overflow:auto">
+                  <div style="display:grid;grid-template-columns:28px 1fr 62px 56px 66px 54px">
+                    <sc-for list="{{ entsCols }}" as="c" hint-placeholder-count="6">
+                      <div style="padding:4px 5px;font-weight:bold;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">{{ c }}</div>
+                    </sc-for>
+                    <sc-for list="{{ mediaRows }}" as="f" hint-placeholder-count="7">
+                      <div onClick="{{ f.toggle }}" style="padding:3px 5px;text-align:center;cursor:default;font-family:'Courier New',monospace;background:{{ f.bg }};color:{{ f.fg }}">{{ f.check }}</div>
+                      <div onClick="{{ f.select }}" style="padding:3px 5px;cursor:default;font-family:'Courier New',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:{{ f.bg }};color:{{ f.fg }}">{{ f.marker }}{{ f.name }}</div>
+                      <div onClick="{{ f.select }}" style="padding:3px 5px;cursor:default;background:{{ f.bg }};color:{{ f.fg }}">{{ f.kind }}</div>
+                      <div onClick="{{ f.select }}" style="padding:3px 5px;text-align:right;cursor:default;font-family:'Courier New',monospace;background:{{ f.bg }};color:{{ f.fg }}">{{ f.dwell }}s</div>
+                      <div onClick="{{ f.select }}" style="padding:3px 5px;text-align:right;cursor:default;font-family:'Courier New',monospace;background:{{ f.bg }};color:{{ f.fg }}">{{ f.size }}</div>
+                      <div onClick="{{ f.select }}" style="padding:3px 5px;text-align:right;cursor:default;font-family:'Courier New',monospace;background:{{ f.bg }};color:{{ f.fg }}">{{ f.plays }}</div>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="display:flex;gap:4px;margin-top:7px;flex-wrap:wrap">
+                  <div onClick="{{ entsToggle }}" style="padding:4px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);font-weight:bold">{{ entsBtn }}</div>
+                  <div onClick="{{ entsSkip }}" style="padding:4px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Skip &gt;&gt;</div>
+                  <div onClick="{{ mediaUp }}" style="padding:4px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Move Up</div>
+                  <div onClick="{{ mediaDown }}" style="padding:4px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Move Down</div>
+                  <div onClick="{{ gotoMedia }}" style="padding:4px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Media Folder...</div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+                <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Screen Preview</div>
+                <div style="padding:8px">
+                  <div style="aspect-ratio:16/9;background:var(--w-dispbg);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 6px,transparent 6px 12px)">
+                    <div style="font-family:'Courier New',monospace;font-size:10px;color:var(--w-dispfg);opacity:.65">{{ entsCurrentName }}</div>
+                    <div style="color:var(--w-dispfg);font-weight:bold;font-size:15px;text-align:center;padding:0 14px;line-height:1.35">{{ entsCurrentCaption }}</div>
+                    <div style="font-family:'Courier New',monospace;font-size:10px;color:var(--w-accent)">advert {{ entsPos }} / {{ entsTotal }} · next in {{ entsCountdown }}s</div>
+                  </div>
+                </div>
+              </div>
+              <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+                <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Rotation Settings</div>
+                <div style="padding:8px;display:flex;flex-direction:column;gap:7px">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <div style="width:96px">Default dwell</div>
+                    <input type="number" min="2" max="60" value="{{ entsInterval }}" onChange="{{ setEntsInterval }}" style="width:56px;padding:3px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" />
+                    <div>seconds</div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <div style="width:96px">Transition</div>
+                    <select value="{{ entsTransition }}" onChange="{{ setEntsTransition }}" style="flex:1;padding:2px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                      <option>Cut</option><option>Cross fade</option><option>Wipe left</option><option>Push up</option>
+                    </select>
+                  </div>
+                  <div onClick="{{ toggleEntsTicker }}" style="display:flex;align-items:center;gap:6px;cursor:default">
+                    <div style="width:12px;height:12px;background:var(--w-field);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);display:flex;align-items:center;justify-content:center;font-family:'Courier New',monospace;font-size:10px;color:var(--w-fieldtext)">{{ entsTickerCheck }}</div>
+                    <div>Show event ticker strip</div>
+                  </div>
+                  <div onClick="{{ toggleEntsMusic }}" style="display:flex;align-items:center;gap:6px;cursor:default">
+                    <div style="width:12px;height:12px;background:var(--w-field);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);display:flex;align-items:center;justify-content:center;font-family:'Courier New',monospace;font-size:10px;color:var(--w-fieldtext)">{{ entsMusicCheck }}</div>
+                    <div>Keep music playing over adverts</div>
+                  </div>
+                  <div style="padding:6px;box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);line-height:1.5">{{ entsNote }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ vBingo }}">
+          <div style="display:grid;grid-template-columns:1fr 302px;gap:8px">
+            <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+              <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Game {{ bingoGame }} — {{ bingoPattern }} — Prize {{ bingoPrizeStr }}</div>
+              <div style="padding:8px">
+                <div style="display:flex;align-items:stretch;gap:8px;margin-bottom:8px">
+                  <div style="width:122px;flex:none;background:var(--w-dispbg);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px">
+                    <div style="font-family:'Courier New',monospace;font-size:10px;color:var(--w-dispfg);opacity:.6">CALL</div>
+                    <div style="font-family:'Arial Black',Impact,sans-serif;font-size:52px;line-height:1;color:var(--w-dispfg)">{{ bingoCurrent }}</div>
+                    <div style="font-size:10px;color:var(--w-accent);text-align:center;min-height:26px;line-height:1.3">{{ bingoNickname }}</div>
+                  </div>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+                    <div onClick="{{ bingoCall }}" style="flex:1;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:15px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">CALL NEXT NUMBER</div>
+                    <div style="display:flex;gap:5px">
+                      <div onClick="{{ bingoAuto }}" style="flex:1;text-align:center;padding:5px 0;cursor:default;background:var(--w-face);box-shadow:{{ bingoAutoBevel }}">{{ bingoAutoLabel }}</div>
+                      <div onClick="{{ bingoCheck }}" style="flex:1;text-align:center;padding:5px 0;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Check Claim</div>
+                      <div onClick="{{ bingoNew }}" style="flex:1;text-align:center;padding:5px 0;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">New Game</div>
+                    </div>
+                    <div style="background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);padding:4px 6px;font-family:'Courier New',monospace;font-size:10px">LAST: {{ bingoLast }}</div>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(10,1fr);gap:2px;background:var(--w-field);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);padding:4px">
+                  <sc-for list="{{ bingoBoard }}" as="n" hint-placeholder-count="90">
+                    <div style="text-align:center;padding:3px 0;font-family:'Courier New',monospace;font-size:11px;font-weight:bold;background:{{ n.bg }};color:{{ n.fg }};box-shadow:{{ n.bevel }}">{{ n.n }}</div>
+                  </sc-for>
+                </div>
+                <div style="margin-top:7px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                  <div style="display:flex;align-items:center;gap:5px">
+                    <div>Pattern</div>
+                    <select value="{{ bingoPattern }}" onChange="{{ setBingoPattern }}" style="padding:2px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                      <option>One Line</option><option>Two Lines</option><option>Full House</option><option>Four Corners</option>
+                    </select>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:5px">
+                    <div>Prize £</div>
+                    <input type="number" value="{{ bingoPrize }}" onChange="{{ setBingoPrize }}" style="width:72px;padding:3px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" />
+                  </div>
+                  <div style="display:flex;align-items:center;gap:5px">
+                    <div>Auto speed</div>
+                    <input type="number" min="2" max="20" value="{{ bingoSpeed }}" onChange="{{ setBingoSpeed }}" style="width:52px;padding:3px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" />
+                    <div>s</div>
+                  </div>
+                  <div style="font-family:'Courier New',monospace;opacity:.8">{{ bingoCalledCount }} of 90 called</div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+                <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Player Join</div>
+                <div style="padding:8px">
+                  <div style="background:var(--w-dispbg);color:var(--w-dispfg);box-shadow:inset 1px 1px 0 var(--w-shadow);padding:8px;text-align:center">
+                    <div style="font-family:'Courier New',monospace;font-size:10px;opacity:.65">{{ joinDomain }}</div>
+                    <div style="font-family:'Arial Black',Impact,sans-serif;font-size:30px;letter-spacing:3px;margin-top:3px">{{ bingoRoomCode }}</div>
+                  </div>
+                  <div style="display:flex;gap:4px;margin-top:6px">
+                    <div onClick="{{ bingoNewCode }}" style="flex:1;text-align:center;padding:4px 0;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">New Code</div>
+                    <div onClick="{{ bingoLock }}" style="flex:1;text-align:center;padding:4px 0;cursor:default;background:var(--w-face);box-shadow:{{ bingoLockBevel }}">{{ bingoLockLabel }}</div>
+                  </div>
+                  <div style="margin-top:6px;font-family:'Courier New',monospace">{{ bingoPlayers }} players in this room</div>
+                </div>
+              </div>
+              <div style="flex:1;box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+                <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Linked Rooms</div>
+                <div style="padding:8px">
+                  <div style="background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                    <div style="display:grid;grid-template-columns:24px 1fr 78px 46px">
+                      <sc-for list="{{ roomCols }}" as="c" hint-placeholder-count="4">
+                        <div style="padding:3px 4px;font-weight:bold;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">{{ c }}</div>
+                      </sc-for>
+                      <sc-for list="{{ bingoRooms }}" as="r" hint-placeholder-count="4">
+                        <div onClick="{{ r.toggle }}" style="padding:3px 4px;text-align:center;cursor:default;font-family:'Courier New',monospace;background:{{ r.bg }};color:{{ r.fg }}">{{ r.check }}</div>
+                        <div onClick="{{ r.toggle }}" style="padding:3px 4px;cursor:default;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:{{ r.bg }};color:{{ r.fg }}">{{ r.name }}</div>
+                        <div style="padding:3px 4px;font-family:'Courier New',monospace;background:{{ r.bg }};color:{{ r.fg }}">{{ r.code }}</div>
+                        <div style="padding:3px 4px;text-align:right;font-family:'Courier New',monospace;background:{{ r.bg }};color:{{ r.fg }}">{{ r.players }}</div>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <div style="margin-top:7px;padding:6px;box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);line-height:1.5">{{ bingoLinkSummary }}</div>
+                  <div onClick="{{ bingoLinkAll }}" style="margin-top:7px;text-align:center;padding:5px 0;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);font-weight:bold">{{ bingoLinkAllLabel }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ vKaraoke }}">
+          <div style="display:grid;grid-template-columns:272px 1fr;gap:8px">
+            <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+              <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Singer Queue</div>
+              <div style="padding:8px">
+                <div style="background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);min-height:176px">
+                  <sc-for list="{{ karaokeQueue }}" as="q" hint-placeholder-count="5">
+                    <div onClick="{{ q.select }}" style="padding:4px 6px;cursor:default;background:{{ q.bg }};color:{{ q.fg }};box-shadow:inset 0 -1px 0 var(--w-face)">
+                      <div style="display:flex;gap:6px"><div style="font-family:'Courier New',monospace">{{ q.num }}</div><div style="font-weight:bold;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ q.singer }}</div></div>
+                      <div style="opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ q.song }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;gap:4px;margin-top:6px">
+                  <input type="text" value="{{ newSinger }}" onChange="{{ setNewSinger }}" placeholder="Singer name" style="flex:1;padding:3px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" />
+                  <div onClick="{{ addSinger }}" style="padding:4px 9px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Add</div>
+                </div>
+                <div style="display:flex;gap:4px;margin-top:5px">
+                  <div onClick="{{ karaokeNext }}" style="flex:1;text-align:center;padding:5px 0;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);font-weight:bold">Next Singer</div>
+                  <div onClick="{{ karaokeDrop }}" style="flex:1;text-align:center;padding:5px 0;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Remove</div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+                <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Lyric Engine — {{ karaokeTrack }}</div>
+                <div style="padding:8px">
+                  <div style="background:var(--w-dispbg);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);padding:14px 12px;min-height:172px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px">
+                    <sc-for list="{{ karaokeLines }}" as="l" hint-placeholder-count="5">
+                      <div style="text-align:center;font-family:'Arial Black',Impact,sans-serif;font-size:{{ l.size }}px;color:{{ l.color }};opacity:{{ l.op }};letter-spacing:.4px">{{ l.text }}</div>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;align-items:center">
+                    <div onClick="{{ karaokePlay }}" style="padding:5px 12px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);font-weight:bold">{{ karaokeBtn }}</div>
+                    <div onClick="{{ karaokeRestart }}" style="padding:5px 12px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Restart</div>
+                    <div style="display:flex;align-items:center;gap:5px;margin-left:6px"><div>Key</div>
+                      <div onClick="{{ pitchDown }}" style="padding:3px 9px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light)">-</div>
+                      <div style="width:32px;text-align:center;font-family:'Courier New',monospace">{{ karaokePitch }}</div>
+                      <div onClick="{{ pitchUp }}" style="padding:3px 9px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light)">+</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:5px"><div>Tempo</div>
+                      <input type="range" min="80" max="120" value="{{ karaokeTempo }}" onChange="{{ setTempo }}" style="width:94px;accent-color:var(--w-accent)" />
+                      <div style="width:36px;font-family:'Courier New',monospace">{{ karaokeTempo }}%</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+                <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Instrumental Library — \\WILLOW\MEDIA\KARAOKE</div>
+                <div style="padding:8px">
+                  <div style="background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);max-height:132px;overflow:auto">
+                    <div style="display:grid;grid-template-columns:1fr 1fr 54px 78px">
+                      <sc-for list="{{ libCols }}" as="c" hint-placeholder-count="4">
+                        <div style="padding:3px 5px;font-weight:bold;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">{{ c }}</div>
+                      </sc-for>
+                      <sc-for list="{{ karaokeLib }}" as="s" hint-placeholder-count="6">
+                        <div onClick="{{ s.load }}" style="padding:3px 5px;cursor:default;background:{{ s.bg }};color:{{ s.fg }}">{{ s.title }}</div>
+                        <div onClick="{{ s.load }}" style="padding:3px 5px;cursor:default;background:{{ s.bg }};color:{{ s.fg }}">{{ s.artist }}</div>
+                        <div onClick="{{ s.load }}" style="padding:3px 5px;cursor:default;font-family:'Courier New',monospace;background:{{ s.bg }};color:{{ s.fg }}">{{ s.key }}</div>
+                        <div onClick="{{ s.load }}" style="padding:3px 5px;cursor:default;background:{{ s.bg }};color:{{ s.fg }}">{{ s.lyrics }}</div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ vBigd }}">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+              <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">BiGD — Equipment Interface</div>
+              <div style="padding:8px;display:flex;flex-direction:column;gap:7px">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="width:84px">Source</div>
+                  <select value="{{ bigdSource }}" onChange="{{ setBigdSource }}" style="flex:1;padding:2px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                    <option>Maxim 8000 (RS-232 / COM3)</option>
+                    <option>Legacy board controller (9600 8N1)</option>
+                    <option>Willow Net Bridge (TCP 4001)</option>
+                    <option>Manual entry (operator)</option>
+                  </select>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="width:84px">Protocol</div>
+                  <select value="{{ bigdProtocol }}" onChange="{{ setBigdProtocol }}" style="flex:1;padding:2px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                    <option>WILLOW-1 ASCII</option><option>Packed BCD frame</option><option>Generic CSV frame</option>
+                  </select>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="width:84px">Status</div>
+                  <div style="flex:1;display:flex;align-items:center;gap:6px;padding:3px 5px;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                    <div style="width:9px;height:9px;background:{{ bigdLamp }};box-shadow:inset -1px -1px 0 rgba(0,0,0,.45)"></div>
+                    <div style="font-family:'Courier New',monospace">{{ bigdStatus }}</div>
+                  </div>
+                  <div onClick="{{ bigdConnect }}" style="padding:4px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">{{ bigdConnectLabel }}</div>
+                </div>
+                <div style="font-weight:bold;margin-top:2px">Field mapping</div>
+                <div style="background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                  <div style="display:grid;grid-template-columns:88px 1fr 1fr">
+                    <sc-for list="{{ bigdMapCols }}" as="c" hint-placeholder-count="3">
+                      <div style="padding:3px 5px;font-weight:bold;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">{{ c }}</div>
+                    </sc-for>
+                    <sc-for list="{{ bigdMap }}" as="m" hint-placeholder-count="5">
+                      <div style="padding:3px 5px;font-family:'Courier New',monospace">{{ m.frame }}</div>
+                      <div style="padding:3px 5px">{{ m.meaning }}</div>
+                      <div style="padding:3px 5px;color:var(--w-accent)">{{ m.slot }}</div>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="font-weight:bold;margin-top:2px">Raw feed monitor</div>
+                <div style="background:var(--w-dispbg);color:var(--w-dispfg);box-shadow:inset 1px 1px 0 var(--w-shadow);padding:5px;font-family:'Courier New',monospace;font-size:10px;height:110px;overflow:auto">
+                  <sc-for list="{{ bigdFeed }}" as="f" hint-placeholder-count="6">
+                    <div style="white-space:nowrap">{{ f.line }}</div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+            <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+              <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Reformatted Venue Output</div>
+              <div style="padding:8px">
+                <div style="background:var(--w-dispbg);color:var(--w-dispfg);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);padding:10px">
+                  <div style="display:flex;justify-content:space-between;font-family:'Courier New',monospace;font-size:10px;opacity:.65">
+                    <div>{{ venueName }}</div><div>GAME {{ bingoGame }} / {{ bingoPattern }}</div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:11px;margin:8px 0">
+                    <div style="flex:none;width:94px;height:94px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 2px var(--w-accent);display:flex;align-items:center;justify-content:center;font-family:'Arial Black',Impact,sans-serif;font-size:42px">{{ bingoCurrent }}</div>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-family:'Arial Black',Impact,sans-serif;font-size:16px">{{ bingoNickname }}</div>
+                      <div style="font-family:'Courier New',monospace;font-size:11px;margin-top:5px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PREV: {{ bingoLast }}</div>
+                      <div style="font-family:'Courier New',monospace;font-size:11px;margin-top:3px;color:var(--w-accent)">PRIZE {{ bingoPrizeStr }} · {{ bingoTotalPlayers }} PLAYERS</div>
+                    </div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(15,1fr);gap:1px">
+                    <sc-for list="{{ bingoBoard }}" as="n" hint-placeholder-count="90">
+                      <div style="text-align:center;font-family:'Courier New',monospace;font-size:9px;padding:2px 0;background:{{ n.dispBg }};color:{{ n.dispFg }}">{{ n.n }}</div>
+                    </sc-for>
+                  </div>
+                  <div style="margin-top:8px;font-family:'Courier New',monospace;font-size:10px;color:var(--w-accent);box-shadow:inset 0 1px 0 rgba(255,255,255,.18);padding-top:6px;white-space:nowrap;overflow:hidden">{{ bigdTicker }}</div>
+                </div>
+                <div style="margin-top:7px;display:flex;flex-direction:column;gap:6px">
+                  <div onClick="{{ bigdPush }}" style="text-align:center;padding:6px 0;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);font-weight:bold">Push Layout to All Screens</div>
+                  <div style="padding:6px;box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);line-height:1.5">{{ bigdPushNote }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ vGames }}">
+          <div>
+            <div style="display:flex;gap:2px;margin-bottom:0">
+              <sc-for list="{{ gameTabs }}" as="t" hint-placeholder-count="3">
+                <div onClick="{{ t.run }}" style="padding:4px 13px;cursor:default;background:var(--w-face);box-shadow:{{ t.bevel }};font-weight:{{ t.weight }}">{{ t.label }}</div>
+              </sc-for>
+            </div>
+            <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light);padding:9px">
+              <sc-if value="{{ gQuiz }}" hint-placeholder-val="{{ true }}">
+                <div style="display:grid;grid-template-columns:1fr 242px;gap:8px">
+                  <div>
+                    <div style="background:var(--w-dispbg);color:var(--w-dispfg);box-shadow:inset 1px 1px 0 var(--w-shadow);padding:14px">
+                      <div style="font-family:'Courier New',monospace;font-size:10px;opacity:.7">ROUND {{ quizRound }} — QUESTION {{ quizNum }} OF {{ quizTotal }}</div>
+                      <div style="font-family:'Arial Black',Impact,sans-serif;font-size:19px;margin:9px 0 12px;line-height:1.3">{{ quizQuestion }}</div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                        <sc-for list="{{ quizOptions }}" as="o" hint-placeholder-count="4">
+                          <div onClick="{{ o.pick }}" style="padding:8px 10px;cursor:default;font-weight:bold;background:{{ o.bg }};color:{{ o.fg }};box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)">{{ o.label }}</div>
+                        </sc-for>
+                      </div>
+                      <div style="margin-top:11px;font-family:'Courier New',monospace;font-size:11px;color:var(--w-accent);min-height:16px">{{ quizStatus }}</div>
+                    </div>
+                    <div style="display:flex;gap:5px;margin-top:7px">
+                      <div onClick="{{ quizReveal }}" style="padding:5px 12px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);font-weight:bold">Reveal Answer</div>
+                      <div onClick="{{ quizNext }}" style="padding:5px 12px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Next Question</div>
+                      <div onClick="{{ quizReset }}" style="padding:5px 12px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Reset Round</div>
+                    </div>
+                  </div>
+                  <div style="box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);padding:7px">
+                    <div style="font-weight:bold;margin-bottom:6px">Team Scores</div>
+                    <sc-for list="{{ teams }}" as="t" hint-placeholder-count="5">
+                      <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
+                        <div style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.name }}</div>
+                        <div onClick="{{ t.minus }}" style="padding:1px 7px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light)">-</div>
+                        <div style="width:26px;text-align:center;font-family:'Courier New',monospace;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow)">{{ t.score }}</div>
+                        <div onClick="{{ t.plus }}" style="padding:1px 7px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light)">+</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ gHol }}">
+                <div style="display:grid;grid-template-columns:1fr 242px;gap:8px">
+                  <div>
+                    <div style="background:var(--w-dispbg);color:var(--w-dispfg);box-shadow:inset 1px 1px 0 var(--w-shadow);padding:14px;text-align:center">
+                      <div style="font-family:'Courier New',monospace;font-size:10px;opacity:.7">HIGHER OR LOWER — STREAK {{ holStreak }} — BEST {{ holBest }}</div>
+                      <div style="display:flex;align-items:center;justify-content:center;gap:22px;margin:14px 0">
+                        <div>
+                          <div style="font-family:'Courier New',monospace;font-size:10px;opacity:.7">{{ holLeftLabel }}</div>
+                          <div style="font-family:'Arial Black',Impact,sans-serif;font-size:52px;line-height:1">{{ holCurrent }}</div>
+                        </div>
+                        <div style="font-family:'Arial Black',Impact,sans-serif;font-size:24px;opacity:.45">vs</div>
+                        <div>
+                          <div style="font-family:'Courier New',monospace;font-size:10px;opacity:.7">NEXT</div>
+                          <div style="font-family:'Arial Black',Impact,sans-serif;font-size:52px;line-height:1;color:var(--w-accent)">{{ holNext }}</div>
+                        </div>
+                      </div>
+                      <div style="font-family:'Courier New',monospace;font-size:12px;min-height:18px">{{ holStatus }}</div>
+                    </div>
+                    <div style="display:flex;gap:5px;margin-top:7px">
+                      <div onClick="{{ holHigher }}" style="flex:1;text-align:center;padding:7px 0;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);font-weight:bold">HIGHER</div>
+                      <div onClick="{{ holLower }}" style="flex:1;text-align:center;padding:7px 0;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);font-weight:bold">LOWER</div>
+                      <div onClick="{{ holReset }}" style="padding:7px 14px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Reset</div>
+                    </div>
+                  </div>
+                  <div style="box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);padding:7px">
+                    <div style="font-weight:bold;margin-bottom:5px">Deck</div>
+                    <div style="font-family:'Courier New',monospace;font-size:10px;line-height:1.6">{{ holDeckInfo }}</div>
+                    <div style="font-weight:bold;margin:9px 0 5px">History</div>
+                    <div style="background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow);padding:4px;font-family:'Courier New',monospace;font-size:10px;height:130px;overflow:auto">
+                      <sc-for list="{{ holHistory }}" as="h" hint-placeholder-count="6">
+                        <div>{{ h.line }}</div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ gRaces }}">
+                <div style="display:grid;grid-template-columns:1fr 242px;gap:8px">
+                  <div>
+                    <div style="background:var(--w-dispbg);color:var(--w-dispfg);box-shadow:inset 1px 1px 0 var(--w-shadow);padding:12px">
+                      <div style="display:flex;justify-content:space-between;font-family:'Courier New',monospace;font-size:10px;opacity:.7">
+                        <div>AT THE RACES — RACE {{ raceNum }}</div><div>{{ raceState }}</div>
+                      </div>
+                      <div style="margin-top:9px;display:flex;flex-direction:column;gap:5px">
+                        <sc-for list="{{ runners }}" as="r" hint-placeholder-count="6">
+                          <div style="display:flex;align-items:center;gap:7px">
+                            <div style="width:16px;text-align:center;font-family:'Arial Black',Impact,sans-serif;font-size:12px">{{ r.num }}</div>
+                            <div style="width:112px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div>
+                            <div style="flex:1;height:15px;background:rgba(255,255,255,.07);position:relative">
+                              <div style="position:absolute;left:0;top:0;bottom:0;width:{{ r.pct }}%;background:{{ r.color }}"></div>
+                            </div>
+                            <div style="width:38px;text-align:right;font-family:'Courier New',monospace;font-size:11px">{{ r.odds }}</div>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <div style="margin-top:10px;font-family:'Arial Black',Impact,sans-serif;font-size:15px;color:var(--w-accent);min-height:20px">{{ raceResult }}</div>
+                    </div>
+                    <div style="display:flex;gap:5px;margin-top:7px">
+                      <div onClick="{{ raceStart }}" style="padding:6px 14px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);font-weight:bold">Start Race</div>
+                      <div onClick="{{ raceNew }}" style="padding:6px 14px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">New Card</div>
+                    </div>
+                  </div>
+                  <div style="box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);padding:7px">
+                    <div style="font-weight:bold;margin-bottom:5px">Tote</div>
+                    <sc-for list="{{ runners }}" as="r" hint-placeholder-count="6">
+                      <div style="display:flex;justify-content:space-between;gap:6px;margin-bottom:3px;font-family:'Courier New',monospace;font-size:10px">
+                        <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.num }} {{ r.name }}</div>
+                        <div>{{ r.stake }}</div>
+                      </div>
+                    </sc-for>
+                    <div style="margin-top:9px;padding-top:6px;box-shadow:inset 0 1px 0 var(--w-shadow);font-family:'Courier New',monospace;font-size:10px">POOL {{ racePool }}</div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ vMedia }}">
+          <div style="display:grid;grid-template-columns:1fr 302px;gap:8px">
+            <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+              <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Advertising Media Folder</div>
+              <div style="padding:8px">
+                <div style="display:flex;align-items:center;gap:5px;margin-bottom:7px">
+                  <div>Path</div>
+                  <input type="text" value="{{ mediaPath }}" onChange="{{ setMediaPath }}" style="flex:1;padding:3px;border:0;font-family:'Courier New',monospace;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" />
+                  <div onClick="{{ mediaRescan }}" style="padding:4px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Rescan</div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:7px">
+                  <sc-for list="{{ mediaTiles }}" as="t" hint-placeholder-count="7">
+                    <div onClick="{{ t.select }}" style="cursor:default;padding:4px;background:{{ t.bg }};box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+                      <div style="aspect-ratio:16/9;background:var(--w-dispbg);background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 5px,transparent 5px 10px);display:flex;align-items:center;justify-content:center;font-family:'Courier New',monospace;font-size:9px;color:var(--w-dispfg);text-align:center;padding:4px;opacity:{{ t.op }}">{{ t.kind }}</div>
+                      <div style="margin-top:3px;font-family:'Courier New',monospace;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:{{ t.fg }}">{{ t.name }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">
+                  <div onClick="{{ mediaAdd }}" style="padding:4px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Add Media...</div>
+                  <div onClick="{{ mediaRemove }}" style="padding:4px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Remove</div>
+                  <div onClick="{{ mediaTestPlay }}" style="padding:4px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Test on Screen</div>
+                </div>
+              </div>
+            </div>
+            <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+              <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Properties</div>
+              <div style="padding:8px">
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <div style="display:flex;align-items:center;gap:6px"><div style="width:62px">Name</div>
+                    <input type="text" value="{{ selMediaName }}" onChange="{{ setSelMediaName }}" style="flex:1;padding:3px;border:0;font-family:'Courier New',monospace;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" /></div>
+                  <div style="display:flex;align-items:center;gap:6px"><div style="width:62px">Caption</div>
+                    <input type="text" value="{{ selMediaCaption }}" onChange="{{ setSelMediaCaption }}" style="flex:1;padding:3px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" /></div>
+                  <div style="display:flex;align-items:center;gap:6px"><div style="width:62px">Dwell</div>
+                    <input type="number" min="2" max="60" value="{{ selMediaDwell }}" onChange="{{ setSelMediaDwell }}" style="width:58px;padding:3px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" /><div>seconds</div></div>
+                  <div style="display:flex;align-items:center;gap:6px"><div style="width:62px">Type</div><div style="font-family:'Courier New',monospace">{{ selMediaKind }}</div></div>
+                  <div style="display:flex;align-items:center;gap:6px"><div style="width:62px">Size</div><div style="font-family:'Courier New',monospace">{{ selMediaSize }}</div></div>
+                  <div style="display:flex;align-items:center;gap:6px"><div style="width:62px">Plays</div><div style="font-family:'Courier New',monospace">{{ selMediaPlays }}</div></div>
+                  <div onClick="{{ toggleSelMedia }}" style="display:flex;align-items:center;gap:6px;cursor:default;margin-top:2px">
+                    <div style="width:12px;height:12px;background:var(--w-field);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);display:flex;align-items:center;justify-content:center;font-family:'Courier New',monospace;font-size:10px;color:var(--w-fieldtext)">{{ selMediaCheck }}</div>
+                    <div>Include in Ents rotation</div>
+                  </div>
+                </div>
+                <div style="margin-top:9px;padding:7px;box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);line-height:1.5">Drop replacement artwork into the advertising folder and press Rescan. Files play in list order during Ents Mode.</div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ vMusic }}">
+          <div style="display:grid;grid-template-columns:1fr 302px;gap:8px">
+            <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+              <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Music Source</div>
+              <div style="padding:8px">
+                <div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap">
+                  <sc-for list="{{ musicSources }}" as="s" hint-placeholder-count="2">
+                    <div onClick="{{ s.run }}" style="display:flex;align-items:center;gap:5px;cursor:default">
+                      <div style="width:11px;height:11px;border-radius:50%;background:var(--w-field);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);display:flex;align-items:center;justify-content:center">
+                        <div style="width:5px;height:5px;border-radius:50%;background:{{ s.dot }}"></div>
+                      </div>
+                      <div style="opacity:{{ s.op }}">{{ s.label }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  <div style="width:74px">Output zone</div>
+                  <select value="{{ musicDevice }}" onChange="{{ setMusicDevice }}" style="flex:1;padding:2px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                    <option>Foyer Amp (Zone 1)</option><option>Main Room (Zone 2)</option><option>Bar / Games (Zone 3)</option><option>All Zones</option>
+                  </select>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+                  <div style="width:74px">Playlist</div>
+                  <select value="{{ musicPlaylist }}" onChange="{{ setMusicPlaylist }}" style="flex:1;padding:2px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                    <option>Friday Warmup</option><option>Bingo Interval Beds</option><option>Karaoke Fillers</option><option>Close Down</option>
+                  </select>
+                </div>
+                <div style="background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                  <div style="display:grid;grid-template-columns:26px 1fr 1fr 54px">
+                    <sc-for list="{{ queueCols }}" as="c" hint-placeholder-count="4">
+                      <div style="padding:3px 5px;font-weight:bold;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">{{ c }}</div>
+                    </sc-for>
+                    <sc-for list="{{ musicQueue }}" as="q" hint-placeholder-count="6">
+                      <div onClick="{{ q.play }}" style="padding:3px 5px;text-align:center;cursor:default;font-family:'Courier New',monospace;background:{{ q.bg }};color:{{ q.fg }}">{{ q.mark }}</div>
+                      <div onClick="{{ q.play }}" style="padding:3px 5px;cursor:default;background:{{ q.bg }};color:{{ q.fg }}">{{ q.title }}</div>
+                      <div onClick="{{ q.play }}" style="padding:3px 5px;cursor:default;background:{{ q.bg }};color:{{ q.fg }}">{{ q.artist }}</div>
+                      <div onClick="{{ q.play }}" style="padding:3px 5px;text-align:right;cursor:default;font-family:'Courier New',monospace;background:{{ q.bg }};color:{{ q.fg }}">{{ q.time }}</div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)">
+              <div style="padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">Transport</div>
+              <div style="padding:8px">
+                <div style="background:var(--w-dispbg);color:var(--w-dispfg);box-shadow:inset 1px 1px 0 var(--w-shadow);padding:8px">
+                  <div style="font-family:'Courier New',monospace;font-size:10px;opacity:.7">{{ musicStateLine }}</div>
+                  <div style="font-weight:bold;margin-top:4px">{{ trackTitle }}</div>
+                  <div style="opacity:.8">{{ trackArtist }}</div>
+                  <div style="margin-top:7px;height:8px;background:rgba(255,255,255,.12)"><div style="height:100%;width:{{ trackPct }}%;background:var(--w-accent)"></div></div>
+                </div>
+                <div style="display:flex;gap:4px;margin-top:7px">
+                  <div onClick="{{ musicPrev }}" style="flex:1;text-align:center;padding:5px 0;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">|&lt;&lt;</div>
+                  <div onClick="{{ musicToggle }}" style="flex:2;text-align:center;padding:5px 0;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);font-weight:bold">{{ musicBtn }}</div>
+                  <div onClick="{{ musicNext }}" style="flex:1;text-align:center;padding:5px 0;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">&gt;&gt;|</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:7px">
+                  <div style="width:42px">Volume</div>
+                  <input type="range" min="0" max="100" value="{{ volume }}" onChange="{{ setVolume }}" style="flex:1;accent-color:var(--w-accent)" />
+                  <div style="width:24px;text-align:right;font-family:'Courier New',monospace">{{ volume }}</div>
+                </div>
+                <div onClick="{{ toggleDuck }}" style="display:flex;align-items:center;gap:6px;cursor:default;margin-top:7px">
+                  <div style="width:12px;height:12px;background:var(--w-field);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);display:flex;align-items:center;justify-content:center;font-family:'Courier New',monospace;font-size:10px;color:var(--w-fieldtext)">{{ duckCheck }}</div>
+                  <div>Duck music on bingo call / mic</div>
+                </div>
+                <div style="margin-top:9px;padding:7px;box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);line-height:1.5">{{ musicNote }}</div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ vReports }}">
+          <div>
+            <div style="display:flex;gap:5px;align-items:center;margin-bottom:7px">
+              <div>Period</div>
+              <select value="{{ reportPeriod }}" onChange="{{ setReportPeriod }}" style="padding:2px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                <option>This week</option><option>Last 30 days</option><option>Quarter to date</option>
+              </select>
+              <div onClick="{{ printReport }}" style="padding:4px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Print...</div>
+              <div onClick="{{ exportReport }}" style="padding:4px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Export CSV</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:8px">
+              <sc-for list="{{ reportKpis }}" as="k" hint-placeholder-count="4">
+                <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light);padding:7px 9px">
+                  <div style="opacity:.8">{{ k.label }}</div>
+                  <div style="font-family:'Arial Black',Impact,sans-serif;font-size:20px;margin-top:3px">{{ k.value }}</div>
+                  <div style="font-family:'Courier New',monospace;font-size:10px;color:var(--w-accent)">{{ k.delta }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+              <div style="display:grid;grid-template-columns:92px 1fr 100px 68px 62px 84px 80px">
+                <sc-for list="{{ reportCols }}" as="c" hint-placeholder-count="7">
+                  <div style="padding:4px 5px;font-weight:bold;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light);white-space:nowrap">{{ c }}</div>
+                </sc-for>
+                <sc-for list="{{ reportRows }}" as="r" hint-placeholder-count="8">
+                  <div style="padding:3px 5px;font-family:'Courier New',monospace">{{ r.date }}</div>
+                  <div style="padding:3px 5px">{{ r.session }}</div>
+                  <div style="padding:3px 5px">{{ r.mode }}</div>
+                  <div style="padding:3px 5px;text-align:right;font-family:'Courier New',monospace">{{ r.players }}</div>
+                  <div style="padding:3px 5px;text-align:right;font-family:'Courier New',monospace">{{ r.rooms }}</div>
+                  <div style="padding:3px 5px;text-align:right;font-family:'Courier New',monospace">{{ r.takings }}</div>
+                  <div style="padding:3px 5px;text-align:right;font-family:'Courier New',monospace">{{ r.payout }}</div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="margin-top:6px;display:flex;justify-content:flex-end;gap:18px;font-family:'Courier New',monospace">
+              <div>TAKINGS {{ reportTotalTakings }}</div>
+              <div>PAYOUT {{ reportTotalPayout }}</div>
+              <div>MARGIN {{ reportMargin }}</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ vSettings }}">
+          <div>
+            <div style="display:flex;gap:2px">
+              <sc-for list="{{ settingsTabs }}" as="t" hint-placeholder-count="4">
+                <div onClick="{{ t.run }}" style="padding:4px 13px;cursor:default;background:var(--w-face);box-shadow:{{ t.bevel }};font-weight:{{ t.weight }}">{{ t.label }}</div>
+              </sc-for>
+            </div>
+            <div style="box-shadow:inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light);padding:10px">
+              <sc-if value="{{ sColours }}" hint-placeholder-val="{{ true }}">
+                <div style="display:grid;grid-template-columns:1fr 292px;gap:12px">
+                  <div>
+                    <div style="font-weight:bold;margin-bottom:6px">Scheme presets</div>
+                    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">
+                      <sc-for list="{{ presets }}" as="p" hint-placeholder-count="5">
+                        <div onClick="{{ p.run }}" style="display:flex;align-items:center;gap:6px;padding:5px 9px;cursor:default;background:var(--w-face);box-shadow:{{ p.bevel }}">
+                          <div style="display:flex">
+                            <div style="width:9px;height:14px;background:{{ p.c1 }}"></div>
+                            <div style="width:9px;height:14px;background:{{ p.c2 }}"></div>
+                            <div style="width:9px;height:14px;background:{{ p.c3 }}"></div>
+                          </div>
+                          <div style="font-weight:{{ p.weight }}">{{ p.name }}</div>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <div style="font-weight:bold;margin-bottom:6px">Individual elements</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 16px">
+                      <sc-for list="{{ themeEntries }}" as="e" hint-placeholder-count="15">
+                        <div style="display:flex;align-items:center;gap:7px">
+                          <div style="flex:1">{{ e.label }}</div>
+                          <div style="font-family:'Courier New',monospace;font-size:10px;opacity:.7">{{ e.value }}</div>
+                          <input type="color" value="{{ e.value }}" onChange="{{ e.onChange }}" style="width:34px;height:19px;padding:0;border:0;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light);cursor:default" />
+                        </div>
+                      </sc-for>
+                    </div>
+                    <div style="display:flex;gap:5px;margin-top:13px">
+                      <div onClick="{{ resetTheme }}" style="padding:5px 12px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Restore Defaults</div>
+                      <div onClick="{{ saveTheme }}" style="padding:5px 12px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);font-weight:bold">Apply &amp; Save</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div style="font-weight:bold;margin-bottom:6px">Sample</div>
+                    <div style="background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);padding:3px">
+                      <div style="background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);padding:2px 5px;font-weight:bold">Sample Window</div>
+                      <div style="padding:8px">
+                        <div style="margin-bottom:6px">Normal window text</div>
+                        <div style="background:var(--w-sel);color:var(--w-seltext);padding:2px 5px;margin-bottom:6px">Selected item</div>
+                        <div style="padding:3px 5px;margin-bottom:6px;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">Field text</div>
+                        <div style="display:flex;gap:5px">
+                          <div style="padding:4px 12px;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">OK</div>
+                          <div style="padding:4px 12px;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Cancel</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div style="font-weight:bold;margin:12px 0 6px">Screen output sample</div>
+                    <div style="background:var(--w-dispbg);color:var(--w-dispfg);box-shadow:inset 1px 1px 0 var(--w-shadow);padding:10px;text-align:center">
+                      <div style="font-family:'Arial Black',Impact,sans-serif;font-size:30px">42</div>
+                      <div style="color:var(--w-accent);font-family:'Courier New',monospace;font-size:10px;margin-top:3px">ACCENT TEXT</div>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ sVenue }}">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                  <div style="display:flex;flex-direction:column;gap:7px">
+                    <div style="display:flex;align-items:center;gap:6px"><div style="width:100px">Venue name</div>
+                      <input type="text" value="{{ venueName }}" onChange="{{ setVenueName }}" style="flex:1;padding:3px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" /></div>
+                    <div style="display:flex;align-items:center;gap:6px"><div style="width:100px">Licence no.</div>
+                      <input type="text" value="{{ licence }}" onChange="{{ setLicence }}" style="flex:1;padding:3px;border:0;font-family:'Courier New',monospace;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" /></div>
+                    <div style="display:flex;align-items:center;gap:6px"><div style="width:100px">Join domain</div>
+                      <input type="text" value="{{ joinDomain }}" onChange="{{ setJoinDomain }}" style="flex:1;padding:3px;border:0;font-family:'Courier New',monospace;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" /></div>
+                    <div style="display:flex;align-items:center;gap:6px"><div style="width:100px">Operators</div>
+                      <input type="text" value="{{ operatorList }}" onChange="{{ setOperatorList }}" style="flex:1;padding:3px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" /></div>
+                  </div>
+                  <div>
+                    <div style="font-weight:bold;margin-bottom:6px">Rooms &amp; codes</div>
+                    <div style="background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                      <sc-for list="{{ bingoRooms }}" as="r" hint-placeholder-count="4">
+                        <div style="display:flex;justify-content:space-between;padding:3px 6px;box-shadow:inset 0 -1px 0 var(--w-face)">
+                          <div>{{ r.name }}</div><div style="font-family:'Courier New',monospace">{{ r.code }}</div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ sDisplay }}">
+                <div style="display:flex;flex-direction:column;gap:8px;max-width:520px">
+                  <div style="display:flex;align-items:center;gap:6px"><div style="width:126px">Output resolution</div>
+                    <select value="{{ outRes }}" onChange="{{ setOutRes }}" style="flex:1;padding:2px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                      <option>1920 x 1080 (16:9)</option><option>1366 x 768 (16:9)</option><option>3840 x 2160 (16:9)</option><option>1280 x 1024 (5:4 legacy)</option>
+                    </select></div>
+                  <div style="display:flex;align-items:center;gap:6px"><div style="width:126px">Screens attached</div>
+                    <input type="number" min="1" max="8" value="{{ screenCount }}" onChange="{{ setScreenCount }}" style="width:58px;padding:3px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" /></div>
+                  <sc-for list="{{ displayFlagRows }}" as="f" hint-placeholder-count="4">
+                    <div onClick="{{ f.toggle }}" style="display:flex;align-items:center;gap:6px;cursor:default">
+                      <div style="width:12px;height:12px;background:var(--w-field);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);display:flex;align-items:center;justify-content:center;font-family:'Courier New',monospace;font-size:10px;color:var(--w-fieldtext)">{{ f.check }}</div>
+                      <div>{{ f.label }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ sAdvanced }}">
+                <div style="display:flex;flex-direction:column;gap:8px;max-width:560px">
+                  <div style="padding:7px;box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);line-height:1.55">All settings, events, media entries and game state are stored locally on this terminal. Clearing local data resets WILLOW to factory defaults.</div>
+                  <div style="display:flex;align-items:center;gap:6px"><div style="width:126px">Data store key</div><div style="font-family:'Courier New',monospace">willow.state.v1</div></div>
+                  <div style="display:flex;align-items:center;gap:6px"><div style="width:126px">Build</div><div style="font-family:'Courier New',monospace">4.2.117 / BiGD 2.9</div></div>
+                  <div style="display:flex;align-items:center;gap:6px"><div style="width:126px">Records held</div><div style="font-family:'Courier New',monospace">{{ storageNote }}</div></div>
+                  <div style="display:flex;gap:5px;margin-top:4px">
+                    <div onClick="{{ exportState }}" style="padding:5px 12px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Diagnostics...</div>
+                    <div onClick="{{ clearState }}" style="padding:5px 12px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Clear Local Data</div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </div>
+
+  <div style="flex:none;display:flex;gap:3px;padding:1px 0">
+    <sc-for list="{{ statusCells }}" as="c" hint-placeholder-count="5">
+      <div style="flex:{{ c.flex }};padding:2px 6px;background:var(--w-face);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:{{ c.font }}">{{ c.text }}</div>
+    </sc-for>
+  </div>
+</div>
+
+<sc-if value="{{ dialogOpen }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:90">
+    <div style="width:474px;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face),4px 4px 8px rgba(0,0,0,.4);padding:3px">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 3px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2))">
+        <div style="color:var(--w-titletext);font-weight:bold">{{ dialogTitle }}</div>
+        <div onClick="{{ closeDialog }}" style="width:16px;height:14px;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;cursor:default">x</div>
+      </div>
+      <div style="padding:11px">
+        <sc-if value="{{ dlgEvent }}">
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <div style="display:flex;align-items:center;gap:7px"><div style="width:76px">Event name</div>
+              <input type="text" value="{{ draftName }}" onChange="{{ setDraftName }}" style="flex:1;padding:3px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" /></div>
+            <div style="display:flex;align-items:center;gap:7px"><div style="width:76px">Date / time</div>
+              <input type="date" value="{{ draftDate }}" onChange="{{ setDraftDate }}" style="padding:3px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" />
+              <input type="time" value="{{ draftTime }}" onChange="{{ setDraftTime }}" style="padding:3px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" /></div>
+            <div style="display:flex;align-items:center;gap:7px"><div style="width:76px">Room</div>
+              <select value="{{ draftRoom }}" onChange="{{ setDraftRoom }}" style="flex:1;padding:2px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                <sc-for list="{{ roomNames }}" as="r" hint-placeholder-count="4"><option>{{ r }}</option></sc-for>
+              </select></div>
+            <div style="display:flex;align-items:center;gap:7px"><div style="width:76px">Mode</div>
+              <select value="{{ draftMode }}" onChange="{{ setDraftMode }}" style="flex:1;padding:2px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                <option>Ents</option><option>Bingo</option><option>Karaoke</option><option>BiGD</option><option>Rich Media</option>
+              </select></div>
+            <div style="display:flex;align-items:center;gap:7px"><div style="width:76px">Capacity</div>
+              <input type="number" value="{{ draftCapacity }}" onChange="{{ setDraftCapacity }}" style="width:78px;padding:3px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" />
+              <div style="width:44px;text-align:right">Status</div>
+              <select value="{{ draftStatus }}" onChange="{{ setDraftStatus }}" style="flex:1;padding:2px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+                <option>Scheduled</option><option>On Sale</option><option>Live</option><option>Closed</option>
+              </select></div>
+            <div style="display:flex;gap:7px"><div style="width:76px;padding-top:3px">Notes</div>
+              <textarea value="{{ draftNotes }}" onChange="{{ setDraftNotes }}" rows="3" style="flex:1;padding:3px;border:0;resize:none;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)"></textarea></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ dlgMessage }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;gap:11px;align-items:flex-start">
+            <div style="width:26px;height:26px;flex:none;background:var(--w-accent);box-shadow:inset -1px -1px 0 rgba(0,0,0,.45),inset 1px 1px 0 rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-family:'Courier New',monospace">i</div>
+            <div style="line-height:1.55;padding-top:3px">{{ dialogBody }}</div>
+          </div>
+        </sc-if>
+        <div style="display:flex;justify-content:flex-end;gap:5px;margin-top:13px">
+          <sc-if value="{{ dlgEvent }}">
+            <div onClick="{{ saveDraft }}" style="padding:4px 18px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);font-weight:bold">OK</div>
+          </sc-if>
+          <div onClick="{{ closeDialog }}" style="padding:4px 18px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">{{ dialogCancelLabel }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ outputOpen }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;background:#000;z-index:100;display:flex;flex-direction:column">
+    <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:3px 6px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2))">
+      <div style="color:var(--w-titletext);font-weight:bold">Screen 1 Output — {{ modeLabel }} — {{ outRes }}</div>
+      <div onClick="{{ closeOutput }}" style="padding:2px 10px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light)">Close (Esc)</div>
+    </div>
+    <div style="flex:1;background:var(--w-dispbg);color:var(--w-dispfg);display:flex;flex-direction:column;min-height:0">
+      <sc-if value="{{ outBlack }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;background:#000;display:flex;align-items:center;justify-content:center;color:#1f1f1f;font-family:'Courier New',monospace;font-size:22px">BLACKOUT</div>
+      </sc-if>
+      <sc-if value="{{ outEnts }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.045) 0 14px,transparent 14px 28px);min-height:0;padding:30px">
+            <div style="font-family:'Courier New',monospace;font-size:13px;opacity:.5">{{ entsCurrentName }}</div>
+            <div style="font-family:'Arial Black',Impact,sans-serif;font-size:56px;text-align:center;max-width:82%;line-height:1.12">{{ entsCurrentCaption }}</div>
+            <div style="font-family:'Courier New',monospace;font-size:15px;color:var(--w-accent)">{{ entsCurrentSub }}</div>
+          </div>
+          <sc-if value="{{ entsTicker }}">
+            <div style="flex:none;padding:14px 26px;box-shadow:inset 0 2px 0 var(--w-accent);white-space:nowrap;overflow:hidden;font-family:'Arial Black',Impact,sans-serif;font-size:22px">{{ tickerText }}</div>
+          </sc-if>
+        </div>
+      </sc-if>
+      <sc-if value="{{ outBingo }}">
+        <div style="flex:1;display:grid;grid-template-columns:1fr 1.2fr;gap:26px;padding:26px;min-height:0">
+          <div style="display:flex;flex-direction:column;justify-content:center;gap:18px">
+            <div style="text-align:center">
+              <div style="font-family:'Courier New',monospace;font-size:14px;opacity:.55">GAME {{ bingoGame }} — {{ bingoPattern }}</div>
+              <div style="font-family:'Arial Black',Impact,sans-serif;font-size:132px;line-height:.95">{{ bingoCurrent }}</div>
+              <div style="font-family:'Arial Black',Impact,sans-serif;font-size:26px;color:var(--w-accent)">{{ bingoNickname }}</div>
+            </div>
+            <div style="text-align:center;font-family:'Courier New',monospace;font-size:15px;opacity:.8">{{ bingoLast }}</div>
+            <div style="text-align:center;padding:14px;box-shadow:inset 0 0 0 2px var(--w-accent)">
+              <div style="font-family:'Courier New',monospace;font-size:13px;opacity:.7">JOIN AT {{ joinDomain }}</div>
+              <div style="font-family:'Arial Black',Impact,sans-serif;font-size:48px;letter-spacing:6px">{{ bingoRoomCode }}</div>
+              <div style="font-family:'Courier New',monospace;font-size:13px;color:var(--w-accent)">{{ bingoTotalPlayers }} PLAYERS · {{ bingoLinkedCount }} ROOMS LINKED · {{ bingoPrizeStr }}</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(10,1fr);gap:5px;align-content:center">
+            <sc-for list="{{ bingoBoard }}" as="n" hint-placeholder-count="90">
+              <div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-family:'Arial Black',Impact,sans-serif;font-size:20px;background:{{ n.dispBg }};color:{{ n.dispFg }};box-shadow:{{ n.dispRing }}">{{ n.n }}</div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ outKaraoke }}">
+        <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+          <div style="flex:none;padding:18px 26px;display:flex;justify-content:space-between;font-family:'Courier New',monospace;font-size:15px;opacity:.65">
+            <div>{{ karaokeSingerNow }}</div><div>{{ karaokeTrack }}</div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:0 40px;min-height:0">
+            <sc-for list="{{ karaokeLines }}" as="l" hint-placeholder-count="5">
+              <div style="text-align:center;font-family:'Arial Black',Impact,sans-serif;font-size:{{ l.bigSize }}px;color:{{ l.color }};opacity:{{ l.op }};line-height:1.15">{{ l.text }}</div>
+            </sc-for>
+          </div>
+          <div style="flex:none;height:9px;background:rgba(255,255,255,.12)"><div style="height:100%;width:{{ karaokePct }}%;background:var(--w-accent)"></div></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ outBigd }}">
+        <div style="flex:1;display:flex;flex-direction:column;padding:26px;gap:18px;min-height:0">
+          <div style="display:flex;justify-content:space-between;font-family:'Courier New',monospace;font-size:15px;opacity:.6">
+            <div>{{ venueName }} — BiGD</div><div>{{ bigdSource }}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:34px">
+            <div style="width:190px;height:190px;flex:none;display:flex;align-items:center;justify-content:center;font-family:'Arial Black',Impact,sans-serif;font-size:88px;box-shadow:inset 0 0 0 3px var(--w-accent)">{{ bingoCurrent }}</div>
+            <div>
+              <div style="font-family:'Arial Black',Impact,sans-serif;font-size:38px">{{ bingoNickname }}</div>
+              <div style="font-family:'Courier New',monospace;font-size:16px;margin-top:12px;opacity:.8">PREVIOUS {{ bingoLast }}</div>
+              <div style="font-family:'Courier New',monospace;font-size:16px;margin-top:6px;color:var(--w-accent)">PRIZE {{ bingoPrizeStr }} · {{ bingoTotalPlayers }} PLAYERS</div>
+            </div>
+          </div>
+          <div style="flex:1;display:grid;grid-template-columns:repeat(18,1fr);gap:3px;align-content:start;min-height:0">
+            <sc-for list="{{ bingoBoard }}" as="n" hint-placeholder-count="90">
+              <div style="display:flex;align-items:center;justify-content:center;padding:6px 0;font-family:'Courier New',monospace;font-size:15px;background:{{ n.dispBg }};color:{{ n.dispFg }}">{{ n.n }}</div>
+            </sc-for>
+          </div>
+          <div style="flex:none;font-family:'Courier New',monospace;font-size:14px;color:var(--w-accent);box-shadow:inset 0 1px 0 rgba(255,255,255,.2);padding-top:12px;white-space:nowrap;overflow:hidden">{{ bigdTicker }}</div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ outGames }}">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;padding:40px;min-height:0">
+          <div style="font-family:'Courier New',monospace;font-size:15px;opacity:.6">{{ gameOutTop }}</div>
+          <div style="font-family:'Arial Black',Impact,sans-serif;font-size:44px;text-align:center;line-height:1.2;max-width:88%">{{ gameOutMain }}</div>
+          <div style="font-family:'Courier New',monospace;font-size:18px;color:var(--w-accent);text-align:center;max-width:88%;line-height:1.5">{{ gameOutSub }}</div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ loginOpen }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;background:#2c5f8a;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.03) 0 2px,transparent 2px 4px);display:flex;align-items:center;justify-content:center;z-index:120">
+    <div style="width:398px;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face),5px 5px 12px rgba(0,0,0,.45);padding:3px">
+      <div style="padding:2px 4px;background:linear-gradient(90deg,var(--w-title1),var(--w-title2));color:var(--w-titletext);font-weight:bold">WILLOW Event System — Sign On</div>
+      <div style="padding:16px">
+        <div style="display:flex;gap:13px;align-items:center;margin-bottom:15px">
+          <div style="width:46px;height:46px;flex:none;background:var(--w-accent);box-shadow:inset -2px -2px 0 rgba(0,0,0,.4),inset 2px 2px 0 rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Arial Black',Impact,sans-serif;font-size:19px">W</div>
+          <div>
+            <div style="font-family:'Arial Black',Impact,sans-serif;font-size:17px;letter-spacing:.5px">WILLOW 4.2</div>
+            <div style="opacity:.75">Venue Event &amp; Games Control</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:7px"><div style="width:60px">Operator</div>
+            <select value="{{ operator }}" onChange="{{ setOperator }}" style="flex:1;padding:2px;border:0;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)">
+              <sc-for list="{{ operators }}" as="o" hint-placeholder-count="3"><option>{{ o }}</option></sc-for>
+            </select></div>
+          <div style="display:flex;align-items:center;gap:7px"><div style="width:60px">PIN</div>
+            <input type="password" value="{{ pin }}" onChange="{{ setPin }}" onKeyDown="{{ pinKey }}" maxLength="4" style="width:86px;padding:3px;border:0;font-family:'Courier New',monospace;letter-spacing:5px;background:var(--w-field);color:var(--w-fieldtext);box-shadow:inset 1px 1px 0 var(--w-shadow),inset -1px -1px 0 var(--w-light)" /></div>
+          <div style="min-height:15px;color:{{ loginMsgColor }}">{{ loginMsg }}</div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:5px;margin-top:9px">
+          <div onClick="{{ doLogin }}" style="padding:4px 20px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face);font-weight:bold">Sign On</div>
+          <div onClick="{{ demoLogin }}" style="padding:4px 20px;cursor:default;background:var(--w-face);box-shadow:inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)">Demo</div>
+        </div>
+        <div style="margin-top:11px;font-family:'Courier New',monospace;font-size:10px;opacity:.6">Default PIN 1234 &nbsp;·&nbsp; terminal WLW-TERM-01</div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1320,&quot;height&quot;:820},&quot;signOnRequired&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Terminal&quot;},&quot;bootTo&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dashboard&quot;,&quot;events&quot;,&quot;ents&quot;,&quot;bingo&quot;,&quot;karaoke&quot;,&quot;bigd&quot;,&quot;games&quot;,&quot;media&quot;,&quot;music&quot;,&quot;reports&quot;,&quot;settings&quot;],&quot;default&quot;:&quot;dashboard&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Terminal&quot;}}">
+const KEY = 'willow.state.v1';
+const OUT = 'inset -1px -1px 0 var(--w-dark),inset 1px 1px 0 var(--w-light),inset -2px -2px 0 var(--w-shadow),inset 2px 2px 0 var(--w-face)';
+const IN = 'inset 1px 1px 0 var(--w-dark),inset -1px -1px 0 var(--w-light),inset 2px 2px 0 var(--w-shadow),inset -2px -2px 0 var(--w-face)';
+const FLAT = 'inset -1px -1px 0 var(--w-shadow),inset 1px 1px 0 var(--w-light)';
+
+const PRESETS = {
+  'Classic Grey': {face:'#d4d0c8',light:'#ffffff',shadow:'#808080',dark:'#0a0a0a',text:'#000000',title1:'#0a246a',title2:'#a6caf0',titletext:'#ffffff',sel:'#0a246a',seltext:'#ffffff',field:'#ffffff',fieldtext:'#000000',accent:'#008080',dispbg:'#0d1218',dispfg:'#f2efe6'},
+  'Willow Green': {face:'#cfd8c8',light:'#f2f6ee',shadow:'#77836e',dark:'#0d1209',text:'#12180e',title1:'#1f4d2e',title2:'#7fae8c',titletext:'#ffffff',sel:'#1f4d2e',seltext:'#ffffff',field:'#fbfdf8',fieldtext:'#12180e',accent:'#3f7a4f',dispbg:'#0b1a10',dispfg:'#eaf3e6'},
+  'Midnight Blue': {face:'#c8ccd4',light:'#f0f2f7',shadow:'#6d7482',dark:'#080b12',text:'#0b0f18',title1:'#08234a',title2:'#5a8fd6',titletext:'#ffffff',sel:'#08234a',seltext:'#ffffff',field:'#ffffff',fieldtext:'#0b0f18',accent:'#2f6fb0',dispbg:'#060b16',dispfg:'#e8eefc'},
+  'Burgundy Club': {face:'#d8ccc8',light:'#f7efec',shadow:'#8a7570',dark:'#160c0a',text:'#1a0f0d',title1:'#5c1526',title2:'#c98a97',titletext:'#ffffff',sel:'#5c1526',seltext:'#ffffff',field:'#fffaf8',fieldtext:'#1a0f0d',accent:'#a3213c',dispbg:'#170a0e',dispfg:'#f7e9ec'},
+  'Amber CRT': {face:'#2b2a25',light:'#6b6a5e',shadow:'#100f0c',dark:'#000000',text:'#ffb000',title1:'#4a3400',title2:'#a87400',titletext:'#ffd27f',sel:'#6b4a00',seltext:'#ffd27f',field:'#1a1913',fieldtext:'#ffb000',accent:'#ff8c00',dispbg:'#0b0a06',dispfg:'#ffb000'}
+};
+
+const THEME_LABELS = [
+  ['face','Window face'],['light','Bevel highlight'],['shadow','Bevel shadow'],['dark','Bevel outline'],
+  ['text','Window text'],['title1','Title bar left'],['title2','Title bar right'],['titletext','Title bar text'],
+  ['sel','Selection'],['seltext','Selection text'],['field','Field background'],['fieldtext','Field text'],
+  ['accent','Accent'],['dispbg','Screen background'],['dispfg','Screen text']
+];
+
+const MODES = [
+  {id:'ents', label:'Ents Mode', sub:'Rolling adverts', view:'ents'},
+  {id:'bingo', label:'Bingo Mode', sub:'Linked random game', view:'bingo'},
+  {id:'karaoke', label:'Karaoke Mode', sub:'Lyric engine', view:'karaoke'},
+  {id:'bigd', label:'BiGD', sub:'Equipment display', view:'bigd'},
+  {id:'games', label:'Rich Media Games', sub:'Quiz / HoL / Races', view:'games'}
+];
+
+const ROOM_DEFS = [
+  {name:'Main Hall', code:'WLW341', players:64},
+  {name:'Lounge Bar', code:'WLW872', players:31},
+  {name:'Sports Room', code:'WLW118', players:18},
+  {name:'Function Suite', code:'WLW506', players:0}
+];
+
+const DEF_EVENTS = [
+  {id:1, date:'2026-08-27', time:'19:00', name:'Thursday Cash Bingo', room:'Main Hall', mode:'Bingo', capacity:220, status:'Live', notes:'Three books, link Lounge Bar for the £500 house.'},
+  {id:2, date:'2026-08-27', time:'21:30', name:'Late Karaoke', room:'Lounge Bar', mode:'Karaoke', capacity:120, status:'Scheduled', notes:'Two mics, singer list opens 21:00.'},
+  {id:3, date:'2026-08-28', time:'18:00', name:'Foyer Advertising Loop', room:'Function Suite', mode:'Ents', capacity:0, status:'On Sale', notes:'Sponsor plates for Q3 partners.'},
+  {id:4, date:'2026-08-28', time:'20:00', name:'Friday Quiz Night', room:'Sports Room', mode:'Rich Media', capacity:90, status:'On Sale', notes:'Eight rounds, teams of six.'},
+  {id:5, date:'2026-08-29', time:'19:30', name:'Saturday Prize Bingo', room:'Main Hall', mode:'Bingo', capacity:220, status:'On Sale', notes:'Link all rooms from game 4.'},
+  {id:6, date:'2026-08-29', time:'22:00', name:'At The Races', room:'Lounge Bar', mode:'Rich Media', capacity:120, status:'Scheduled', notes:'Six race card, tote on tablets.'},
+  {id:7, date:'2026-08-30', time:'15:00', name:'Sunday Family Bingo', room:'Main Hall', mode:'BiGD', capacity:220, status:'Closed', notes:'Legacy Maxim board feed only.'}
+];
+
+const DEF_MEDIA = [
+  {name:'SPONSOR_CARLING_01.JPG', kind:'JPEG', dwell:12, size:'1.8 MB', plays:412, on:true, caption:'Pint & a Pie — £7.50 all week'},
+  {name:'QUIZNIGHT_PROMO.PNG', kind:'PNG', dwell:10, size:'940 KB', plays:388, on:true, caption:'Friday Quiz Night — 8pm, teams of six'},
+  {name:'BINGO_JACKPOT_ROLL.JPG', kind:'JPEG', dwell:14, size:'2.2 MB', plays:355, on:true, caption:'Jackpot rolls over to £1,400'},
+  {name:'MEMBERS_DRAW_SEP.PNG', kind:'PNG', dwell:10, size:'1.1 MB', plays:201, on:true, caption:'Members Draw — must be present to win'},
+  {name:'FUNCTION_HIRE.JPG', kind:'JPEG', dwell:12, size:'1.6 MB', plays:177, on:false, caption:'Function Suite hire from £120'},
+  {name:'KARAOKE_LATE.PNG', kind:'PNG', dwell:8, size:'720 KB', plays:143, on:true, caption:'Late Karaoke — Thursdays til 1am'},
+  {name:'SAFETY_NOTICE.JPG', kind:'JPEG', dwell:6, size:'410 KB', plays:96, on:false, caption:'Please drink responsibly'}
+];
+
+const TRACKS = [
+  {title:'Foyer Bed 01', artist:'House Selection', time:'3:42'},
+  {title:'Interval Groove', artist:'Willow Beds', time:'2:58'},
+  {title:'Warmup Floorfiller', artist:'Friday Playlist', time:'4:11'},
+  {title:'Late Bar Slow', artist:'House Selection', time:'3:20'},
+  {title:'Close Down Theme', artist:'Willow Beds', time:'1:44'},
+  {title:'Bingo Call Bed', artist:'Willow Beds', time:'5:02'}
+];
+
+const QUIZ = [
+  {q:'Which household appliance was patented in 1901 by Hubert Cecil Booth?', a:['Vacuum cleaner','Toaster','Washing machine','Kettle'], correct:0},
+  {q:'How many players are on the pitch in a full rugby league team?', a:['Eleven','Thirteen','Fifteen','Seventeen'], correct:1},
+  {q:'Which sea separates Great Britain from Norway?', a:['Irish Sea','Baltic Sea','North Sea','Celtic Sea'], correct:2},
+  {q:'What is the chemical symbol for tin?', a:['Ti','Tn','St','Sn'], correct:3},
+  {q:'In darts, what is the highest score from three darts?', a:['180','150','171','200'], correct:0},
+  {q:'Which decade did decimal currency arrive in the UK?', a:['1950s','1960s','1970s','1980s'], correct:2},
+  {q:'A group of crows is known as a what?', a:['Murder','Parliament','Gaggle','Pride'], correct:0},
+  {q:'How many squares are on a standard chessboard?', a:['48','56','64','72'], correct:2}
+];
+
+const RUNNERS = [
+  {name:'Lucky Landlord', odds:'3/1', stake:180, color:'#c94f4f', form:1.2},
+  {name:'Bar Tab Bandit', odds:'5/2', stake:240, color:'#4f7fc9', form:1.4},
+  {name:'Pie And A Pint', odds:'7/1', stake:95, color:'#c9a24f', form:0.8},
+  {name:'Function Suite', odds:'9/2', stake:130, color:'#4fc98a', form:1.0},
+  {name:'Northern Lass', odds:'11/4', stake:210, color:'#a24fc9', form:1.3},
+  {name:'Last Orders', odds:'12/1', stake:60, color:'#c9724f', form:0.6}
+];
+
+const NICKNAMES = {1:'Kelly\u2019s eye',2:'One little duck',3:'Cup of tea',4:'Knock at the door',5:'Man alive',6:'Half a dozen',7:'Lucky seven',8:'Garden gate',9:'Doctor\u2019s orders',10:'Willow\u2019s den',11:'Legs eleven',13:'Unlucky for some',16:'Sweet sixteen',17:'Dancing queen',21:'Key of the door',22:'Two little ducks',25:'Duck and dive',26:'Half a crown',30:'Dirty Gertie',33:'All the threes',39:'Those famous steps',40:'Life begins',44:'Droopy drawers',45:'Halfway there',50:'Half a century',55:'All the fives',57:'Heinz varieties',59:'The Brighton line',60:'Five dozen',65:'Retirement age',66:'Clickety click',68:'Saving grace',72:'Six dozen',76:'Trombones',77:'Sunset strip',80:'Gandhi\u2019s breakfast',83:'Time for tea',85:'Staying alive',88:'Two fat ladies',89:'Nearly there',90:'Top of the shop'};
+
+const SONGS = [
+  {title:'Club Anthem', artist:'House Instrumental', key:'B', lyrics:'Synced', lines:['We came in from the cold outside','Coats on the back of the chair','Somebody put the good song on','And the whole room turned to sing','Hold the note, hold it high','Let the ceiling take the sound','This is where we all belong','Every Friday, same old crowd']},
+  {title:'Northern Soul Revue', artist:'Backing Track', key:'Eb', lyrics:'Synced', lines:['Talcum on the dance floor','Shoes that never sit still','Twelve bars in and I am gone','Spinning like the old days','Keep the beat, keep it steady','Nobody is watching the clock','One more turn around the room','Then the lights come up too soon']},
+  {title:'Saturday Chorus', artist:'Backing Track', key:'G', lyrics:'Synced', lines:['Half a lager, half a promise','Table four is on their feet','Somebody hand me the microphone','I have been waiting all week','Sing it loud, sing it wrong','Nobody minds down here','This is our small famous stage','Same time again next year']},
+  {title:'Slow Dance No.2', artist:'House Instrumental', key:'C', lyrics:'Synced', lines:['Turn the ballroom lights down low','Take my hand, we know the steps','Thirty years of this same tune','And it still says what we mean','Slow now, slow and easy','Let the room go quiet round us','One more verse before the bar shuts','One more turn before we go']},
+  {title:'Bar Room Blues', artist:'Backing Track', key:'A', lyrics:'Synced', lines:['Rain outside on the car park','Neon in the window frame','I have got a voice like gravel','But the crowd sings it just the same','Roll on, roll on, midnight','Nothing waiting for me home','So I will stand up here and holler','Til the landlord calls the last one']},
+  {title:'Last Orders', artist:'House Instrumental', key:'D', lyrics:'Synced', lines:['Bell goes twice behind the pumps','Glasses stacking, coats appearing','Somebody starts the old one up','And nobody wants to leave','Sing it slow, sing it kindly','Arms across the shoulders now','Out into the cold together','Same again next Friday night']}
+];
+
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.state = Object.assign(this.defaults(), this.load());
+    this.state.menuOpen = null;
+    this.state.dialog = null;
+    this.state.outputOpen = false;
+    if (this.props.bootTo) this.state.view = this.props.bootTo;
+    this.state.loginOpen = (this.props.signOnRequired ?? true) ? !this.state.signedOn : false;
+    if (!((this.props.signOnRequired ?? true))) this.state.signedOn = true;
+    this.state.pin = '';
+    this.state.loginMsg = '';
+  }
+
+  defaults() {
+    return {
+      theme: Object.assign({}, PRESETS['Classic Grey']),
+      preset: 'Classic Grey',
+      venueName: 'Ravensworth Social Club',
+      licence: 'GB/OPS/44827-1',
+      joinDomain: 'willowplay.link/join',
+      operatorList: 'D. Whitaker, S. Mbeki, J. Corrigan',
+      operator: 'D. Whitaker',
+      signedOn: false,
+      events: DEF_EVENTS.slice(),
+      media: DEF_MEDIA.slice(),
+      selEvent: 1,
+      selMedia: 0,
+      eventFilter: '',
+      mode: 'ents',
+      view: 'dashboard',
+      settingsTab: 'Colours',
+      gameTab: 'Quiz',
+      blackout: false,
+      entsIndex: 0,
+      entsRunning: true,
+      entsCountdown: 12,
+      entsInterval: 12,
+      entsTransition: 'Cross fade',
+      entsTicker: true,
+      entsMusic: true,
+      mediaPath: '\\\\WILLOW\\MEDIA\\ADVERTISING',
+      musicSource: 'Spotify (linked)',
+      musicPlaylist: 'Friday Warmup',
+      musicDevice: 'All Zones',
+      musicPlaying: true,
+      trackIndex: 0,
+      trackPos: 38,
+      volume: 62,
+      duck: true,
+      outRes: '1920 x 1080 (16:9)',
+      screenCount: 4,
+      displayFlags: [
+        {label:'Mirror screen 1 to all outputs', on:true},
+        {label:'Show clock on idle screens', on:true},
+        {label:'Burn-in protection (shift 1px / 5 min)', on:true},
+        {label:'Overlay room code during games', on:true}
+      ],
+      reportPeriod: 'This week',
+      syslog: [
+        '09:02:11  WILLOW service started (build 4.2.117)',
+        '09:02:12  Display driver: 4 outputs detected',
+        '09:02:14  Media scan: 7 files in ADVERTISING',
+        '09:02:14  Spotify bridge authorised',
+        '09:02:15  BiGD listener idle on COM3',
+        '09:02:16  Room codes issued: 4 rooms'
+      ]
+    };
+  }
+
+  load() {
+    try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; }
+  }
+
+  save() {
+    const s = this.state;
+    const keep = ['theme','preset','venueName','licence','joinDomain','operatorList','operator','signedOn','events','media','selEvent','selMedia','mode','view','settingsTab','gameTab','entsInterval','entsTransition','entsTicker','entsMusic','mediaPath','musicSource','musicPlaylist','musicDevice','volume','duck','outRes','screenCount','displayFlags','reportPeriod','bingo','karaoke','quiz','hol','races','bigd'];
+    const out = {};
+    keep.forEach(k => { if (s[k] !== undefined) out[k] = s[k]; });
+    try { localStorage.setItem(KEY, JSON.stringify(out)); } catch (e) {}
+  }
+
+  set(patch) { this.setState(patch, () => this.save()); }
+
+  log(line) {
+    const t = new Date();
+    const stamp = String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0') + ':' + String(t.getSeconds()).padStart(2,'0');
+    this.setState(s => ({ syslog: s.syslog.concat([stamp + '  ' + line]).slice(-60) }));
+  }
+
+  componentDidMount() {
+    this.applyTheme();
+    this.timer = setInterval(() => this.tick(), 1000);
+    this.onKey = e => {
+      if (e.key === 'Escape') this.setState({ outputOpen: false, dialog: null, menuOpen: null });
+    };
+    window.addEventListener('keydown', this.onKey);
+  }
+  componentWillUnmount() { clearInterval(this.timer); window.removeEventListener('keydown', this.onKey); }
+  componentDidUpdate() { this.applyTheme(); }
+
+  applyTheme() {
+    const t = this.state.theme || {};
+    const r = document.documentElement;
+    Object.keys(t).forEach(k => r.style.setProperty('--w-' + k, t[k]));
+  }
+
+  tick() {
+    const s = this.state;
+    const patch = { now: Date.now() };
+    if (s.mode === 'ents' && s.entsRunning && !s.blackout) {
+      if (s.entsCountdown <= 1) { this.entsAdvance(); } else { patch.entsCountdown = s.entsCountdown - 1; }
+    }
+    if (s.musicPlaying) {
+      patch.trackPos = s.trackPos >= 100 ? 0 : s.trackPos + 1;
+      if (s.trackPos >= 100) patch.trackIndex = (s.trackIndex + 1) % TRACKS.length;
+    }
+    this.tickGames && this.tickGames(patch);
+    this.setState(patch);
+  }
+
+  activeMedia() { return (this.state.media || []).filter(m => m.on); }
+
+  entsAdvance() {
+    const list = this.activeMedia();
+    if (!list.length) return;
+    const cur = list[this.state.entsIndex % list.length];
+    const nextIdx = (this.state.entsIndex + 1) % list.length;
+    const nextFile = list[nextIdx];
+    const media = this.state.media.map(m => m.name === cur.name ? Object.assign({}, m, {plays: m.plays + 1}) : m);
+    this.set({ entsIndex: nextIdx, entsCountdown: nextFile.dwell || this.state.entsInterval, media: media });
+  }
+
+  setMode(id) {
+    const m = MODES.find(x => x.id === id);
+    this.set({ mode: id, view: m ? m.view : 'dashboard', menuOpen: null });
+    this.log('Mode changed to ' + (m ? m.label : id));
+  }
+  go(view) { this.set({ view: view, menuOpen: null }); }
+
+  message(title, body) { this.setState({ dialog: {kind:'message', title: title, body: body}, menuOpen: null }); }
+
+  clock() {
+    const d = new Date();
+    return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+  }
+
+  rooms() {
+    const bingo = this.state.bingo || {};
+    const linked = bingo.linked || ['Main Hall','Lounge Bar'];
+    return ROOM_DEFS.map(r => Object.assign({}, r, {linked: linked.indexOf(r.name) >= 0}));
+  }
+
+  // ---- shell ----
+  shellVals() {
+    const s = this.state;
+    const mode = MODES.find(m => m.id === s.mode) || MODES[0];
+    const menuDefs = [
+      {name:'File', items:[
+        {label:'New Event...', key:'Ctrl+N', run:() => this.newEvent()},
+        {label:'Event Schedule', key:'F2', run:() => this.go('events')},
+        {label:'Reports', key:'F9', run:() => this.go('reports')},
+        {label:'Sign Off', key:'Ctrl+L', run:() => this.logOff()}
+      ]},
+      {name:'Modes', items: MODES.map(m => ({label:m.label, key:'', run:() => this.setMode(m.id)}))},
+      {name:'Media', items:[
+        {label:'Media Folder Manager', key:'F4', run:() => this.go('media')},
+        {label:'Music Control', key:'F5', run:() => this.go('music')},
+        {label:'Rescan Advertising Folder', key:'', run:() => { this.log('Media rescan: ' + this.state.media.length + ' files'); this.message('Media Scan', this.state.media.length + ' files found in ' + this.state.mediaPath + '. ' + this.activeMedia().length + ' enabled for rotation.'); }}
+      ]},
+      {name:'Games', items:[
+        {label:'Bingo Control', key:'', run:() => this.setMode('bingo')},
+        {label:'Quiz', key:'', run:() => { this.set({gameTab:'Quiz'}); this.setMode('games'); }},
+        {label:'Higher or Lower', key:'', run:() => { this.set({gameTab:'Higher or Lower'}); this.setMode('games'); }},
+        {label:'At The Races', key:'', run:() => { this.set({gameTab:'At The Races'}); this.setMode('games'); }}
+      ]},
+      {name:'Screens', items:[
+        {label:'Show Output Window', key:'F11', run:() => this.setState({outputOpen:true, menuOpen:null})},
+        {label:'Blackout Toggle', key:'F12', run:() => { this.set({blackout: !this.state.blackout}); }},
+        {label:'Display Settings', key:'', run:() => { this.set({settingsTab:'Display'}); this.go('settings'); }}
+      ]},
+      {name:'Tools', items:[
+        {label:'Colour Scheme...', key:'', run:() => { this.set({settingsTab:'Colours'}); this.go('settings'); }},
+        {label:'Venue Settings...', key:'', run:() => { this.set({settingsTab:'Venue'}); this.go('settings'); }},
+        {label:'Advanced / Data...', key:'', run:() => { this.set({settingsTab:'Advanced'}); this.go('settings'); }}
+      ]},
+      {name:'Help', items:[
+        {label:'About WILLOW', key:'', run:() => this.message('About WILLOW Event System', 'WILLOW Event System 4.2.117 with BiGD 2.9. Venue event, music and games control. Terminal WLW-TERM-01, licence ' + s.licence + '.')}
+      ]}
+    ];
+    const menus = menuDefs.map(m => ({
+      name: m.name, items: m.items, open: s.menuOpen === m.name,
+      bg: s.menuOpen === m.name ? 'var(--w-sel)' : 'var(--w-face)',
+      fg: s.menuOpen === m.name ? 'var(--w-seltext)' : 'var(--w-text)',
+      toggle: () => this.setState({menuOpen: s.menuOpen === m.name ? null : m.name}),
+      hover: () => { if (s.menuOpen) this.setState({menuOpen: m.name}); }
+    }));
+
+    const tb = [
+      {label:'Dashboard', view:'dashboard', swatch:'var(--w-title1)'},
+      {label:'Schedule', view:'events', swatch:'#8a6f2a'},
+      {label:'Ents', view:'ents', swatch:'#2a6f8a'},
+      {label:'Bingo', view:'bingo', swatch:'#a3213c'},
+      {label:'Karaoke', view:'karaoke', swatch:'#5c2a8a'},
+      {label:'BiGD', view:'bigd', swatch:'#2a8a56'},
+      {label:'Games', view:'games', swatch:'#8a4a2a'},
+      {label:'Media', view:'media', swatch:'#6f6f6f'},
+      {label:'Music', view:'music', swatch:'#2a8a8a'},
+      {label:'Reports', view:'reports', swatch:'#444c6a'},
+      {label:'Settings', view:'settings', swatch:'#8a2a6f'}
+    ];
+    const toolbar = tb.map(t => ({
+      label: t.label, swatch: t.swatch,
+      bevel: s.view === t.view ? IN : OUT,
+      run: () => this.go(t.view)
+    }));
+
+    const tree = [];
+    tree.push({label: s.venueName, glyph:'-', pad:6, swatch:'var(--w-title1)', sel:false, run:() => this.go('dashboard')});
+    this.rooms().forEach(r => {
+      tree.push({label: r.name, glyph:'', pad:20, swatch: r.linked ? 'var(--w-accent)' : '#9a9a9a', sel:false, run:() => this.go('events')});
+    });
+    tree.push({label:'Modes', glyph:'-', pad:6, swatch:'#8a6f2a', sel:false, run:() => this.go('dashboard')});
+    MODES.forEach(m => tree.push({label: m.label, glyph:'', pad:20, swatch: s.mode === m.id ? 'var(--w-accent)' : '#9a9a9a', sel: s.view === m.view, run:() => this.setMode(m.id)}));
+    tree.push({label:'Media', glyph:'-', pad:6, swatch:'#6f6f6f', sel:false, run:() => this.go('media')});
+    tree.push({label:'ADVERTISING', glyph:'', pad:20, swatch:'#6f6f6f', sel: s.view === 'media', run:() => this.go('media')});
+    tree.push({label:'MUSIC', glyph:'', pad:20, swatch:'#6f6f6f', sel: s.view === 'music', run:() => this.go('music')});
+    tree.push({label:'Reports', glyph:'', pad:6, swatch:'#444c6a', sel: s.view === 'reports', run:() => this.go('reports')});
+    tree.push({label:'Settings', glyph:'', pad:6, swatch:'#8a2a6f', sel: s.view === 'settings', run:() => this.go('settings')});
+    const treeRows = tree.map(n => ({
+      label:n.label, glyph:n.glyph, pad:n.pad, swatch:n.swatch, run:n.run,
+      bg: n.sel ? 'var(--w-sel)' : 'transparent',
+      fg: n.sel ? 'var(--w-seltext)' : 'var(--w-fieldtext)'
+    }));
+
+    const titles = {
+      dashboard:['Operator Dashboard','F1 for help'],
+      events:['Event Schedule','double-click to edit'],
+      ents:['Ents Mode — Advertising Rotation','rotation ' + (s.entsRunning ? 'running' : 'paused')],
+      bingo:['Bingo Mode — Game Control','random draw, 1-90'],
+      karaoke:['Karaoke Mode — Lyric Engine','instrumental library'],
+      bigd:['BiGD — Bingo Information Graphical Display','COM3 / TCP 4001'],
+      games:['Rich Media Games','patron-facing'],
+      media:['Media Folder Manager', s.mediaPath],
+      music:['Music Control', s.musicSource],
+      reports:['Reports', s.reportPeriod],
+      settings:['System Settings', s.settingsTab]
+    };
+    const ti = titles[s.view] || titles.dashboard;
+
+    const events = s.events || [];
+    const dialog = s.dialog || {};
+    const draft = dialog.draft || {};
+
+    return {
+      venueName: s.venueName, licence: s.licence, joinDomain: s.joinDomain,
+      modeLabel: mode.label, menus: menus, toolbar: toolbar, tree: treeRows,
+      viewTitle: ti[0], viewHint: ti[1],
+      vDash: s.view === 'dashboard', vEvents: s.view === 'events', vEnts: s.view === 'ents',
+      vBingo: s.view === 'bingo', vKaraoke: s.view === 'karaoke', vBigd: s.view === 'bigd',
+      vGames: s.view === 'games', vMedia: s.view === 'media', vMusic: s.view === 'music',
+      vReports: s.view === 'reports', vSettings: s.view === 'settings',
+      openOutput: () => this.setState({outputOpen:true, menuOpen:null}),
+      closeOutput: () => this.setState({outputOpen:false}),
+      outputOpen: !!s.outputOpen,
+      outRes: s.outRes,
+      outBlack: !!s.blackout,
+      outEnts: !s.blackout && s.mode === 'ents',
+      outBingo: !s.blackout && s.mode === 'bingo',
+      outKaraoke: !s.blackout && s.mode === 'karaoke',
+      outBigd: !s.blackout && s.mode === 'bigd',
+      outGames: !s.blackout && s.mode === 'games',
+      toggleBlackout: () => { this.set({blackout: !s.blackout}); this.log('Blackout ' + (s.blackout ? 'off' : 'on')); },
+      blackoutBevel: s.blackout ? IN : OUT,
+      outputPreviewText: s.blackout ? 'BLACKOUT' : this.previewText(),
+      statusCells: [
+        {text: s.signedOn ? 'Operator: ' + s.operator : 'Not signed on', flex:'2', font:'inherit'},
+        {text: 'Mode: ' + mode.label, flex:'2', font:'inherit'},
+        {text: 'Screens ' + s.screenCount + ' / ' + (s.blackout ? 'BLACKOUT' : 'LIVE'), flex:'2', font:'inherit'},
+        {text: 'Music ' + (s.musicPlaying ? 'playing' : 'paused') + ' · vol ' + s.volume, flex:'2', font:'inherit'},
+        {text: this.clock(), flex:'0 0 78px', font:"'Courier New',monospace"}
+      ],
+      dialogOpen: !!s.dialog,
+      dialogTitle: dialog.title || '',
+      dialogBody: dialog.body || '',
+      dialogCancelLabel: dialog.kind === 'event' ? 'Cancel' : 'OK',
+      dlgEvent: dialog.kind === 'event',
+      dlgMessage: dialog.kind === 'message',
+      closeDialog: () => this.setState({dialog:null}),
+      draftName: draft.name || '', draftDate: draft.date || '', draftTime: draft.time || '',
+      draftRoom: draft.room || 'Main Hall', draftMode: draft.mode || 'Ents',
+      draftCapacity: draft.capacity || 0, draftStatus: draft.status || 'Scheduled', draftNotes: draft.notes || '',
+      setDraftName: e => this.patchDraft({name: e.target.value}),
+      setDraftDate: e => this.patchDraft({date: e.target.value}),
+      setDraftTime: e => this.patchDraft({time: e.target.value}),
+      setDraftRoom: e => this.patchDraft({room: e.target.value}),
+      setDraftMode: e => this.patchDraft({mode: e.target.value}),
+      setDraftCapacity: e => this.patchDraft({capacity: Number(e.target.value)}),
+      setDraftStatus: e => this.patchDraft({status: e.target.value}),
+      setDraftNotes: e => this.patchDraft({notes: e.target.value}),
+      saveDraft: () => this.saveDraft(),
+      roomNames: ROOM_DEFS.map(r => r.name),
+      loginOpen: !!s.loginOpen, operator: s.operator, operators: (s.operatorList || '').split(',').map(x => x.trim()).filter(Boolean),
+      setOperator: e => this.set({operator: e.target.value}),
+      pin: s.pin || '', setPin: e => this.setState({pin: e.target.value.replace(/[^0-9]/g,'').slice(0,4)}),
+      pinKey: e => { if (e.key === 'Enter') this.doLogin(); },
+      loginMsg: s.loginMsg || '', loginMsgColor: s.loginMsg && s.loginMsg.indexOf('Incorrect') === 0 ? '#b00020' : 'var(--w-text)',
+      doLogin: () => this.doLogin(), demoLogin: () => { this.setState({pin:'1234'}, () => this.doLogin()); },
+      logOff: () => this.logOff(),
+      todayLong: new Date().toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long', year:'numeric'}),
+      tonightCols: ['Time','Event','Room','Mode','Status'],
+      tonight: events.slice(0, 5).map(e => ({
+        time: e.time, name: e.name, room: e.room, mode: e.mode, status: e.status,
+        bg: s.selEvent === e.id ? 'var(--w-sel)' : 'transparent',
+        fg: s.selEvent === e.id ? 'var(--w-seltext)' : 'var(--w-fieldtext)',
+        run: () => this.set({selEvent: e.id})
+      })),
+      modeButtons: MODES.map(m => ({
+        label: m.label, sub: m.sub,
+        swatch: s.mode === m.id ? 'var(--w-accent)' : '#9a9a9a',
+        bevel: s.mode === m.id ? IN : OUT,
+        run: () => this.setMode(m.id)
+      })),
+      syslog: (s.syslog || []).slice().reverse().map(l => ({line: l})),
+      volume: s.volume, setVolume: e => this.set({volume: Number(e.target.value)}),
+      musicSource: s.musicSource, musicBtn: s.musicPlaying ? 'PAUSE' : 'PLAY',
+      musicToggle: () => this.set({musicPlaying: !s.musicPlaying}),
+      musicPrev: () => this.set({trackIndex: (s.trackIndex + TRACKS.length - 1) % TRACKS.length, trackPos: 0}),
+      musicNext: () => this.set({trackIndex: (s.trackIndex + 1) % TRACKS.length, trackPos: 0}),
+      trackTitle: TRACKS[s.trackIndex % TRACKS.length].title,
+      trackArtist: TRACKS[s.trackIndex % TRACKS.length].artist,
+      trackPct: s.trackPos
+    };
+  }
+
+  previewText() {
+    const s = this.state;
+    if (s.mode === 'ents') {
+      const list = this.activeMedia();
+      const cur = list.length ? list[s.entsIndex % list.length] : null;
+      return cur ? cur.name + ' — next in ' + s.entsCountdown + 's' : 'no active media';
+    }
+    if (s.mode === 'bingo') return 'BINGO — awaiting call';
+    if (s.mode === 'karaoke') return 'KARAOKE — lyric engine';
+    if (s.mode === 'bigd') return 'BiGD board mirror';
+    return 'RICH MEDIA GAMES';
+  }
+
+  newEvent() {
+    const d = new Date();
+    this.setState({menuOpen:null, dialog:{kind:'event', title:'New Event', draft:{
+      id:null, name:'', date:d.toISOString().slice(0,10), time:'19:00', room:'Main Hall', mode:'Ents', capacity:120, status:'Scheduled', notes:''
+    }}});
+  }
+  editEvent(id) {
+    const e = (this.state.events || []).find(x => x.id === (id || this.state.selEvent));
+    if (!e) return this.message('Edit Event', 'Select an event in the schedule first.');
+    this.setState({menuOpen:null, dialog:{kind:'event', title:'Event Properties — ' + e.name, draft: Object.assign({}, e)}});
+  }
+  patchDraft(patch) {
+    this.setState(s => ({dialog: Object.assign({}, s.dialog, {draft: Object.assign({}, s.dialog.draft, patch)})}));
+  }
+  saveDraft() {
+    const d = this.state.dialog.draft;
+    if (!d.name) { this.setState({dialog: Object.assign({}, this.state.dialog, {title:'Event name is required'})}); return; }
+    let events = this.state.events.slice();
+    if (d.id) { events = events.map(e => e.id === d.id ? Object.assign({}, d) : e); this.log('Event updated: ' + d.name); }
+    else { const id = Math.max(0, ...events.map(e => e.id)) + 1; events.push(Object.assign({}, d, {id: id})); this.log('Event created: ' + d.name); }
+    events.sort((a,b) => (a.date + a.time).localeCompare(b.date + b.time));
+    this.set({events: events, dialog: null, selEvent: d.id || Math.max(...events.map(e => e.id))});
+  }
+  logOff() {
+    this.set({signedOn:false});
+    this.setState({loginOpen:true, pin:'', loginMsg:'', menuOpen:null, outputOpen:false});
+  }
+  doLogin() {
+    if (this.state.pin === '1234') {
+      this.set({signedOn:true});
+      this.setState({loginOpen:false, pin:'', loginMsg:''});
+      this.log('Operator signed on: ' + this.state.operator);
+    } else {
+      this.setState({loginMsg:'Incorrect PIN — try 1234', pin:''});
+    }
+  }
+
+  eventsVals() {
+    const s = this.state;
+    const f = (s.eventFilter || '').toLowerCase();
+    const rows = (s.events || []).filter(e => !f || (e.name + ' ' + e.room + ' ' + e.mode + ' ' + e.status).toLowerCase().indexOf(f) >= 0);
+    const sel = (s.events || []).find(e => e.id === s.selEvent);
+    return {
+      eventFilter: s.eventFilter || '',
+      setEventFilter: e => this.set({eventFilter: e.target.value}),
+      eventCols: ['Date','Time','Event','Room','Mode','Cap.','Status'].map(l => ({label: l, sort: () => this.sortEvents(l)})),
+      eventRows: rows.map(e => ({
+        date: e.date, time: e.time, name: e.name, room: e.room, mode: e.mode, capacity: e.capacity || '-', status: e.status,
+        bg: s.selEvent === e.id ? 'var(--w-sel)' : 'transparent',
+        fg: s.selEvent === e.id ? 'var(--w-seltext)' : 'var(--w-fieldtext)',
+        run: () => this.set({selEvent: e.id}),
+        edit: () => this.editEvent(e.id)
+      })),
+      eventCount: rows.length,
+      selEventNotes: sel ? sel.notes : '',
+      newEventBtn: () => this.newEvent(),
+      editEventBtn: () => this.editEvent(),
+      deleteEventBtn: () => {
+        const e = (s.events || []).find(x => x.id === s.selEvent);
+        if (!e) return this.message('Delete Event', 'Select an event first.');
+        this.set({events: s.events.filter(x => x.id !== s.selEvent)});
+        this.log('Event deleted: ' + e.name);
+      },
+      loadEventBtn: () => {
+        const e = (s.events || []).find(x => x.id === s.selEvent);
+        if (!e) return this.message('Load to Screen', 'Select an event first.');
+        const map = {'Ents':'ents','Bingo':'bingo','Karaoke':'karaoke','BiGD':'bigd','Rich Media':'games'};
+        this.setMode(map[e.mode] || 'ents');
+        this.log('Loaded "' + e.name + '" to screens (' + e.room + ')');
+      }
+    };
+  }
+
+  sortEvents(col) {
+    const keys = {'Date':'date','Time':'time','Event':'name','Room':'room','Mode':'mode','Cap.':'capacity','Status':'status'};
+    const k = keys[col] || 'date';
+    const events = this.state.events.slice().sort((a,b) => String(a[k]).localeCompare(String(b[k]), undefined, {numeric:true}));
+    this.set({events: events});
+  }
+
+  entsVals() {
+    const s = this.state;
+    const active = this.activeMedia();
+    const cur = active.length ? active[s.entsIndex % active.length] : null;
+    const next = (s.events || []).slice(0,4).map(e => e.time + ' ' + e.name).join('   ·   ');
+    return {
+      mediaPath: s.mediaPath,
+      entsCols: ['On','File name','Type','Dwell','Size','Plays'],
+      mediaRows: (s.media || []).map((m, i) => ({
+        name: m.name, kind: m.kind, dwell: m.dwell, size: m.size, plays: m.plays,
+        check: m.on ? 'x' : '',
+        marker: cur && cur.name === m.name ? '> ' : '  ',
+        bg: s.selMedia === i ? 'var(--w-sel)' : 'transparent',
+        fg: s.selMedia === i ? 'var(--w-seltext)' : (m.on ? 'var(--w-fieldtext)' : '#8a8a8a'),
+        select: () => this.set({selMedia: i}),
+        toggle: () => { const media = s.media.map((x,j) => j === i ? Object.assign({}, x, {on: !x.on}) : x); this.set({media: media, selMedia: i}); }
+      })),
+      entsBtn: s.entsRunning ? 'PAUSE ROTATION' : 'START ROTATION',
+      entsToggle: () => { this.setState({entsRunning: !s.entsRunning}); this.log('Ents rotation ' + (s.entsRunning ? 'paused' : 'started')); },
+      entsSkip: () => this.entsAdvance(),
+      mediaUp: () => this.moveMedia(-1),
+      mediaDown: () => this.moveMedia(1),
+      gotoMedia: () => this.go('media'),
+      entsCurrentName: cur ? cur.name : 'NO ACTIVE MEDIA',
+      entsCurrentCaption: cur ? cur.caption : 'Enable at least one file in the advertising folder',
+      entsCurrentSub: cur ? s.venueName + ' · ' + s.joinDomain : '',
+      entsPos: active.length ? (s.entsIndex % active.length) + 1 : 0,
+      entsTotal: active.length,
+      entsCountdown: s.entsCountdown,
+      entsInterval: s.entsInterval,
+      setEntsInterval: e => this.set({entsInterval: Math.max(2, Number(e.target.value) || 2)}),
+      entsTransition: s.entsTransition,
+      setEntsTransition: e => this.set({entsTransition: e.target.value}),
+      entsTicker: s.entsTicker,
+      entsTickerCheck: s.entsTicker ? 'x' : '',
+      toggleEntsTicker: () => this.set({entsTicker: !s.entsTicker}),
+      entsMusicCheck: s.entsMusic ? 'x' : '',
+      toggleEntsMusic: () => this.set({entsMusic: !s.entsMusic}),
+      entsNote: active.length + ' of ' + (s.media || []).length + ' files enabled. Loop length ' + active.reduce((a,m) => a + (m.dwell || s.entsInterval), 0) + 's.',
+      tickerText: 'COMING UP:   ' + next + '   ·   JOIN GAMES AT ' + s.joinDomain
+    };
+  }
+  moveMedia(dir) {
+    const s = this.state, i = s.selMedia, j = i + dir;
+    if (i < 0 || j < 0 || j >= s.media.length) return;
+    const media = s.media.slice();
+    const t = media[i]; media[i] = media[j]; media[j] = t;
+    this.set({media: media, selMedia: j});
+  }
+
+  bingoState() {
+    return this.state.bingo || {game:1, called:[], current:null, pattern:'One Line', prize:250, speed:6, auto:false, code:'WLW341', locked:false, linked:['Main Hall','Lounge Bar'], players:64};
+  }
+  setBingo(patch) { this.set({bingo: Object.assign({}, this.bingoState(), patch)}); }
+
+  callNumber() {
+    const b = this.bingoState();
+    const left = [];
+    for (let n = 1; n <= 90; n++) if (b.called.indexOf(n) < 0) left.push(n);
+    if (!left.length) { this.setBingo({auto:false}); this.message('Game Complete', 'All 90 numbers called. Start a new game.'); return; }
+    const n = left[Math.floor(Math.random() * left.length)];
+    this.setBingo({called: b.called.concat([n]), current: n});
+    this.log('Call ' + (b.called.length + 1) + ': number ' + n);
+  }
+
+  tickGames(patch) {
+    const s = this.state;
+    const b = this.bingoState();
+    if (b.auto) {
+      this._bt = (this._bt || 0) + 1;
+      if (this._bt >= (b.speed || 6)) { this._bt = 0; this.callNumber(); }
+    }
+    const k = this.karaokeState();
+    if (k.playing) {
+      this._kt = (this._kt || 0) + 1;
+      const step = Math.max(1, Math.round(300 / (k.tempo || 100)) + 1);
+      if (this._kt >= step) {
+        this._kt = 0;
+        const song = SONGS[k.songIndex % SONGS.length];
+        this.setKaraoke({lineIndex: (k.lineIndex + 1) % song.lines.length});
+      }
+    }
+    if (this.tickRaces) this.tickRaces(patch);
+  }
+
+  bingoVals() {
+    const s = this.state, b = this.bingoState();
+    const rooms = ROOM_DEFS.map(r => ({
+      name: r.name, code: r.code, players: r.players,
+      linked: (b.linked || []).indexOf(r.name) >= 0
+    }));
+    const linkedRooms = rooms.filter(r => r.linked);
+    const totalPlayers = linkedRooms.reduce((a, r) => a + r.players, 0);
+    const last = b.called.slice(-6).reverse().join('  ');
+    const board = [];
+    for (let n = 1; n <= 90; n++) {
+      const hit = b.called.indexOf(n) >= 0;
+      const cur = b.current === n;
+      board.push({
+        n: n,
+        bg: cur ? 'var(--w-accent)' : (hit ? 'var(--w-sel)' : 'var(--w-face)'),
+        fg: cur ? '#ffffff' : (hit ? 'var(--w-seltext)' : 'var(--w-text)'),
+        bevel: hit ? IN : FLAT,
+        dispBg: cur ? 'var(--w-accent)' : (hit ? 'rgba(255,255,255,.18)' : 'transparent'),
+        dispFg: hit || cur ? 'var(--w-dispfg)' : 'rgba(255,255,255,.28)',
+        dispRing: cur ? 'inset 0 0 0 3px var(--w-dispfg)' : 'inset 0 0 0 1px rgba(255,255,255,.12)'
+      });
+    }
+    return {
+      bingoGame: b.game, bingoPattern: b.pattern, bingoPrize: b.prize,
+      bingoPrizeStr: '£' + Number(b.prize).toLocaleString('en-GB'),
+      bingoCurrent: b.current || '--',
+      bingoNickname: b.current ? (NICKNAMES[b.current] || 'Number ' + b.current) : 'ready to call',
+      bingoLast: last || 'no numbers called',
+      bingoBoard: board,
+      bingoCalledCount: b.called.length,
+      bingoCall: () => this.callNumber(),
+      bingoAuto: () => this.setBingo({auto: !b.auto}),
+      bingoAutoLabel: b.auto ? 'Auto ON' : 'Auto OFF',
+      bingoAutoBevel: b.auto ? IN : OUT,
+      bingoCheck: () => this.message('Check Claim', 'Claim check for ' + b.pattern + ' on game ' + b.game + '. ' + b.called.length + ' numbers called: ' + b.called.join(', ') + '.'),
+      bingoNew: () => { this.setBingo({game: b.game + 1, called: [], current: null, auto: false}); this.log('New game started (game ' + (b.game + 1) + ')'); },
+      setBingoPattern: e => this.setBingo({pattern: e.target.value}),
+      setBingoPrize: e => this.setBingo({prize: Number(e.target.value) || 0}),
+      bingoSpeed: b.speed, setBingoSpeed: e => this.setBingo({speed: Math.max(2, Number(e.target.value) || 6)}),
+      bingoRoomCode: b.code, bingoPlayers: rooms[0].players,
+      bingoNewCode: () => { const c = 'WLW' + Math.floor(100 + Math.random() * 900); this.setBingo({code: c}); this.log('Room code reissued: ' + c); },
+      bingoLock: () => this.setBingo({locked: !b.locked}),
+      bingoLockLabel: b.locked ? 'Locked' : 'Open',
+      bingoLockBevel: b.locked ? IN : OUT,
+      roomCols: ['', 'Room', 'Code', 'Plyrs'],
+      bingoRooms: rooms.map(r => ({
+        name: r.name, code: r.code, players: r.players, check: r.linked ? 'x' : '',
+        bg: r.linked ? 'var(--w-sel)' : 'transparent',
+        fg: r.linked ? 'var(--w-seltext)' : 'var(--w-fieldtext)',
+        toggle: () => {
+          const linked = r.linked ? (b.linked || []).filter(x => x !== r.name) : (b.linked || []).concat([r.name]);
+          this.setBingo({linked: linked});
+        }
+      })),
+      bingoLinkSummary: linkedRooms.length > 1
+        ? linkedRooms.length + ' rooms linked (' + linkedRooms.map(r => r.name).join(', ') + '). One draw feeds all boards, ' + totalPlayers + ' players competing for ' + '£' + Number(b.prize).toLocaleString('en-GB') + '.'
+        : 'Single room game — tick rooms to run one linked draw across boards.',
+      bingoLinkAll: () => this.setBingo({linked: linkedRooms.length === ROOM_DEFS.length ? [ROOM_DEFS[0].name] : ROOM_DEFS.map(r => r.name)}),
+      bingoLinkAllLabel: linkedRooms.length === ROOM_DEFS.length ? 'Unlink All Rooms' : 'Link All Rooms',
+      bingoTotalPlayers: totalPlayers,
+      bingoLinkedCount: linkedRooms.length
+    };
+  }
+
+  karaokeState() {
+    return this.state.karaoke || {songIndex:0, lineIndex:0, playing:false, pitch:0, tempo:100, newSinger:'', selQueue:0, queue:[
+      {singer:'Marie (table 4)', song:'Club Anthem — House Instrumental'},
+      {singer:'Big Dave', song:'Northern Soul Revue'},
+      {singer:'The Hen Party', song:'Saturday Chorus'},
+      {singer:'Ray & Sue', song:'Slow Dance No.2'}
+    ]};
+  }
+  setKaraoke(patch) { this.set({karaoke: Object.assign({}, this.karaokeState(), patch)}); }
+
+  karaokeVals() {
+    const k = this.karaokeState();
+    const song = SONGS[k.songIndex % SONGS.length];
+    const lines = [];
+    for (let o = -2; o <= 2; o++) {
+      const i = k.lineIndex + o;
+      const text = i >= 0 && i < song.lines.length ? song.lines[i] : '';
+      lines.push({
+        text: text,
+        size: o === 0 ? 21 : (Math.abs(o) === 1 ? 15 : 13),
+        bigSize: o === 0 ? 54 : (Math.abs(o) === 1 ? 34 : 26),
+        color: o === 0 ? 'var(--w-accent)' : 'var(--w-dispfg)',
+        op: o === 0 ? 1 : (Math.abs(o) === 1 ? 0.72 : 0.4)
+      });
+    }
+    return {
+      karaokeTrack: song.title + ' (' + song.artist + ')',
+      karaokeLines: lines,
+      karaokeBtn: k.playing ? 'PAUSE' : 'PLAY',
+      karaokePlay: () => this.setKaraoke({playing: !k.playing}),
+      karaokeRestart: () => this.setKaraoke({lineIndex: 0}),
+      karaokePitch: (k.pitch > 0 ? '+' : '') + k.pitch,
+      pitchUp: () => this.setKaraoke({pitch: Math.min(6, k.pitch + 1)}),
+      pitchDown: () => this.setKaraoke({pitch: Math.max(-6, k.pitch - 1)}),
+      karaokeTempo: k.tempo, setTempo: e => this.setKaraoke({tempo: Number(e.target.value)}),
+      karaokePct: Math.round(((k.lineIndex + 1) / song.lines.length) * 100),
+      karaokeQueue: (k.queue || []).map((q, i) => ({
+        num: i + 1, singer: q.singer, song: q.song,
+        bg: k.selQueue === i ? 'var(--w-sel)' : 'transparent',
+        fg: k.selQueue === i ? 'var(--w-seltext)' : 'var(--w-fieldtext)',
+        select: () => this.setKaraoke({selQueue: i})
+      })),
+      karaokeSingerNow: (k.queue && k.queue.length) ? 'NOW SINGING: ' + k.queue[0].singer : 'SINGER LIST OPEN',
+      newSinger: k.newSinger || '',
+      setNewSinger: e => this.setKaraoke({newSinger: e.target.value}),
+      addSinger: () => {
+        if (!k.newSinger) return;
+        this.setKaraoke({queue: (k.queue || []).concat([{singer: k.newSinger, song: SONGS[k.songIndex % SONGS.length].title}]), newSinger: ''});
+        this.log('Singer added: ' + k.newSinger);
+      },
+      karaokeNext: () => this.setKaraoke({queue: (k.queue || []).slice(1), lineIndex: 0, selQueue: 0}),
+      karaokeDrop: () => this.setKaraoke({queue: (k.queue || []).filter((q, i) => i !== k.selQueue), selQueue: 0}),
+      libCols: ['Title', 'Artist', 'Key', 'Lyrics'],
+      karaokeLib: SONGS.map((s, i) => ({
+        title: s.title, artist: s.artist, key: s.key, lyrics: s.lyrics,
+        bg: i === k.songIndex ? 'var(--w-sel)' : 'transparent',
+        fg: i === k.songIndex ? 'var(--w-seltext)' : 'var(--w-fieldtext)',
+        load: () => this.setKaraoke({songIndex: i, lineIndex: 0})
+      }))
+    };
+  }
+  bigdState() {
+    return this.state.bigd || {source:'Maxim 8000 (RS-232 / COM3)', protocol:'WILLOW-1 ASCII', connected:true};
+  }
+  setBigd(patch) { this.set({bigd: Object.assign({}, this.bigdState(), patch)}); }
+
+  bigdVals() {
+    const s = this.state, g = this.bigdState(), b = this.bingoState();
+    const called = b.called || [];
+    const feed = called.slice(-8).reverse().map((n, i) => ({
+      line: '<STX>CALL|' + String(called.length - i).padStart(2,'0') + '|N' + String(n).padStart(2,'0') + '|P' + (b.pattern || '').slice(0,2).toUpperCase() + '|CHK' + ((n * 37) % 256).toString(16).toUpperCase().padStart(2,'0') + '<ETX>'
+    }));
+    if (!feed.length) feed.push({line:'<STX>IDLE|LISTEN|0000<ETX>'});
+    return {
+      bigdSource: g.source, setBigdSource: e => this.setBigd({source: e.target.value}),
+      bigdProtocol: g.protocol, setBigdProtocol: e => this.setBigd({protocol: e.target.value}),
+      bigdStatus: g.connected ? 'ONLINE — ' + called.length + ' frames' : 'OFFLINE — no carrier',
+      bigdLamp: g.connected ? 'var(--w-accent)' : '#8a8a8a',
+      bigdConnect: () => { this.setBigd({connected: !g.connected}); this.log('BiGD link ' + (g.connected ? 'closed' : 'opened') + ' on ' + g.source); },
+      bigdConnectLabel: g.connected ? 'Disconnect' : 'Connect',
+      bigdMapCols: ['Frame', 'Meaning', 'Display slot'],
+      bigdMap: [
+        {frame:'CALL|nn', meaning:'Current called number', slot:'Hero digit'},
+        {frame:'PATT|xx', meaning:'Winning pattern in play', slot:'Header strip'},
+        {frame:'PRZE|nnnn', meaning:'Prize value (pence)', slot:'Accent line'},
+        {frame:'PLYR|nnn', meaning:'Cards in play', slot:'Accent line'},
+        {frame:'CLAM|room', meaning:'Claim raised in room', slot:'Full screen flash'}
+      ],
+      bigdFeed: feed,
+      bigdTicker: 'BiGD ' + g.protocol + ' · ' + g.source + ' · JOIN AT ' + s.joinDomain + ' · ' + (b.linked || []).join(' + '),
+      bigdPush: () => { this.log('BiGD layout pushed to ' + s.screenCount + ' screens'); this.message('Push Layout', 'Reformatted board pushed to ' + s.screenCount + ' screens at ' + s.outRes + '.'); },
+      bigdPushNote: 'Legacy frames are reformatted to the venue layout above and mirrored to ' + s.screenCount + ' screens at ' + s.outRes + '.'
+    };
+  }
+
+  quizState() {
+    return this.state.quiz || {round:1, index:0, revealed:false, picked:null, teams:[
+      {name:'The Usual Suspects', score:14},
+      {name:'Nil Points', score:11},
+      {name:'Quiz Team Aguilera', score:16},
+      {name:'Bar Staff XI', score:9},
+      {name:'Table Nine', score:12}
+    ]};
+  }
+  setQuiz(patch) { this.set({quiz: Object.assign({}, this.quizState(), patch)}); }
+
+  holState() {
+    return this.state.hol || {current: 7, next: 4, streak: 0, best: 5, status: 'Call it — higher or lower?', history: [], drawn: 2};
+  }
+  setHol(patch) { this.set({hol: Object.assign({}, this.holState(), patch)}); }
+
+  raceState() {
+    return this.state.races || {num: 3, running: false, finished: false, winner: null, pos: [0,0,0,0,0,0]};
+  }
+  setRaces(patch) { this.set({races: Object.assign({}, this.raceState(), patch)}); }
+
+  tickRaces() {
+    const r = this.raceState();
+    if (!r.running) return;
+    const pos = r.pos.map((p, i) => p + Math.random() * (7 + RUNNERS[i].form));
+    const done = pos.findIndex(p => p >= 100);
+    if (done >= 0) {
+      const winner = pos.indexOf(Math.max.apply(null, pos));
+      this.setRaces({pos: pos.map(p => Math.min(100, p)), running: false, finished: true, winner: winner});
+      this.log('Race ' + r.num + ' result: ' + RUNNERS[winner].name);
+    } else {
+      this.setRaces({pos: pos});
+    }
+  }
+
+  gamesVals() {
+    const s = this.state;
+    const tabs = ['Quiz','Higher or Lower','At The Races'];
+    const q = this.quizState(), qq = QUIZ[q.index % QUIZ.length];
+    const h = this.holState(), r = this.raceState();
+    const pool = RUNNERS.reduce((a, x) => a + x.stake, 0);
+    return {
+      gameTabs: tabs.map(t => ({
+        label: t, run: () => this.set({gameTab: t}),
+        bevel: s.gameTab === t ? IN : OUT,
+        weight: s.gameTab === t ? 'bold' : 'normal'
+      })),
+      gQuiz: s.gameTab === 'Quiz', gHol: s.gameTab === 'Higher or Lower', gRaces: s.gameTab === 'At The Races',
+      quizRound: q.round, quizNum: (q.index % QUIZ.length) + 1, quizTotal: QUIZ.length,
+      quizQuestion: qq.q,
+      quizOptions: qq.a.map((label, i) => ({
+        label: String.fromCharCode(65 + i) + '.  ' + label,
+        bg: q.revealed ? (i === qq.correct ? 'var(--w-accent)' : (q.picked === i ? 'rgba(255,255,255,.10)' : 'transparent')) : (q.picked === i ? 'rgba(255,255,255,.16)' : 'transparent'),
+        fg: 'var(--w-dispfg)',
+        pick: () => this.setQuiz({picked: i})
+      })),
+      quizStatus: q.revealed ? 'ANSWER: ' + String.fromCharCode(65 + qq.correct) + ' — ' + qq.a[qq.correct] : (q.picked === null ? 'Answers locked at the buzzer' : 'Team answer registered'),
+      quizReveal: () => this.setQuiz({revealed: true}),
+      quizNext: () => this.setQuiz({index: (q.index + 1) % QUIZ.length, revealed: false, picked: null, round: q.index + 1 >= QUIZ.length ? q.round + 1 : q.round}),
+      quizReset: () => this.setQuiz({index: 0, revealed: false, picked: null}),
+      teams: (q.teams || []).map((t, i) => ({
+        name: t.name, score: t.score,
+        plus: () => this.setQuiz({teams: q.teams.map((x, j) => j === i ? Object.assign({}, x, {score: x.score + 1}) : x)}),
+        minus: () => this.setQuiz({teams: q.teams.map((x, j) => j === i ? Object.assign({}, x, {score: Math.max(0, x.score - 1)}) : x)})
+      })),
+      holCurrent: h.current, holNext: h.revealedNext ? h.next : '?',
+      holLeftLabel: 'ON THE BOARD', holStreak: h.streak, holBest: h.best, holStatus: h.status,
+      holHigher: () => this.holGuess('higher'),
+      holLower: () => this.holGuess('lower'),
+      holReset: () => this.setHol({current: 1 + Math.floor(Math.random() * 13), next: 1 + Math.floor(Math.random() * 13), streak: 0, revealedNext: false, status: 'Deck reshuffled — call it', history: [], drawn: 2}),
+      holDeckInfo: 'Cards 1-13 · drawn ' + h.drawn + ' · streak ' + h.streak + ' · best ' + h.best,
+      holHistory: (h.history || []).slice(-10).reverse().map(l => ({line: l})),
+      raceNum: r.num,
+      raceState: r.running ? 'UNDER ORDERS' : (r.finished ? 'RESULT' : 'BETTING OPEN'),
+      runners: RUNNERS.map((x, i) => ({
+        num: i + 1, name: x.name, odds: x.odds, stake: '£' + x.stake,
+        pct: Math.round(r.pos[i] || 0),
+        color: r.finished && r.winner === i ? 'var(--w-accent)' : x.color
+      })),
+      raceResult: r.finished && r.winner !== null ? 'WINNER: ' + (r.winner + 1) + ' ' + RUNNERS[r.winner].name + ' at ' + RUNNERS[r.winner].odds : (r.running ? '' : 'Place your bets at the tote'),
+      raceStart: () => { if (!r.running) { this.setRaces({running: true, finished: false, winner: null, pos: [0,0,0,0,0,0]}); this.log('Race ' + r.num + ' started'); } },
+      raceNew: () => this.setRaces({num: r.num + 1, running: false, finished: false, winner: null, pos: [0,0,0,0,0,0]}),
+      racePool: '£' + pool.toLocaleString('en-GB'),
+      gameOutTop: s.gameTab === 'Quiz' ? 'ROUND ' + q.round + ' — QUESTION ' + ((q.index % QUIZ.length) + 1) : (s.gameTab === 'Higher or Lower' ? 'HIGHER OR LOWER' : 'AT THE RACES — RACE ' + r.num),
+      gameOutMain: s.gameTab === 'Quiz' ? qq.q : (s.gameTab === 'Higher or Lower' ? h.current + '   vs   ' + (h.revealedNext ? h.next : '?') : (r.finished && r.winner !== null ? RUNNERS[r.winner].name + ' WINS' : 'RUNNERS AND RIDERS')),
+      gameOutSub: s.gameTab === 'Quiz' ? (q.revealed ? 'ANSWER: ' + qq.a[qq.correct] : 'ANSWER ON YOUR PHONE — ' + s.joinDomain) : (s.gameTab === 'Higher or Lower' ? h.status : RUNNERS.map((x, i) => (i + 1) + ' ' + x.odds).join('   ·   '))
+    };
+  }
+
+  holGuess(dir) {
+    const h = this.holState();
+    const correct = dir === 'higher' ? h.next > h.current : h.next < h.current;
+    const streak = correct ? h.streak + 1 : 0;
+    const line = h.current + ' -> ' + h.next + '  ' + dir.toUpperCase().slice(0,2) + '  ' + (correct ? 'WIN' : (h.next === h.current ? 'PUSH' : 'OUT'));
+    this.setHol({
+      current: h.next,
+      next: 1 + Math.floor(Math.random() * 13),
+      revealedNext: false,
+      streak: streak,
+      best: Math.max(h.best, streak),
+      drawn: h.drawn + 1,
+      status: correct ? 'CORRECT — streak ' + streak : (h.next === h.current ? 'PUSH — same card' : 'OUT — streak lost'),
+      history: (h.history || []).concat([line])
+    });
+  }
+  mediaVals() {
+    const s = this.state;
+    const sel = (s.media || [])[s.selMedia] || {};
+    const patchSel = patch => this.set({media: s.media.map((m, i) => i === s.selMedia ? Object.assign({}, m, patch) : m)});
+    return {
+      setMediaPath: e => this.set({mediaPath: e.target.value}),
+      mediaRescan: () => { this.log('Media rescan: ' + s.media.length + ' files in ' + s.mediaPath); this.message('Rescan Complete', s.media.length + ' files indexed, ' + this.activeMedia().length + ' enabled for rotation.'); },
+      mediaTiles: (s.media || []).map((m, i) => ({
+        name: m.name, kind: m.kind + ' · ' + m.size,
+        op: m.on ? 1 : 0.4,
+        bg: s.selMedia === i ? 'var(--w-sel)' : 'var(--w-face)',
+        fg: s.selMedia === i ? 'var(--w-seltext)' : 'var(--w-text)',
+        select: () => this.set({selMedia: i})
+      })),
+      mediaAdd: () => {
+        const n = (s.media || []).length + 1;
+        const item = {name: 'NEW_ADVERT_' + String(n).padStart(2,'0') + '.JPG', kind:'JPEG', dwell: s.entsInterval, size:'1.0 MB', plays:0, on:true, caption:'Untitled advert — set a caption in Properties'};
+        this.set({media: (s.media || []).concat([item]), selMedia: (s.media || []).length});
+        this.log('Media added: ' + item.name);
+      },
+      mediaRemove: () => {
+        if (!s.media.length) return;
+        const gone = s.media[s.selMedia];
+        this.set({media: s.media.filter((m, i) => i !== s.selMedia), selMedia: 0});
+        this.log('Media removed: ' + (gone ? gone.name : ''));
+      },
+      mediaTestPlay: () => { this.set({mode:'ents', view:'ents', entsIndex: Math.max(0, this.activeMedia().findIndex(m => m.name === sel.name)), entsCountdown: sel.dwell || s.entsInterval}); this.setState({outputOpen:true}); },
+      selMediaName: sel.name || '', setSelMediaName: e => patchSel({name: e.target.value}),
+      selMediaCaption: sel.caption || '', setSelMediaCaption: e => patchSel({caption: e.target.value}),
+      selMediaDwell: sel.dwell || 0, setSelMediaDwell: e => patchSel({dwell: Math.max(2, Number(e.target.value) || 2)}),
+      selMediaKind: sel.kind || '-', selMediaSize: sel.size || '-', selMediaPlays: sel.plays || 0,
+      selMediaCheck: sel.on ? 'x' : '', toggleSelMedia: () => patchSel({on: !sel.on})
+    };
+  }
+
+  musicVals() {
+    const s = this.state;
+    return {
+      musicSources: [
+        {label:'Spotify (linked)', dot: s.musicSource === 'Spotify (linked)' ? 'var(--w-accent)' : 'transparent', op: 1, run: () => this.set({musicSource:'Spotify (linked)'})},
+        {label:'Local music folder \\\\WILLOW\\MEDIA\\MUSIC', dot: s.musicSource === 'Local folder' ? 'var(--w-accent)' : 'transparent', op: 1, run: () => this.set({musicSource:'Local folder'})}
+      ],
+      musicDevice: s.musicDevice, setMusicDevice: e => this.set({musicDevice: e.target.value}),
+      musicPlaylist: s.musicPlaylist, setMusicPlaylist: e => this.set({musicPlaylist: e.target.value}),
+      queueCols: ['', 'Track', 'Artist', 'Time'],
+      musicQueue: TRACKS.map((t, i) => ({
+        title: t.title, artist: t.artist, time: t.time,
+        mark: i === s.trackIndex ? (s.musicPlaying ? '>' : '=') : '',
+        bg: i === s.trackIndex ? 'var(--w-sel)' : 'transparent',
+        fg: i === s.trackIndex ? 'var(--w-seltext)' : 'var(--w-fieldtext)',
+        play: () => this.set({trackIndex: i, trackPos: 0, musicPlaying: true})
+      })),
+      musicStateLine: (s.musicPlaying ? 'PLAYING' : 'PAUSED') + ' · ' + s.musicDevice + ' · ' + s.musicPlaylist,
+      duckCheck: s.duck ? 'x' : '', toggleDuck: () => this.set({duck: !s.duck}),
+      musicNote: s.musicSource === 'Spotify (linked)'
+        ? 'Spotify bridge authorised. Playback continues across all modes; bingo calls duck the bed by 12 dB when enabled.'
+        : 'Local folder playback reads downloaded files from the MUSIC share. Gapless beds recommended for bingo intervals.'
+    };
+  }
+
+  reportsVals() {
+    const s = this.state;
+    const rows = [
+      {date:'2026-08-21', session:'Thursday Cash Bingo', mode:'Bingo', players:186, rooms:2, takings:1420, payout:980},
+      {date:'2026-08-21', session:'Late Karaoke', mode:'Karaoke', players:94, rooms:1, takings:610, payout:0},
+      {date:'2026-08-22', session:'Friday Quiz Night', mode:'Rich Media', players:132, rooms:1, takings:880, payout:300},
+      {date:'2026-08-22', session:'At The Races', mode:'Rich Media', players:88, rooms:1, takings:540, payout:410},
+      {date:'2026-08-23', session:'Saturday Prize Bingo', mode:'Bingo', players:214, rooms:4, takings:2380, payout:1650},
+      {date:'2026-08-24', session:'Sunday Family Bingo', mode:'BiGD', players:120, rooms:2, takings:760, payout:520},
+      {date:'2026-08-25', session:'Foyer Advertising Loop', mode:'Ents', players:0, rooms:4, takings:450, payout:0},
+      {date:'2026-08-26', session:'Members Draw', mode:'Ents', players:0, rooms:4, takings:180, payout:100}
+    ];
+    const mult = s.reportPeriod === 'Last 30 days' ? 4 : (s.reportPeriod === 'Quarter to date' ? 12 : 1);
+    const takings = rows.reduce((a, r) => a + r.takings, 0) * mult;
+    const payout = rows.reduce((a, r) => a + r.payout, 0) * mult;
+    const players = rows.reduce((a, r) => a + r.players, 0) * mult;
+    const money = n => '£' + n.toLocaleString('en-GB');
+    return {
+      reportPeriod: s.reportPeriod, setReportPeriod: e => this.set({reportPeriod: e.target.value}),
+      printReport: () => window.print(),
+      exportReport: () => this.message('Export CSV', 'WILLOW_REPORT_' + s.reportPeriod.replace(/ /g,'_').toUpperCase() + '.CSV written to \\\\WILLOW\\EXPORT (' + rows.length * mult + ' rows).'),
+      reportKpis: [
+        {label:'Sessions run', value: String(rows.length * mult), delta:'+' + (2 * mult) + ' vs prior'},
+        {label:'Players', value: players.toLocaleString('en-GB'), delta:'+6.4%'},
+        {label:'Takings', value: money(takings), delta:'+3.1%'},
+        {label:'Margin', value: Math.round(((takings - payout) / takings) * 100) + '%', delta: money(takings - payout) + ' net'}
+      ],
+      reportCols: ['Date','Session','Mode','Players','Rooms','Takings','Payout'],
+      reportRows: rows.map(r => ({
+        date: r.date, session: r.session, mode: r.mode,
+        players: r.players || '-', rooms: r.rooms,
+        takings: money(r.takings), payout: r.payout ? money(r.payout) : '-'
+      })),
+      reportTotalTakings: money(takings), reportTotalPayout: money(payout),
+      reportMargin: Math.round(((takings - payout) / takings) * 100) + '%'
+    };
+  }
+
+  settingsVals() {
+    const s = this.state, tabs = ['Colours','Venue','Display','Advanced'];
+    const theme = s.theme || {};
+    return {
+      settingsTabs: tabs.map(t => ({
+        label: t, run: () => this.set({settingsTab: t}),
+        bevel: s.settingsTab === t ? IN : OUT,
+        weight: s.settingsTab === t ? 'bold' : 'normal'
+      })),
+      sColours: s.settingsTab === 'Colours', sVenue: s.settingsTab === 'Venue',
+      sDisplay: s.settingsTab === 'Display', sAdvanced: s.settingsTab === 'Advanced',
+      presets: Object.keys(PRESETS).map(name => ({
+        name: name, c1: PRESETS[name].title1, c2: PRESETS[name].face, c3: PRESETS[name].accent,
+        bevel: s.preset === name ? IN : OUT,
+        weight: s.preset === name ? 'bold' : 'normal',
+        run: () => { this.set({theme: Object.assign({}, PRESETS[name]), preset: name}); this.log('Colour scheme: ' + name); }
+      })),
+      themeEntries: THEME_LABELS.map(([k, label]) => ({
+        label: label, value: theme[k] || '#000000',
+        onChange: e => this.set({theme: Object.assign({}, this.state.theme, {[k]: e.target.value}), preset: 'Custom'})
+      })),
+      resetTheme: () => this.set({theme: Object.assign({}, PRESETS['Classic Grey']), preset:'Classic Grey'}),
+      saveTheme: () => { this.save(); this.message('Colour Scheme', 'Scheme "' + s.preset + '" applied and saved to this terminal.'); },
+      setVenueName: e => this.set({venueName: e.target.value}),
+      setLicence: e => this.set({licence: e.target.value}),
+      setJoinDomain: e => this.set({joinDomain: e.target.value}),
+      operatorList: s.operatorList, setOperatorList: e => this.set({operatorList: e.target.value}),
+      outRes: s.outRes, setOutRes: e => this.set({outRes: e.target.value}),
+      screenCount: s.screenCount, setScreenCount: e => this.set({screenCount: Math.max(1, Number(e.target.value) || 1)}),
+      displayFlagRows: (s.displayFlags || []).map((f, i) => ({
+        label: f.label, check: f.on ? 'x' : '',
+        toggle: () => this.set({displayFlags: s.displayFlags.map((x, j) => j === i ? Object.assign({}, x, {on: !x.on}) : x)})
+      })),
+      storageNote: (s.events || []).length + ' events · ' + (s.media || []).length + ' media files · ' + (this.bingoState().called || []).length + ' calls this game',
+      exportState: () => this.message('Diagnostics', 'Terminal WLW-TERM-01 · build 4.2.117 · BiGD 2.9 · ' + (s.events || []).length + ' events · ' + (s.media || []).length + ' media files · scheme "' + s.preset + '" · ' + s.screenCount + ' screens at ' + s.outRes + '.'),
+      clearState: () => {
+        try { localStorage.removeItem(KEY); } catch (e) {}
+        const d = this.defaults();
+        this.setState(Object.assign({}, d, {loginOpen: true, pin: '', dialog: null, menuOpen: null, outputOpen: false}), () => this.save());
+      }
+    };
+  }
+
+  renderVals() {
+    return Object.assign({}, this.shellVals(), this.eventsVals(), this.entsVals(), this.bingoVals(),
+      this.karaokeVals(), this.bigdVals(), this.gamesVals(), this.mediaVals(), this.musicVals(),
+      this.reportsVals(), this.settingsVals());
+  }
+}
+
+</script>
+</body>
+</html>

@@ -1,144 +1,19 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Marquee — Room Display</title>
-<meta name="robots" content="noindex">
-<meta name="theme-color" content="#06080D">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/display.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WILLOW Event System — Screen Output</title>
+<link rel="stylesheet" href="css/willow.css">
 </head>
-<body>
-
-<div class="screen">
-
-  <div class="top">
-    <span class="venue" id="venue">The Marquee</span>
-    <span class="divider"></span>
-    <span class="slot" id="gameSlot">Now playing<b id="gameName">&mdash;</b></span>
-    <span class="sp"></span>
-    <span class="slot gold hide" id="stageSlot">Playing for<b id="stageName">&mdash;</b></span>
-    <span class="divider hide" id="div2"></span>
-    <span class="slot gold hide" id="jpSlot">Jackpot<b id="jpAmount">&mdash;</b></span>
-  </div>
-
-  <div class="stagearea">
-
-    <!-- nothing connected -->
-    <div class="view on" id="vWaiting">
-      <div class="waiting">
-        <div>
-          <div class="w">Room display</div>
-          <h2 id="waitTitle">Waiting for the console</h2>
-          <div class="w" id="waitSub">Open the console on this machine and the display will find it</div>
-          <code id="waitCode"></code>
-        </div>
-      </div>
-    </div>
-
-    <!-- slides between games -->
-    <div class="view" id="vMedia">
-      <div class="media">
-        <div class="slide">
-          <div class="st" id="slideKicker">The Marquee</div>
-          <h2 id="slideTitle">Welcome</h2>
-          <p id="slideBody"></p>
-          <div class="dots" id="slideDots"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- eyes down -->
-    <div class="view" id="vLobby">
-      <div class="lobby">
-        <div class="kicker">Next up</div>
-        <h2 id="lobbyName">Game 1</h2>
-        <div class="count" id="lobbyCount">20</div>
-        <div class="kicker" id="lobbyWord">Eyes down</div>
-        <div class="prizes" id="lobbyPrizes"></div>
-      </div>
-    </div>
-
-    <!-- the game -->
-    <div class="view" id="vPlay">
-      <div class="play">
-        <div style="display:flex;flex-direction:column;gap:1.8vmin;min-height:0">
-          <div class="callerbox" style="flex:1">
-            <div class="ball bigball blank" id="bigBall">Eyes down</div>
-            <div class="nickname" id="nickname"></div>
-            <div class="callmeta">
-              <span>Called <b id="calledN">0</b></span>
-              <span>Left <b id="leftN">90</b></span>
-            </div>
-            <div class="recent" id="recentBalls"></div>
-          </div>
-          <div class="prizes" id="playPrizes"></div>
-        </div>
-        <div class="boardbox">
-          <div class="head"><span>Board</span><b id="boardCount">0 / 90</b></div>
-          <div class="board" id="board"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- checking a claim -->
-    <div class="view" id="vCheck">
-      <div class="check">
-        <div class="word">Check</div>
-        <div class="who" id="checkWho"></div>
-        <div class="sub" id="checkSub">Caller stopped &mdash; validating the ticket</div>
-        <div class="verdict hide" id="checkVerdict"></div>
-      </div>
-    </div>
-
-    <!-- winner -->
-    <div class="view" id="vWon">
-      <div class="won">
-        <div class="prizeword" id="wonStage">One Line</div>
-        <div class="amount" id="wonAmount">&pound;20</div>
-        <div class="name" id="wonName">&mdash;</div>
-        <div class="detail" id="wonDetail"></div>
-        <div class="jackpot hide" id="wonJackpot"></div>
-      </div>
-    </div>
-
-    <!-- quiz -->
-    <div class="view" id="vQuiz">
-      <div class="quiz">
-        <div class="qhead">
-          <span class="n" id="quizName">Quickfire</span>
-          <span class="n" id="quizPos"></span>
-          <span class="sp"></span>
-          <span class="n" id="quizAnswered"></span>
-        </div>
-        <div>
-          <div class="q" id="quizQ">Ready?</div>
-          <div class="opts" id="quizOpts" style="margin-top:3vmin"></div>
-        </div>
-        <div>
-          <div class="timerbar" style="margin-bottom:1.6vmin"><i id="quizBar" style="width:100%"></i></div>
-          <div class="table" id="quizTable"></div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <div class="ticker">
-    <span class="note" id="notice"></span>
-    <span class="sharp hide" id="sharpBox">On one to go <b id="sharpN">0</b></span>
-    <span class="join" id="joinBox">
-      <span class="lb">Play along at</span>
-      <span class="cd" id="joinCode">&mdash;</span>
-    </span>
-  </div>
-
-</div>
-
-<script type="module" src="js/display.js"></script>
+<body class="display-body">
+<div class="screen"><div id="screen"></div></div>
+<div class="offline" id="screenTag"></div>
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/net.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/display.js"></script>
 </body>
 </html>

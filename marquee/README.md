@@ -1,220 +1,293 @@
-# Marquee Event System
+# WILLOW Event System 4.2.117
 
-A venue bingo system in three screens: an **operator console** you drive with a finger, a
-**room display** for the big screen, and a **phone page** for anyone playing along. Static
-files only — it runs on GitHub Pages with nothing behind it.
+Venue event, music and games control with a patron-facing screen output and a
+patron phone site. Static site — no server-side code, no build step, no
+database.
 
-Built after the shape of Willow Event: the caller works a touchscreen, the room watches a
-graphical display, and a game manager builds each game before it goes on the board.
+---
+
+## Which folder do I use?
+
+**Use `willow-project/`.** That is the real, editable site: separate HTML pages,
+config files you can edit, and the folder you upload to your host.
+
+`willow-site/` and the root `WILLOW Event System (standalone).html` are the
+earlier single-file versions. They still open and demo, but they have **no
+patron site, no real music playback and no editable config**. Keep them as a
+backup if you like; everything from here on refers to `willow-project/`.
+
+---
+
+## Contents
 
 ```
-console.html   the caller's box — game manager, calling, validation, media, quiz, report
-display.html   the room screen — flashboard, current call, prizes, winner cards, slides
-index.html     the phone — a book of six tickets, dab and claim
+index.html        Operator sign-on (entry point)
+console.html      Operator console — all modes
+display.html      Venue screen output (open one per screen, F11 = full screen)
+interact.html     Patron site — bingo tickets, shoutouts, photo uploads
+css/
+  willow.css      Complete classic-desktop skin, driven by CSS variables
+js/
+  config.js       SITE CONFIG — venue, operators/PINs, rooms, paths, presets,
+                  Spotify credentials, patron-site transport
+  data.js         CONTENT — adverts, events, karaoke library, quiz, race card,
+                  music beds
+  store.js        Console state + localStorage + cross-window sync
+  net.js          Patron traffic transport (local or REST relay) + card maths
+  music.js        Real music playback — local files + Spotify Web Playback
+  theme.js        Colour scheme application
+  console.js      Console UI and all mode logic
+  display.js      Screen output renderer
+  interact.js     Patron site logic
+.nojekyll         Lets GitHub Pages serve files/folders beginning with _
 ```
 
 ---
 
-## Getting it up
+## 1. Put it online
 
-1. Put these files in a repo, **Settings → Pages → deploy from `main`, `/ (root)`**.
-2. Open `set-password.html` — either on the live site or by double-clicking it in the
-   folder; it carries its own crypto and needs nothing else. Create the first **admin**,
-   copy the block it gives you over the whole of `js/credentials.js`, and push.
-3. Open `console.html`, sign in, and press **Open display**. Drag that window to the big
-   screen and press F11.
+Upload the **contents of `willow-project/`** to any static host, so that
+`index.html` sits at the root of the site.
 
-More operators are added from the console itself — see *Who can sign in* below.
-
-The `.nojekyll` file stops GitHub's build step touching anything.
-
-The other three pages are ES modules, so they need to be served — from GitHub Pages, or
-locally with `python3 -m http.server 8000` and `http://localhost:8000`. Only
-`set-password.html` works straight off the disk.
-
-## Running a session
-
-**Build a game.** *New game* opens the builder: name it, set the prizes in order (one
-line, two lines, full house — add or remove as many as you like), pick auto or manual
-calling and the speed, and say whether the full house is playing for the jackpot. Save any
-setup as a preset and fire it off in two taps next time.
-
-Each prize is either **cash** or a **thing**. Flick the switch on the row: cash takes an
-amount, a prize takes a description — *Bottle of fizz*, *Meat tray*, *Bar tab*. The
-display, the phones and the report all say the right one, and the session totals only add
-up the cash.
-
-**Eyes down.** The game goes on the board with a countdown, the display shows the prize
-rail, and calling starts by itself when the clock runs out.
-
-**Call.** Auto calls every few seconds; *Call next* pulls one early. Switch to **manual**
-and a 1–90 pad appears — tap whatever your physical machine drew and the whole system
-follows. *Undo call* takes back a misheard ball on every screen at once.
-
-**Check a claim.** Two ways in:
-
-- *Someone on a phone* presses BINGO. The claim arrives already validated — name, book,
-  ticket, which ball completed it — the caller stops, and the display shows CHECK. Press
-  **Award**.
-- *Someone with a paper book* shouts. Press **Check** to stop the caller, type their book
-  number, and the console rebuilds their exact six tickets, marks off what's been called,
-  and tells you whether they're on — and if not, how far off they are.
-
-**Award, and on to the next prize.** The display shows the winner card, then *Next prize*
-carries the same game on to two lines and the full house.
-
-**Anyone can shout, and be wrong.** The BINGO button on a phone is live whenever a prize
-is — it only glows when they're genuinely on. A false call stops the caller, tells the
-room, and goes on that player's tally. *Back to play* starts the caller again.
-
-### The room board
-
-Down the right of the Bingo pane, everyone in the room with where they stand — closest
-first, because the console knows every book from the perm:
-
-| | |
+| Host | Steps |
 | --- | --- |
-| grey | playing, with how many they need |
-| amber edge | one away, and **the numbers they're waiting on** |
-| **yellow** | claim in, waiting for you |
-| **green** | called it, and got it |
-| **red** | missed it, or called falsely |
+| GitHub Pages | New repo → upload the files → Settings ▸ Pages ▸ deploy from `main` / root |
+| Netlify / Vercel | Drag the folder onto the dashboard, no build command |
+| Cloudflare Pages | Create project ▸ Direct upload |
+| Venue web space | FTP the folder into `public_html` |
+| Local only | Serve it — `python3 -m http.server 8000` in the folder, then `http://127.0.0.1:8000`. Do **not** open the files with `file://`; Spotify and some browser features refuse to run |
 
-The header line says what the whole room is sitting on — *waiting on 74 ×3, 83 ×3*.
+**Serve over HTTPS.** Phones need it for camera/photo access, and Spotify will
+not authorise an `http://` address (except `http://127.0.0.1`).
 
-Tap anyone to open their card: where they stand, their false-call tally, and
+### Optional: the short `/interact` address
 
-- **Drop** — frees their book, leaves them connected. The number goes back in the pool,
-  so the same player coming back in gets the same book
-- **Kick out** — puts them out of the room; they can come back
-- **Bar** — puts them out and refuses them at the door until you let them back in
+Patrons find `yoursite.com/interact` easier than `interact.html`. Either
+create a folder `interact/` containing a copy of `interact.html` renamed to
+`index.html`, or add a host rewrite:
 
-## How a book number can be checked at all
+* Netlify — `_redirects` file: `/interact  /interact.html  200`
+* Cloudflare Pages — `_redirects`, same line
+* Apache — `.htaccess`: `RewriteRule ^interact$ interact.html [L]`
 
-Every session has a **perm** — one number the whole book range is generated from. Book
-4172 under a given perm is always the same six tickets, on the console, on a phone, on a
-printout. That is what makes validation honest: the caller isn't taking anyone's word for
-what their ticket says, the console rebuilds it and checks it against the numbers actually
-called.
+Then set `interact.path` in `js/config.js` to `'interact'` so the console shows
+patrons the short address.
 
-It also gives you the thing a club system does that nothing else can — because every book
-in the range is known, the console scans the whole room after each ball and the display
-can say **318 on one to go**. Set the range in Setup to however many books are actually
-out.
+---
 
-*New perm* in Setup reissues every book in the room — on the phones too, straight away.
-Between games only.
+## 2. Set up the venue (`js/config.js`)
 
-### The book check
+This is the only file most venues need to edit. Everything is read at boot;
+operator changes made in Settings are saved per terminal and win over these
+defaults (Settings ▸ Advanced ▸ Clear Local Data restores the file values).
 
-Setup shows a **book check** number underneath the perm. Every device in the room works
-that number out for itself, from a fixed book; if two devices agree on it, they agree on
-every book. The console tells each phone its own when the player sits down, and a phone
-that comes up with something different says so on its own screen instead of playing on
-tickets the caller isn't checking against.
-
-You should never see them disagree. If you ever do, that phone's browser is the odd one
-out — take the player onto a paper book and tell me.
-
-## The other modules
-
-**Media** — slides for the display between games, plus a ticker along the bottom that
-shows on every screen the moment you type it. *Show now* puts a particular slide up.
-
-**Games** — a Quickfire quiz round the console runs on the display: question and four
-answers on the big screen, players answer on their phones, *Reveal* scores it and the
-leaderboard updates. Edit the questions in the same pane.
-
-**Report** — games played, prizes paid, jackpot paid, who won what in how many calls.
-Export as CSV or print it.
-
-## The two ways screens connect
-
-| | how | needs internet |
-| --- | --- | --- |
-| Display on the same machine | direct browser channel | no |
-| Display somewhere else | room code | yes |
-| Phones | room code | yes |
-
-A display opened from the console's own button talks to it directly and keeps working with
-the network unplugged — the console and the big screen are a closed system. Phones and
-remote displays join by the five-character room code, over WebRTC through PeerJS's free
-public broker. If that's blocked on someone's network they simply can't join; the game
-itself is unaffected.
-
-The session lives in the console tab, and is saved as you go — reload it and the game,
-the seats and the report are all still there. Close it and the room ends.
-
-**Keep the console tab in front.** Browsers slow a hidden tab's clock down to about one
-tick a minute, so a console sitting behind something else would trickle out a ball a
-minute with no sign of why. Rather than let that happen, the caller stops when the tab
-goes out of sight and picks up again when it comes back, and says so. The display in its
-own window is unaffected — it's the console that runs the clock.
-
-## Keyboard, for a caller in a hurry
-
-| key | does |
+| Key | What to change |
 | --- | --- |
-| `space` | whatever the big button says — eyes down, call next, next prize |
-| `p` | pause / resume |
-| `c` | check / back to play |
+| `venueName`, `licence`, `joinDomain` | Shown on the console, screens and patron site |
+| `operators` | Operator names and **sign-on PINs** — change from `1234` before going live |
+| `rooms` | Room names, board codes, seat counts |
+| `paths` | The folder paths shown in the UI (advertising, karaoke, music, exports) |
+| `display` | Screen resolutions, how many outputs, idle-screen flags |
+| `bingo` | Ball count, patterns, default prize, auto-call speed, which rooms link by default |
+| `bigd` | Equipment source list, protocol, frame mapping |
+| `music` | Sources, zones, playlists, default volume, ducking, **Spotify credentials** |
+| `interact` | Patron-site transport, endpoint, photo size, what is open by default |
+| `presets` / `defaultPreset` | Colour schemes |
+| `modes` | Which modes appear in menus and Mode Control |
 
-## What this is not
+Content — adverts, events, karaoke songs and lyrics, quiz questions, race
+runners, music beds, report rows, bingo nicknames — lives in `js/data.js`.
 
-This is not a licensed gaming system. There's no certified RNG, no cash handling, no
-Gambling Commission approval, and nothing here meets RTS technical standards. Prize
-amounts are bookkeeping so the display and the report can show them — for a club night,
-a holiday park social, a fundraiser, a roleplay server. If you ever want to run real cash
-bingo you need certified equipment and a licence, and none of that starts here.
+**PINs are terminal gates only.** They are client-side and do not protect money
+or licensed play.
 
-The operator sign-in is a client-side lock: PBKDF2 with a salt per operator, so no
-password is in the files, but the check happens in the visitor's browser and a determined
-person could grind guesses against it offline. Use long passphrases. Roles decide what
-each operator sees, not what they could reach if they went digging in the source — treat
-them as a way of keeping people out of each other's way, not as a security boundary.
+---
 
-The thing that actually protects a live session is that the room only exists inside the
-operator's open tab. Somebody past the sign-in gets an empty console of their own, never
-yours.
+## 3. Run a session
 
-## Files
+1. Open `index.html`, pick an operator, enter the PIN.
+2. **Screens ▸ Open Screen Output** (or `F11`) once per venue screen. Drag each
+   window to its monitor and press `F11` for full screen. Any number can be
+   open at once; they all follow the console live.
+3. Pick a mode — Ents, Bingo, Karaoke, BiGD, Rich Media Games, Interactions.
+4. `F12` blacks out every screen instantly.
 
-```
-console.html  display.html  index.html  set-password.html
-css/base.css        tokens, buttons, the ball, the flashboard
-css/console.css     the operator surface
-css/display.css     the room screen, sized in vmin so it fits any TV
-css/player.css      the phone
-js/core.js          books, perms, the shuffle, win detection, validation, room scan
-js/session.js       the session model — every state change lives here
-js/bus.js           the wire: local channel + WebRTC
-js/console.js       the caller's box
-js/display.js       the room screen
-js/player.js        the phone
-js/auth.js          the sign-in check, roles and what each one may touch
-js/credentials.js   your operators — the only file you edit after deploying
-test-core.mjs       node test-core.mjs — proves the engine before you trust it
-test-books.mjs      node test-books.mjs — who gets which book, and what a drop frees
-```
+Console and screens talk over `BroadcastChannel`, falling back to the
+localStorage `storage` event, so **all windows must be on the same machine and
+browser profile**. For screens on other PCs, run a console on each, or replace
+`js/store.js` with a version backed by your own API.
 
-`test-core.mjs` checks fifteen hundred books for legality, that the same perm always
-produces the same tickets, that "how many to go" agrees with brute force, that a claim one
-ball early is refused, that the room scan matches a slow correct count, and that swapping
-the browser's sorting algorithm for two other legal ones changes nothing. Run it after
-touching anything in `core.js`.
+### Keyboard
 
-That last check is not academic. Generating a book used to depend on *how* the browser
-sorted, which is a thing every browser is free to decide for itself — so a caller on
-Chrome and a player on an iPhone built different tickets from the same book number, and
-the console would turn down a claim the phone swore was good. Nothing inside the generator
-may draw a random number inside a sort comparator, or leave two items comparing equal:
-those are the two ways an engine's own choices leak into the result.
+| Key | Action |
+| --- | --- |
+| `F2` | Event schedule |
+| `F4` | Media folder manager |
+| `F5` | Music control |
+| `F6` | Interactions |
+| `F9` | Reports |
+| `F11` | Open screen output |
+| `F12` | Blackout toggle |
+| `Ctrl+N` | New event |
+| `Ctrl+L` | Sign off |
+| `Esc` | Close menus and dialogs |
 
-## Making it yours
+---
 
-- **Name** — the venue name is in Setup, and shows across the top of the display.
-- **Colours** — `:root` at the top of `css/base.css`. `--amber` is the house colour.
-- **Bingo calls** — `NICK` in `js/core.js`, indexed 1 to 90.
-- **Prize types** — `STAGE_TYPES` in `js/core.js`. Adding one means teaching `toGo` what
-  completing it looks like; everything else follows from that single function.
-- **Call speeds** — the `#bxSpeed` options in `console.html`.
+## 4. Modes
+
+| Mode | What it does |
+| --- | --- |
+| Ents | Rolling advert display from the media folder, with ticker and dwell control |
+| Bingo | Linked random draw, board, pattern, prize, room codes, **connected players and ticket checks** |
+| Karaoke | Singer queue and the synced lyric engine |
+| BiGD | Bingo Information Graphical Display — big-digit board fed by equipment |
+| Rich Media Games | Quiz, Higher or Lower, At The Races |
+| Interactions | Patron shoutouts and photo wall on the screens |
+
+---
+
+## 5. Music — real playback
+
+Music Control (`F5`) drives a real player. Audio comes out of the **console**
+window, so route that machine's output to the amp. Browsers block audio until
+the operator clicks — the first **PLAY** press unlocks it. Ducking dips the bed
+to 25% while a bingo call goes out (tick *Duck music on bingo call / mic*).
+
+### Local files — works immediately, no accounts
+
+* Music Control ▸ **Local files** ▸ `Load music folder…` and pick the venue
+  music folder on the operator PC. Files never leave the machine. The pick has
+  to be repeated after a console restart — browsers do not allow silent folder
+  access.
+* Or host the audio with the site and add a `src` to each entry in `js/data.js`
+  ▸ `tracks[]`, e.g. `src:'media/music/bed01.mp3'`. Those load automatically
+  with nothing to pick.
+* Filenames like `Artist - Title.mp3` split into artist and title.
+
+### Linking Spotify
+
+In-browser Spotify playback needs a **Spotify Premium** account and a free app
+registration. Five minutes, once:
+
+1. Go to <https://developer.spotify.com/dashboard> ▸ **Create app** (any name,
+   e.g. "WILLOW Console").
+2. Add a **Redirect URI** that exactly matches your console URL, e.g.
+   `https://yoursite.com/console.html`. Spotify accepts `https://` only, or
+   `http://127.0.0.1:8000/console.html` for local testing — `file://` and
+   `localhost` are refused. The console prints the exact URI to paste.
+3. Tick **Web Playback SDK** as the API in use, and save.
+4. Copy the **Client ID**. Put it either in `js/config.js` ▸
+   `music.spotify.clientId` (all terminals) or in the **Client ID** box in
+   Music Control (this terminal only), then press **Save**.
+5. Music Control ▸ source **Spotify (linked)** ▸ **Link Spotify account**. You
+   approve on Spotify and land back on the console, linked.
+6. Optional: map playlist names to Spotify URIs in `js/config.js` ▸
+   `music.spotify.playlists` (in Spotify: right-click a playlist ▸ Share ▸ Copy
+   Spotify URI, e.g. `spotify:playlist:37i9dQZF1DXcBWIGoYBM5M`). With a URI
+   set, choosing that playlist and pressing PLAY starts it; with none set, PLAY
+   resumes whatever the account last played.
+
+The console registers itself as a Spotify device (`WILLOW Console`) and takes
+over playback; transport, volume and ducking act on the live session. A
+non-Premium account reports an account error and will not play — use local
+files. Tokens are obtained with PKCE and stored in `localStorage`
+(`willow.spotify.token`) on that terminal; no client secret exists anywhere in
+the site. **Unlink** clears them.
+
+---
+
+## 6. Patron site (`interact.html`)
+
+Patrons open `yoursite.com/interact.html` (or `/interact`) on their phones,
+enter a name and the room code shown on the screens, and get three tabs:
+
+* **Bingo** — when the operator opens sales they take a real 90-ball strip
+  ticket with a **ticket serial** printed at the top. It marks itself as
+  numbers are called and tells them how many they are off a claim. Claiming
+  sends the claim to the console.
+* **Shoutout** — up to 120 characters, queued for operator approval.
+* **Photo** — camera or gallery, downscaled on the phone, queued for approval.
+
+### Operator side — where things live
+
+**Bingo Mode ▸ Player Join & Tickets** is the bingo half:
+
+* **Sales open** tick — until this is on, patrons cannot take a ticket.
+* Connected player list: name, room, ticket state, and **To go** — how many
+  numbers that ticket needs for the pattern in play (`CLAIM` at zero,
+  highlighted at one).
+* `[i]` on a player shows their **ticket serial**, game, distance from a claim,
+  and the **Drop** / **Ban** buttons.
+* **Claim check** — type the serial the patron reads off their ticket: you get
+  marked count, completed lines, whether the claim is valid for the pattern in
+  play, and exactly which numbers are still missing.
+
+**Interactions (`F6`)** is only shoutouts and photos: accept/decline toggles,
+what the screens show (Both / Shoutouts / Photos), the approval queue, what is
+live on screen with a **pull** link, the join address, and the ban list.
+Pressing **Check** on a bingo claim in the queue runs the same serial lookup
+and reports the verdict.
+
+**Drop** ends that device's session, withdraws its ticket and tells the patron
+why; they can rejoin. **Ban** blocks the device for 10 minutes, 1 hour, the
+rest of tonight, or permanently — banned devices see a blocked screen and their
+submissions stop reaching the queue. Bans are listed with a **Lift** button.
+
+### Making the patron site work on real phones
+
+`js/config.js` ▸ `interact.transport`:
+
+* `'local'` (default) — console, screens and patron page in **one browser
+  profile** on one machine. The whole flow works end to end; use it to
+  rehearse, or for venue tablets on that profile.
+* `'rest'` — real phones. Set `interact.endpoint` to a tiny JSON relay you
+  control (Cloudflare Worker, Supabase REST table, Firebase RTDB REST, a
+  20-line Node or PHP script). The contract is one GET and four POST ops,
+  documented at the top of `js/net.js`. Nothing else in the site changes.
+
+Photos travel as downscaled JPEG data URLs (`interact.photoMaxPx`,
+`photoQuality`), so a relay only has to store JSON.
+
+---
+
+## 7. Colour scheme
+
+Settings ▸ Colours. Six presets plus a colour picker for every element —
+window face, bevels, title bar, selection, fields, accent, screen background
+and text, desktop backdrop. Editing any slot creates a **Custom** scheme. Add
+your own presets in `js/config.js` ▸ `presets`, and choose which slots are
+editable with `themeLabels`. The scheme applies to the console and the venue
+screens at once.
+
+---
+
+## 8. Data storage
+
+Console state lives in `localStorage` under `willow.state.v1` per terminal —
+settings, colour scheme, events, media list, singer queue, game state. Patron
+traffic lives under `willow.interact.v1` (local transport). Settings ▸ Advanced
+▸ **Clear Local Data** restores `js/config.js` / `js/data.js` values;
+Interactions ▸ **Clear all patron traffic** wipes the patron feed.
+
+Because state is per-browser, each terminal keeps its own copy. To share state
+across machines, replace `js/store.js` with a version that reads/writes your
+own API — nothing else needs to change.
+
+---
+
+## 9. Notes for going live
+
+* Change the operator PINs in `js/config.js`.
+* Advertising files are listed by name and the screen shows the caption. Point
+  the tile/preview at your real media URLs in `js/display.js` and
+  `js/console.js` (search for `caption`).
+* BiGD shows a simulated frame monitor. A real serial/TCP bridge should POST
+  frames to a small local service that writes them into the store.
+* Bingo draws use `Math.random()`. For licensed play, replace `callNumber()`
+  with your certified RNG or the equipment feed.
+* Patron tickets are generated on the phone from the device id, so a serial is
+  reproducible and checkable on the console. For money games, issue tickets
+  from your licensed system and keep the serial column.
+* Moderate photos and shoutouts before they hit the screens — the queue exists
+  for that reason; `interact.autoApproveShoutouts` is off by default.

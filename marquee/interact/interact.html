@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1218">
+<title>Join In — WILLOW</title>
+<style>
+  :root{
+    --bg:#0d1218; --card:#161d26; --line:#26313d; --fg:#f2efe6; --dim:#93a0ad;
+    --accent:#e8b23a; --good:#3f9d5a; --bad:#b3413d;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--fg);
+    font:16px/1.4 "Helvetica Neue",Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
+  body{padding:0 0 92px;min-height:100vh}
+  a{color:var(--accent)}
+  .wrap{max-width:560px;margin:0 auto;padding:0 16px}
+  header{padding:18px 16px 14px;text-align:center;border-bottom:1px solid var(--line);
+    position:sticky;top:0;background:var(--bg);z-index:5}
+  header .venue{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  header .room{font-size:22px;font-weight:700;margin-top:2px}
+  header .who{font-size:12px;color:var(--dim);margin-top:4px}
+  h2{font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:22px 0 10px;font-weight:600}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+  label{display:block;font-size:13px;color:var(--dim);margin:12px 0 6px}
+  input,textarea,select{width:100%;background:#0a0f14;color:var(--fg);border:1px solid var(--line);
+    border-radius:10px;padding:14px;font-size:17px;font-family:inherit}
+  textarea{min-height:96px;resize:vertical}
+  .btn{display:flex;align-items:center;justify-content:center;min-height:52px;border-radius:12px;
+    background:var(--accent);color:#1a1204;font-weight:700;font-size:17px;border:0;width:100%;
+    padding:0 18px;cursor:pointer;letter-spacing:.02em}
+  .btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line);font-weight:600}
+  .btn[disabled]{opacity:.45}
+  .row{display:flex;gap:10px}
+  .note{font-size:13px;color:var(--dim);margin-top:10px}
+  .big{font-size:44px;font-weight:800;line-height:1}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  .pill{display:inline-block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+    padding:5px 10px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+  .pill.on{color:#0f1a12;background:var(--good);border-color:var(--good)}
+  .pill.off{color:var(--fg);background:#2a1d1d;border-color:#4a2c2c}
+
+  /* bingo card */
+  .strip{display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin-top:12px}
+  .cell{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;border-radius:8px;
+    background:#0a0f14;border:1px solid var(--line);font-weight:700;font-size:min(4.4vw,19px)}
+  .cell.blank{background:transparent;border-color:transparent}
+  .cell.hit{background:var(--accent);color:#1a1204;border-color:var(--accent)}
+  .calls{display:flex;gap:8px;align-items:baseline;margin-top:14px;flex-wrap:wrap}
+  .calls .cur{font-size:34px;font-weight:800;color:var(--accent)}
+
+  /* photo */
+  .shots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+  .shots img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+  .status{font-size:12px;color:var(--dim);margin-top:6px}
+  .status.ok{color:var(--good)}
+  .status.no{color:#d98a87}
+
+  /* tab bar */
+  nav{position:fixed;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(3,1fr);
+    background:#0a0f14;border-top:1px solid var(--line);padding:8px 8px 22px;z-index:6}
+  nav div{text-align:center;padding:10px 4px;border-radius:10px;font-size:13px;font-weight:600;color:var(--dim)}
+  nav div.on{background:var(--card);color:var(--fg)}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="js/config.js"></script>
+<script src="js/net.js"></script>
+<script src="js/interact.js"></script>
+</body>
+</html>

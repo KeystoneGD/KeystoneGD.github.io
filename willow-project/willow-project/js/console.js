@@ -5,7 +5,7 @@
    ===================================================================== */
 (function () {
   var CFG = window.WILLOW_CONFIG, DATA = window.WILLOW_DATA;
-  var S = window.WillowStore, Theme = window.WillowTheme, N = window.WillowNet;
+  var S = window.WillowStore, Theme = window.WillowTheme;
   var app = document.getElementById('app');
 
   /* ---------------- helpers ---------------------------------------- */
@@ -38,8 +38,6 @@
 
   /* ---------------- transient (non-persisted) UI state ------------- */
   var menuOpen = null;
-  var infoFor = null;         /* patron id whose [i] panel is open */
-  var claimCheck = '';        /* serial typed into Claim check */
   var dialog = null;          /* {kind:'message'|'event', title, body, draft} */
   var displayWin = null;
 
@@ -60,7 +58,6 @@
       ]},
       { name: 'Games', items: [
         { label: 'Bingo Control',   key: '', act: 'mode', arg: 'bingo' },
-        { label: 'Interactions',    key: 'F6', act: 'nav', arg: 'interact' },
         { label: 'Quiz',            key: '', act: 'game.tab', arg: 'Quiz' },
         { label: 'Higher or Lower', key: '', act: 'game.tab', arg: 'Higher or Lower' },
         { label: 'At The Races',    key: '', act: 'game.tab', arg: 'At The Races' }
@@ -82,7 +79,7 @@
   var TOOLBAR = [
     ['Dashboard','dashboard','var(--w-title1)'], ['Schedule','events','#8a6f2a'], ['Ents','ents','#2a6f8a'],
     ['Bingo','bingo','#a3213c'], ['Karaoke','karaoke','#5c2a8a'], ['BiGD','bigd','#2a8a56'],
-    ['Games','games','#8a4a2a'], ['Interact','interact','#2a5f8a'], ['Media','media','#6f6f6f'], ['Music','music','#2a8a8a'],
+    ['Games','games','#8a4a2a'], ['Media','media','#6f6f6f'], ['Music','music','#2a8a8a'],
     ['Reports','reports','#444c6a'], ['Settings','settings','#8a2a6f']
   ];
 
@@ -94,7 +91,6 @@
     karaoke:   ['Karaoke Mode — Lyric Engine', 'instrumental library'],
     bigd:      ['BiGD — Bingo Information Graphical Display', ''],
     games:     ['Rich Media Games', 'patron-facing'],
-    interact:  ['Interactions — Patron Site', ''],
     media:     ['Media Folder Manager', ''],
     music:     ['Music Control', ''],
     reports:   ['Reports', ''],
@@ -208,7 +204,6 @@
       case 'karaoke':  return vKaraoke();
       case 'bigd':     return vBigd();
       case 'games':    return vGames();
-      case 'interact': return vInteract();
       case 'media':    return vMedia();
       case 'music':    return vMusic();
       case 'reports':  return vReports();
@@ -365,7 +360,7 @@
         '<div class="big" style="font-size:30px;letter-spacing:3px;margin-top:3px">' + esc(b.code) + '</div></div>' +
       '<div class="row mt6"><div class="btn grow" ' + act('bingo.code') + '>New Code</div>' +
         '<div class="btn grow' + (b.locked ? ' down' : '') + '" ' + act('bingo.lock') + '>' + (b.locked ? 'Locked' : 'Open') + '</div></div>' +
-      '<div class="mt8">' + playersPanel() + '</div>';
+      '<div class="mono mt6">' + CFG.rooms[0].players + ' players in this room</div>';
 
     var lr = linkedRooms(), totalPlayers = lr.reduce(function (a, r) { return a + r.players; }, 0);
     var roomGrid = '<div class="grid" style="grid-template-columns:24px 1fr 78px 46px">' +
@@ -384,7 +379,7 @@
 
     return '<div class="split" style="grid-template-columns:1fr 302px">' +
       panel('Game ' + b.game + ' — ' + esc(b.pattern) + ' — Prize ' + money(b.prize), head + board + controls) +
-      '<div class="col gap8">' + panel('Player Join & Tickets', join) + panel('Linked Rooms', roomGrid) + '</div></div>';
+      '<div class="col gap8">' + panel('Player Join', join) + panel('Linked Rooms', roomGrid) + '</div></div>';
   }
 
   function vKaraoke() {
@@ -656,241 +651,6 @@
 
     return '<div class="split" style="grid-template-columns:minmax(0,1fr) 302px">' +
       panel('Music Source', left) + panel('Transport', right) + '</div>';
-  }
-
-  /* ---- interactions helpers --------------------------------------- */
-  function feedBy(kind) { return N.feed().filter(function (x) { return x.kind === kind; }); }
-
-  function bans() {
-    var out = {};
-    feedBy('control').forEach(function (c) {
-      if (c.action === 'ban') out[c.target] = { until: c.until, name: c.name, ts: c.ts };
-      if (c.action === 'unban') delete out[c.target];
-    });
-    Object.keys(out).forEach(function (k) {
-      var u = out[k].until;
-      if (u && u !== 'forever' && Number(u) < Date.now()) delete out[k];
-    });
-    return out;
-  }
-  function banText(b) {
-    if (!b) return '';
-    if (b.until === 'forever') return 'banned permanently';
-    var mins = Math.max(0, Math.round((Number(b.until) - Date.now()) / 60000));
-    return 'banned ' + (mins > 90 ? Math.round(mins / 60) + 'h' : mins + 'm') + ' left';
-  }
-
-  function dropped() {
-    var out = {};
-    feedBy('control').forEach(function (c) {
-      if (c.action === 'drop') out[c.target] = c.ts;
-      if (c.action === 'unban') delete out[c.target];
-    });
-    feedBy('card').forEach(function (c) { if (out[c.player] && c.ts > out[c.player]) delete out[c.player]; });
-    return out;
-  }
-
-  /* how many numbers a card still needs for the pattern in play */
-  function toGo(rows, called, pattern) {
-    if (!rows) return null;
-    var mark = function (n) { return n && called.indexOf(n) >= 0; };
-    var rowNeed = rows.map(function (r) {
-      return r.filter(function (n) { return n && !mark(n); }).length;
-    });
-    if (/four corners/i.test(pattern)) {
-      var ends = function (r) { var f = r.filter(function (n) { return n; }); return [f[0], f[f.length - 1]]; };
-      var corners = ends(rows[0]).concat(ends(rows[2]));
-      return corners.filter(function (n) { return !mark(n); }).length;
-    }
-    if (/two lines/i.test(pattern)) {
-      var two = rowNeed.slice().sort(function (a, b) { return a - b; }).slice(0, 2);
-      return two[0] + two[1];
-    }
-    if (/full house/i.test(pattern)) return rowNeed.reduce(function (a, b) { return a + b; }, 0);
-    return Math.min.apply(null, rowNeed);
-  }
-
-  function playerRows() {
-    var s = S.get(), called = s.bingo.called, patt = s.bingo.pattern;
-    var joins = {}, order = [];
-    feedBy('join').forEach(function (j) {
-      if (!joins[j.player]) order.push(j.player);
-      joins[j.player] = { id: j.player, name: j.name, room: j.room, ts: j.ts };
-    });
-    var cardsFor = {};
-    feedBy('card').forEach(function (c) { cardsFor[c.player] = c; });
-    var bn = bans(), dr = dropped();
-    return order.map(function (id) {
-      var p = joins[id], c = cardsFor[id];
-      return {
-        id: id, name: p.name, room: p.room,
-        serial: c ? c.serial : '', rows: c ? c.rows : null, game: c ? c.game : null,
-        toGo: c ? toGo(c.rows, called, patt) : null,
-        ban: bn[id] || null, off: !!dr[id]
-      };
-    });
-  }
-
-  function serialLookup(serial) {
-    var q = String(serial || '').trim().toUpperCase();
-    if (!q) return null;
-    var hit = feedBy('card').filter(function (c) { return String(c.serial).toUpperCase() === q; })[0];
-    if (!hit) return { miss: true, serial: q };
-    var s = S.get(), called = s.bingo.called;
-    var flat = [].concat.apply([], hit.rows).filter(function (n) { return n; });
-    var marked = flat.filter(function (n) { return called.indexOf(n) >= 0; });
-    var rowsDone = hit.rows.filter(function (r) {
-      return r.filter(function (n) { return n; }).every(function (n) { return called.indexOf(n) >= 0; });
-    }).length;
-    return {
-      serial: q, name: hit.name, room: hit.room, game: hit.game, rows: hit.rows,
-      marked: marked.length, total: flat.length, lines: rowsDone,
-      missing: flat.filter(function (n) { return called.indexOf(n) < 0; }),
-      valid: /full house/i.test(s.bingo.pattern) ? marked.length === flat.length
-           : /two lines/i.test(s.bingo.pattern) ? rowsDone >= 2 : rowsDone >= 1
-    };
-  }
-
-  function joinUrl() {
-    var p = (CFG.interact && CFG.interact.path) || 'interact.html';
-    return location.origin + location.pathname.replace(/[^/]*$/, '') + p;
-  }
-
-  /* players connected + serials + claim check — lives in Bingo Mode */
-  function playersPanel() {
-    var s = S.get(), i = s.interact, list = playerRows();
-    var live = list.filter(function (p) { return !p.off && !p.ban; });
-
-    var table = list.length
-      ? '<div class="grid" style="grid-template-columns:minmax(0,1fr) 44px 30px">' +
-        ['Patron','To go',''].map(function (c) { return '<div class="th">' + c + '</div>'; }).join('') +
-        list.map(function (p) {
-          var go = p.toGo === null ? '-' : (p.toGo === 0 ? 'CLAIM' : p.toGo);
-          var hot = p.toGo !== null && p.toGo <= 1;
-          var sub = p.ban ? banText(p.ban) : p.off ? 'dropped' : p.rows ? 'ticket issued' : 'no card';
-          return '<div class="td" style="overflow:hidden' + (p.ban || p.off ? ';opacity:.55' : '') + '">' +
-              '<div class="nowrap" style="overflow:hidden;text-overflow:ellipsis">' + esc(p.name) + '</div>' +
-              '<div class="mono dim" style="font-size:10px">' + esc((p.room || '') + ' · ' + sub) + '</div></div>' +
-            '<div class="td center mono bold"' + (hot ? ' style="color:var(--w-accent)"' : '') + '>' + esc(go) + '</div>' +
-            '<div class="td center" ' + act('int.info', p.id) + ' style="cursor:pointer">[i]</div>';
-        }).join('') + '</div>'
-      : '<div class="note">Nobody has joined yet. Patrons join at ' + esc(joinUrl()) + '.</div>';
-
-    var info = infoFor && list.filter(function (p) { return p.id === infoFor; })[0];
-    var infoBox = info
-      ? '<div class="field groove mt6" style="padding:8px;background:var(--w-field);color:var(--w-fieldtext)">' +
-          '<div class="bold nowrap" style="overflow:hidden;text-overflow:ellipsis">' + esc(info.name) + '</div>' +
-          '<div class="mono" style="font-size:11px;margin-top:3px">TICKET <b>' + esc(info.serial || 'no card issued') + '</b></div>' +
-          '<div class="mono" style="font-size:10px;opacity:.75;margin-top:2px">room ' + esc(info.room || '-') +
-            ' · game ' + esc(info.game || '-') + ' · ' +
-            (info.toGo === null ? 'no card' : info.toGo + ' from ' + esc(s.bingo.pattern)) + '</div>' +
-          '<div class="row wrap mt6" style="gap:4px">' +
-            '<div class="btn" ' + act('int.drop', info.id) + '>Drop</div>' +
-            '<div class="btn" ' + act('int.ban10', info.id) + '>Ban 10m</div>' +
-            '<div class="btn" ' + act('int.ban60', info.id) + '>1h</div>' +
-            '<div class="btn" ' + act('int.bannight', info.id) + '>Tonight</div>' +
-            '<div class="btn bold" ' + act('int.banever', info.id) + '>Perm</div>' +
-            (info.ban ? '<div class="btn" ' + act('int.unban', info.id) + '>Lift</div>' : '') +
-          '</div>' +
-          '<div class="note" style="margin-top:6px">Drop ends their session and tells them why. A ban blocks the device until it expires.</div>' +
-        '</div>'
-      : '';
-
-    var c = claimCheck ? serialLookup(claimCheck) : null;
-    var check = '<div class="row mt6" style="min-width:0">' +
-        '<input class="grow mono" id="serialBox" style="min-width:0" placeholder="ticket serial" value="' + esc(claimCheck || '') + '">' +
-        '<div class="btn bold" style="flex:none" ' + act('int.check') + '>Check</div></div>' +
-      (c ? (c.miss
-        ? '<div class="note" style="color:#a3213c">No ticket ' + esc(c.serial) + '. Ask them to read it again off the top of their card.</div>'
-        : '<div class="field groove mt6" style="padding:8px;background:var(--w-field);color:var(--w-fieldtext)">' +
-            '<div class="bold">' + (c.valid ? 'VALID' : 'NOT YET') + ' — ' + esc(c.name) + '</div>' +
-            '<div class="mono" style="font-size:11px;margin-top:3px">' + c.marked + '/' + c.total + ' marked · ' +
-              c.lines + ' line(s) · game ' + esc(c.game) + '</div>' +
-            '<div class="mono" style="font-size:11px;margin-top:3px;white-space:normal">needs: ' +
-              esc(c.missing.length ? c.missing.join(' ') : 'nothing — full house') + '</div></div>')
-        : '<div class="note">Type the serial off a patron’s ticket to verify their claim.</div>');
-
-    return '<div class="checkrow mb6" ' + act('int.sales') + '>' + chk(i.salesOpen) +
-        '<div>Sales open — patrons can take a card</div></div>' +
-      panelSub(live.length + ' connected · ' + list.length + ' total') + table + infoBox +
-      '<div class="mt8">' + panelSub('Claim check') + check + '</div>';
-  }
-
-  function vInteract() {
-    var s = S.get(), i = s.interact, feed = N.feed();
-    var bn = bans();
-    var pending = feed.filter(function (x) {
-      return x.status === 'pending' && !bn[x.player] &&
-        (x.kind === 'shoutout' || x.kind === 'photo' || x.kind === 'claim');
-    }).reverse();
-
-    var queue = pending.length
-      ? pending.map(function (x) {
-          var body = x.kind === 'photo'
-            ? '<img src="' + x.image + '" alt="" style="width:74px;height:56px;object-fit:cover;border:1px solid var(--w-dark)">'
-            : '<div class="bold" style="white-space:normal">' + esc(x.text) + '</div>';
-          return '<div class="row" style="align-items:flex-start;gap:8px;padding:6px 0;box-shadow:inset 0 -1px 0 var(--w-shadow)">' +
-            '<div class="mono dim" style="width:58px;flex:none">' + esc(x.kind.toUpperCase()) + '</div>' +
-            '<div class="grow" style="min-width:0">' + body +
-              '<div class="mono dim" style="font-size:10px;margin-top:2px">' + esc(x.name || 'unknown') +
-                (x.room ? ' · ' + esc(x.room) : '') + ' · ' + new Date(x.ts).toLocaleTimeString('en-GB') + '</div></div>' +
-            '<div class="row" style="gap:4px;flex:none">' +
-              '<div class="btn bold" ' + act('int.ok', x.id) + '>' + (x.kind === 'claim' ? 'Check' : 'To screen') + '</div>' +
-              '<div class="btn" ' + act('int.no', x.id) + '>Drop</div></div></div>';
-        }).join('')
-      : '<div class="note">Nothing waiting. Patron messages, photos and bingo claims land here the moment they are sent.</div>';
-
-    var approved = feed.filter(function (x) { return x.status === 'approved' && (x.kind === 'shoutout' || x.kind === 'photo'); })
-      .slice(-6).reverse();
-    var onScreen = approved.length
-      ? '<div class="grid" style="grid-template-columns:52px 1fr 44px">' +
-        ['Kind','On screen now',''].map(function (c) { return '<div class="th">' + c + '</div>'; }).join('') +
-        approved.map(function (x) {
-          return '<div class="td mono">' + esc(x.kind) + '</div>' +
-            '<div class="td">' + esc(x.kind === 'photo' ? ('photo from ' + x.name) : x.text) + '</div>' +
-            '<div class="td center"><span ' + act('int.pull', x.id) + ' style="cursor:pointer;text-decoration:underline">pull</span></div>';
-        }).join('') + '</div>'
-      : '<div class="note">Nothing on the screens yet.</div>';
-
-    var left = '<div class="row wrap mb8" style="gap:14px">' +
-        '<div class="checkrow" ' + act('int.shouts') + '>' + chk(i.shoutoutsOpen) + '<div>Accept shoutouts</div></div>' +
-        '<div class="checkrow" ' + act('int.photos') + '>' + chk(i.photosOpen) + '<div>Accept photos</div></div>' +
-      '</div>' +
-      '<div class="row mb8" style="min-width:0"><div class="lbl" style="width:78px;flex:none">Screens show</div>' +
-        '<select class="grow" style="min-width:0" ' + bind('interact.showKind') + '>' + opt(['Both','Shoutouts','Photos'], i.showKind) + '</select>' +
-        '<div class="btn" style="flex:none" ' + act('mode', 'interact') + '>On screen</div></div>' +
-      panelSub('Waiting for approval (' + pending.length + ')') + queue +
-      '<div class="mt8">' + panelSub('Live on screen') + onScreen + '</div>';
-
-    /* ---- shoutouts + photos only — bingo tickets live in Bingo Mode ---- */
-    var right = '<div class="disp pad">' +
-        '<div class="mono" style="font-size:10px;opacity:.7">PATRON JOIN ADDRESS</div>' +
-        '<div class="bold" style="margin-top:4px;word-break:break-all">' + esc(joinUrl()) + '</div>' +
-        '<div class="mono mt6" style="font-size:11px;color:var(--w-accent)">ROOM CODE ' + esc(s.bingo.code) + ' · ' +
-          (i.salesOpen ? 'SALES OPEN' : 'SALES CLOSED') + '</div></div>' +
-      '<div class="row mt6"><div class="btn grow" ' + act('int.open') + '>Open patron site</div>' +
-        '<div class="btn grow" ' + act('int.copy') + '>Copy link</div></div>' +
-      '<div class="note mt8">Transport: <b>' + esc(N.transport) + '</b>. ' +
-        (N.transport === 'rest'
-          ? 'Relay ' + esc(N.endpoint || '(endpoint not set!)')
-          : 'Same-browser only — fine for testing on this machine. For real phones set interact.transport to \'rest\' and an endpoint in js/config.js (README ▸ Patron site).') +
-      '</div>' +
-      (Object.keys(bn).length
-        ? '<div class="mt8">' + panelSub('Bans') +
-          Object.keys(bn).map(function (id) {
-            return '<div class="row" style="gap:6px;padding:3px 0"><div class="grow nowrap">' + esc(bn[id].name || id) + '</div>' +
-              '<div class="mono dim" style="font-size:10px">' + esc(banText(bn[id])) + '</div>' +
-              '<div class="btn" ' + act('int.unban', id) + '>Lift</div></div>';
-          }).join('') + '</div>'
-        : '') +
-      '<div class="btn mt8" ' + act('int.clear') + '>Clear all patron traffic</div>';
-
-    return '<div class="split" style="grid-template-columns:minmax(0,1fr) 288px">' +
-      panel('Shoutouts & Photos', left) + panel('Patron Site', right) + '</div>';
-  }
-
-  function panelSub(t) {
-    return '<div class="mono dim" style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin:2px 0 4px">' + esc(t) + '</div>';
   }
 
   function vReports() {
@@ -1274,57 +1034,6 @@
     'music.pickfolder': function () { filePicker(true); },
     'music.pickfiles': function () { filePicker(false); },
 
-    /* ---- interactions / patron site ---- */
-    'int.sales': function () {
-      var o = !S.get().interact.salesOpen;
-      S.setIn('interact', { salesOpen: o });
-      S.log('Bingo sales ' + (o ? 'OPEN' : 'closed') + ' on patron site');
-    },
-    'int.shouts': function () { S.setIn('interact', { shoutoutsOpen: !S.get().interact.shoutoutsOpen }); },
-    'int.photos': function () { S.setIn('interact', { photosOpen: !S.get().interact.photosOpen }); },
-    'int.ok': function (id) {
-      var item = N.feed().filter(function (x) { return x.id === id; })[0];
-      if (!item) return;
-      if (item.kind === 'claim') {
-        var card = N.feed().filter(function (c) { return c.kind === 'card' && c.player === item.player; })[0];
-        claimCheck = card ? card.serial : '';
-        var v = claimCheck ? serialLookup(claimCheck) : null;
-        N.patch(id, { status: 'approved' });
-        message('Claim from ' + item.name,
-          (v && !v.miss
-            ? (v.valid ? 'VALID CLAIM. ' : 'NOT A VALID CLAIM YET. ') +
-              'Ticket ' + v.serial + ' — ' + v.marked + ' of ' + v.total + ' marked, ' + v.lines +
-              ' full line(s). Still needs: ' + (v.missing.length ? v.missing.join(' ') : 'nothing.')
-            : 'No card on file for this patron.'));
-        return;
-      }
-      N.patch(id, { status: 'approved' });
-      S.log(item.kind + ' from ' + item.name + ' put on screen');
-    },
-    'int.no': function (id) { N.patch(id, { status: 'rejected' }); },
-    'int.pull': function (id) { N.patch(id, { status: 'rejected' }); },
-    'int.info': function (id) { infoFor = (infoFor === id) ? null : id; render(); },
-    'int.menu': function (id) { infoFor = (infoFor === id) ? null : id; render(); },
-    'int.check': function () {
-      var box = document.getElementById('serialBox');
-      claimCheck = box ? box.value.trim() : '';
-      render();
-    },
-    'int.drop': function (id) { control(id, 'drop', null, 'The operator has removed you from this session.'); },
-    'int.ban10': function (id) { control(id, 'ban', Date.now() + 10 * 60000, 'Banned for 10 minutes by the operator.'); },
-    'int.ban60': function (id) { control(id, 'ban', Date.now() + 60 * 60000, 'Banned for 1 hour by the operator.'); },
-    'int.bannight': function (id) { control(id, 'ban', tonightEnd(), 'Banned for the rest of tonight by the operator.'); },
-    'int.banever': function (id) { control(id, 'ban', 'forever', 'Permanently banned by the operator.'); },
-    'int.unban': function (id) { control(id, 'unban', null, 'Your access has been restored.'); },
-    'int.open': function () { window.open(joinUrl(), '_blank'); },
-    'int.copy': function () {
-      var url = joinUrl();
-      if (navigator.clipboard) navigator.clipboard.writeText(url)['catch'](function () {});
-      message('Patron join address', url + '\n\nRoom code ' + S.get().bingo.code +
-        '. Put this on the screens, on table cards, or behind the bar.');
-    },
-    'int.clear': function () { N.clear(); infoFor = null; claimCheck = ''; S.log('Patron traffic cleared'); render(); },
-
     'report.print': function () { window.print(); },
     'report.csv': function () {
       var s = S.get();
@@ -1453,21 +1162,6 @@
     if (nv) nv.scrollTop = scrollMemo;
   }
 
-  function tonightEnd() {
-    var d = new Date();
-    d.setHours(d.getHours() < 4 ? 4 : 28, 0, 0, 0);
-    return d.getTime();
-  }
-
-  function control(id, action, until, note) {
-    var p = playerRows().filter(function (x) { return x.id === id; })[0] || {};
-    N.push({ kind: 'control', action: action, target: id, name: p.name || '',
-             until: until, text: note, status: 'approved' });
-    S.log((action === 'drop' ? 'Dropped ' : action === 'unban' ? 'Ban lifted for ' : 'Banned ') + (p.name || id));
-    infoFor = null;
-    render();
-  }
-
   /* hidden file input used by Music Control to load real audio files */
   var picker = null;
   function filePicker(folder) {
@@ -1529,26 +1223,7 @@
   /* ---------------- boot ------------------------------------------- */
   if (!S.get().signedOn) { location.replace('index.html'); return; }
   render();
-  /* ---- publish a venue snapshot for the patron site --------------- */
-  var lastVenue = '';
-  function publishVenue() {
-    var s = S.get(), i = s.interact || {};
-    var snap = {
-      venueName: s.venueName, joinDomain: s.joinDomain,
-      salesOpen: !!i.salesOpen, shoutoutsOpen: !!i.shoutoutsOpen, photosOpen: !!i.photosOpen,
-      code: s.bingo.code, game: s.bingo.game, pattern: s.bingo.pattern, prize: s.bingo.prize,
-      called: s.bingo.called, current: s.bingo.current, mode: s.mode,
-      rooms: rooms().filter(function (r) { return r.linked; }).map(function (r) { return { name: r.name, code: r.code }; })
-    };
-    var j = JSON.stringify(snap);
-    if (j === lastVenue) return;
-    lastVenue = j;
-    N.publishVenue(snap);
-  }
-
-  S.subscribe(function () { window.WillowMusic.setVolume(); publishVenue(); if (!editing()) render(); });
-  N.subscribe(function () { if (S.get().view === 'interact' && !editing()) render(); });
-  publishVenue();
+  S.subscribe(function () { window.WillowMusic.setVolume(); if (!editing()) render(); });
   window.WillowMusic.subscribe(function (st) {
     var s = S.get(), patch = {};
     if (s.musicPlaying !== st.playing) patch.musicPlaying = st.playing;

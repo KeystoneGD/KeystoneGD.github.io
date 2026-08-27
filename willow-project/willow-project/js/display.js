@@ -119,39 +119,6 @@
       '<div class="sub">' + esc(sub) + '</div></div></div>';
   }
 
-  function interact() {
-    var s = S.get(), i = s.interact || {}, feed = window.WillowNet.feed();
-    var ok = function (k) { return feed.filter(function (x) { return x.kind === k && x.status === 'approved'; }); };
-    var shouts = ok('shoutout').slice(-6).reverse();
-    var photos = ok('photo').slice(-8).reverse();
-    var show = i.showKind || 'Both';
-    var wall = photos.length
-      ? '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;flex:1;align-content:start">' +
-          photos.map(function (p) {
-            return '<div style="position:relative"><img src="' + p.image + '" alt="" ' +
-              'style="width:100%;aspect-ratio:4/3;object-fit:cover;border:3px solid rgba(255,255,255,.12)">' +
-              '<div class="mono" style="font-size:13px;opacity:.75;margin-top:6px">' + esc(p.name) + '</div></div>';
-          }).join('') + '</div>'
-      : '<div class="mono" style="opacity:.5;font-size:16px">NO PHOTOS APPROVED YET</div>';
-    var wallSlot = (show === 'Shoutouts') ? '' : wall;
-    var shoutSlot = (show === 'Photos') ? '' : (shouts.length
-      ? '<div style="display:flex;flex-direction:column;gap:10px">' + shouts.map(function (x, idx) {
-          return '<div style="font-size:' + (idx === 0 ? 34 : 22) + 'px;font-weight:700;line-height:1.15">' +
-            esc(x.text) + '<span class="mono" style="font-size:14px;opacity:.6;font-weight:400"> — ' + esc(x.name) + '</span></div>';
-        }).join('') + '</div>'
-      : '<div class="mono" style="opacity:.5;font-size:16px">SEND A SHOUTOUT FROM YOUR PHONE</div>');
-
-    return '<div class="stage"><div class="bigd-stage">' +
-      '<div class="mono" style="display:flex;justify-content:space-between;font-size:15px;opacity:.6">' +
-        '<div>' + esc(s.venueName) + ' — INTERACTIONS</div><div>' + (i.salesOpen ? 'BINGO SALES OPEN' : 'JOIN IN') + '</div></div>' +
-      shoutSlot + wallSlot +
-      '<div class="join" style="text-align:center"><div class="mono" style="font-size:14px;opacity:.7">JOIN IN AT</div>' +
-        '<div class="code">' + esc(s.joinDomain) + '</div>' +
-        '<div class="mono" style="font-size:14px;color:var(--w-accent)">ROOM CODE ' + esc(s.bingo.code) +
-          (i.salesOpen ? ' · CARDS ON SALE NOW' : '') + '</div></div>' +
-    '</div></div>';
-  }
-
   function render() {
     var s = S.get();
     if (s.blackout) { root.innerHTML = '<div class="blackout">BLACKOUT</div>'; return; }
@@ -160,7 +127,6 @@
       case 'karaoke': root.innerHTML = karaoke(); break;
       case 'bigd':    root.innerHTML = bigd(); break;
       case 'games':   root.innerHTML = games(); break;
-      case 'interact': root.innerHTML = interact(); break;
       default:        root.innerHTML = ents();
     }
     var tag = document.getElementById('screenTag');
@@ -175,7 +141,6 @@
   });
 
   S.subscribe(render);
-  window.WillowNet.subscribe(render);
   render();
   setInterval(render, 1000);   /* keeps countdowns / progress fresh if the console tab is throttled */
 })();

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Marquee Bingo</title>
+<meta name="description" content="Join the room, take your book and dab along.">
+<meta name="theme-color" content="#0A0E16">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/player.css">
+</head>
+<body>
+
+<!-- ============================ the door ============================ -->
+<div class="door" id="door">
+  <div class="doorcard">
+    <div class="dh"><b>MARQUEE</b><span>Take your seat</span></div>
+    <form id="joinForm" autocomplete="off">
+      <div>
+        <label class="lbl" for="nameIn">Your name</label>
+        <input class="field" id="nameIn" maxlength="18" placeholder="What the caller shall call you" required autocomplete="nickname">
+      </div>
+      <div>
+        <label class="lbl" for="codeIn">Room code</label>
+        <input class="field roomfield" id="codeIn" maxlength="5" placeholder="·····" autocapitalize="characters" spellcheck="false">
+      </div>
+      <div class="msg" id="doorMsg">Ask the caller for tonight's room code.</div>
+      <button class="btn go wide" id="joinBtn" type="submit" style="min-height:62px;font-size:22px">Take my book</button>
+      <a class="btn ghost wide sm" href="console.html">Operator sign-in</a>
+    </form>
+  </div>
+</div>
+
+<!-- ============================ the hall ============================ -->
+<div class="hall hide" id="hall">
+
+  <div class="pbar">
+    <div class="who">
+      <b id="pName">—</b>
+      <span id="pBook">Book —</span>
+    </div>
+    <span class="sp"></span>
+    <span class="chip off" id="pLink"><i></i>Offline</span>
+    <button class="btn sm ghost" id="screenBtn" aria-pressed="true">Screen</button>
+    <button class="btn sm ghost" id="pSettings">Dabber</button>
+  </div>
+
+  <!-- the ball, always in the same place -->
+  <div class="callstrip hide" id="callstrip">
+    <span class="ball blank" id="pBall">&mdash;</span>
+    <span class="txt">
+      <span class="nick" id="pNick">Eyes down</span>
+      <span class="meta" id="pMeta"></span>
+      <span class="tape" id="pTape"></span>
+    </span>
+  </div>
+
+  <!-- the room screen, shrunk to fit a hand -->
+  <div class="mini" id="mini">
+    <div class="mhead">
+      <span class="mv" id="mVenue">&mdash;</span>
+      <span class="sp"></span>
+      <span class="mg" id="mGame"></span>
+    </div>
+    <div class="mboard" id="mBoard"></div>
+    <div class="mprizes" id="mPrizes"></div>
+    <div class="mnote hide" id="mNote"></div>
+  </div>
+
+  <div id="pBody"></div>
+
+  <div class="claimbar" id="claimbar">
+    <button class="bingo" id="bingoBtn" disabled>Bingo!</button>
+    <span class="say" id="say">Waiting for the caller.</span>
+  </div>
+</div>
+
+<dialog id="setDlg">
+  <div class="dh2"><b style="flex:1">Your dabber</b><button class="btn sm ghost" data-close>Close</button></div>
+  <div class="db">
+    <div class="swatches" id="swatches"></div>
+    <label class="row" style="gap:10px;cursor:pointer">
+      <input type="checkbox" id="voiceChk" style="width:20px;height:20px;accent-color:var(--amber)">
+      <span>Read the numbers out on this phone</span>
+    </label>
+    <button class="btn ghost wide sm" id="leaveBtn">Leave the room</button>
+  </div>
+</dialog>
+
+<script type="module" src="js/player.js"></script>
+</body>
+</html>
