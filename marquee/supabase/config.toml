@@ -1,0 +1,18 @@
+# =====================================================================
+# WILLOW Event System — Supabase CLI config
+# ---------------------------------------------------------------------
+# The relay is called by anonymous patrons, so JWT verification must be
+# off. This flag is applied at DEPLOY time — flipping the dashboard
+# toggle after a deploy does nothing until the function is deployed
+# again.
+#
+#   supabase link --project-ref uzqdrfnawrqcvtamscrp
+#   supabase functions deploy willow-relay
+#
+# (Run from willow-project/, which is where this file lives.)
+# =====================================================================
+
+project_id = "uzqdrfnawrqcvtamscrp"
+
+[functions.willow-relay]
+verify_jwt = false

@@ -17,24 +17,23 @@ window.WILLOW_CONFIG = {
   channel: 'willow-bus',               // BroadcastChannel name (console -> display)
 
   /* ---- venue ----------------------------------------------------- */
-  venueName: 'Ravensworth Social Club',
+  venueName: 'Marquee Test Server',
   licence: 'GB/OPS/44827-1',
   joinDomain: 'keystonegd.github.io/marquee/interact',
 
   /* ---- operators. PINs are for terminal sign-on only ------------- */
   operators: [
     { name: 'D. Whitaker', pin: '1234' },
-    { name: 'S. Mbeki',    pin: '5678' },
-    { name: 'S. Mbeki',    pin: '4321' },
-    { name: 'Wasooked', pin: '7890' }
+    { name: 'S. Mbeki',    pin: '1234' },
+    { name: 'J. Corrigan', pin: '1234' }
   ],
 
   /* ---- rooms / boards -------------------------------------------- */
   rooms: [
     { name: 'Main Hall',      code: 'WLW341', players: 64 },
-    /*{ name: 'Lounge Bar',     code: 'WLW872', players: 31 },
+    { name: 'Lounge Bar',     code: 'WLW872', players: 31 },
     { name: 'Sports Room',    code: 'WLW118', players: 18 },
-    { name: 'Function Suite', code: 'WLW506', players: 0 }*/
+    { name: 'Function Suite', code: 'WLW506', players: 0 }
   ],
 
   /* ---- media / music paths (shown in the UI) --------------------- */
@@ -51,7 +50,7 @@ window.WILLOW_CONFIG = {
     defaultResolution: '1920 x 1080 (16:9)',
     screenCount: 4,
     flags: [
-      { label: 'Mirror screen 1 to all outputs',       on: false },
+      { label: 'Mirror screen 1 to all outputs',       on: true },
       { label: 'Show clock on idle screens',           on: true },
       { label: 'Burn-in protection (shift 1px / 5 min)', on: true },
       { label: 'Overlay room code during games',       on: true }
@@ -128,7 +127,7 @@ window.WILLOW_CONFIG = {
     spotify: {
       clientId: '',                       // <-- paste your Spotify app client ID
       redirectUri: '',                    // blank = current console URL
-      deviceName: 'WILLOW Console',
+      deviceName: 'MARQUEE Console',
       scopes: [
         'streaming', 'user-read-email', 'user-read-private',
         'user-read-playback-state', 'user-modify-playback-state', 'playlist-read-private'
@@ -180,9 +179,11 @@ window.WILLOW_CONFIG = {
      transport 'local' = same browser only (testing / venue tablets on
      one profile). transport 'rest' = real phones; set endpoint.        */
   interact: {
-    transport: 'rest',                 // 'local' | 'rest'
-    endpoint: '',                       // e.g. 'https://willow-relay.yourvenue.workers.dev/room/main'
-    headers: {},                        // e.g. { apikey: '...' } for Supabase REST
+    transport: 'rest',                  // 'local' | 'rest'
+    endpoint: 'https://uzqdrfnawrqcvtamscrp.supabase.co/functions/v1/willow-relay/room/main',
+    headers: {                          // anon / publishable key only — never the secret key
+      apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6cWRyZm5hd3JxY3Z0YW1zY3JwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4NTcxMzMsImV4cCI6MjEwMzQzMzEzM30.LoEpxMO5LFhwEibzh7A0cBTIfw1OrSdLsJF6bpgiD0o'
+    },
     pollSeconds: 3,
     path: 'interact.html',              // shown to patrons as the join address
     storageKey: 'willow.interact.v1',
