@@ -76,6 +76,32 @@ export function rand32() {
 
 const COL_SIZE = [9, 10, 10, 10, 10, 10, 10, 10, 11];
 
+/* THE RULE FOR EVERYTHING BELOW: a book number must mean the same six tickets on the
+   caller's laptop and on every phone in the room, and those are different browsers with
+   different JavaScript engines. So nothing in the generator may depend on *how* an engine
+   does its work — only on what the spec guarantees.
+
+   Two things break that rule, and both used to be in here:
+
+     1. Calling rnd() inside a sort comparator. The spec never says how many times a
+        comparator is called, so V8, JavaScriptCore and SpiderMonkey each draw a different
+        number of random values and every ticket from that point on diverges.
+     2. A comparator that returns 0 for two different items. Sorting is only stable for
+        equal *comparisons*, and relying on that ordering is fragile — so ties are broken
+        explicitly, by original position, and the order is then the only correct answer any
+        algorithm can return.
+
+   `pick` is the one place randomness enters, and it always draws exactly once. */
+
+function order(list, weight) {
+  return list
+    .map((v, i) => ({ v, i, w: weight(v) }))
+    .sort((a, b) => b.w - a.w || a.i - b.i)      // total: no two entries ever compare equal
+    .map((x) => x.v);
+}
+
+function pick(list, rnd) { return list[Math.floor(rnd() * list.length)]; }
+
 function columnCounts(rnd) {
   for (let attempt = 0; attempt < 2000; attempt++) {
     const counts = [];
@@ -90,10 +116,9 @@ function columnCounts(rnd) {
         const cands = [];
         for (let t = 0; t < 6; t++) if (counts[t][c] < 3 && ticketLeft[t] > 0) cands.push(t);
         if (!cands.length) { ok = false; break; }
-        cands.sort((a, b) => ticketLeft[b] - ticketLeft[a]);
-        const top = ticketLeft[cands[0]];
-        const pool = cands.filter((t) => ticketLeft[t] === top);
-        const t = pool[Math.floor(rnd() * pool.length)];
+        let top = -1;
+        for (const t of cands) if (ticketLeft[t] > top) top = ticketLeft[t];
+        const t = pick(cands.filter((x) => ticketLeft[x] === top), rnd);
         counts[t][c]++; ticketLeft[t]--; need--;
       }
       if (!ok) break;
@@ -108,19 +133,17 @@ function rowLayout(counts, rnd) {
     const grid = [new Array(9).fill(false), new Array(9).fill(false), new Array(9).fill(false)];
     const rowLeft = [5, 5, 5];
     let ok = true;
-    const order = [0, 1, 2, 3, 4, 5, 6, 7, 8].sort((a, b) => counts[b] - counts[a] || rnd() - 0.5);
-    for (const c of order) {
+    /* fullest columns first, ties settled by a shuffle that always costs eight draws */
+    const cols = order(shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8], rnd), (c) => counts[c]);
+    for (const c of cols) {
       const n = counts[c];
-      const rows = [0, 1, 2].filter((r) => rowLeft[r] > 0);
-      if (rows.length < n) { ok = false; break; }
-      rows.sort((a, b) => rowLeft[b] - rowLeft[a]);
-      const pool = rows.slice();
+      let pool = order([0, 1, 2].filter((r) => rowLeft[r] > 0), (r) => rowLeft[r]);
+      if (pool.length < n) { ok = false; break; }
       for (let k = 0; k < n; k++) {
-        const best = pool.filter((r) => rowLeft[r] === rowLeft[pool[0]]);
-        const r = best[Math.floor(rnd() * best.length)];
+        const top = rowLeft[pool[0]];
+        const r = pick(pool.filter((x) => rowLeft[x] === top), rnd);
         grid[r][c] = true; rowLeft[r]--;
-        pool.splice(pool.indexOf(r), 1);
-        pool.sort((a, b) => rowLeft[b] - rowLeft[a]);
+        pool = order(pool.filter((x) => x !== r), (x) => rowLeft[x]);
       }
     }
     if (ok && rowLeft.every((v) => v === 0)) return grid;
@@ -169,6 +192,20 @@ export function makeBook(seed) {
    the same perm and book number always produce the same six tickets, on any device. */
 export function bookSeed(perm, bookNo) { return hash2(perm >>> 0, (bookNo | 0) + 0x9E37); }
 export function bookFor(perm, bookNo) { return makeBook(bookSeed(perm, bookNo)); }
+
+/* A short number every device can work out for itself from a fixed book. The console
+   sends its own along with each seat; if a phone comes up with something different then
+   that phone is not building the same tickets the caller is checking, and it says so
+   rather than letting the mismatch turn up as an argument at the front desk. */
+let FP = 0;
+export function bookFingerprint() {
+  if (FP) return FP;
+  const b = bookFor(0x5EED1234, 1);
+  let h = 0x811C9DC5 >>> 0;
+  if (!b) return (FP = 1);
+  for (let t = 0; t < 6; t++) for (const n of ticketNumbers(b[t])) h = hash2(h, n);
+  return (FP = h >>> 0);
+}
 
 /* Flat list of a ticket's fifteen numbers, and of a whole book's ninety. */
 export function ticketNumbers(ticket) {
@@ -334,7 +371,7 @@ export function scanRoom(perm, from, to, calls, stageRows, cache) {
       }
     }
   }
-  const hot = Array.from(winners.entries()).sort((a, b) => b[1] - a[1]);
+  const hot = Array.from(winners.entries()).sort((a, b) => b[1] - a[1] || a[0] - b[0]);
   return { sharp, won, twoAway, hot, books: to - from + 1, tickets: (to - from + 1) * 6 };
 }
 

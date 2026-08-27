@@ -16,7 +16,7 @@ export function newSession(opts) {
     venue: o.venue || "The Marquee",
     room: o.room || code(5),
     perm: o.perm || rand32(),
-    books: { from: 1, to: o.books || 250, next: 1 },
+    books: { from: 1, to: o.books || 250, next: 1, free: [] },
     currency: o.currency || "£",
     mode: "idle",
     notice: "",
@@ -230,13 +230,30 @@ export function abandonGame(s) {
 
 /* ------------------------------------------------------------------ seats */
 
+/* The next book number to hand out. Dropped books come back here first, so "drop" means
+   what the console says it means and the same player rejoining gets their book again
+   instead of the room drifting off into higher and higher numbers. */
+function takeBook(s) {
+  if (!s.books.free) s.books.free = [];
+  if (s.books.free.length) return s.books.free.shift();
+  if (s.books.next < s.books.from) s.books.next = s.books.from;
+  const no = s.books.next++;
+  if (no > s.books.to) s.books.to = no;                       // room is fuller than planned
+  return no;
+}
+
+function giveBack(s, book) {
+  if (!s.books.free) s.books.free = [];
+  if (book && s.books.free.indexOf(book) < 0) s.books.free.push(book);
+  s.books.free.sort((a, b) => a - b);
+}
+
 export function seatFor(s, name) {
   const clean = String(name || "Player").slice(0, 18);
   const existing = s.seats.find((x) => x.name.toLowerCase() === clean.toLowerCase());
   if (existing) return existing;
-  if (s.books.next > s.books.to) s.books.to = s.books.next;   // room is fuller than planned
   const seat = {
-    name: clean, book: s.books.next++, joined: Date.now(),
+    name: clean, book: takeBook(s), joined: Date.now(),
     state: null,          // waiting | called | missed | false
     claim: null,          // the last claim they made this stage
     falses: 0,            // false calls this session
@@ -254,13 +271,13 @@ export function clearSeatStates(s) {
 
 export function releaseSeat(s, name) {
   const i = s.seats.findIndex((x) => x.name === name);
-  if (i >= 0) s.seats.splice(i, 1);
+  if (i >= 0) giveBack(s, s.seats.splice(i, 1)[0].book);
   return s;
 }
 
 export function dropSeat(s, book) {
   const i = s.seats.findIndex((x) => x.book === book);
-  if (i >= 0) s.seats.splice(i, 1);
+  if (i >= 0) giveBack(s, s.seats.splice(i, 1)[0].book);
   return s;
 }
 

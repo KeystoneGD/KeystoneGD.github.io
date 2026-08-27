@@ -5,7 +5,7 @@
 
 import {
   NICK, money, parseMoney, prizeLabel, isCash, validate, scanRoom, bookFor, bookStanding,
-  rand32, code, STAGE_TYPES,
+  rand32, code, STAGE_TYPES, bookFingerprint,
 } from "./core.js";
 import {
   newSession, openLobby, startPlay, drawCall, undoCall, currentStage, pause,
@@ -213,7 +213,7 @@ async function boot() {
       const seat = seatFor(S, p.name);
       seat.peer = p.id;
       p.seat = seat;
-      room.send(p.id, { t: "seat", book: seat.book, perm: S.perm });
+      room.send(p.id, { t: "seat", book: seat.book, perm: S.perm, fp: bookFingerprint() });
       renderSeats();
       publish();
       toast(seat.name + " joined — book " + seat.book);
@@ -233,6 +233,7 @@ async function boot() {
   $("railCode").textContent = S.room;
   publish();
   setInterval(tick, 200);
+  watchVisibility();
   setInterval(saveSession, 4000);
 }
 
@@ -262,6 +263,35 @@ function refreshStats() {
 }
 
 /* ============================================================ the clock */
+
+/* Browsers slow a hidden tab's timers right down — to about one a minute — so a console
+   left behind another tab would trickle out a ball a minute with nobody able to see why.
+   Rather than let the room drift, the caller stops when this tab goes out of sight and
+   picks up where it left off when it comes back. Keep the console visible and none of
+   this ever happens; the display in its own window is not affected either way. */
+let hidPaused = false;
+
+function watchVisibility() {
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      if (S && S.mode === "play" && S.game && !S.game.paused && S.game.autocall) {
+        hidPaused = true;
+        pause(S, true);
+        publish();
+      }
+      return;
+    }
+    if (hidPaused) {
+      hidPaused = false;
+      if (S && S.mode === "play" && S.game) {
+        lastCallAt = Date.now();
+        pause(S, false);
+        publish();
+        toast("Caller stopped while this tab was hidden — back on now");
+      }
+    }
+  });
+}
 
 function tick() {
   if (!S) return;
@@ -519,6 +549,7 @@ function wireControls() {
   $("sFrom").addEventListener("change", (e) => {
     S.books.from = Math.max(1, parseInt(e.target.value, 10) || 1);
     if (S.books.next < S.books.from) S.books.next = S.books.from;
+    S.books.free = (S.books.free || []).filter((b) => b >= S.books.from);
     bookCache = new Map(); publish();
   });
   $("sTo").addEventListener("change", (e) => {
@@ -1212,6 +1243,7 @@ function fillSetup() {
   $("sTo").value = S.books.to;
   $("sCur").value = S.currency;
   $("sPerm").value = S.perm;
+  $("sFingerprint").textContent = bookFingerprint();
   $("jName").value = S.jackpot.name;
   $("jAmount").value = (S.jackpot.amount / 100).toFixed(2);
   $("jCalls").value = S.jackpot.callsToWin;

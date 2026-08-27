@@ -1,6 +1,7 @@
 import {
   makeBook, bookFor, bookSeed, ticketNumbers, callSequence, rowsComplete,
   toGo, winningCall, validate, scanRoom, money, parseMoney, normaliseCode,
+  bookFingerprint,
 } from './js/core.js';
 
 let fails = 0;
@@ -172,6 +173,60 @@ if (a1 !== a2 || a1 === a3) bad('determinism');
   console.log('400 books: generate', gen + 'ms | first scan', first + 'ms | cached scan',
     warm.toFixed(1) + 'ms each');
   if (warm > 60) bad('cached room scan too slow for a live display');
+}
+
+/* ------------------------------- 7b. the same book on any browser ------ */
+/* The generator must not depend on which sort algorithm the engine happens to use, or
+   the caller's laptop and a player's phone build different tickets from the same book
+   number — which is exactly what "the books aren't matching up" looks like in a hall.
+   Swapping in two other perfectly legal sort algorithms must change nothing. */
+{
+  const NATIVE = Array.prototype.sort;
+  const insertion = function (cmp) {
+    const a = this, c = cmp || ((x, y) => String(x) < String(y) ? -1 : String(x) > String(y) ? 1 : 0);
+    for (let i = 1; i < a.length; i++) {
+      const v = a[i];
+      let j = i - 1;
+      while (j >= 0 && c(a[j], v) > 0) { a[j + 1] = a[j]; j--; }
+      a[j + 1] = v;
+    }
+    return a;
+  };
+  const mergesort = function (cmp) {
+    const a = this, c = cmp || ((x, y) => String(x) < String(y) ? -1 : String(x) > String(y) ? 1 : 0);
+    const rec = (arr) => {
+      if (arr.length < 2) return arr;
+      const m = arr.length >> 1, L = rec(arr.slice(0, m)), R = rec(arr.slice(m)), out = [];
+      let i = 0, j = 0;
+      while (i < L.length && j < R.length) out.push(c(L[i], R[j]) <= 0 ? L[i++] : R[j++]);
+      while (i < L.length) out.push(L[i++]);
+      while (j < R.length) out.push(R[j++]);
+      return out;
+    };
+    const s = rec(a.slice());
+    for (let i = 0; i < a.length; i++) a[i] = s[i];
+    return a;
+  };
+  const sig = (algo) => {
+    Array.prototype.sort = algo;
+    let out = '';
+    try {
+      for (const n of [1, 2, 7, 42, 250, 1337]) {
+        const b = bookFor(987654321, n);
+        out += n + ':' + (b ? b.map((t) => ticketNumbers(t).join(',')).join('|') : 'NULL') + ';';
+      }
+      out += 'fp' + bookFingerprint();
+    } finally { Array.prototype.sort = NATIVE; }
+    return out;
+  };
+  const base = sig(NATIVE);
+  const withIns = sig(insertion);
+  const withMrg = sig(mergesort);
+  console.log('books survive a different sort algorithm:',
+    base === withIns && base === withMrg ? 'yes' : 'NO — engines will disagree');
+  if (base !== withIns) bad('insertion sort produces different books — engine dependent');
+  if (base !== withMrg) bad('merge sort produces different books — engine dependent');
+  console.log('book fingerprint:', bookFingerprint());
 }
 
 /* ---------------------------------------------- 8. odds and ends ------ */

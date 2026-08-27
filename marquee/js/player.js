@@ -6,6 +6,7 @@
 
 import {
   NICK, bookFor, toGo, winningCall, money, prizeLabel, normaliseCode, mulberry32,
+  bookFingerprint,
 } from "./core.js";
 import { joinRoom } from "./bus.js";
 
@@ -103,21 +104,34 @@ function chip(text, on) {
   el.innerHTML = "<i></i>" + esc(text);
 }
 
+/* Build the six tickets, and never let a stale set survive a change of perm — a new perm
+   reissues every book in the room, so the phone has to draw again or it ends up dabbing
+   tickets the caller is no longer checking against. */
+function setBook(newPerm, newBookNo) {
+  const p = newPerm >>> 0, n = newBookNo | 0;
+  if (p === perm && n === bookNo && book) return;
+  perm = p; bookNo = n;
+  book = (perm && bookNo) ? bookFor(perm, bookNo) : null;
+  builtFor = "";                       // the drawn tickets on screen are now wrong
+  if (bookNo) $("pBook").textContent = "Book " + bookNo;
+}
+
 function handle(msg) {
   if (msg.t === "seat") {
-    bookNo = msg.book | 0;
-    perm = msg.perm >>> 0;
-    book = bookFor(perm, bookNo);
-    $("pBook").textContent = "Book " + bookNo;
+    setBook(msg.perm, msg.book);
+    if (msg.fp && (msg.fp >>> 0) !== bookFingerprint()) {
+      say("<b>This phone is building different tickets to the caller's screen.</b> " +
+        "Don't play on it — tell the caller.", "bad");
+      $("pBook").textContent = "Book " + bookNo + " — mismatch";
+    }
     render();
     return;
   }
   if (msg.t === "state") {
     const before = S && S.game ? S.game.no : -1;
     S = msg.s;
-    if (!perm && S.perm) perm = S.perm;
     if (S.game && S.game.no !== before) { claimedAt = -1; lastCallCount = -1; answered = -1; }
-    if (perm && bookNo && !book) book = bookFor(perm, bookNo);
+    if (S.perm) setBook(S.perm, bookNo);
     render();
     return;
   }
@@ -260,7 +274,7 @@ function render() {
      someone's thumb loses their scroll position and swallows taps. */
   const calls = g.calls || [];
   const cur = calls.length ? calls[calls.length - 1] : 0;
-  const want = g.no + "/" + bookNo;
+  const want = g.no + "/" + bookNo + "/" + perm;
   $("callstrip").classList.remove("hide");
   if (builtFor !== want) {
     builtFor = want;

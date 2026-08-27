@@ -84,7 +84,8 @@ The header line says what the whole room is sitting on — *waiting on 74 ×3, 8
 
 Tap anyone to open their card: where they stand, their false-call tally, and
 
-- **Drop** — frees their book, leaves them connected
+- **Drop** — frees their book, leaves them connected. The number goes back in the pool,
+  so the same player coming back in gets the same book
 - **Kick out** — puts them out of the room; they can come back
 - **Bar** — puts them out and refuses them at the door until you let them back in
 
@@ -101,7 +102,19 @@ in the range is known, the console scans the whole room after each ball and the 
 can say **318 on one to go**. Set the range in Setup to however many books are actually
 out.
 
-*New perm* in Setup reissues every book in the room. Between games only.
+*New perm* in Setup reissues every book in the room — on the phones too, straight away.
+Between games only.
+
+### The book check
+
+Setup shows a **book check** number underneath the perm. Every device in the room works
+that number out for itself, from a fixed book; if two devices agree on it, they agree on
+every book. The console tells each phone its own when the player sits down, and a phone
+that comes up with something different says so on its own screen instead of playing on
+tickets the caller isn't checking against.
+
+You should never see them disagree. If you ever do, that phone's browser is the odd one
+out — take the player onto a paper book and tell me.
 
 ## The other modules
 
@@ -131,6 +144,12 @@ itself is unaffected.
 
 The session lives in the console tab, and is saved as you go — reload it and the game,
 the seats and the report are all still there. Close it and the room ends.
+
+**Keep the console tab in front.** Browsers slow a hidden tab's clock down to about one
+tick a minute, so a console sitting behind something else would trickle out a ball a
+minute with no sign of why. Rather than let that happen, the caller stops when the tab
+goes out of sight and picks up again when it comes back, and says so. The display in its
+own window is unaffected — it's the console that runs the clock.
 
 ## Keyboard, for a caller in a hurry
 
@@ -175,12 +194,21 @@ js/player.js        the phone
 js/auth.js          the sign-in check, roles and what each one may touch
 js/credentials.js   your operators — the only file you edit after deploying
 test-core.mjs       node test-core.mjs — proves the engine before you trust it
+test-books.mjs      node test-books.mjs — who gets which book, and what a drop frees
 ```
 
 `test-core.mjs` checks fifteen hundred books for legality, that the same perm always
 produces the same tickets, that "how many to go" agrees with brute force, that a claim one
-ball early is refused, and that the room scan matches a slow correct count. Run it after
+ball early is refused, that the room scan matches a slow correct count, and that swapping
+the browser's sorting algorithm for two other legal ones changes nothing. Run it after
 touching anything in `core.js`.
+
+That last check is not academic. Generating a book used to depend on *how* the browser
+sorted, which is a thing every browser is free to decide for itself — so a caller on
+Chrome and a player on an iPhone built different tickets from the same book number, and
+the console would turn down a claim the phone swore was good. Nothing inside the generator
+may draw a random number inside a sort comparator, or leave two items comparing equal:
+those are the two ways an engine's own choices leak into the result.
 
 ## Making it yours
 
