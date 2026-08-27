@@ -44,11 +44,11 @@
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 9.5h7M8.5 12h7M8.5 14.5h4"/></svg>
       Bingo
     </button>
-    <button class="mod" data-pane="media">
+    <button class="mod" data-pane="media" data-needs-caller>
       <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="13" rx="2"/><path d="M8 20.5h8"/></svg>
       Media
     </button>
-    <button class="mod" data-pane="games">
+    <button class="mod" data-pane="games" data-needs-caller>
       <svg viewBox="0 0 24 24"><path d="M12 3v3M6.5 8.5 4.4 6.4M17.5 8.5l2.1-2.1"/><rect x="3" y="9" width="18" height="11" rx="3"/><path d="M8 14.5h3M9.5 13v3M15.5 14h.01M17.5 16h.01"/></svg>
       Games
     </button>
@@ -56,7 +56,11 @@
       <svg viewBox="0 0 24 24"><path d="M5 20V9M12 20V4M19 20v-7"/><path d="M3 20h18"/></svg>
       Report
     </button>
-    <button class="mod" data-pane="setup">
+    <button class="mod hide" data-pane="users" id="modUsers">
+      <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/><path d="M16.5 6.2a3 3 0 0 1 0 5.6M17.5 19.5a5.4 5.4 0 0 0-2-4.2"/></svg>
+      Users
+    </button>
+    <button class="mod" data-pane="setup" id="modSetup">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8"/></svg>
       Setup
     </button>
@@ -75,6 +79,7 @@
       <h1 id="paneTitle">Bingo</h1>
       <span class="chip" id="modeChip"><i></i>Idle</span>
       <span class="sp"></span>
+      <span class="chip" id="whoChip"><i></i>&mdash;</span>
       <span class="chip" id="seatChip">0 in the room</span>
       <button class="btn sm ghost" id="openDisplay">Open display</button>
       <button class="btn sm ghost" id="signOut">Sign out</button>
@@ -98,7 +103,7 @@
 
         <div class="grid2">
 
-          <div class="panel">
+          <div class="panel" data-needs-caller>
             <div class="panel-h"><span>Caller</span><span class="sp"></span>
               <span id="stageLabel" style="color:var(--amber)">—</span></div>
             <div class="body">
@@ -154,10 +159,13 @@
             </div>
 
             <div class="panel">
-              <div class="panel-h"><span>In the room</span></div>
-              <div class="body"><div class="seats" id="seats">
-                <span style="border:none;background:none;color:var(--faint);padding:0">Nobody yet</span>
-              </div></div>
+              <div class="panel-h"><span>Room board</span><span class="sp"></span>
+                <span id="roomWaiting" style="color:var(--faint)"></span></div>
+              <div class="body" style="padding:10px">
+                <div class="board-rows" id="seats">
+                  <span class="nobody">Nobody in the room yet.</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -232,6 +240,45 @@
             <button class="btn sm ghost" id="repCsv">Export CSV</button>
             <button class="btn sm ghost" id="repPrint">Print</button></div>
           <div class="body" style="padding:0"><div id="repTable"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------------------------------------------------- users -->
+    <div class="pane" id="paneUsers">
+      <div class="grid2">
+        <div class="panel">
+          <div class="panel-h"><span>Operators</span><span class="sp"></span>
+            <span id="userNote" style="color:var(--faint)"></span></div>
+          <div class="body"><div class="list" id="userList"></div></div>
+        </div>
+        <div class="stack">
+          <div class="panel">
+            <div class="panel-h"><span>Add an operator</span></div>
+            <div class="body stack" style="gap:14px">
+              <div><label class="lbl">Name</label><input class="field" id="uName" autocomplete="off"></div>
+              <div><label class="lbl">Password</label><input class="field" id="uPass" type="password" autocomplete="new-password"></div>
+              <div><label class="lbl">Role</label>
+                <select class="field" id="uRole">
+                  <option value="caller">Caller — run games and award prizes</option>
+                  <option value="checker">Checker — check claims and watch</option>
+                  <option value="admin">Admin — everything, including users</option>
+                </select>
+              </div>
+              <div class="msg" id="uMsg">Their password is never stored — only a salt and a token.</div>
+              <button class="btn go wide" id="uAdd">Add operator</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><span>Make it stick</span></div>
+            <div class="body stack" style="gap:12px">
+              <p style="color:var(--muted);font-size:14px;line-height:1.55">
+                Operators you add here work on this machine straight away. To let them sign in
+                anywhere, download the file and commit it over <b>js/credentials.js</b>.
+              </p>
+              <button class="btn wide" id="uExport">Download credentials.js</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -348,6 +395,31 @@
       </div>
 
       <button class="btn go wide huge" id="bxGo" style="min-height:70px;font-size:24px">Put it on the board</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ player card ============================ -->
+<div class="sheet" id="playerCard">
+  <div class="sheetcard" style="max-width:460px">
+    <div class="sh">
+      <h2 id="pcName">Player</h2><span class="sp"></span>
+      <button class="btn sm ghost" id="pcClose">Close</button>
+    </div>
+    <div class="sb">
+      <div id="pcStanding" class="msg"></div>
+      <button class="btn wide" id="pcValidate">Check their book</button>
+      <div class="row">
+        <button class="btn ghost" id="pcDrop" style="flex:1">Drop</button>
+        <button class="btn stop" id="pcKick" style="flex:1">Kick out</button>
+        <button class="btn stop" id="pcBan" style="flex:1">Bar</button>
+      </div>
+      <p style="color:var(--faint);font-size:13px;line-height:1.5">
+        <b style="color:var(--muted)">Drop</b> frees their book and leaves them connected.
+        <b style="color:var(--muted)">Kick</b> puts them out of the room; they can come back.
+        <b style="color:var(--muted)">Bar</b> puts them out and refuses them at the door.
+      </p>
+      <div id="pcBans"></div>
     </div>
   </div>
 </div>

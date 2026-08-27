@@ -234,6 +234,36 @@ export function winningCall(ticket, calls, stageRows) {
   return -1;
 }
 
+/* Which single numbers would finish this ticket off. Empty unless it is one away —
+   that is what lets the console tell the caller who is waiting on what. */
+export function needs(ticket, marked, stageRows) {
+  if (toGo(ticket, marked, stageRows) !== 1) return [];
+  const out = [];
+  for (const n of ticketNumbers(ticket)) {
+    if (marked.has(n)) continue;
+    marked.add(n);
+    const left = toGo(ticket, marked, stageRows);
+    marked.delete(n);
+    if (left === 0) out.push(n);
+  }
+  return out.sort((a, b) => a - b);
+}
+
+/* Where a whole book stands for the current prize: the closest ticket, how far off it
+   is, whether it has already come on, and what it is waiting for. */
+export function bookStanding(book, calls, stageRows) {
+  const marked = new Set(calls);
+  let best = 99, bestT = -1;
+  for (let t = 0; t < 6; t++) {
+    const g = toGo(book[t], marked, stageRows);
+    if (g < best) { best = g; bestT = t; }
+  }
+  const out = { toGo: best, ticket: bestT, waitingOn: [], onSince: -1 };
+  if (best === 1) out.waitingOn = needs(book[bestT], marked, stageRows);
+  if (best === 0) out.onSince = winningCall(book[bestT], calls, stageRows);
+  return out;
+}
+
 /* ------------------------------------------------------------------ validation */
 
 /* Check one claim properly: rebuild the book from its number and test it against the
@@ -316,6 +346,16 @@ export function money(pence, symbol) {
   if (p === 0) return s + "0";
   return p % 100 === 0 ? s + (p / 100).toLocaleString() : s + (p / 100).toFixed(2);
 }
+
+/* A prize is either cash or a thing. One place decides how it reads, so the display,
+   the phone and the report never disagree about what is being played for. */
+export function prizeLabel(stage, currency) {
+  if (!stage) return "";
+  if (stage.kind === "prize") return String(stage.text || "Prize").trim() || "Prize";
+  return money(stage.prize, currency);
+}
+
+export function isCash(stage) { return !stage || stage.kind !== "prize"; }
 
 export function parseMoney(text) {
   const n = parseFloat(String(text).replace(/[^0-9.]/g, ""));

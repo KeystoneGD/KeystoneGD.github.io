@@ -4,7 +4,7 @@
    is a pure render of that object, which is why the display can be closed, reopened or
    moved to another machine mid-game and pick up exactly where the room is. */
 
-import { NICK, money } from "./core.js";
+import { NICK, money, prizeLabel, isCash } from "./core.js";
 import { joinRoom } from "./bus.js";
 
 const $ = (id) => document.getElementById(id);
@@ -40,7 +40,8 @@ function prizeRail(g, currency, into) {
     const cls = st.won ? "won" : (i === g.stageIndex ? "now" : "");
     return '<div class="prize ' + cls + '">' +
       '<span class="nm">' + esc(st.label) + "</span>" +
-      '<span class="amt">' + (st.won ? esc(st.won.name || "Won") : money(st.prize, currency)) + "</span>" +
+      '<span class="amt' + (isCash(st) ? "" : " words") + '">' +
+        (st.won ? esc(st.won.name || "Won") : esc(prizeLabel(st, currency))) + "</span>" +
       "</div>";
   }).join("");
 }
@@ -65,7 +66,7 @@ function render() {
     $("gameName").textContent = g.name;
     const st = g.stages[g.stageIndex];
     $("stageSlot").classList.remove("hide");
-    $("stageName").textContent = st ? st.label + "  " + money(st.prize, S.currency) : "—";
+    $("stageName").textContent = st ? st.label + "  " + prizeLabel(st, S.currency) : "—";
   } else {
     $("gameName").textContent = S.mode === "interval" ? "Interval" : "—";
     $("stageSlot").classList.add("hide");
@@ -162,7 +163,9 @@ function renderWon(g) {
   const st = g.stages[g.stageIndex];
   if (!st || !st.won) return;
   $("wonStage").textContent = st.label;
-  $("wonAmount").textContent = money(st.prize, S.currency);
+  const amt = $("wonAmount");
+  amt.className = "amount" + (isCash(st) ? "" : " words");
+  amt.textContent = prizeLabel(st, S.currency);
   $("wonName").textContent = st.won.name;
   const bits = [];
   if (st.won.book) bits.push("Book " + st.won.book);

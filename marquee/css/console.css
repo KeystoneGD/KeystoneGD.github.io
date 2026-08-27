@@ -167,6 +167,51 @@ body{overflow:hidden}
 }
 .seats span b{color:var(--faint);font-family:"IBM Plex Mono",monospace;font-size:12px;margin-left:6px}
 
+/* ---------------------------------------------------------------- room board */
+.board-rows{display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto}
+.board-rows .nobody{color:var(--faint);font-size:14px;padding:6px 2px}
+.seatrow{
+  display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:11px;
+  border:1px solid var(--line-2);background:var(--ink);cursor:pointer;
+  border-left:4px solid var(--line-2);
+  transition:background .15s,border-color .15s;
+}
+.seatrow:hover{background:var(--panel-2)}
+.seatrow .nm{font-weight:700;font-size:15px;min-width:0;max-width:130px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seatrow .bk{
+  font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--faint);
+  padding:2px 7px;border-radius:6px;background:rgba(255,255,255,.05);
+}
+.seatrow .sp{flex:1}
+.seatrow .st{
+  font-family:"Barlow Condensed",sans-serif;font-size:14px;text-transform:uppercase;
+  letter-spacing:.12em;color:var(--muted);white-space:nowrap;
+}
+.seatrow .st b{color:var(--text)}
+.seatrow .need{display:flex;gap:4px}
+.seatrow .need i{
+  font-style:normal;min-width:26px;height:26px;padding:0 5px;border-radius:7px;
+  display:grid;place-items:center;font-size:13px;font-weight:700;
+  font-variant-numeric:tabular-nums;
+  background:rgba(255,176,32,.16);color:var(--amber);
+}
+.seatrow .falses{
+  font-family:"Barlow Condensed",sans-serif;font-size:12px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--rose);opacity:.8;white-space:nowrap;
+}
+
+/* the three states the caller needs at a glance */
+.seatrow.waiting{border-left-color:var(--amber);background:rgba(255,176,32,.08)}
+.seatrow.waiting .st{color:var(--amber)}
+.seatrow.called{border-left-color:var(--mint);background:rgba(61,220,151,.08)}
+.seatrow.called .st{color:var(--mint)}
+.seatrow.missed{border-left-color:var(--rose);background:rgba(255,77,106,.08)}
+.seatrow.missed .st{color:var(--rose)}
+.seatrow.false{border-left-color:var(--rose);background:rgba(255,77,106,.14);animation:falseFlash .5s 3}
+@keyframes falseFlash{50%{background:rgba(255,77,106,.3)}}
+.seatrow.sharp{border-left-color:rgba(255,176,32,.55)}
+
 /* ---------------------------------------------------------------- lists */
 .list{display:flex;flex-direction:column;gap:10px}
 .item{

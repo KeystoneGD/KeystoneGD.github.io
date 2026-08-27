@@ -30,7 +30,8 @@ body{
 .msg.ok{border-color:rgba(61,220,151,.4);background:rgba(61,220,151,.1);color:#A8EBCB}
 
 /* ---------------------------------------------------------------- hall */
-.hall{display:flex;flex-direction:column;min-height:100dvh}
+/* phone-first, but it shouldn't sprawl when someone opens it on a laptop */
+.hall{display:flex;flex-direction:column;min-height:100dvh;width:100%;max-width:640px;margin:0 auto}
 .pbar{
   position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;
   padding:10px 14px;border-bottom:1px solid var(--line-2);
@@ -46,9 +47,11 @@ body{
 /* the call, up top */
 .callstrip{
   display:flex;align-items:center;gap:14px;padding:14px;margin:12px;border-radius:var(--r);
-  background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line-2);
+  background:rgba(20,26,38,.94);backdrop-filter:blur(12px);border:1px solid var(--line-2);
   position:sticky;top:52px;z-index:15;
 }
+.callstrip.hide{display:none}
+.callstrip .txt{display:flex;flex-direction:column;gap:2px}
 .callstrip .ball{width:74px;height:74px;font-size:36px}
 .callstrip .txt{min-width:0;flex:1}
 .callstrip .nick{
@@ -61,6 +64,62 @@ body{
 .callstrip .tape{display:flex;gap:5px;margin-top:8px}
 .callstrip .tape .ball{width:26px;height:26px;font-size:12px;opacity:.75}
 
+/* the room screen in miniature — the same thing the hall is watching */
+.mini{
+  margin:12px 12px 0;padding:10px;border-radius:var(--r);
+  background:linear-gradient(180deg,#0D1420,#0A0F18);
+  border:1px solid var(--line-2);
+  display:flex;flex-direction:column;gap:9px;
+}
+.mini.hide{display:none}
+.mhead{display:flex;align-items:baseline;gap:8px}
+.mhead .mv{
+  font-family:"Archivo",sans-serif;font-variation-settings:"wdth" 115;
+  font-weight:800;font-size:13px;letter-spacing:-.01em;color:var(--amber);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.mhead .sp{flex:1}
+.mhead .mg{
+  font-family:"Barlow Condensed",sans-serif;font-size:11px;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--faint);white-space:nowrap;
+}
+/* a true thumbnail: fixed small cells, centred, so it stays a miniature on any screen */
+.mboard{
+  display:grid;grid-template-columns:repeat(10,clamp(15px,5.4vw,23px));
+  gap:2px;justify-content:center;
+}
+.mboard b{
+  aspect-ratio:1;display:grid;place-items:center;border-radius:3px;
+  font-size:clamp(7px,2vw,10px);font-weight:700;font-variant-numeric:tabular-nums;
+  color:var(--faint);background:rgba(255,255,255,.04);transition:background .3s,color .3s;
+}
+.mboard b.on{color:#2A1A00;background:linear-gradient(180deg,#FFD98A,var(--amber))}
+.mboard b.now{box-shadow:0 0 0 2px var(--text)}
+.mprizes{display:flex;gap:6px;max-width:min(100%,300px);margin:0 auto;width:100%}
+.mprize{
+  flex:1;min-width:0;padding:6px 8px;border-radius:9px;
+  background:rgba(255,255,255,.035);border:1px solid var(--line-2);
+}
+.mprize .n{
+  display:block;font-family:"Barlow Condensed",sans-serif;font-size:9.5px;
+  text-transform:uppercase;letter-spacing:.14em;color:var(--faint);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.mprize .a{display:block;font-size:14px;font-weight:800;letter-spacing:-.02em;margin-top:1px}
+.mprize.now{border-color:rgba(255,176,32,.5);background:rgba(255,176,32,.1)}
+.mprize.now .n{color:var(--amber)}
+.mprize.won{opacity:.6}
+.mprize.won .a{color:var(--mint);font-size:11px}
+.mnote{
+  padding:7px 10px;border-radius:9px;text-align:center;max-width:min(100%,320px);
+  margin:0 auto;width:100%;
+  font-family:"Barlow Condensed",sans-serif;font-size:14px;
+  text-transform:uppercase;letter-spacing:.12em;font-weight:600;
+}
+.mnote.check{background:rgba(255,176,32,.14);color:var(--amber)}
+.mnote.won{background:rgba(61,220,151,.14);color:var(--mint)}
+.mnote.bad{background:rgba(255,77,106,.14);color:var(--rose)}
+
 /* the book */
 .book{padding:0 12px 12px;display:flex;flex-direction:column;gap:10px}
 .ticket{
@@ -69,7 +128,7 @@ body{
   box-shadow:0 10px 26px -18px #000;
 }
 .ticket .th{
-  display:flex;justify-content:space-between;align-items:center;
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
   font-family:"Barlow Condensed",sans-serif;font-size:11px;text-transform:uppercase;
   letter-spacing:.18em;color:rgba(30,24,14,.5);margin-bottom:7px;
 }
@@ -95,9 +154,10 @@ body{
 .ticket.live{box-shadow:0 0 0 3px var(--mint),0 10px 26px -18px #000}
 .ticket.sharp{box-shadow:0 0 0 2px rgba(255,176,32,.7),0 10px 26px -18px #000}
 .ticket .togo{
-  position:absolute;top:8px;right:10px;font-family:"Barlow Condensed",sans-serif;
-  font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:#8A5A12;
+  flex:1;text-align:right;font-family:"Barlow Condensed",sans-serif;
+  font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:#8A5A12;font-weight:600;
 }
+.ticket.live .togo{color:#1B6B3F}
 
 /* claim bar */
 .claimbar{
@@ -113,7 +173,11 @@ body{
   transition:transform .1s,box-shadow .2s,filter .2s;
 }
 .claimbar .bingo[disabled]{background:var(--panel-2);color:var(--faint);cursor:not-allowed}
-.claimbar .bingo:not([disabled]){animation:pulseGlow .9s infinite alternate}
+/* callable but not on: still yours to shout, just not shouting back at you */
+.claimbar .bingo:not([disabled]):not(.hot){
+  background:none;border:1px solid var(--line-hi);color:var(--text-2);
+}
+.claimbar .bingo.hot{animation:pulseGlow .9s infinite alternate}
 @keyframes pulseGlow{to{box-shadow:0 0 26px 2px rgba(255,176,32,.6)}}
 .claimbar .bingo:active{transform:scale(.97)}
 .claimbar .say{font-size:14px;color:var(--muted);flex:1;min-width:0;line-height:1.4}

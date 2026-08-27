@@ -105,6 +105,20 @@ export function openRoom(roomCode, handlers) {
     hasLocal: !!local,
     peers: () => Array.from(peers.values()),
     count: () => peers.size,
+    /* show someone the door: tell them why, then hang up */
+    kick(id, reason) {
+      const p = peers.get(id);
+      if (!p) return false;
+      try { if (p.conn && p.conn.open) p.conn.send({ t: "kicked", reason: reason || "removed" }); } catch (e) {}
+      setTimeout(() => { try { p.conn.close(); } catch (e) {} }, 120);
+      peers.delete(id);
+      return true;
+    },
+    find(name) {
+      const want = String(name || "").toLowerCase();
+      for (const p of peers.values()) if (String(p.name).toLowerCase() === want) return p;
+      return null;
+    },
     send(id, msg) {
       const p = peers.get(id);
       if (p && p.conn && p.conn.open) { try { p.conn.send(msg); } catch (e) {} }

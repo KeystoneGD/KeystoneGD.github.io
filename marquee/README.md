@@ -18,10 +18,12 @@ index.html     the phone — a book of six tickets, dab and claim
 ## Getting it up
 
 1. Put these files in a repo, **Settings → Pages → deploy from `main`, `/ (root)`**.
-2. Open `set-password.html` on the live site, choose an operator name and password, and
-   paste what it gives you over `js/credentials.js`. Push.
+2. Open `set-password.html` on the live site, create the first **admin**, and paste what it
+   gives you over `js/credentials.js`. Push.
 3. Open `console.html`, sign in, and press **Open display**. Drag that window to the big
    screen and press F11.
+
+More operators are added from the console itself — see *Who can sign in* below.
 
 The `.nojekyll` file stops GitHub's build step touching anything.
 
@@ -31,6 +33,11 @@ The `.nojekyll` file stops GitHub's build step touching anything.
 line, two lines, full house — add or remove as many as you like), pick auto or manual
 calling and the speed, and say whether the full house is playing for the jackpot. Save any
 setup as a preset and fire it off in two taps next time.
+
+Each prize is either **cash** or a **thing**. Flick the switch on the row: cash takes an
+amount, a prize takes a description — *Bottle of fizz*, *Meat tray*, *Bar tab*. The
+display, the phones and the report all say the right one, and the session totals only add
+up the cash.
 
 **Eyes down.** The game goes on the board with a countdown, the display shows the prize
 rail, and calling starts by itself when the clock runs out.
@@ -50,6 +57,31 @@ follows. *Undo call* takes back a misheard ball on every screen at once.
 
 **Award, and on to the next prize.** The display shows the winner card, then *Next prize*
 carries the same game on to two lines and the full house.
+
+**Anyone can shout, and be wrong.** The BINGO button on a phone is live whenever a prize
+is — it only glows when they're genuinely on. A false call stops the caller, tells the
+room, and goes on that player's tally. *Back to play* starts the caller again.
+
+### The room board
+
+Down the right of the Bingo pane, everyone in the room with where they stand — closest
+first, because the console knows every book from the perm:
+
+| | |
+| --- | --- |
+| grey | playing, with how many they need |
+| amber edge | one away, and **the numbers they're waiting on** |
+| **yellow** | claim in, waiting for you |
+| **green** | called it, and got it |
+| **red** | missed it, or called falsely |
+
+The header line says what the whole room is sitting on — *waiting on 74 ×3, 83 ×3*.
+
+Tap anyone to open their card: where they stand, their false-call tally, and
+
+- **Drop** — frees their book, leaves them connected
+- **Kick out** — puts them out of the room; they can come back
+- **Bar** — puts them out and refuses them at the door until you let them back in
 
 ## How a book number can be checked at all
 
@@ -111,11 +143,15 @@ amounts are bookkeeping so the display and the report can show them — for a cl
 a holiday park social, a fundraiser, a roleplay server. If you ever want to run real cash
 bingo you need certified equipment and a licence, and none of that starts here.
 
-The operator sign-in is a client-side lock: a PBKDF2 salted hash, so your password is
-never in the files, but the check happens in the visitor's browser and a determined person
-could grind guesses against it offline. Use a long passphrase. The thing that actually
-protects a live session is that the room only exists inside the operator's open tab —
-somebody past the sign-in gets an empty console of their own, not yours.
+The operator sign-in is a client-side lock: PBKDF2 with a salt per operator, so no
+password is in the files, but the check happens in the visitor's browser and a determined
+person could grind guesses against it offline. Use long passphrases. Roles decide what
+each operator sees, not what they could reach if they went digging in the source — treat
+them as a way of keeping people out of each other's way, not as a security boundary.
+
+The thing that actually protects a live session is that the room only exists inside the
+operator's open tab. Somebody past the sign-in gets an empty console of their own, never
+yours.
 
 ## Files
 
@@ -131,8 +167,8 @@ js/bus.js           the wire: local channel + WebRTC
 js/console.js       the caller's box
 js/display.js       the room screen
 js/player.js        the phone
-js/auth.js          the sign-in check
-js/credentials.js   your generated lock — the only file you edit after deploying
+js/auth.js          the sign-in check, roles and what each one may touch
+js/credentials.js   your operators — the only file you edit after deploying
 test-core.mjs       node test-core.mjs — proves the engine before you trust it
 ```
 

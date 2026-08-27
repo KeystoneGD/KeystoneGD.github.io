@@ -4,17 +4,20 @@
    drives the display and answers the phones. Everything else in the system is a view. */
 
 import {
-  NICK, money, parseMoney, validate, scanRoom, bookFor, rand32, code, STAGE_TYPES,
+  NICK, money, parseMoney, prizeLabel, isCash, validate, scanRoom, bookFor, bookStanding,
+  rand32, code, STAGE_TYPES,
 } from "./core.js";
 import {
   newSession, openLobby, startPlay, drawCall, undoCall, currentStage, pause,
   openCheck, setCheckResult, clearCheck, award, nextStage, endGame, abandonGame,
-  seatFor, releaseSeat, sessionTotals, forWire, openQuiz, quizNext, quizReveal,
-  quizAnswer, closeQuiz, DEFAULT_STAGES,
+  seatFor, releaseSeat, clearSeatStates, dropSeat, isBanned, ban, unban, sessionTotals,
+  forWire, openQuiz, quizNext, quizReveal, quizAnswer, closeQuiz, DEFAULT_STAGES,
 } from "./session.js";
 import { openRoom } from "./bus.js";
-import { checkCredentials, cryptoAvailable, session as gateSession } from "./auth.js";
-import { CREDENTIALS } from "./credentials.js";
+import {
+  signIn, makeUser, usersFrom, cryptoAvailable, can, ROLES, session as gateSession,
+} from "./auth.js";
+import { CREDENTIALS, USERS } from "./credentials.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g,
@@ -31,6 +34,24 @@ let pendingWinner = null;         // who Award will credit
 let claims = [];
 let quizRound = loadQuiz();
 let toastTimer = 0;
+let me = null;                    // {name, role} of whoever signed in
+let cardBook = 0;                 // the player card's subject
+
+/* Operators come from credentials.js, plus any this machine has added but not yet
+   committed. The console shows plainly which is which. */
+const LOCAL_USERS = "marquee.users";
+function localUsers() {
+  try { return JSON.parse(localStorage.getItem(LOCAL_USERS) || "[]"); } catch (e) { return []; }
+}
+function saveLocalUsers(list) {
+  try { localStorage.setItem(LOCAL_USERS, JSON.stringify(list)); } catch (e) {}
+}
+function allUsers() {
+  const committed = usersFrom(CREDENTIALS, USERS).map((u) => Object.assign({ committed: true }, u));
+  const names = new Set(committed.map((u) => String(u.name).toLowerCase()));
+  const extra = localUsers().filter((u) => !names.has(String(u.name).toLowerCase()));
+  return committed.concat(extra.map((u) => Object.assign({ committed: false }, u)));
+}
 
 /* ============================================================ sign in */
 
@@ -41,9 +62,9 @@ function gateMsg(html, kind) {
   el.innerHTML = html;
 }
 
-if (!CREDENTIALS) {
-  gateMsg("No lock fitted yet. Open <b>set-password.html</b>, choose an operator name and " +
-    "password, and paste the result into <b>js/credentials.js</b>.", "err");
+if (!allUsers().length) {
+  gateMsg("No lock fitted yet. Open <b>set-password.html</b>, create the first admin, and " +
+    "paste the result into <b>js/credentials.js</b>.", "err");
   $("gateBtn").disabled = true;
 } else if (!cryptoAvailable()) {
   gateMsg("This page needs a secure context for the sign-in check — open it over https, " +
@@ -53,20 +74,21 @@ if (!CREDENTIALS) {
 
 $("gateForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!CREDENTIALS || !cryptoAvailable()) return;
+  if (!allUsers().length || !cryptoAvailable()) return;
   $("gateBtn").disabled = true;
   gateMsg("Checking…");
   await new Promise((r) => setTimeout(r, Math.min(attempts * 400, 2000)));
-  const ok = await checkCredentials($("userIn").value, $("passIn").value, CREDENTIALS);
+  const who = await signIn($("userIn").value, $("passIn").value, allUsers());
   $("gateBtn").disabled = false;
-  if (!ok) {
+  if (!who) {
     attempts++;
     $("passIn").value = "";
     $("passIn").focus();
     gateMsg("That operator name and password don't match.", "err");
     return;
   }
-  gateSession.open();
+  me = who;
+  gateSession.open(who);
   openConsole();
 });
 
@@ -76,9 +98,25 @@ $("signOut").addEventListener("click", () => {
 });
 
 function openConsole() {
+  me = me || gateSession.who() || { name: "Operator", role: "admin" };
   $("gate").classList.add("hide");
   $("shell").classList.remove("hide");
+  applyRole();
   boot();
+}
+
+/* What this operator is allowed to touch. A checker can validate and watch; a caller
+   runs the games; only an admin sees Setup and Users. */
+function applyRole() {
+  const role = me.role || "checker";
+  const chip = $("whoChip");
+  chip.className = "chip " + (role === "admin" ? "warn" : "on");
+  chip.innerHTML = "<i></i>" + esc(me.name || "Operator") + " · " + (ROLES[role] ? ROLES[role].label : role);
+  $("modUsers").classList.toggle("hide", !can(role, "users"));
+  $("modSetup").classList.toggle("hide", !can(role, "setup"));
+  const runner = can(role, "call");
+  document.querySelectorAll("[data-needs-caller]").forEach((el) => el.classList.toggle("hide", !runner));
+  $("openDisplay").classList.toggle("hide", !runner);
 }
 
 /* ============================================================ panes */
@@ -86,10 +124,11 @@ function openConsole() {
 $$(".mod").forEach((b) => b.addEventListener("click", () => showPane(b.dataset.pane)));
 function $$(sel) { return Array.from(document.querySelectorAll(sel)); }
 
-const PANE_TITLES = { bingo: "Bingo", media: "Media", games: "Games", report: "Session report", setup: "Setup" };
+const PANE_TITLES = { bingo: "Bingo", media: "Media", games: "Games", report: "Session report",
+  users: "Operators", setup: "Setup" };
 function showPane(name) {
   $$(".mod").forEach((b) => b.classList.toggle("on", b.dataset.pane === name));
-  ["bingo", "media", "games", "report", "setup"].forEach((p) => {
+  ["bingo", "media", "games", "report", "users", "setup"].forEach((p) => {
     $("pane" + p[0].toUpperCase() + p.slice(1)).classList.toggle("on", p === name);
   });
   $("paneTitle").textContent = PANE_TITLES[name] || name;
@@ -97,6 +136,7 @@ function showPane(name) {
   if (name === "media") renderSlides();
   if (name === "games") renderQuizPane();
   if (name === "setup") fillSetup();
+  if (name === "users") renderUsers();
 }
 
 function toast(msg) {
@@ -165,7 +205,13 @@ async function boot() {
     },
     onJoin(p) {
       if (p.role === "display") { setChip("railScreen", true, "Screen"); publish(); return; }
+      if (isBanned(S, p.name)) {
+        room.kick(p.id, "banned");
+        toast(p.name + " is barred — turned away at the door");
+        return;
+      }
       const seat = seatFor(S, p.name);
+      seat.peer = p.id;
       p.seat = seat;
       room.send(p.id, { t: "seat", book: seat.book, perm: S.perm });
       renderSeats();
@@ -247,6 +293,7 @@ function takeClaim(p, msg) {
     return;
   }
   const book = msg.book | 0;
+  const seat = S.seats.find((x) => x.book === book);
   const res = validate(S.perm, book, g.calls, st.rows, msg.call);
   const behind = g.calls.length - 1 - (msg.call | 0);
   const text = res.ok
@@ -263,10 +310,23 @@ function takeClaim(p, msg) {
   renderClaims();
 
   if (res.ok) {
+    if (seat) { seat.state = "waiting"; seat.claim = { ok: true, text, at: Date.now() }; }
     pendingWinner = { name: p.name, book, ticket: res.ticket };
     openCheck(S, { name: p.name, book });
     setCheckResult(S, { ok: true, text: st.label + " — valid" });
     toast(p.name + " is claiming " + st.label.toLowerCase());
+  } else {
+    /* a false call. The room hears it, the caller decides what to do about it. */
+    if (seat) {
+      seat.falses = (seat.falses | 0) + 1;
+      seat.state = "false";
+      seat.flash = Date.now() + 6000;
+      seat.claim = { ok: false, text, at: Date.now() };
+    }
+    openCheck(S, { name: p.name, book });
+    setCheckResult(S, { ok: false, text: "Not on — play on" });
+    toast(p.name + " called and isn't on" +
+      (seat && seat.falses > 1 ? " (" + seat.falses + " this session)" : ""));
   }
   publish();
 }
@@ -336,6 +396,29 @@ function wireControls() {
     drawCall(S, +b.dataset.n);
     lastCallAt = Date.now();
     publish();
+  });
+
+  $("seats").addEventListener("click", (e) => {
+    const row = e.target.closest("[data-book]");
+    if (!row) return;
+    openPlayerCard(+row.dataset.book);
+  });
+  $("pcClose").addEventListener("click", () => $("playerCard").classList.remove("on"));
+  $("pcValidate").addEventListener("click", () => {
+    $("playerCard").classList.remove("on");
+    $("bookIn").value = cardBook;
+    lookup();
+  });
+  $("pcDrop").addEventListener("click", () => playerAction("drop"));
+  $("pcKick").addEventListener("click", () => playerAction("kick"));
+  $("pcBan").addEventListener("click", () => playerAction("ban"));
+  $("pcBans").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-unban]");
+    if (!b) return;
+    unban(S, b.dataset.unban);
+    renderBans();
+    publish();
+    toast(b.dataset.unban + " is welcome back");
   });
 
   $("bLookup").addEventListener("click", lookup);
@@ -459,6 +542,44 @@ function wireControls() {
   $("copyJoin").addEventListener("click", () => copy(base() + "index.html?room=" + S.room, "Player link"));
   $("copyRoom").addEventListener("click", () => copy(S.room, "Room code"));
 
+  /* operators */
+  $("uAdd").addEventListener("click", async () => {
+    const name = $("uName").value.trim();
+    const pass = $("uPass").value;
+    const role = $("uRole").value;
+    const msg = $("uMsg");
+    if (!name) { msg.className = "msg err"; msg.textContent = "Give them a name."; return; }
+    if (pass.length < 8) { msg.className = "msg err"; msg.textContent = "Eight characters is the floor."; return; }
+    if (allUsers().some((u) => String(u.name).toLowerCase() === name.toLowerCase())) {
+      msg.className = "msg err"; msg.textContent = "There's already an operator by that name."; return;
+    }
+    $("uAdd").disabled = true;
+    msg.className = "msg"; msg.textContent = "Deriving…";
+    const rec = await makeUser(name, pass, role);
+    saveLocalUsers(localUsers().concat([rec]));
+    $("uAdd").disabled = false;
+    $("uName").value = ""; $("uPass").value = "";
+    msg.className = "msg ok";
+    msg.textContent = name + " can sign in on this machine now. Download the file to make it stick.";
+    renderUsers();
+  });
+  $("userList").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-udel]");
+    if (!b) return;
+    saveLocalUsers(localUsers().filter((u) => String(u.name).toLowerCase() !== b.dataset.udel.toLowerCase()));
+    renderUsers();
+    toast(b.dataset.udel + " removed from this machine");
+  });
+  $("uExport").addEventListener("click", () => {
+    const blob = new Blob([usersFileText()], { type: "text/javascript" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "credentials.js";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    toast("Downloaded — commit it over js/credentials.js");
+  });
+
   /* report */
   $("repCsv").addEventListener("click", exportCsv);
   $("repPrint").addEventListener("click", () => window.print());
@@ -466,12 +587,16 @@ function wireControls() {
   /* builder */
   $("bxClose").addEventListener("click", () => $("builder").classList.remove("on"));
   $("bxGo").addEventListener("click", launchGame);
-  $("bxAddStage").addEventListener("click", () => { draftStages.push({ key: "line", prize: 1000 }); renderDraft(); });
+  $("bxAddStage").addEventListener("click", () => {
+    draftStages.push({ key: "line", kind: "cash", prize: 1000, text: "" });
+    renderDraft();
+  });
   $("bxStages").addEventListener("input", (e) => {
     const k = e.target.dataset.k;
     if (!k) return;
     const [i, f] = k.split(".");
     if (f === "prize") draftStages[+i].prize = parseMoney(e.target.value);
+    if (f === "text") draftStages[+i].text = e.target.value.slice(0, 40);
   });
   $("bxStages").addEventListener("change", (e) => {
     const k = e.target.dataset.k;
@@ -482,7 +607,14 @@ function wireControls() {
   });
   $("bxStages").addEventListener("click", (e) => {
     const d = e.target.closest("button[data-sdel]");
-    if (d) { draftStages.splice(+d.dataset.sdel, 1); renderDraft(); }
+    if (d) { draftStages.splice(+d.dataset.sdel, 1); renderDraft(); return; }
+    const k = e.target.closest(".kindseg button[data-set]");
+    if (k) {
+      const i = +k.parentElement.dataset.kind;
+      draftStages[i].kind = k.dataset.set;
+      if (draftStages[i].kind === "prize" && !draftStages[i].text) draftStages[i].text = "";
+      renderDraft();
+    }
   });
   $("bxMode").addEventListener("click", (e) => segPick(e, $("bxMode")));
   $("bxSpeed").addEventListener("click", (e) => segPick(e, $("bxSpeed")));
@@ -549,12 +681,110 @@ function doAward() {
     return;
   }
   if (typed && !pendingWinner) who.name = typed;
+  /* a name typed in by hand still belongs to a seat if we have one for it — that way
+     the board lights up green and the report gets the book number */
+  if (!who.book) {
+    const seat = S.seats.find((x) => x.name.toLowerCase() === String(who.name).trim().toLowerCase());
+    if (seat) who.book = seat.book;
+  }
   award(S, who);
   pendingWinner = null;
   if ($("winName")) $("winName").value = "";
   claims = [];
   renderClaims();
   publish();
+}
+
+/* ------------------------------------------------------------ player card */
+
+function openPlayerCard(book) {
+  const seat = S.seats.find((x) => x.book === book);
+  if (!seat) return;
+  cardBook = book;
+  $("pcName").textContent = seat.name + " — book " + book;
+
+  const g = S.game, st = currentStage(S);
+  let line = "Not playing just now.";
+  if (g && st && g.calls.length) {
+    let b = bookCache.get(book);
+    if (!b) { b = bookFor(S.perm, book); bookCache.set(book, b); }
+    const stand = bookStanding(b, g.calls, st.rows);
+    line = stand.toGo === 0
+      ? "On for " + st.label.toLowerCase() + " since call " + (stand.onSince + 1) + "."
+      : stand.toGo === 1
+        ? "One off " + st.label.toLowerCase() + " — waiting on " + stand.waitingOn.join(" or ") + "."
+        : stand.toGo + " off " + st.label.toLowerCase() + ".";
+  }
+  if (seat.falses) line += " " + seat.falses + " false call" + (seat.falses === 1 ? "" : "s") + " this session.";
+  $("pcStanding").textContent = line;
+
+  const canRun = can(me.role, "call");
+  ["pcDrop", "pcKick", "pcBan"].forEach((id) => { $(id).disabled = !canRun; });
+  renderBans();
+  $("playerCard").classList.add("on");
+}
+
+function renderBans() {
+  const bans = S.bans || [];
+  $("pcBans").innerHTML = bans.length
+    ? '<label class="lbl" style="margin-top:6px">Barred</label><div class="seats">' +
+      bans.map((b) => "<span>" + esc(b) +
+        ' <button class="btn sm ghost" data-unban="' + esc(b) + '" style="min-height:24px;padding:0 8px;margin-left:6px">Let back in</button></span>').join("") +
+      "</div>"
+    : "";
+}
+
+function playerAction(what) {
+  const seat = S.seats.find((x) => x.book === cardBook);
+  if (!seat) return;
+  const name = seat.name;
+  if (what === "ban" && !window.confirm("Bar " + name + " from this room?")) return;
+
+  if (what === "kick" || what === "ban") {
+    if (what === "ban") ban(S, name);
+    let peer = seat.peer && room ? seat.peer : null;
+    if (!peer && room) { const p = room.find(name); peer = p ? p.id : null; }
+    if (peer && room) room.kick(peer, what === "ban" ? "banned" : "removed");
+    dropSeat(S, cardBook);
+    toast(name + (what === "ban" ? " is barred" : " has been put out"));
+  } else {
+    dropSeat(S, cardBook);
+    toast(name + " dropped — book " + cardBook + " is free");
+  }
+  $("playerCard").classList.remove("on");
+  publish();
+}
+
+/* ------------------------------------------------------------ operators */
+
+function renderUsers() {
+  const list = allUsers();
+  const pending = list.filter((u) => !u.committed).length;
+  $("userNote").textContent = pending ? pending + " not committed" : list.length + " on file";
+  $("userList").innerHTML = list.map((u, i) =>
+    '<div class="item"><div class="ih">' +
+      '<span class="t">' + esc(u.name || "(unnamed admin)") + "</span>" +
+      '<span class="chip ' + (u.role === "admin" ? "warn" : "") + '" style="font-size:12px;padding:4px 10px">' +
+        esc(ROLES[u.role] ? ROLES[u.role].label : u.role) + "</span>" +
+      (u.committed ? "" : '<span class="chip bad" style="font-size:11px;padding:4px 9px">this machine</span>') +
+      (u.committed || String(u.name).toLowerCase() === String(me.name).toLowerCase()
+        ? ""
+        : '<button class="mini danger" data-udel="' + esc(u.name) + '" aria-label="Remove">&#10005;</button>') +
+    "</div>" +
+    '<span style="color:var(--faint);font-size:13px">' +
+      esc(ROLES[u.role] ? ROLES[u.role].blurb : "") + "</span></div>").join("");
+}
+
+function usersFileText() {
+  const list = allUsers().map((u) => ({
+    v: 1, name: u.name, role: u.role, iterations: u.iterations,
+    salt: u.salt, iv: u.iv, token: u.token,
+  })).filter((u) => u.salt);
+  return "/* Marquee Event System — who can open the console.\n" +
+    " * Generated by the console's Users pane. No name or password in here: a salt and a\n" +
+    " * token that only the right password can decrypt. Commit it as it is.\n" +
+    " */\n\nexport const USERS = " + JSON.stringify(list, null, 2) + ";\n\n" +
+    "export const CREDENTIALS = null;\n";
 }
 
 /* ------------------------------------------------------------ builder */
@@ -600,12 +830,21 @@ function renderDraft() {
     const opts = Object.keys(STAGE_TYPES).map((k) =>
       '<option value="' + k + '"' + (k === st.key ? " selected" : "") + ">" +
       STAGE_TYPES[k].label + "</option>").join("");
+    const cash = st.kind !== "prize";
     return '<div class="item"><div class="ih">' +
-      '<select class="field" data-k="' + i + '.key" style="flex:1">' + opts + "</select>" +
-      '<input class="field mono" data-k="' + i + '.prize" value="' +
-        (st.prize / 100).toFixed(2) + '" inputmode="decimal" style="width:110px">' +
+      '<select class="field" data-k="' + i + '.key" style="flex:1;min-width:120px">' + opts + "</select>" +
+      '<div class="seg kindseg" data-kind="' + i + '">' +
+        '<button type="button" data-set="cash"' + (cash ? ' class="on"' : "") + ">Cash</button>" +
+        '<button type="button" data-set="prize"' + (!cash ? ' class="on"' : "") + ">Prize</button>" +
+      "</div>" +
       '<button class="mini danger" data-sdel="' + i + '" aria-label="Remove">&#10005;</button>' +
-      "</div></div>";
+      "</div>" +
+      (cash
+        ? '<input class="field mono" data-k="' + i + '.prize" value="' +
+          (st.prize / 100).toFixed(2) + '" inputmode="decimal" placeholder="Amount">'
+        : '<input class="field" data-k="' + i + '.text" value="' + esc(st.text || "") +
+          '" placeholder="What they win — a hamper, a bottle, a meat tray">') +
+      "</div>";
   }).join("");
 }
 
@@ -725,7 +964,7 @@ function render() {
       x.classList.toggle("on", +x.dataset.speed === g.interval));
     $("padWrap").classList.toggle("hide", !!g.autocall);
     const st = currentStage(S);
-    $("stageLabel").textContent = st ? st.label + " · " + money(st.prize, S.currency) : "—";
+    $("stageLabel").textContent = st ? st.label + " · " + prizeLabel(st, S.currency) : "—";
   } else {
     $("padWrap").classList.add("hide");
     $("stageLabel").textContent = "—";
@@ -762,14 +1001,82 @@ function renderLive() {
     .map((n) => '<span class="ball">' + n + "</span>").join("");
 }
 
+/* Who is in, where they stand, and what they are waiting for. The console knows every
+   book in the room from the perm, so it can say all of this without anyone telling it. */
 function renderSeats() {
   const el = $("seats");
+  const g = S.game;
+  const st = currentStage(S);
+  const live = !!(g && st && g.calls.length);
+
   if (!S.seats.length) {
-    el.innerHTML = '<span style="border:none;background:none;color:var(--faint);padding:0">Nobody yet</span>';
+    el.innerHTML = '<span class="nobody">Nobody in the room yet.</span>';
+    $("roomWaiting").textContent = "";
     return;
   }
-  el.innerHTML = S.seats.map((s) =>
-    "<span>" + esc(s.name) + "<b>" + s.book + "</b></span>").join("");
+
+  const rows = S.seats.map((seat) => {
+    const row = { seat, toGo: 99, waitingOn: [], onSince: -1, ticket: -1 };
+    if (live) {
+      let book = bookCache.get(seat.book);
+      if (!book) { book = bookFor(S.perm, seat.book); bookCache.set(seat.book, book); }
+      const stand = bookStanding(book, g.calls, st.rows);
+      row.toGo = stand.toGo;
+      row.waitingOn = stand.waitingOn;
+      row.onSince = stand.onSince;
+      row.ticket = stand.ticket;
+
+      /* a book that came on and never called — the caller wants to know */
+      if (stand.toGo === 0 && !seat.state && stand.onSince >= 0 &&
+          stand.onSince < g.calls.length - 1) {
+        seat.state = "missed";
+      }
+      if (seat.state === "false" && seat.flash && Date.now() > seat.flash) {
+        seat.state = null; seat.flash = 0;
+      }
+    }
+    return row;
+  }).sort((a, b) => {
+    const rank = (r) => ({ waiting: 0, called: 1, false: 2, missed: 3 }[r.seat.state] ?? 4);
+    return rank(a) - rank(b) || a.toGo - b.toGo || a.seat.book - b.seat.book;
+  });
+
+  el.innerHTML = rows.map((r) => {
+    const seat = r.seat;
+    const cls = ["seatrow"];
+    if (seat.state) cls.push(seat.state);
+    else if (r.toGo === 1) cls.push("sharp");
+
+    let status;
+    if (seat.state === "waiting") status = "<b>Claim waiting</b>";
+    else if (seat.state === "called") status = "<b>Called it</b>";
+    else if (seat.state === "false") status = "<b>False call</b>";
+    else if (seat.state === "missed") status = "<b>Missed it</b>";
+    else if (!live) status = "Waiting to play";
+    else if (r.toGo === 0) status = "<b>On</b>";
+    else if (r.toGo === 1) status = "Waiting on";
+    else if (r.toGo < 90) status = r.toGo + " to go";
+    else status = "";
+
+    const needles = seat.state || r.toGo !== 1 ? "" :
+      '<span class="need">' + r.waitingOn.slice(0, 4).map((n) => "<i>" + n + "</i>").join("") + "</span>";
+
+    return '<div class="' + cls.join(" ") + '" data-book="' + seat.book + '" role="button" tabindex="0">' +
+      '<span class="nm">' + esc(seat.name) + "</span>" +
+      '<span class="bk">' + seat.book + "</span>" +
+      '<span class="sp"></span>' +
+      (seat.falses ? '<span class="falses">' + seat.falses + " false</span>" : "") +
+      needles +
+      '<span class="st">' + status + "</span>" +
+      "</div>";
+  }).join("");
+
+  /* and what the room as a whole is sitting on */
+  const hot = (S.stats && S.stats.hot) || [];
+  $("roomWaiting").innerHTML = live && hot.length
+    ? "room waiting on " + hot.slice(0, 3).map((h) =>
+        '<b style="color:var(--amber)">' + h[0] + "</b>&#8202;&times;" + h[1]).join(", ")
+    : "";
 }
 
 function renderClaims() {
@@ -845,7 +1152,8 @@ function renderReport() {
   $("repTiles").innerHTML =
     tile("Games played", t.games) +
     tile("In the room", S.seats.length) +
-    tile("Prizes paid", money(t.paid, S.currency), "gold") +
+    tile("Cash paid", money(t.paid, S.currency), "gold") +
+    tile("Prizes given", t.goods, "mint") +
     tile("Jackpot paid", money(t.jackpot, S.currency), "mint") +
     tile("Session length", mins + "m") +
     tile("Books in play", (S.books.to - S.books.from + 1));
@@ -857,7 +1165,7 @@ function renderReport() {
         "<td>" + (st.won ? esc(st.won.name) : "<span style='color:var(--faint)'>not won</span>") + "</td>" +
         '<td class="num">' + (st.won && st.won.book ? st.won.book : "—") + "</td>" +
         '<td class="num">' + (st.won ? st.won.call : "—") + "</td>" +
-        '<td class="num">' + money(st.won ? st.prize : 0, S.currency) +
+        '<td class="num">' + (st.won ? prizeLabel(st, S.currency) : "—") +
           (st.won && st.won.jackpot ? " +" + money(st.won.jackpot, S.currency) : "") + "</td></tr>");
     }
   }
@@ -872,15 +1180,18 @@ function tile(k, v, cls) {
 }
 
 function exportCsv() {
-  const lines = [["Game", "Name", "Prize", "Winner", "Book", "Ticket", "Calls", "Amount", "Jackpot"].join(",")];
+  const lines = [["Game", "Name", "Prize", "Type", "Winner", "Book", "Ticket", "Calls",
+    "Amount", "Awarded", "Jackpot"].join(",")];
   for (const g of S.history) {
     for (const st of g.stages) {
-      lines.push([g.no, '"' + g.name + '"', '"' + st.label + '"',
+      const cash = isCash(st);
+      lines.push([g.no, '"' + g.name + '"', '"' + st.label + '"', cash ? "cash" : "prize",
         '"' + (st.won ? st.won.name : "") + '"',
         st.won && st.won.book ? st.won.book : "",
         st.won && st.won.ticket != null ? st.won.ticket + 1 : "",
         st.won ? st.won.call : "",
-        st.won ? (st.prize / 100).toFixed(2) : "0.00",
+        cash && st.won ? (st.prize / 100).toFixed(2) : "",
+        '"' + (st.won ? prizeLabel(st, S.currency) : "") + '"',
         st.won && st.won.jackpot ? (st.won.jackpot / 100).toFixed(2) : ""].join(","));
     }
   }
@@ -917,4 +1228,4 @@ function buildPad() {
 
 /* ============================================================ go */
 
-if (gateSession.isOpen() && CREDENTIALS && cryptoAvailable()) openConsole();
+if (gateSession.isOpen() && allUsers().length && cryptoAvailable()) openConsole();

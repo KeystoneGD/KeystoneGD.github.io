@@ -110,6 +110,8 @@ body{
 .prize.won{opacity:.55}
 .prize.won .amt{color:var(--mint);font-size:2vmin}
 .prize.won .amt::before{content:"✓ "}
+.prize .amt.words{font-size:1.9vmin;line-height:1.2;font-weight:700;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* --- lobby --- */
 .lobby{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2vmin;text-align:center}
@@ -159,6 +161,7 @@ body{
   background:linear-gradient(180deg,#FFF3D6,var(--amber) 55%,#A96C00);
   -webkit-background-clip:text;background-clip:text;color:transparent;
 }
+.won .amount.words{font-size:9vmin;line-height:1.05;max-width:80vw;text-wrap:balance}
 .won .name{font-size:7vmin;font-weight:800;letter-spacing:-.02em}
 .won .detail{
   font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;

@@ -33,7 +33,8 @@ export function newSession(opts) {
     quiz: null,
     stats: { sharp: 0, won: 0, hot: [], tickets: 0 },
     history: [],           // completed games, for the session report
-    seats: [],             // {name, book} — who is in the room
+    seats: [],             // who is in the room, and where they stand
+    bans: [],              // names barred from coming back
     openedAt: Date.now(),
   };
 }
@@ -45,15 +46,17 @@ export function stagesFromPreset(preset) {
     key: s.key,
     label: s.label || (STAGE_TYPES[s.key] ? STAGE_TYPES[s.key].label : s.key),
     rows: STAGE_TYPES[s.key] ? STAGE_TYPES[s.key].rows : (s.rows || 1),
-    prize: s.prize | 0,
+    kind: s.kind === "prize" ? "prize" : "cash",
+    prize: s.prize | 0,                     // pence, when it's cash
+    text: s.text || "",                     // what it is, when it isn't
     won: null,
   }));
 }
 
 export const DEFAULT_STAGES = [
-  { key: "line", prize: 2000 },
-  { key: "two", prize: 3000 },
-  { key: "house", prize: 7500 },
+  { key: "line", kind: "cash", prize: 2000 },
+  { key: "two", kind: "cash", prize: 3000 },
+  { key: "house", kind: "cash", prize: 7500 },
 ];
 
 export function buildGame(s, spec) {
@@ -77,6 +80,7 @@ export function buildGame(s, spec) {
 
 /* Put a game on the board and open the lobby — the "eyes down in..." moment. */
 export function openLobby(s, spec, lobbySeconds) {
+  clearSeatStates(s);
   const g = buildGame(s, spec);
   g.lobbyUntil = Date.now() + (lobbySeconds == null ? 20 : lobbySeconds) * 1000;
   s.game = g;
@@ -145,9 +149,14 @@ export function setCheckResult(s, result) {
   return s;
 }
 
+/* Coming out of a check means the caller starts again — otherwise a false call would
+   leave the room sitting in silence until someone noticed the pause. */
 export function clearCheck(s) {
   s.check = null;
-  if (s.game && s.mode === "check") s.mode = "play";
+  if (s.game && s.mode === "check") {
+    s.mode = "play";
+    s.game.paused = false;
+  }
   return s;
 }
 
@@ -172,6 +181,8 @@ export function award(s, winner) {
   }
   s.check = null;
   s.mode = "won";
+  const seat = winner && winner.book ? s.seats.find((x) => x.book === winner.book) : null;
+  if (seat) { seat.state = "called"; seat.flash = 0; }
   return s;
 }
 
@@ -183,6 +194,7 @@ export function nextStage(s) {
     g.stageIndex++;
     g.paused = false;
     s.mode = "play";
+    clearSeatStates(s);
     return s;
   }
   return endGame(s);
@@ -195,7 +207,7 @@ export function endGame(s) {
   s.history.push({
     no: g.no, name: g.name, calls: g.calls.length, seed: g.seed,
     stages: g.stages.map((st) => ({
-      key: st.key, label: st.label, prize: st.prize,
+      key: st.key, label: st.label, prize: st.prize, kind: st.kind, text: st.text,
       won: st.won ? {
         name: st.won.name, book: st.won.book,
         ticket: st.won.ticket, call: st.won.call, jackpot: st.won.jackpot || 0,
@@ -223,9 +235,21 @@ export function seatFor(s, name) {
   const existing = s.seats.find((x) => x.name.toLowerCase() === clean.toLowerCase());
   if (existing) return existing;
   if (s.books.next > s.books.to) s.books.to = s.books.next;   // room is fuller than planned
-  const seat = { name: clean, book: s.books.next++, joined: Date.now() };
+  const seat = {
+    name: clean, book: s.books.next++, joined: Date.now(),
+    state: null,          // waiting | called | missed | false
+    claim: null,          // the last claim they made this stage
+    falses: 0,            // false calls this session
+    flash: 0,             // when to stop shouting about the last false call
+  };
   s.seats.push(seat);
   return seat;
+}
+
+/* Every prize starts everyone level again. False-call tallies carry on. */
+export function clearSeatStates(s) {
+  for (const x of s.seats) { x.state = null; x.claim = null; x.flash = 0; }
+  return s;
 }
 
 export function releaseSeat(s, name) {
@@ -234,21 +258,44 @@ export function releaseSeat(s, name) {
   return s;
 }
 
+export function dropSeat(s, book) {
+  const i = s.seats.findIndex((x) => x.book === book);
+  if (i >= 0) s.seats.splice(i, 1);
+  return s;
+}
+
+export function isBanned(s, name) {
+  const want = String(name || "").trim().toLowerCase();
+  return (s.bans || []).some((b) => b.toLowerCase() === want);
+}
+
+export function ban(s, name) {
+  if (!s.bans) s.bans = [];
+  const clean = String(name || "").trim();
+  if (clean && !isBanned(s, clean)) s.bans.push(clean);
+  return s;
+}
+
+export function unban(s, name) {
+  const want = String(name || "").trim().toLowerCase();
+  s.bans = (s.bans || []).filter((b) => b.toLowerCase() !== want);
+  return s;
+}
+
 /* ------------------------------------------------------------------ money */
 
 export function sessionTotals(s) {
-  let paid = 0, prizes = 0, jackpot = 0;
-  for (const g of s.history) {
-    for (const st of g.stages) {
-      prizes += st.prize | 0;
-      if (st.won) { paid += st.prize | 0; jackpot += st.won.jackpot | 0; }
-    }
-  }
-  if (s.game) for (const st of s.game.stages) {
-    prizes += st.prize | 0;
-    if (st.won) { paid += st.prize | 0; jackpot += st.won.jackpot | 0; }
-  }
-  return { paid, offered: prizes, jackpot, games: s.history.length, seats: s.seats.length };
+  let paid = 0, offered = 0, jackpot = 0, goods = 0;
+  const count = (st) => {
+    const cash = st.kind !== "prize";
+    if (cash) offered += st.prize | 0;
+    if (!st.won) return;
+    if (cash) paid += st.prize | 0; else goods++;
+    jackpot += (st.won.jackpot | 0);
+  };
+  for (const g of s.history) g.stages.forEach(count);
+  if (s.game) s.game.stages.forEach(count);
+  return { paid, offered, jackpot, goods, games: s.history.length, seats: s.seats.length };
 }
 
 /* ------------------------------------------------------------------ quiz */

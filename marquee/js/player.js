@@ -4,7 +4,9 @@
    has dabbed. The tickets themselves come out of the perm, so the caller can always
    check the claim against the same six tickets the player is looking at. */
 
-import { NICK, bookFor, toGo, winningCall, money, normaliseCode, mulberry32 } from "./core.js";
+import {
+  NICK, bookFor, toGo, winningCall, money, prizeLabel, normaliseCode, mulberry32,
+} from "./core.js";
 import { joinRoom } from "./bus.js";
 
 const $ = (id) => document.getElementById(id);
@@ -119,10 +121,93 @@ function handle(msg) {
     render();
     return;
   }
+  if (msg.t === "kicked") {
+    if (link) link.close();
+    link = null;
+    $("hall").classList.add("hide");
+    $("door").classList.remove("hide");
+    $("joinBtn").disabled = false;
+    door(msg.reason === "banned"
+      ? "The caller has barred you from this room."
+      : "The caller has taken you out of the room. You can ask to come back in.", "err");
+    return;
+  }
   if (msg.t === "verdict") {
     say(msg.ok ? "<b>Valid.</b> " + esc(msg.text) : "Not this time — " + esc(msg.text),
       msg.ok ? "good" : "bad");
   }
+}
+
+/* ------------------------------------------------------- the room screen, small */
+
+(function buildMiniBoard() {
+  let h = "";
+  for (let n = 1; n <= 90; n++) h += "<b>" + n + "</b>";
+  $("mBoard").innerHTML = h;
+})();
+
+let miniOn = LS.get("mini", true);
+function setMini(on) {
+  miniOn = !!on;
+  LS.set("mini", miniOn);
+  $("screenBtn").setAttribute("aria-pressed", String(miniOn));
+  $("mini").classList.toggle("hide", !miniOn || !S || S.mode === "quiz");
+}
+$("screenBtn").addEventListener("click", () => setMini(!miniOn));
+
+/* The same picture the hall is looking at, at a tenth the size: what's been called,
+   what's being played for, and whatever the big screen is shouting about. */
+function renderMini() {
+  const show = miniOn && S && S.mode !== "quiz";
+  $("mini").classList.toggle("hide", !show);
+  if (!show) return;
+
+  const g = S.game;
+  const calls = g ? g.calls || [] : [];
+  const cur = calls.length ? calls[calls.length - 1] : 0;
+
+  $("mVenue").textContent = S.venue;
+  $("mGame").textContent = g
+    ? g.name + " · " + calls.length + "/90"
+    : (S.mode === "interval" ? "Interval" : "Between games");
+
+  const on = new Set(calls);
+  const cells = $("mBoard").children;
+  for (let n = 1; n <= 90; n++) {
+    cells[n - 1].classList.toggle("on", on.has(n));
+    cells[n - 1].classList.toggle("now", n === cur);
+  }
+
+  $("mPrizes").innerHTML = g ? g.stages.map((st, i) =>
+    '<span class="mprize ' + (st.won ? "won" : (i === g.stageIndex ? "now" : "")) + '">' +
+    '<span class="n">' + esc(st.label) + "</span>" +
+    '<span class="a">' + (st.won ? esc(st.won.name || "Won") : esc(prizeLabel(st, S.currency))) +
+    "</span></span>").join("")
+    : (S.jackpot && S.jackpot.active
+        ? '<span class="mprize now"><span class="n">' + esc(S.jackpot.name) +
+          '</span><span class="a">' + money(S.jackpot.amount, S.currency) + "</span></span>"
+        : "");
+
+  const note = $("mNote");
+  if (S.mode === "check" && S.check) {
+    note.className = "mnote " + (S.check.result && !S.check.result.ok ? "bad" : "check");
+    note.textContent = (S.check.result ? S.check.result.text + " — " : "Check — ") +
+      (S.check.name || (S.check.book ? "Book " + S.check.book : ""));
+  } else if (S.mode === "won" && g) {
+    const st = g.stages[g.stageIndex];
+    note.className = "mnote won";
+    note.textContent = st && st.won
+      ? st.won.name + " takes " + st.label.toLowerCase() + " — " + prizeLabel(st, S.currency)
+      : "Winner";
+  } else if (S.notice) {
+    note.className = "mnote";
+    note.style.color = "var(--muted)";
+    note.textContent = S.notice;
+  } else {
+    note.className = "mnote hide";
+    return;
+  }
+  note.classList.remove("hide");
 }
 
 /* ---------------------------------------------------------------- render */
@@ -136,8 +221,13 @@ function say(html, kind) {
 function render() {
   if (!S) return;
   const g = S.game;
+  renderMini();
 
-  if (S.mode === "quiz" && S.quiz) { builtFor = ""; return renderQuiz(); }
+  if (S.mode === "quiz" && S.quiz) {
+    builtFor = "";
+    $("callstrip").classList.add("hide");
+    return renderQuiz();
+  }
 
   if (!g) {
     $("pBody").innerHTML =
@@ -145,6 +235,7 @@ function render() {
       "<p>" + (S.mode === "interval" ? "Interval — next game shortly." : "Waiting for the next game.") +
       "</p>" + (S.notice ? '<p style="margin-top:10px;color:var(--amber)">' + esc(S.notice) + "</p>" : "") +
       "</div>" + sheetPreview();
+    $("callstrip").classList.add("hide");
     $("bingoBtn").disabled = true;
     say("Sit tight.");
     lastBall = -1; lastCallCount = -1; builtFor = "";
@@ -157,7 +248,8 @@ function render() {
       '<div class="card"><h2>' + esc(g.name) + "</h2>" +
       '<div class="big">' + left + "</div><p>Eyes down</p>" +
       '<p style="margin-top:10px">' + g.stages.map((s) =>
-        esc(s.label) + " " + money(s.prize, S.currency)).join(" · ") + "</p></div>" + sheetPreview();
+        esc(s.label) + " " + esc(prizeLabel(s, S.currency))).join(" · ") + "</p></div>" + sheetPreview();
+    $("callstrip").classList.add("hide");
     $("bingoBtn").disabled = true;
     builtFor = "";
     say("Book " + bookNo + " is yours for this one.");
@@ -169,9 +261,10 @@ function render() {
   const calls = g.calls || [];
   const cur = calls.length ? calls[calls.length - 1] : 0;
   const want = g.no + "/" + bookNo;
+  $("callstrip").classList.remove("hide");
   if (builtFor !== want) {
     builtFor = want;
-    $("pBody").innerHTML = strip(g, calls, cur) + '<div class="book" id="bookBox"></div>';
+    $("pBody").innerHTML = '<div class="book" id="bookBox"></div>';
     drawBook(calls);
     lastCallCount = -1;
   }
@@ -198,18 +291,6 @@ function refreshCells(calls) {
   });
 }
 
-function strip(g, calls, cur) {
-  const st = g.stages[g.stageIndex];
-  const tape = calls.slice(-5, -1).reverse().map((n) => '<span class="ball">' + n + "</span>").join("");
-  return '<div class="callstrip">' +
-    '<span class="ball ' + (cur ? "" : "blank") + '" id="pBall">' + (cur || "—") + "</span>" +
-    '<span class="txt"><span class="nick" id="pNick">' +
-      (g.paused ? "Caller stopped" : (cur ? esc(NICK[cur]) : "Eyes down")) + "</span>" +
-    '<span class="meta" id="pMeta">' + (st ? esc(st.label) + " · " + money(st.prize, S.currency) : "") +
-      " · " + calls.length + " called</span>" +
-    '<span class="tape" id="pTape">' + tape + "</span></span></div>";
-}
-
 function updateStrip(g, calls, cur) {
   const b = $("pBall");
   if (!b) return;
@@ -219,7 +300,7 @@ function updateStrip(g, calls, cur) {
     b.className = "ball" + (cur ? "" : " blank");
   }
   $("pNick").textContent = g.paused ? "Caller stopped" : (cur ? NICK[cur] : "Eyes down");
-  $("pMeta").textContent = (st ? st.label + " · " + money(st.prize, S.currency) : "") +
+  $("pMeta").textContent = (st ? st.label + " · " + prizeLabel(st, S.currency) : "") +
     " · " + calls.length + " called";
   $("pTape").innerHTML = calls.slice(-5, -1).reverse()
     .map((n) => '<span class="ball">' + n + "</span>").join("");
@@ -245,9 +326,10 @@ function drawBook(calls) {
       }
     }
     return '<div class="ticket" data-t="' + i + '">' +
-      '<div class="th"><span>Ticket ' + (i + 1) + '</span><b>' + bookNo + " / " + (i + 1) + "</b></div>" +
-      '<div class="tgrid">' + cells + "</div>" +
-      '<span class="togo" data-togo="' + i + '"></span></div>';
+      '<div class="th"><span>Ticket ' + (i + 1) + "</span>" +
+        '<span class="togo" data-togo="' + i + '"></span>' +
+        "<b>" + bookNo + " / " + (i + 1) + "</b></div>" +
+      '<div class="tgrid">' + cells + "</div></div>";
   }).join("");
   paintTickets(calls);
 }
@@ -268,6 +350,8 @@ function paintTickets(calls) {
   });
 }
 
+/* The button is live whenever a prize is: you can call whenever you like, and be wrong
+   about it, exactly as you can in a hall. What changes is how loudly it invites you. */
 function updateClaim(g, calls) {
   const btn = $("bingoBtn");
   if (!book) { btn.disabled = true; return; }
@@ -277,26 +361,35 @@ function updateClaim(g, calls) {
 
   let best = -1, bestT = -1;
   for (let t = 0; t < 6; t++) {
-    if (toGo(book[t], marked, st.rows) !== 0) continue;   // only what they've actually dabbed
+    if (toGo(book[t], marked, st.rows) !== 0) continue;   // only what they have actually dabbed
     const wc = winningCall(book[t], calls, st.rows);
     if (wc >= 0 && (best < 0 || wc < best)) { best = wc; bestT = t; }
   }
   paintTickets(calls);
 
-  if (bestT < 0) {
-    btn.disabled = true;
-    if (S.mode === "check") say("Someone's claiming — caller's checking it.");
-    else if (g.paused) say("Caller stopped.");
-    else say("Dab your numbers as they come.");
-    return;
-  }
-  const open = best === calls.length - 1 && claimedAt !== best;
-  btn.disabled = !open;
-  if (claimedAt === best) say("Claim's in with the caller.", "good");
-  else if (open) say("You're on for <b>" + esc(st.label) + "</b> — call it now!");
-  else say("Ticket " + (bestT + 1) + " was on, but the <b>ball's moved on</b>.", "bad");
+  const thisCall = calls.length - 1;
+  const alreadyIn = claimedAt === thisCall;
+  const canCall = S.mode === "play" && !alreadyIn && calls.length > 0;
+  const onNow = bestT >= 0 && best === thisCall;
+
+  btn.disabled = !canCall;
+  btn.classList.toggle("hot", canCall && onNow);
   btn.dataset.ticket = bestT;
-  btn.dataset.call = best;
+  btn.dataset.call = thisCall;
+
+  if (alreadyIn) { say("Claim's in with the caller.", "good"); return; }
+  if (S.mode === "check") { say("Caller's checking a claim."); return; }
+  if (g.paused) { say("Caller stopped."); return; }
+  if (onNow) { say("You're on for <b>" + esc(st.label) + "</b> — call it now!"); return; }
+  if (bestT >= 0) { say("Ticket " + (bestT + 1) + " came on, but the <b>ball's moved on</b>.", "bad"); return; }
+
+  /* how close are they, so a false call is at least an informed one */
+  let closest = 99;
+  for (let t = 0; t < 6; t++) closest = Math.min(closest, toGo(book[t], marked, st.rows));
+  say(closest === 1
+    ? "One number off. Call it when it comes."
+    : "Dab your numbers as they come" + (closest < 90 ? " — " + closest + " off a " +
+      esc(st.label.toLowerCase()) + "." : "."));
 }
 
 function sheetPreview() {
@@ -343,12 +436,11 @@ $("pBody").addEventListener("click", (e) => {
   if (!cell || !S || !S.game) return;
   const n = +cell.dataset.n;
   const calls = S.game.calls || [];
+  /* your dabber, your business — mark whatever you like. The caller checks the ticket
+     against the numbers actually called, so a wrong dab just makes for a false call. */
   const set = dabs();
   if (set.has(n)) { set.delete(n); saveDabs(set); cell.classList.remove("dabbed"); }
-  else if (calls.indexOf(n) < 0) {
-    cell.classList.remove("nope"); void cell.offsetWidth; cell.classList.add("nope");
-    return;
-  } else {
+  else {
     set.add(n); saveDabs(set);
     cell.classList.add("dabbed"); cell.classList.remove("callable");
   }
@@ -365,6 +457,7 @@ $("bingoBtn").addEventListener("click", () => {
     call: +btn.dataset.call, stage: st ? st.key : "line",
   });
   btn.disabled = true;
+  btn.classList.remove("hot");
   say("Claim's in with the caller.", "good");
 });
 
@@ -404,4 +497,5 @@ function speak(n) {
 }
 
 document.documentElement.style.setProperty("--dab", me.dab);
+setMini(miniOn);
 setInterval(() => { if (S && S.mode === "lobby") render(); }, 300);

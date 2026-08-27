@@ -44,7 +44,30 @@
     </div>
     <span class="sp"></span>
     <span class="chip off" id="pLink"><i></i>Offline</span>
+    <button class="btn sm ghost" id="screenBtn" aria-pressed="true">Screen</button>
     <button class="btn sm ghost" id="pSettings">Dabber</button>
+  </div>
+
+  <!-- the ball, always in the same place -->
+  <div class="callstrip hide" id="callstrip">
+    <span class="ball blank" id="pBall">&mdash;</span>
+    <span class="txt">
+      <span class="nick" id="pNick">Eyes down</span>
+      <span class="meta" id="pMeta"></span>
+      <span class="tape" id="pTape"></span>
+    </span>
+  </div>
+
+  <!-- the room screen, shrunk to fit a hand -->
+  <div class="mini" id="mini">
+    <div class="mhead">
+      <span class="mv" id="mVenue">&mdash;</span>
+      <span class="sp"></span>
+      <span class="mg" id="mGame"></span>
+    </div>
+    <div class="mboard" id="mBoard"></div>
+    <div class="mprizes" id="mPrizes"></div>
+    <div class="mnote hide" id="mNote"></div>
   </div>
 
   <div id="pBody"></div>
