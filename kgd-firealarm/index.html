@@ -1,0 +1,1009 @@
+<title>Fire Panel Operating Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap">
+
+<style>
+:root {
+    /* cool technical greys, signal red, caution amber, panel-green display */
+    --paper:      #eef0f3;
+    --surface:    #ffffff;
+    --surface-2:  #f6f7f9;
+    --ink:        #171a1e;
+    --ink-2:      #4d555e;
+    --ink-3:      #79828c;
+    --rule:       #d2d7dd;
+    --rule-2:     #e3e7eb;
+
+    --signal:     #bf2b26;   /* fire */
+    --signal-ink: #8e1f1b;
+    --caution:    #a8760a;   /* fault, engineer */
+    --caution-bg: #f7edd6;
+    --go:         #1f7a4a;
+    --slate:      #3f5566;   /* occupant */
+
+    --lcd:        #b7c274;
+    --lcd-ink:    #1d2610;
+
+    --fascia:     #fbfbfc;
+    --fascia-2:   #e9ebee;
+    --cabinet:    #f4f5f6;
+    --button:     #5f93a4;
+
+    --shadow: 0 1px 2px rgba(20,26,32,.07), 0 8px 24px rgba(20,26,32,.06);
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --body: "Source Sans 3", -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --paper:     #101317;
+        --surface:   #171b20;
+        --surface-2: #1c2127;
+        --ink:       #e7eaee;
+        --ink-2:     #a8b2bc;
+        --ink-3:     #7b858f;
+        --rule:      #2b323a;
+        --rule-2:    #232931;
+
+        --signal:     #e8564f;
+        --signal-ink: #f19a95;
+        --caution:    #d9a13c;
+        --caution-bg: #2e2718;
+        --go:         #48b47c;
+        --slate:      #8fadc2;
+
+        --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
+    }
+}
+
+:root[data-theme="dark"] {
+    --paper:     #101317;
+    --surface:   #171b20;
+    --surface-2: #1c2127;
+    --ink:       #e7eaee;
+    --ink-2:     #a8b2bc;
+    --ink-3:     #7b858f;
+    --rule:      #2b323a;
+    --rule-2:    #232931;
+
+    --signal:     #e8564f;
+    --signal-ink: #f19a95;
+    --caution:    #d9a13c;
+    --caution-bg: #2e2718;
+    --go:         #48b47c;
+    --slate:      #8fadc2;
+
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16.5px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 24px 96px;
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr);
+    gap: 48px;
+    align-items: start;
+}
+@media (max-width: 900px) {
+    .wrap { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .toc { display: none; }
+}
+
+/* ------------------------------------------------------------- masthead */
+
+.masthead {
+    border-bottom: 3px solid var(--ink);
+    margin: 0 0 40px;
+    padding: 40px 24px 22px;
+    max-width: 1180px;
+    margin-inline: auto;
+}
+.mast-kicker {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--signal);
+    margin-bottom: 10px;
+}
+.masthead h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(34px, 6vw, 54px);
+    line-height: 1.02;
+    letter-spacing: -0.022em;
+    margin: 0 0 12px;
+    text-wrap: balance;
+}
+.mast-sub {
+    max-width: 62ch;
+    color: var(--ink-2);
+    font-size: 18px;
+    margin: 0;
+}
+.mast-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 22px;
+    margin-top: 20px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .06em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------------ toc */
+
+.toc {
+    position: sticky;
+    top: 24px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.5;
+    border-left: 1px solid var(--rule);
+    padding-left: 16px;
+}
+.toc h2 {
+    font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--ink-3); margin: 0 0 12px; font-family: var(--mono); font-weight: 500;
+}
+.toc a {
+    display: block; padding: 4px 0;
+    color: var(--ink-2); text-decoration: none;
+    border-bottom: 1px solid transparent;
+}
+.toc a:hover { color: var(--signal); }
+.toc a.role { padding-left: 12px; border-left: 2px solid var(--rule); margin-left: -18px; padding-left: 16px; }
+.toc a.role.u { border-left-color: var(--slate); }
+.toc a.role.e { border-left-color: var(--caution); }
+.toc a.role.s { border-left-color: var(--signal); }
+.toc .gap { height: 12px; }
+
+/* --------------------------------------------------------------- typography */
+
+h2.section {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(24px, 3.4vw, 32px);
+    letter-spacing: -0.018em;
+    line-height: 1.12;
+    margin: 0 0 6px;
+    text-wrap: balance;
+}
+h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 19px;
+    letter-spacing: -0.008em;
+    margin: 30px 0 8px;
+}
+h4 {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 11.5px;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 26px 0 10px;
+}
+p { margin: 0 0 14px; max-width: 68ch; }
+a { color: var(--signal); }
+strong { font-weight: 600; }
+code, .k {
+    font-family: var(--mono);
+    font-size: .87em;
+    background: var(--surface-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 3px;
+    padding: 1px 5px;
+    white-space: nowrap;
+}
+
+section { margin-bottom: 56px; scroll-margin-top: 20px; }
+
+/* -------------------------------------------------------------- role bands */
+
+.band {
+    display: flex; align-items: baseline; gap: 14px;
+    padding: 14px 0 12px;
+    border-top: 3px solid var(--role, var(--ink));
+    margin-bottom: 22px;
+}
+.band-tag {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    letter-spacing: .14em; text-transform: uppercase;
+    color: var(--role, var(--ink));
+    padding-top: 4px;
+    white-space: nowrap;
+}
+.band h2 { margin: 0; }
+.band-note { color: var(--ink-2); font-size: 15px; margin: -12px 0 26px; max-width: 66ch; }
+
+#occupant { --role: var(--slate); }
+#engineer { --role: var(--caution); }
+#services { --role: var(--signal); }
+
+/* ------------------------------------------------------------------ steps */
+
+ol.steps { counter-reset: step; list-style: none; padding: 0; margin: 0 0 22px; max-width: 70ch; }
+ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding: 0 0 16px 46px;
+    border-left: 1px solid var(--rule);
+    margin-left: 13px;
+}
+ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+ol.steps > li::before {
+    content: counter(step);
+    position: absolute; left: -13px; top: 0;
+    width: 26px; height: 26px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--role, var(--ink));
+    color: var(--role, var(--ink));
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+}
+ol.steps b { display: block; font-family: var(--display); font-weight: 600; font-size: 16.5px; }
+ol.steps p { margin: 2px 0 0; font-size: 15.5px; color: var(--ink-2); }
+
+ul.plain { margin: 0 0 16px; padding-left: 20px; max-width: 68ch; }
+ul.plain li { margin-bottom: 7px; }
+ul.plain li::marker { color: var(--ink-3); }
+
+/* ------------------------------------------------------------------ notes */
+
+.note {
+    border-left: 3px solid var(--tone, var(--ink-3));
+    background: var(--surface);
+    padding: 13px 16px;
+    margin: 0 0 20px;
+    max-width: 68ch;
+    box-shadow: var(--shadow);
+    border-radius: 0 4px 4px 0;
+}
+.note p { margin: 0; font-size: 15.5px; }
+.note p + p { margin-top: 8px; }
+.note .lab {
+    display: block;
+    font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: .13em; text-transform: uppercase;
+    color: var(--tone, var(--ink-3));
+    margin-bottom: 5px;
+}
+.note.warn { --tone: var(--signal); }
+.note.care { --tone: var(--caution); }
+.note.good { --tone: var(--go); }
+
+/* ------------------------------------------------------------------ table */
+
+.tablewrap { overflow-x: auto; margin: 0 0 22px; }
+table { border-collapse: collapse; width: 100%; min-width: 460px; font-size: 15px; }
+th, td { text-align: left; padding: 9px 14px 9px 0; border-bottom: 1px solid var(--rule-2); vertical-align: top; }
+th {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3);
+    border-bottom: 1px solid var(--rule);
+}
+td.term { font-family: var(--mono); font-size: 13px; white-space: nowrap; padding-right: 22px; }
+td.lvl { font-family: var(--mono); font-size: 13px; white-space: nowrap; padding-right: 18px; color: var(--ink-3); }
+
+/* --------------------------------------------------------- panel diagram */
+
+.figure { margin: 0 0 30px; }
+.figure figcaption {
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-3);
+    letter-spacing: .05em; margin-top: 10px;
+}
+.figscroll {
+    overflow-x: auto;
+    background: var(--surface-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 6px;
+    padding: 26px 20px;
+}
+
+.panel {
+    width: 700px; margin: 0 auto; position: relative;
+    background: linear-gradient(180deg, #ffffff, var(--cabinet));
+    border-radius: 10px 10px 7px 7px;
+    padding: 16px 18px 46px;
+    box-shadow: 0 10px 26px rgba(20,26,32,.18), inset 0 1px 0 rgba(255,255,255,.9);
+    color: #171a1e;
+}
+.vents { height: 26px; margin: 0 44px 6px 14px;
+    background-image: repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 4px, transparent 4px 14px);
+    -webkit-mask-image: repeating-linear-gradient(180deg, #000 0 4px, transparent 4px 10px);
+    mask-image: repeating-linear-gradient(180deg, #000 0 4px, transparent 4px 10px);
+    opacity: .45; }
+
+.fascia-inner {
+    display: grid; grid-template-columns: 200px 1fr 86px;
+    gap: 10px 14px;
+    background: linear-gradient(180deg, var(--fascia), var(--fascia-2));
+    border-radius: 4px; padding: 12px 14px 10px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.07);
+}
+.lampcols { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 8px; }
+.lampcol { display: flex; flex-direction: column; gap: 5px; }
+.lamp { display: flex; align-items: center; gap: 6px; font-size: 8.5px; color: #24262a; line-height: 1.1; }
+.lamp.fire span:last-child { font-size: 14px; font-weight: 700; color: #b7141b; font-family: var(--display); }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; box-shadow: inset 0 1px 2px rgba(0,0,0,.3), 0 0 0 1px rgba(0,0,0,.15); }
+.dot.r { background: #d8b6b6; } .dot.a { background: #ddd2ae; } .dot.g { background: #bcd6c1; }
+.dot.on-r { background: #ff2317; box-shadow: 0 0 7px 2px rgba(255,35,20,.6); }
+.dot.on-g { background: #2fd45f; box-shadow: 0 0 7px 2px rgba(47,212,95,.55); }
+
+.lcd {
+    background: linear-gradient(180deg, #cfd996 0%, var(--lcd) 60%);
+    color: var(--lcd-ink);
+    font-family: var(--mono); font-size: 10.5px; line-height: 1.5;
+    padding: 7px 9px; border-radius: 2px; height: 106px;
+    display: flex; flex-direction: column;
+    box-shadow: inset 0 0 12px rgba(90,110,40,.35), 0 0 0 4px #cbcfd3;
+}
+.lcd-row { display: flex; justify-content: space-between; opacity: .8; font-size: 9px; }
+.lcd-mid { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+.lcd-big { font-size: 17px; font-weight: 600; letter-spacing: 2px; }
+.zonestrip { margin-top: 8px; }
+.zt { text-align: center; font-size: 8px; font-weight: 700; color: #b7141b; }
+.zr { height: 2px; background: #b7141b; margin: 2px 0 4px; }
+.zl { display: flex; justify-content: space-between; }
+.zl i { width: 7px; height: 7px; border-radius: 50%; background: #d8b6b6; box-shadow: inset 0 1px 2px rgba(0,0,0,.3); }
+.zl i.on { background: #ff2317; box-shadow: 0 0 6px 2px rgba(255,35,20,.6); }
+
+.navcol { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.diamond { position: relative; width: 72px; height: 60px; }
+.nav { position: absolute; background: linear-gradient(180deg, #7fa8b6, #4d7f90); }
+.nav.u { top:0; left:23px; width:26px; height:20px; clip-path: polygon(50% 0,100% 100%,0 100%); }
+.nav.d { bottom:0; left:23px; width:26px; height:20px; clip-path: polygon(50% 100%,100% 0,0 0); }
+.nav.l { left:0; top:21px; width:22px; height:20px; clip-path: polygon(0 50%,100% 0,100% 100%); }
+.nav.r { right:0; top:21px; width:22px; height:20px; clip-path: polygon(100% 50%,0 0,0 100%); }
+.nav.c { left:25px; top:20px; width:22px; height:22px; border-radius:50%; }
+.navrow { display: flex; gap: 12px; }
+
+.btnrow { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 3px; border-top: 1px solid rgba(0,0,0,.08); padding-top: 7px; margin-top: 2px; }
+.btn { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 62px; text-align: center; }
+.btn span { font-size: 7.5px; line-height: 1.15; color: #24262a; min-height: 18px; }
+.btn i { width: 22px; height: 22px; border-radius: 50%;
+    background: radial-gradient(circle at 34% 28%, #a9cbd6, #5f93a4 45%, #3d6f80);
+    box-shadow: inset 0 1px 2px rgba(255,255,255,.5), 0 2px 3px rgba(0,0,0,.3); }
+.btn i.key { background: radial-gradient(circle at 35% 28%, #fff, #c3c6ca 55%, #90949a); position: relative; }
+.btn i.key::after { content:''; position:absolute; left:50%; top:50%; width:3px; height:11px; margin:-5.5px 0 0 -1.5px; background:#63676c; border-radius:2px; }
+
+.plate { position: absolute; left: 24px; bottom: 12px; background:#fbfbfb; border:1px solid rgba(0,0,0,.16); border-radius:2px; padding:5px 8px; }
+.plate b { display:block; font-family: var(--display); font-size: 11px; }
+.plate small { font-size: 7.5px; color:#55585c; }
+
+/* callouts */
+.co {
+    position: absolute;
+    width: 21px; height: 21px; border-radius: 50%;
+    background: var(--signal); color: #fff;
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    display: grid; place-items: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,.35);
+    z-index: 3;
+}
+.co::after {
+    content: ''; position: absolute; inset: -4px;
+    border-radius: 50%; border: 1px solid rgba(191,43,38,.35);
+}
+
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 2px 26px; margin-top: 18px; }
+.legend div { display: flex; gap: 9px; font-size: 14.5px; padding: 4px 0; border-bottom: 1px solid var(--rule-2); }
+.legend b {
+    flex: 0 0 20px; height: 20px; border-radius: 50%;
+    background: var(--signal); color: #fff;
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    display: grid; place-items: center; margin-top: 2px;
+}
+.legend em { font-style: normal; color: var(--ink-2); }
+
+/* ------------------------------------------------------------ sequence */
+
+.seq { width: 100%; height: auto; display: block; }
+
+/* --------------------------------------------------------- quick cards */
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin: 0 0 22px; }
+.card {
+    background: var(--surface); border: 1px solid var(--rule-2);
+    border-top: 3px solid var(--role, var(--ink));
+    border-radius: 0 0 5px 5px; padding: 15px 17px 17px;
+    box-shadow: var(--shadow);
+}
+.card h5 {
+    font-family: var(--display); font-size: 15.5px; font-weight: 600;
+    margin: 0 0 8px;
+}
+.card ul { margin: 0; padding-left: 17px; font-size: 14.5px; line-height: 1.5; }
+.card li { margin-bottom: 5px; }
+.card li::marker { color: var(--ink-3); }
+.card.u { --role: var(--slate); }
+.card.e { --role: var(--caution); }
+.card.s { --role: var(--signal); }
+
+hr.rule { border: 0; border-top: 1px solid var(--rule); margin: 44px 0; }
+
+footer {
+    max-width: 1180px; margin: 0 auto; padding: 26px 24px 60px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-3);
+    letter-spacing: .04em;
+}
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+</style>
+
+<header class="masthead">
+  <div class="mast-kicker">Operating instructions &middot; retain at the panel</div>
+  <h1>Fire Panel Operating Guide</h1>
+  <p class="mast-sub">How to work a fire alarm panel on the server — silencing it, investigating it, resetting it, and getting into it in the first place. Written for three sets of hands: the people who work in the building, the engineers who install and maintain the system, and the crews who turn up when it goes off.</p>
+  <div class="mast-meta">
+    <span>Occupants &amp; keyholders</span>
+    <span>Alarm engineers</span>
+    <span>Emergency services</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc">
+  <h2>Contents</h2>
+  <a href="#panel">The panel</a>
+  <a href="#lamps">Reading the lamps</a>
+  <a href="#levels">Access levels</a>
+  <a href="#sequence">What happens in an alarm</a>
+  <div class="gap"></div>
+  <a href="#occupant" class="role u">Occupants &amp; keyholders</a>
+  <a href="#engineer" class="role e">Engineers</a>
+  <a href="#services" class="role s">Emergency services</a>
+  <div class="gap"></div>
+  <a href="#quick">Quick reference</a>
+</nav>
+
+<main>
+
+<!-- ============================================================ panel -->
+<section id="panel">
+  <h2 class="section">The panel</h2>
+  <p>Every system has one control panel, usually just inside the main entrance, and sometimes a repeater panel elsewhere in the building. Look at it and you get the whole story: what is wrong, where it is, and how far along the sequence the building has got.</p>
+
+  <figure class="figure">
+    <div class="figscroll">
+      <div class="panel">
+        <div class="vents"></div>
+
+        <div class="co" style="left:-9px; top:78px">1</div>
+        <div class="co" style="left:270px; top:36px">2</div>
+        <div class="co" style="left:-9px; top:190px">3</div>
+        <div class="co" style="right:-9px; top:70px">4</div>
+
+        <div class="fascia-inner">
+          <div class="lampcols">
+            <div class="lampcol">
+              <div class="lamp fire"><span class="dot r"></span><span>Fire</span></div>
+              <div class="lamp"><span class="dot g on-g"></span><span>Power On</span></div>
+              <div class="lamp"><span class="dot r"></span><span>Pre-Alarm</span></div>
+              <div class="lamp"><span class="dot a"></span><span>On Test</span></div>
+              <div class="lamp"><span class="dot a"></span><span>Buzzer Silenced</span></div>
+              <div class="lamp"><span class="dot a"></span><span>Delay Active</span></div>
+            </div>
+            <div class="lampcol">
+              <div class="lamp"><span class="dot a"></span><span>More Events</span></div>
+              <div class="lamp"><span class="dot a"></span><span>General Disablement</span></div>
+              <div class="lamp"><span class="dot a"></span><span>General Fault</span></div>
+              <div class="lamp"><span class="dot a"></span><span>Power Fault</span></div>
+              <div class="lamp"><span class="dot a"></span><span>System Fault</span></div>
+              <div class="lamp"><span class="dot a"></span><span>Sounder Fault/Disabled</span></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="lcd">
+              <div class="lcd-row"><span>MISSION ROW STATION</span><span>LEVEL 1</span></div>
+              <div class="lcd-mid">
+                <div class="lcd-big">NORMAL SYSTEM</div>
+                <div class="lcd-big">OPERATION</div>
+              </div>
+              <div class="lcd-row"><span>(Press Function to View)</span><span>23:13:11</span></div>
+            </div>
+            <div class="zonestrip">
+              <div class="zt">Fire in Zone</div>
+              <div class="zr"></div>
+              <div class="zl">
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              </div>
+            </div>
+          </div>
+
+          <div class="navcol">
+            <div class="diamond">
+              <div class="nav u"></div><div class="nav r"></div>
+              <div class="nav d"></div><div class="nav l"></div><div class="nav c"></div>
+            </div>
+            <div class="navrow">
+              <div class="btn"><span>Exit</span><i></i></div>
+              <div class="btn"><span>Enter</span><i></i></div>
+            </div>
+          </div>
+
+          <div class="btnrow">
+            <div class="btn"><span>Re-Sound<br>Alarm</span><i></i></div>
+            <div class="btn"><span>Silence Alarm<br>(Acknowledge)</span><i></i></div>
+            <div class="btn"><span>Silence<br>Buzzer</span><i></i></div>
+            <div class="btn"><span>Lamp<br>Test</span><i></i></div>
+            <div class="btn"><span>Reset</span><i></i></div>
+            <div class="btn"><span>Evacuate</span><i></i></div>
+            <div class="btn"><span>Function</span><i></i></div>
+            <div class="btn"><span>Enable Control</span><i class="key"></i></div>
+            <div class="btn"><span>More<br>Fires</span><i></i></div>
+            <div class="btn"><span>More<br>Events</span><i></i></div>
+          </div>
+        </div>
+
+        <div class="co" style="left:105px; bottom:24px">5</div>
+        <div class="co" style="left:328px; bottom:24px">6</div>
+        <div class="co" style="left:390px; bottom:24px">7</div>
+        <div class="co" style="left:452px; bottom:24px">8</div>
+        <div class="co" style="left:514px; bottom:24px">9</div>
+        <div class="co" style="left:610px; bottom:24px">10</div>
+
+        <div class="plate">
+          <b>Fire Alarm Control</b>
+          <small>EN54-2: 1997 + A1: 2006</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div><b>1</b><span><strong>Indicator lamps.</strong> <em>What is wrong, at a glance, from across the room.</em></span></div>
+      <div><b>2</b><span><strong>Display.</strong> <em>Which zone, which device, and what the system is doing about it.</em></span></div>
+      <div><b>3</b><span><strong>Fire in Zone.</strong> <em>The zone number in alarm. Match it to the zone chart on the wall.</em></span></div>
+      <div><b>4</b><span><strong>Navigation.</strong> <em>Arrows plus Enter and Exit, for menus and the event log.</em></span></div>
+      <div><b>5</b><span><strong>Silence Alarm (Acknowledge).</strong> <em>Stops the sounders. Also accepts a running delay.</em></span></div>
+      <div><b>6</b><span><strong>Reset.</strong> <em>Clears the alarm and puts the system back to normal.</em></span></div>
+      <div><b>7</b><span><strong>Evacuate.</strong> <em>Sounds the whole building immediately.</em></span></div>
+      <div><b>8</b><span><strong>Function.</strong> <em>Opens the menu — event log, alarm summary, keys, settings.</em></span></div>
+      <div><b>9</b><span><strong>Enable Control.</strong> <em>The key switch. Nothing on the right-hand side works until it is turned.</em></span></div>
+      <div><b>10</b><span><strong>More Fires / More Events.</strong> <em>Steps through multiple alarms and the log.</em></span></div>
+    </div>
+    <figcaption>The fascia at rest. Only Power On is lit — that is a healthy panel.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================================================ lamps -->
+<section id="lamps">
+  <h2 class="section">Reading the lamps</h2>
+  <p>You can diagnose most of a system from the doorway. Red means fire. Amber means something needs an engineer, not an evacuation.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Lamp</th><th>Colour</th><th>What it is telling you</th></tr></thead>
+      <tbody>
+        <tr><td class="term">Fire</td><td class="lvl">Red, flashing</td><td>A device has operated. The zone strip tells you where.</td></tr>
+        <tr><td class="term">Pre-Alarm</td><td class="lvl">Red</td><td>One detector has gone but the system wants a second before it commits. Go and look.</td></tr>
+        <tr><td class="term">Delay Active</td><td class="lvl">Amber</td><td>The countdown is running. The building has not evacuated <em>yet</em>.</td></tr>
+        <tr><td class="term">Power On</td><td class="lvl">Green</td><td>The panel has mains. This should always be lit.</td></tr>
+        <tr><td class="term">General Fault</td><td class="lvl">Amber</td><td>Something on the system is broken. Not a fire — but it needs reporting.</td></tr>
+        <tr><td class="term">General Disablement</td><td class="lvl">Amber</td><td>A zone, a device or the sounders have been switched off deliberately. Somebody did that on purpose; find out why before you undo it.</td></tr>
+        <tr><td class="term">Sounder Fault/Disabled</td><td class="lvl">Amber</td><td>The sounders will not ring. Dangerous to leave — chase it.</td></tr>
+        <tr><td class="term">On Test</td><td class="lvl">Amber</td><td>An engineer has a zone in test. Devices in it will chirp and reset themselves rather than raise an alarm.</td></tr>
+        <tr><td class="term">Buzzer Silenced</td><td class="lvl">Amber</td><td>Somebody has muted the panel's internal buzzer. The condition is still there.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <span class="lab">Lamp Test</span>
+    <p>Press <span class="k">Lamp Test</span> and every lamp lights for five seconds. If one stays dark, that lamp is dead — worth knowing before you rely on it.</p>
+  </div>
+</section>
+
+<!-- =========================================================== levels -->
+<section id="levels">
+  <h2 class="section">Access levels</h2>
+  <p>The panel works in three levels. What you can press depends entirely on which one you are at, and the display tells you in the top right corner.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Level</th><th>How you get it</th><th>What it lets you do</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="lvl">Level 1</td>
+          <td>Walk up to it. Anyone.</td>
+          <td>Read the display, step through the event log, silence the internal buzzer.</td>
+        </tr>
+        <tr>
+          <td class="lvl">Level 2</td>
+          <td>A panel key in the switch, turned.</td>
+          <td>Silence and re-sound the alarm, reset the system, evacuate the building.</td>
+        </tr>
+        <tr>
+          <td class="lvl">Level 3</td>
+          <td>An engineer key, or the engineer code.</td>
+          <td>Everything: disablements, test mode, zone text, delays, tones, key cutting.</td>
+        </tr>
+        <tr>
+          <td class="lvl">Override</td>
+          <td>On-duty fire crew. No key at all.</td>
+          <td>Level 2, without needing to find a keyholder.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ========================================================= sequence -->
+<section id="sequence">
+  <h2 class="section">What happens in an alarm</h2>
+  <p>Two devices, two very different sequences. A call point is somebody telling the building there is a fire, so it is believed immediately. A detector might be a burnt slice of toast, so the system gives you a chance to go and look first.</p>
+
+  <figure class="figure">
+    <div class="figscroll">
+      <svg class="seq" viewBox="0 0 720 300" role="img" aria-label="Alarm sequence: a call point evacuates immediately; a detector runs a T1 acknowledge window then a T2 investigation period before evacuating.">
+        <defs>
+          <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,1 L8,4.5 L0,8 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <g font-family="IBM Plex Mono, monospace" font-size="10.5" fill="currentColor">
+
+          <!-- call point row -->
+          <text x="0" y="26" font-size="11" font-weight="600" letter-spacing="1.4">CALL POINT — IMMEDIATE</text>
+          <g color="currentColor">
+            <line x1="0" y1="46" x2="700" y2="46" stroke="currentColor" stroke-width="1" opacity=".25"/>
+          </g>
+
+          <rect x="0" y="56" width="150" height="40" rx="3" fill="#bf2b26"/>
+          <text x="12" y="73" fill="#ffffff" font-size="11" font-weight="600">GLASS BROKEN</text>
+          <text x="12" y="87" fill="#ffffff" font-size="9.5" opacity=".85">no delay, no argument</text>
+
+          <line x1="158" y1="76" x2="196" y2="76" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)" opacity=".55"/>
+
+          <rect x="204" y="56" width="150" height="40" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".65"/>
+          <text x="216" y="73" font-size="11" font-weight="600">SOUNDERS EVACUATE</text>
+          <text x="216" y="87" font-size="9.5" opacity=".7">whole building</text>
+
+          <line x1="362" y1="76" x2="400" y2="76" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)" opacity=".55"/>
+
+          <rect x="408" y="56" width="164" height="40" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".65"/>
+          <text x="420" y="73" font-size="11" font-weight="600">ROUTING DELAY</text>
+          <text x="420" y="87" font-size="9.5" opacity=".7">60s by default</text>
+
+          <line x1="580" y1="76" x2="618" y2="76" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)" opacity=".55"/>
+
+          <rect x="626" y="56" width="94" height="40" rx="3" fill="#bf2b26"/>
+          <text x="638" y="80" fill="#ffffff" font-size="11" font-weight="600">BRIGADE</text>
+
+          <!-- detector row -->
+          <text x="0" y="150" font-size="11" font-weight="600" letter-spacing="1.4">DETECTOR — STAGED</text>
+          <line x1="0" y1="170" x2="700" y2="170" stroke="currentColor" stroke-width="1" opacity=".25"/>
+
+          <rect x="0" y="180" width="130" height="40" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".65"/>
+          <text x="12" y="197" font-size="11" font-weight="600">SMOKE SEEN</text>
+          <text x="12" y="211" font-size="9.5" opacity=".7">buzzer only</text>
+
+          <line x1="138" y1="200" x2="172" y2="200" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)" opacity=".55"/>
+
+          <rect x="180" y="180" width="140" height="40" rx="3" fill="#a8760a"/>
+          <text x="192" y="197" fill="#ffffff" font-size="11" font-weight="600">T1 &mdash; 30s</text>
+          <text x="192" y="211" fill="#ffffff" font-size="9.5" opacity=".9">acknowledge at panel</text>
+
+          <line x1="328" y1="200" x2="362" y2="200" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)" opacity=".55"/>
+
+          <rect x="370" y="180" width="150" height="40" rx="3" fill="#a8760a"/>
+          <text x="382" y="197" fill="#ffffff" font-size="11" font-weight="600">T2 &mdash; 3 min</text>
+          <text x="382" y="211" fill="#ffffff" font-size="9.5" opacity=".9">go and investigate</text>
+
+          <line x1="528" y1="200" x2="562" y2="200" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)" opacity=".55"/>
+
+          <rect x="570" y="180" width="150" height="40" rx="3" fill="#bf2b26"/>
+          <text x="582" y="197" fill="#ffffff" font-size="11" font-weight="600">EVACUATE</text>
+          <text x="582" y="211" fill="#ffffff" font-size="9.5" opacity=".9">time is up</text>
+
+          <!-- escape arrows -->
+          <path d="M250,224 L250,250 L640,250" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3" opacity=".5"/>
+          <path d="M445,224 L445,268 L640,268" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3" opacity=".5"/>
+          <text x="648" y="254" font-size="9.5" opacity=".75">reset it</text>
+          <text x="648" y="272" font-size="9.5" opacity=".75">and it stops here</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>Timings are the defaults. An engineer can change T1, T2 and the routing delay per building.</figcaption>
+  </figure>
+
+  <div class="note care">
+    <span class="lab">The delay is the useful bit</span>
+    <p>If <strong>Delay Active</strong> is lit, the building has not gone yet and you have time to walk to the device the display is naming. Press <span class="k">Silence Alarm (Acknowledge)</span> to claim the investigation window before T1 runs out — miss it, and the sounders start on their own.</p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ========================================================= occupant -->
+<section id="occupant">
+  <div class="band">
+    <div class="band-tag">Role 01</div>
+    <h2 class="section">Occupants &amp; keyholders</h2>
+  </div>
+  <p class="band-note">You work in the building. You have been issued a panel key, and you are the one who has to deal with it at two in the morning when a chip pan sets off the kitchen detector.</p>
+
+  <h3>Your key</h3>
+  <ul class="plain">
+    <li><strong>Keep it on you.</strong> It has to be in your pockets for the panel to accept it — it is a real item, not a permission.</li>
+    <li><strong>It fits one building.</strong> Every panel has its own barrel code, printed on the panel and stamped on the key. Your key opens your building and nothing else.</li>
+    <li><strong>Take it back out.</strong> This is the one that catches people. See the warning below.</li>
+  </ul>
+
+  <div class="note warn">
+    <span class="lab">Do not leave your key in the panel</span>
+    <p>Insert a key and it leaves your inventory — it is in the panel now, not in your pocket. If you walk away without taking it back, it stays there, and <strong>the next person to open that panel can pull it out and keep it</strong>. That is how these actually go missing.</p>
+    <p>Worse, while it is sitting in the switch, anybody can turn it and silence, reset or evacuate your building.</p>
+  </div>
+
+  <h3>Silencing an alarm</h3>
+  <ol class="steps">
+    <li><b>Read the display before you touch anything</b>
+      <p>It names the zone and the exact device — <span class="k">ZONE 002</span>, <span class="k">L1 D014 KITCHEN</span>. That is where you are going. If several devices have gone, press <span class="k">More Fires</span> to step through them.</p></li>
+    <li><b>Insert your key and turn it</b>
+      <p>Click the <strong>Enable Control</strong> barrel. The display goes to <span class="k">LEVEL 2</span> and the buttons wake up.</p></li>
+    <li><b>Press Silence Alarm</b>
+      <p>The sounders stop. The Fire lamp stays lit, because there is still a fire condition — you have quietened the building, not fixed anything.</p></li>
+    <li><b>Go and look at the device</b>
+      <p>Take the reset key from the key box beside the panel if a call point has been broken. You will need it.</p></li>
+  </ol>
+
+  <div class="note">
+    <span class="lab">If it starts up again by itself</span>
+    <p>That is not a bug. A <em>new</em> zone going into alarm re-sounds the sounders even after you have silenced, because the situation has changed since you decided it was under control.</p>
+  </div>
+
+  <h3>Resetting after a call point</h3>
+  <p>The order matters, and the panel will fight you if you get it wrong.</p>
+
+  <ol class="steps">
+    <li><b>Take the reset key from the key box</b>
+      <p>Target the panel and choose <strong>Take reset key from key box</strong>. There is exactly one per panel.</p></li>
+    <li><b>Reset the call point itself</b>
+      <p>Target the broken call point and choose <strong>Reset call point</strong>. The little red light on it goes out.</p></li>
+    <li><b>Now reset the panel</b>
+      <p>Key in, turned, press <span class="k">Reset</span>. The display returns to <span class="k">NORMAL SYSTEM OPERATION</span>.</p></li>
+    <li><b>Put the reset key back and take your own key out</b>
+      <p>Both of them. The box should always have a key in it for the next person, and your key belongs in your pocket.</p></li>
+  </ol>
+
+  <div class="note care">
+    <span class="lab">RESET INHIBITED</span>
+    <p>If the panel says this, a device is still operated — a call point still broken in, or a detector still sitting in smoke. Reset the device first. The panel is not being awkward; it is refusing to pretend the building is clear when it isn't.</p>
+  </div>
+
+  <h3>Things you cannot do</h3>
+  <p>Disabling zones, silencing sounders permanently, changing delays and reading out the engineer settings are all Level 3. If a detector keeps going off and you want it isolated, that is a call to an engineer, not something to fight the panel over.</p>
+</section>
+
+<hr class="rule">
+
+<!-- ========================================================= engineer -->
+<section id="engineer">
+  <div class="band">
+    <div class="band-tag">Role 02</div>
+    <h2 class="section">Engineers</h2>
+  </div>
+  <p class="band-note">You install the systems, you cut the keys, and you are the only one who can put a zone into test or take one out of service. Everything you do is logged against your name.</p>
+
+  <h3>Getting to Level 3</h3>
+  <ul class="plain">
+    <li><strong>Engineer key</strong> — insert it like any other key. The panel goes straight to Level 3.</li>
+    <li><strong>Engineer code</strong> — <span class="k">Function</span> → <span class="k">ACCESS LEVEL</span>, then type the code. It is masked as you type.</li>
+  </ul>
+
+  <div class="note warn">
+    <span class="lab">Never leave the engineer key in</span>
+    <p>An engineer key left in the switch hands <strong>Level 3 to every passer-by</strong> until somebody removes it — and they can pocket it on the way out. The display says <span class="k">ENGINEER KEY LEFT IN PANEL</span> precisely so you notice before you drive off.</p>
+  </div>
+
+  <h3>Installing a system</h3>
+  <ol class="steps">
+    <li><b>Create the system</b>
+      <p><span class="k">/alarmsetup</span> → <strong>New system here</strong>. Name it after the building.</p></li>
+    <li><b>Site the control panel first</b>
+      <p><strong>Add device → Control panel.</strong> This is where the system lives and what people will walk up to.</p></li>
+    <li><b>Add call points by the exits</b>
+      <p>They mount at 1.4m automatically when wall snap is on, which is the height the standard asks for.</p></li>
+    <li><b>Add detectors on the ceilings</b>
+      <p>Aim at the floor below where you want it — the script finds the ceiling above your aim point on its own.</p></li>
+    <li><b>Add sounders</b>
+      <p>They carry about 28m, roughly half that through a wall. Two or three per floor is usually right.</p></li>
+    <li><b>Name the zones</b>
+      <p><strong>Zones</strong> in the build menu. Zone text is what everybody else reads at 3am — <span class="k">GROUND FLOOR EAST</span> beats <span class="k">ZONE 2</span>.</p></li>
+  </ol>
+
+  <h4>Placement controls</h4>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Key</th><th>Does</th></tr></thead>
+      <tbody>
+        <tr><td class="term">Enter / Click</td><td>Place it</td></tr>
+        <tr><td class="term">Backspace</td><td>Cancel</td></tr>
+        <tr><td class="term">Scroll</td><td>Rotate</td></tr>
+        <tr><td class="term">PgUp / PgDn</td><td>Height</td></tr>
+        <tr><td class="term">← / →</td><td>In and out of the wall</td></tr>
+        <tr><td class="term">G</td><td>Wall snap on/off</td></tr>
+        <tr><td class="term">H</td><td>Next prop model</td></tr>
+        <tr><td class="term">M</td><td>Type any model name</td></tr>
+        <tr><td class="term">L</td><td>Zero both offsets</td></tr>
+        <tr><td class="term">Shift</td><td>Fine steps — 5mm and 1°</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Cutting keys</h3>
+  <p><span class="k">/alarmsetup</span> → <strong>Keys and access</strong>, or <span class="k">Function</span> → <span class="k">KEYS AND ACCESS</span> at the panel.</p>
+  <ul class="plain">
+    <li><strong>Panel key</strong> — Level 2. This is what building staff carry.</li>
+    <li><strong>Engineer key</strong> — Level 3. Hand these out sparingly.</li>
+    <li><strong>Call point reset key</strong> — universal, fits every call point on the map. Not cut to anything.</li>
+    <li><strong>Restock the key box</strong> — puts a reset key back in the box beside a panel when somebody has walked off with it.</li>
+  </ul>
+
+  <h3>Recutting a barrel</h3>
+  <p>When keys go missing — and they will, because a key left in a panel is a key anyone can take — you rekey the building.</p>
+
+  <ol class="steps">
+    <li><b>Keys and access → Recut the barrel</b>
+      <p>Confirm it. The system generates a new four-character code.</p></li>
+    <li><b>Every old key dies instantly</b>
+      <p>Panel and engineer keys cut to the old code stop working, including any sitting in the switches, which are scrapped along with the barrel.</p></li>
+    <li><b>You are handed a fresh pair</b>
+      <p>One panel key and one engineer key on the new cut. Cut more for the keyholders as needed.</p></li>
+  </ol>
+
+  <div class="note good">
+    <span class="lab">Recutting never locks out the brigade</span>
+    <p>Emergency services do not use a key, so rekeying a building has no effect on their ability to work the panel. Reset keys are untouched too, since they aren't cut to anything.</p>
+  </div>
+
+  <h3>Disablements and testing</h3>
+  <ul class="plain">
+    <li><strong>Disable a zone</strong> when a detector is faulting and you cannot get to it yet. The Disablement lamp lights so nobody thinks the system is healthy.</li>
+    <li><strong>One man test</strong> puts a zone into test: operating a device pulses the sounders for three seconds and resets itself, so you can walk a building alone without evacuating it.</li>
+    <li><strong>Fault simulation</strong> injects a fault for training or for showing a client what an amber lamp looks like.</li>
+    <li><strong>Put everything back.</strong> A disablement left on is worse than no system, because everyone assumes it works.</li>
+  </ul>
+
+  <h4>Commands</h4>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Command</th><th>Does</th></tr></thead>
+      <tbody>
+        <tr><td class="term">/alarmsetup</td><td>Straight into the engineering menu — systems, devices, zones, keys, settings</td></tr>
+        <tr><td class="term">/alarm build</td><td>The same thing, if you prefer sub-commands</td></tr>
+        <tr><td class="term">/alarm list</td><td>Every system, device count and current condition</td></tr>
+        <tr><td class="term">/alarm keys</td><td>What is in the switches and the key box right now</td></tr>
+        <tr><td class="term">/alarmrefresh</td><td>Re-syncs and respawns everything without a restart</td></tr>
+        <tr><td class="term">/alarmsmoke</td><td>Starts a small test fire in front of you</td></tr>
+        <tr><td class="term">/alarmsmokeoff</td><td>Puts it out</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ========================================================= services -->
+<section id="services">
+  <div class="band">
+    <div class="band-tag">Role 03</div>
+    <h2 class="section">Emergency services</h2>
+  </div>
+  <p class="band-note">You have arrived at a building you have never been inside, the sounders are going, and nobody with a key is answering their phone. The panel is the first thing you go to and it will tell you where the fire is.</p>
+
+  <div class="note good">
+    <span class="lab">You do not need a key</span>
+    <p>On duty and on the job, you get an <strong>Emergency override</strong> button under the panel. Press it and you are at Level 2 — silence, re-sound, reset, evacuate. Nobody else can even see the button, and there is nothing to carry, lose or hand back.</p>
+  </div>
+
+  <h3>On arrival</h3>
+  <ol class="steps">
+    <li><b>Read the panel before you press anything</b>
+      <p>The display names the zone and the device. <span class="k">01 OF 03 DEVICES</span> in the corner tells you how many have gone — press <span class="k">More Fires</span> to step through the rest and see how the fire is spreading through the building.</p></li>
+    <li><b>Check the zone strip</b>
+      <p>The lit numbers under <em>Fire in Zone</em> map to the zone chart on the wall by the panel. That is your route in.</p></li>
+    <li><b>Take the override</b>
+      <p>One press. The log records it against your name and job — the panel keeps a record of who worked it and when.</p></li>
+    <li><b>Silence, do not reset</b>
+      <p>Silencing stops the noise so you can work and talk. It leaves the zone and device information on the display.</p></li>
+  </ol>
+
+  <div class="note warn">
+    <span class="lab">Do not reset until you have been to the device</span>
+    <p>Reset clears the display. Everything telling you which zone and which device operated goes with it, and if the fire is still developing you have thrown away your only map of it. Reset is the <em>last</em> thing you do, once the building is confirmed clear.</p>
+  </div>
+
+  <h3>Working the building</h3>
+  <ul class="plain">
+    <li><strong>Evacuate</strong> sounds every sounder in the building immediately, whatever the panel was doing before. Use it when you want everyone out now and the system has only alerted part of the building.</li>
+    <li><strong>Re-Sound Alarm</strong> puts the sounders back on after a silence — for a second sweep, or if occupants are drifting back in.</li>
+    <li><strong>Call points reset without a key</strong> for you. You do not need to find the little key box.</li>
+    <li><strong>More Events</strong> reads the log: who silenced it, when it went off, whether somebody had disabled the zone beforehand. Useful when the story you are being told does not match the building.</li>
+  </ul>
+
+  <h3>Handing back</h3>
+  <ol class="steps">
+    <li><b>Reset the operated devices</b>
+      <p>Call points first, then the panel.</p></li>
+    <li><b>Reset the panel to normal</b>
+      <p>If it refuses, a device is still active or still in smoke. That is information — something is still burning or still broken.</p></li>
+    <li><b>Flag anything disabled</b>
+      <p>If the Disablement lamp is lit when you leave, tell the keyholder. Part of their system is switched off and they may not know.</p></li>
+  </ol>
+</section>
+
+<hr class="rule">
+
+<!-- ============================================================ quick -->
+<section id="quick">
+  <h2 class="section">Quick reference</h2>
+  <p>The three-line version for each role.</p>
+
+  <div class="cards">
+    <div class="card u">
+      <h5>Occupant</h5>
+      <ul>
+        <li>Read the display first — zone and device</li>
+        <li>Key in, turn, Silence Alarm</li>
+        <li>Reset the call point, then the panel</li>
+        <li><strong>Take your key back out</strong></li>
+      </ul>
+    </div>
+    <div class="card e">
+      <h5>Engineer</h5>
+      <ul>
+        <li><span class="k">/alarmsetup</span> for everything</li>
+        <li>Cut keys and recut barrels when they go missing</li>
+        <li>Never leave the engineer key in</li>
+        <li>Put disablements back before you leave</li>
+      </ul>
+    </div>
+    <div class="card s">
+      <h5>Emergency services</h5>
+      <ul>
+        <li>Emergency override — no key needed</li>
+        <li>Read the zone before you touch a button</li>
+        <li>Silence to work, never reset early</li>
+        <li>Reset devices first, then the panel</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note">
+    <span class="lab">One rule that covers most of it</span>
+    <p>Silencing quietens the building. Resetting says the building is safe. They are not the same thing and the panel treats them very differently — it will let anyone with a key silence, and it will refuse to reset while a device is still operated.</p>
+  </div>
+</section>
+
+</main>
+</div>
+
+<footer>
+  Fire Panel Operating Guide &middot; Zone charts are posted at each panel &middot; Report faults to an engineer, not to the panel
+</footer>
