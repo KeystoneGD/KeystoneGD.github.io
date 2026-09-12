@@ -885,7 +885,7 @@ async function connectDb(){
   } catch (e) { dbNs = null; }
   if (!dbNs) return;
   await pullState(PERSISTED_KEYS);
-  setInterval(() => pullState(PERSISTED_KEYS.filter(i => i.live)), 30000);
+  setInterval(() => pullState(PERSISTED_KEYS.filter(i => i.live)), 5000);
 }
 
 let cart = loadJSON(LS_CART, {});
