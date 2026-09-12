@@ -1,0 +1,590 @@
+{
+  "categories": [
+    {
+      "name": "Cocktails - Hand-Crafted Classic Cocktails",
+      "mode": "drink",
+      "note": "Happy Hour: Buy 2 Cocktails, pay for 1.5 — 3–6pm & 9.30pm onwards.",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Indulgent Biscoff Espresso Martini", "pence": 1295 },
+        { "name": "Zombie", "pence": 1295 },
+        { "name": "Zombie Sharer", "pence": 1895 },
+        { "name": "Ultimate Pina Colada", "pence": 1295 },
+        { "name": "Disco Ball Woo Woo", "pence": 1295 },
+        { "name": "Strawberry Daiquiri", "pence": 895 },
+        { "name": "Strawberry Daiquiri Sharer", "pence": 1335 },
+        { "name": "Long Island Iced Tea", "pence": 895 },
+        { "name": "Long Island Iced Tea Sharer", "pence": 1335 },
+        { "name": "Passionfruit Martini", "pence": 895 },
+        { "name": "Sunset Kiss", "pence": 895 },
+        { "name": "Sunset Kiss Sharer", "pence": 1335 },
+        { "name": "Sun on The Beach", "pence": 895 },
+        { "name": "Sun on The Beach Sharer", "pence": 1335 },
+        { "name": "Spicy Margherita", "pence": 895 }
+      ]
+    },
+    {
+      "name": "Fun & Fruity Softs",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Missing Sunrise", "pence": 490 },
+        { "name": "Missing Sunrise Sharer", "pence": 735 },
+        { "name": "P.O.P", "pence": 490 },
+        { "name": "P.O.P Sharer", "pence": 735 },
+        { "name": "Apple & Cherry Fizz", "pence": 490 },
+        { "name": "Apple & Cherry Fizz Sharer", "pence": 735 },
+        { "name": "Strawberry Lemonade", "pence": 375 },
+        { "name": "Electric Blue Lemonade", "pence": 375 },
+        { "name": "Bubblegumade", "pence": 375 }
+      ]
+    },
+    {
+      "name": "No & Low Alcohol",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Madri 0% (330ml)", "pence": 490 },
+        { "name": "Staropramen 0% (330ml)", "pence": 490 },
+        { "name": "Doom Bar 0% (500ml)", "pence": 595 },
+        { "name": "Rekorderlig Strawberry & Lime 0% (500ml)", "pence": 595 },
+        { "name": "Guinness 0% (538ml)", "pence": 545 },
+        { "name": "Gordons 0% (25ml)", "pence": 355 },
+        { "name": "Whitley Neill Rhubarb & Ginger 0% (25ml)", "pence": 355 },
+        { "name": "Freixenet 0.0% Prosecco (20cl)", "pence": 885 }
+      ]
+    },
+    {
+      "name": "Mineral Water",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Harrogate Still Small", "pence": 275 },
+        { "name": "Harrogate Still Large", "pence": 490 },
+        { "name": "Harrogate Sparkling Small", "pence": 275 },
+        { "name": "Harrogate Sparkling Large", "pence": 490 }
+      ]
+    },
+    {
+      "name": "Soft Drinks",
+      "mode": "drink",
+      "note": "Sizes shown when you select Pepsi Max, Diet Pepsi or Lemonade.",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Appletiser", "pence": 355 },
+        { "name": "Pepsi Max", "pence": 345, "sizes": [{ "label": "Small", "pence": 345 }, { "label": "Regular", "pence": 385 }, { "label": "Kids", "pence": 185 }] },
+        { "name": "Diet Pepsi", "pence": 345, "sizes": [{ "label": "Small", "pence": 345 }, { "label": "Regular", "pence": 385 }, { "label": "Kids", "pence": 185 }] },
+        { "name": "J2O Apple & Raspberry", "pence": 355 },
+        { "name": "J2O Orange & Passionfruit", "pence": 355 },
+        { "name": "Lemonade", "pence": 345, "sizes": [{ "label": "Small", "pence": 345 }, { "label": "Regular", "pence": 385 }, { "label": "Kids", "pence": 185 }] },
+        { "name": "Pepsi Bottle 330ml", "pence": 370 },
+        { "name": "Red Bull Can", "pence": 310 },
+        { "name": "Apple Juice Glass", "pence": 195 },
+        { "name": "Orange Juice Glass", "pence": 195 },
+        { "name": "Pip Organic Cloudy Apple Juice Tetra", "pence": 230 },
+        { "name": "Pip Organic Strawberry & Blackcurrant Juice Tetra", "pence": 230 },
+        { "name": "Soda Water", "pence": 0 },
+        { "name": "Tap Water", "pence": 0 }
+      ]
+    },
+    {
+      "name": "Mixers",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Britvic Tonic Water", "pence": 195 },
+        { "name": "Britvic Slimline Tonic", "pence": 195 },
+        { "name": "Fever Tree Elderflower Tonic", "pence": 245 },
+        { "name": "Fever Tree Ginger Ale", "pence": 245 },
+        { "name": "Fever Tree Indian Tonic Water", "pence": 245 },
+        { "name": "Fever Tree Mediterranean Tonic Water", "pence": 245 },
+        { "name": "Fever Tree Slimline Tonic", "pence": 245 }
+      ]
+    },
+    {
+      "name": "Draught Beers and Ciders",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": true,
+      "items": [
+        { "name": "Aspall Cyder (4.5%)", "pence": 575 },
+        { "name": "Carling (4%)", "pence": 515 },
+        { "name": "Carling Black Fruits Cider (3.4%)", "pence": 610 },
+        { "name": "Guinness (4.1%)", "pence": 595 },
+        { "name": "Madri (4.6%)", "pence": 595 },
+        { "name": "Staropramen (5%)", "pence": 595 },
+        { "name": "Worthington (3.4%)", "pence": 535 }
+      ]
+    },
+    {
+      "name": "Bottled Beers and Ciders",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Budweiser 330ml (4.5%)", "pence": 490 },
+        { "name": "Corona 330ml (4.5%)", "pence": 490 },
+        { "name": "Peroni 330ml (5.0%)", "pence": 490 },
+        { "name": "Peroni Gluten Free 330ml (5.0%)", "pence": 490 },
+        { "name": "Rekorderlig Strawberry & Lime 500ml (3.4%)", "pence": 615 },
+        { "name": "Rekorderlig Wild Berries 500ml (3.4%)", "pence": 615 },
+        { "name": "WKD Blue 275ml (4%)", "pence": 490 }
+      ]
+    },
+    {
+      "name": "White Wines",
+      "mode": "drink",
+      "note": "Glass sizes shown when you select a wine.",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "El Tiempo & Lugar Viura (Spain)", "pence": 445, "sizes": [{ "label": "125ml", "pence": 445 }, { "label": "175ml", "pence": 595 }, { "label": "250ml", "pence": 790 }, { "label": "Bottle", "pence": 2220 }] },
+        { "name": "Sotherton Chardonnay (Australia)", "pence": 495, "sizes": [{ "label": "125ml", "pence": 495 }, { "label": "175ml", "pence": 670 }, { "label": "250ml", "pence": 890 }, { "label": "Bottle", "pence": 2495 }] },
+        { "name": "Black Cottage Sauvignon Blanc (NZ)", "pence": 590, "sizes": [{ "label": "125ml", "pence": 590 }, { "label": "175ml", "pence": 785 }, { "label": "250ml", "pence": 1045 }, { "label": "Bottle", "pence": 2935 }] },
+        { "name": "Ca' Del Lago Pinot Grigio (Italy)", "pence": 490, "sizes": [{ "label": "125ml", "pence": 490 }, { "label": "175ml", "pence": 660 }, { "label": "250ml", "pence": 870 }, { "label": "Bottle", "pence": 2450 }] },
+        { "name": "Domaine Thierry Mothe Chablis (France)", "pence": 3940 }
+      ]
+    },
+    {
+      "name": "Red Wines",
+      "mode": "drink",
+      "note": "Glass sizes shown when you select a wine.",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Ca Del Lago Montepulciano (Italy)", "pence": 455, "sizes": [{ "label": "125ml", "pence": 455 }, { "label": "175ml", "pence": 610 }, { "label": "250ml", "pence": 810 }, { "label": "Bottle", "pence": 2275 }] },
+        { "name": "Sotherton Shiraz (Australia)", "pence": 535, "sizes": [{ "label": "125ml", "pence": 535 }, { "label": "175ml", "pence": 720 }, { "label": "250ml", "pence": 950 }, { "label": "Bottle", "pence": 2675 }] },
+        { "name": "Maison Bosquet Merlot (France)", "pence": 555, "sizes": [{ "label": "125ml", "pence": 555 }, { "label": "175ml", "pence": 740 }, { "label": "250ml", "pence": 985 }, { "label": "Bottle", "pence": 2765 }] },
+        { "name": "Finca Flichman Tanguero Malbec (Argentina)", "pence": 590, "sizes": [{ "label": "125ml", "pence": 590 }, { "label": "175ml", "pence": 785 }, { "label": "250ml", "pence": 1045 }, { "label": "Bottle", "pence": 2935 }] }
+      ]
+    },
+    {
+      "name": "Rosé Wines",
+      "mode": "drink",
+      "note": "Glass sizes shown when you select a wine.",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Canyon Road White Zinfandel (USA)", "pence": 455, "sizes": [{ "label": "125ml", "pence": 455 }, { "label": "175ml", "pence": 605 }, { "label": "250ml", "pence": 805 }, { "label": "Bottle", "pence": 2260 }] },
+        { "name": "Ca' Del Lago Pinot Grigio Rosé (Italy)", "pence": 480, "sizes": [{ "label": "125ml", "pence": 480 }, { "label": "175ml", "pence": 640 }, { "label": "250ml", "pence": 850 }, { "label": "Bottle", "pence": 2385 }] },
+        { "name": "Le Tutu Rose (France)", "pence": 570, "sizes": [{ "label": "125ml", "pence": 570 }, { "label": "175ml", "pence": 760 }, { "label": "250ml", "pence": 1010 }, { "label": "Bottle", "pence": 2835 }] }
+      ]
+    },
+    {
+      "name": "Sparkling Wine & Prosecco",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Moet Imperial Champagne 75cl (France)", "pence": 6400 },
+        { "name": "Bellino Prosecco (Italy)", "pence": 715, "sizes": [{ "label": "125ml", "pence": 715 }, { "label": "Bottle", "pence": 2960 }] },
+        { "name": "Freixenet Prosecco 20cl (Italy)", "pence": 985 },
+        { "name": "Freixenet Italian Sparkling Rosé 20cl (Italy)", "pence": 985 }
+      ]
+    },
+    {
+      "name": "Gin - Fruity",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": true,
+      "isBeer": false,
+      "items": [
+        { "name": "Axlejack (43%)", "pence": 420 },
+        { "name": "Gordon's Pink (35%)", "pence": 395 },
+        { "name": "Slingsby Rhubarb (40%)", "pence": 490 },
+        { "name": "Tarquin's Rhubarb & Raspberry (38%)", "pence": 490 },
+        { "name": "Tarquin's Strawberry & Lime (38%)", "pence": 490 },
+        { "name": "Whitley Neill Black Cherry (41.3%)", "pence": 420 },
+        { "name": "Whitley Neill Rhubarb & Ginger (41.3%)", "pence": 420 },
+        { "name": "Whitley Neill Strawberry & Yuzu (41.3%)", "pence": 420 }
+      ]
+    },
+    {
+      "name": "Gin - Citrus",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": true,
+      "isBeer": false,
+      "items": [
+        { "name": "Bombay Sapphire (40%)", "pence": 840 },
+        { "name": "Gordon's Mediterranean Orange (37.5%)", "pence": 420 },
+        { "name": "Gordon's Sicilian Lemon (35%)", "pence": 420 },
+        { "name": "Tanqueray Sevilla (41.3%)", "pence": 435 }
+      ]
+    },
+    {
+      "name": "Gin - Juniper",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": true,
+      "isBeer": false,
+      "items": [
+        { "name": "Mermaid (42.0%)", "pence": 490 },
+        { "name": "Gordon's (37.5%)", "pence": 375 },
+        { "name": "Tanqueray (41.3%)", "pence": 435 }
+      ]
+    },
+    {
+      "name": "Rum",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": true,
+      "isBeer": false,
+      "items": [
+        { "name": "Captain Morgan's Dark Rum (40%)", "pence": 375 },
+        { "name": "Captain Morgan's Tiki Mango & Pineapple (25%)", "pence": 375 },
+        { "name": "Captain Morgan's Spiced (35%)", "pence": 375 },
+        { "name": "Captain Morgan's White Rum (37.5%)", "pence": 375 },
+        { "name": "Dead Mans Fingers Coconut (37.5%)", "pence": 420 },
+        { "name": "Dead Mans Fingers Spiced (37.5%)", "pence": 420 },
+        { "name": "Kraken Black Spiced Rum (40%)", "pence": 440 },
+        { "name": "SLY DOG Spiced (40.0%)", "pence": 440 }
+      ]
+    },
+    {
+      "name": "Liqueurs",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": true,
+      "isBeer": false,
+      "items": [
+        { "name": "Amaretto Disaronno (28.0%)", "pence": 405 },
+        { "name": "Aperol (11.0%)", "pence": 355 },
+        { "name": "Archers (18%)", "pence": 355 },
+        { "name": "Baileys (17%)", "pence": 435 },
+        { "name": "Cointreau (40%)", "pence": 355 },
+        { "name": "Kahlua Coffee Liqueur (20%)", "pence": 355 },
+        { "name": "Malibu (18%)", "pence": 355 },
+        { "name": "Pimms (25%)", "pence": 490 }
+      ]
+    },
+    {
+      "name": "Vodka",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": true,
+      "isBeer": false,
+      "items": [
+        { "name": "AU Vodka (40%)", "pence": 450 },
+        { "name": "AU Vodka Blue Raspberry (35.2%)", "pence": 450 },
+        { "name": "AU Vodka Pink Lemonade (35.2%)", "pence": 450 },
+        { "name": "Ciroc Vodka (40%)", "pence": 475 },
+        { "name": "Smirnoff Red Vodka (37.5%)", "pence": 750 },
+        { "name": "Smirnoff Mango & Passionfruit (35%)", "pence": 850 }
+      ]
+    },
+    {
+      "name": "Whisky",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": true,
+      "isBeer": false,
+      "items": [
+        { "name": "Jack Daniels (40%)", "pence": 375 },
+        { "name": "Jameson (40%)", "pence": 375 },
+        { "name": "Johnnie Walker Black (40%)", "pence": 390 },
+        { "name": "Southern Comfort (35%)", "pence": 375 },
+        { "name": "Shankeys Whip (33%)", "pence": 425 }
+      ]
+    },
+    {
+      "name": "Shots",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Baby Guinness Shot", "pence": 375 },
+        { "name": "Chocolate Orange Shot", "pence": 375 },
+        { "name": "Lady Guinness Shot", "pence": 375 },
+        { "name": "Jager Bomb Shot", "pence": 490 },
+        { "name": "Cazcabel Tequila Shot", "pence": 420 },
+        { "name": "Cuervo Especial Silver Tequila Shot", "pence": 355 },
+        { "name": "Tequila 38 Chocolate Shot", "pence": 355 },
+        { "name": "Luxardo Sambuca Shot", "pence": 325 },
+        { "name": "Dead Mans Fingers Raspberry Shot (15.0%)", "pence": 355 },
+        { "name": "Dead Mans Fingers Strawberry Shot (15.0%)", "pence": 355 }
+      ]
+    },
+    {
+      "name": "Brandy",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": true,
+      "isBeer": false,
+      "items": [
+        { "name": "Courvoisier VS (40%)", "pence": 370 },
+        { "name": "Courvoisier VSOP (40%)", "pence": 470 },
+        { "name": "Jules Clarion (36%)", "pence": 355 }
+      ]
+    },
+    {
+      "name": "Deals and Offers",
+      "mode": "food",
+      "note": "Table ordering only.",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Kids Meal Deal", "pence": 1045 },
+        { "name": "Tots Meal Deal", "pence": 895 },
+        { "name": "Lunch Meal Deal", "pence": 1200 }
+      ]
+    },
+    {
+      "name": "Lighter Options",
+      "mode": "food",
+      "note": "Toasties, ciabattas and wraps.",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "BLT Ciabatta", "pence": 925 },
+        { "name": "Triple Cheese Toastie (V)", "pence": 750 },
+        { "name": "Falafel Wrap (VG)", "pence": 925 },
+        { "name": "Tuna Melt", "pence": 925 },
+        { "name": "Crispy Fried Chicken Wrap", "pence": 925 },
+        { "name": "Skillet Bacon Mac & Cheese", "pence": 945 }
+      ]
+    },
+    {
+      "name": "Starters & Sharers",
+      "mode": "food",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Cauliflower Wings", "pence": 765 },
+        { "name": "Soup Of The Day (VG)", "pence": 565 },
+        { "name": "Garlic Bread (VG)", "pence": 595 },
+        { "name": "Nachos", "pence": 1250 },
+        { "name": "Cheesy Garlic Bread (V)", "pence": 695 },
+        { "name": "Cheese & Bacon Quesadilla", "pence": 795 },
+        { "name": "Pork & Apple Bites", "pence": 945 }
+      ]
+    },
+    {
+      "name": "Tacos",
+      "mode": "food",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "2 Tacos", "pence": 795 },
+        { "name": "3 Tacos", "pence": 975 }
+      ]
+    },
+    {
+      "name": "Fried Chicken",
+      "mode": "food",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Strips Small", "pence": 950 },
+        { "name": "Strips Large", "pence": 1150 },
+        { "name": "Boneless Bites Small", "pence": 845 },
+        { "name": "Boneless Bites Large", "pence": 1100 }
+      ]
+    },
+    {
+      "name": "Mains",
+      "mode": "food",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Hunters Chicken Stack", "pence": 1495 },
+        { "name": "Sausage & Mash", "pence": 1250 },
+        { "name": "Caesar Salad (V)", "pence": 1025 },
+        { "name": "Caesar Salad - Chicken", "pence": 1335 },
+        { "name": "Caesar Salad - Vegan Chick'n (V)", "pence": 1365 },
+        { "name": "Balti Pie (VG)", "pence": 1365 },
+        { "name": "Cajun Chicken Fajitas", "pence": 1645 },
+        { "name": "Chicken Tikka Masala", "pence": 1475 },
+        { "name": "Bang Bang Chilli Chicken Noodles", "pence": 1425 },
+        { "name": "Steak & Ale Pie", "pence": 1575 },
+        { "name": "Chicken Souvlaki Wrap", "pence": 1475 }
+      ]
+    },
+    {
+      "name": "Signature Burgers",
+      "mode": "food",
+      "note": "Served with chunky chips.",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "The Big Boi Burger", "pence": 1995 },
+        { "name": "Notorious PIG Burger", "pence": 1995 },
+        { "name": "The Big Bird Burger", "pence": 1850 },
+        { "name": "Katsu Chicken Burger", "pence": 1545 },
+        { "name": "Double Decker Chicken Club Burger", "pence": 1550 },
+        { "name": "Sombrero Stack Burger", "pence": 1545 },
+        { "name": "Chicken Strip BLT Burger", "pence": 1495 }
+      ]
+    },
+    {
+      "name": "Burgers",
+      "mode": "food",
+      "note": "Served with lettuce, tomato, red onion, coleslaw and chunky chips.",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Classic Double", "pence": 1325 },
+        { "name": "Classic Triple", "pence": 1425 },
+        { "name": "Cheese Double", "pence": 1395 },
+        { "name": "Cheese Triple", "pence": 1495 },
+        { "name": "Bacon Cheese Double", "pence": 1495 },
+        { "name": "Bacon Cheese Triple", "pence": 1595 },
+        { "name": "Chilli Cheese Double", "pence": 1495 },
+        { "name": "Chilli Cheese Triple", "pence": 1595 }
+      ]
+    },
+    {
+      "name": "Pizzas",
+      "mode": "food",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Margherita Pizza (V)", "pence": 1495 },
+        { "name": "Vegan Margherita Pizza (VG)", "pence": 1495 },
+        { "name": "Spicy Meatball Jalapeno Pizza", "pence": 1650 },
+        { "name": "Pepperoni Pizza", "pence": 1650 },
+        { "name": "BBQ Chicken & Bacon Pizza", "pence": 1650 },
+        { "name": "Hawaiian Pizza", "pence": 1650 }
+      ]
+    },
+    {
+      "name": "Sides - Filthy Fries",
+      "mode": "food",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Dirty Fries - Regular", "pence": 795 },
+        { "name": "Dirty Fries - Large", "pence": 995 },
+        { "name": "Hunters BBQ Fries - Regular", "pence": 895 },
+        { "name": "Hunters BBQ Fries - Large", "pence": 1045 },
+        { "name": "Fully Loaded Fries - Regular", "pence": 795 },
+        { "name": "Fully Loaded Fries - Large", "pence": 995 },
+        { "name": "Habanero Hot Fries - Regular", "pence": 795 },
+        { "name": "Habanero Hot Fries - Large", "pence": 995 },
+        { "name": "Chilli Fries - Regular", "pence": 895 },
+        { "name": "Chilli Fries - Large", "pence": 1045 },
+        { "name": "Chicken Katsu Curry Fries - Regular", "pence": 895 },
+        { "name": "Chicken Katsu Curry Fries - Large", "pence": 1045 }
+      ]
+    },
+    {
+      "name": "Sides",
+      "mode": "food",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Skinny Fries (VG)", "pence": 410 },
+        { "name": "Chunky Chips (VG)", "pence": 410 },
+        { "name": "Onion Rings (V)", "pence": 410 },
+        { "name": "Garlic Bread (VG)", "pence": 595 },
+        { "name": "Cheesy Garlic Bread (V)", "pence": 695 },
+        { "name": "Mixed Leaf Salad (VG)", "pence": 500 }
+      ]
+    },
+    {
+      "name": "Desserts",
+      "mode": "food",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Dubai Style Cookie Ice Cream Sandwich", "pence": 735 },
+        { "name": "Chocolate Fudge Brownie (V)", "pence": 745 },
+        { "name": "Carte Dor Vanilla Ice Cream", "pence": 475 },
+        { "name": "Carte Dor Triple Chocolate Ice Cream", "pence": 475 },
+        { "name": "Sticky Toffee Pudding (VG)", "pence": 650 },
+        { "name": "Millionaire's Sundae (V)", "pence": 705 },
+        { "name": "Knickerbocker Sundae (V)", "pence": 745 }
+      ]
+    },
+    {
+      "name": "Kids - Little Acorns (for 6+)",
+      "mode": "food",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Rainbow Sticks (VG)", "pence": 110 },
+        { "name": "Crunchy Garlic Bread (VG)", "pence": 215 },
+        { "name": "Tortilla Chips (VG)", "pence": 110 },
+        { "name": "Kickin Chick*n Burger (VG)", "pence": 700 },
+        { "name": "Gloriously Grilled Chicken Salad", "pence": 700 },
+        { "name": "Cheeky Cheeseburger", "pence": 700 },
+        { "name": "Funky Fried Chicken Strips", "pence": 720 },
+        { "name": "Nibbly Nutella Pancakes", "pence": 475 },
+        { "name": "Bear's Chocolate & Oreo Sundae", "pence": 475 },
+        { "name": "PIP Organic Rainbow Lolly (VG)", "pence": 250 },
+        { "name": "Chocolate Ice Cream", "pence": 380 },
+        { "name": "Vanilla Ice Cream", "pence": 380 }
+      ]
+    },
+    {
+      "name": "Tots - Tiny Sprouts (up to 6)",
+      "mode": "food",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Fish Fingers & Chips", "pence": 695 },
+        { "name": "Pastacadabra (VG)", "pence": 590 },
+        { "name": "Hot Diggety Dog", "pence": 575 },
+        { "name": "Chompin' Chicken Chunks", "pence": 695 },
+        { "name": "Chocolate Ice Cream", "pence": 380 },
+        { "name": "PIP Organic Rainbow Lolly (VG)", "pence": 250 },
+        { "name": "Vanilla Ice Cream", "pence": 380 },
+        { "name": "Lucy's Mini Donuts", "pence": 375 }
+      ]
+    },
+    {
+      "name": "Magical Milkshakes",
+      "mode": "food",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Biscoff Billionaire Milkshake", "pence": 575 },
+        { "name": "Strawberries & Cream Milkshake", "pence": 575 },
+        { "name": "Dubai Style Cookie Milkshake", "pence": 575 },
+        { "name": "Oreo Chocolate Milkshake", "pence": 575 }
+      ]
+    },
+    {
+      "name": "Lavazza Coffee & Hot Drinks",
+      "mode": "food",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Americano", "pence": 285 },
+        { "name": "Regular Flat White", "pence": 345 },
+        { "name": "Latte", "pence": 345 },
+        { "name": "Regular Tea", "pence": 310 },
+        { "name": "Cappuccino", "pence": 345 },
+        { "name": "Mocha", "pence": 415 },
+        { "name": "Espresso", "pence": 235 },
+        { "name": "Hot Chocolate", "pence": 410 }
+      ]
+    }
+  ]
+}
