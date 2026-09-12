@@ -21,15 +21,11 @@ h1{font-size:19px;margin:0;}
 .status{font-size:12px;color:var(--text-muted);margin-bottom:16px;}
 .status.ok{color:var(--success);}
 .status.bad{color:var(--danger);}
-.tabs{display:flex;gap:8px;}
-.tab-btn{border:1px solid var(--border);background:var(--surface-2);color:var(--text-muted);font-weight:700;font-size:13.5px;padding:9px 16px;border-radius:999px;cursor:pointer;}
-.tab-btn.active{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:16px;}
 .order-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow);}
 .order-card.flagged{border-color:var(--danger);background:var(--danger-soft);}
 .order-card.ready{border-color:var(--gold);background:rgba(254,207,70,.14);}
 .order-card.substituted{border-color:var(--accent);background:rgba(60,192,200,.14);}
-.order-card.delivered{opacity:.55;}
 .order-sub-note{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:10px;}
 .order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;}
 .order-table{font-weight:800;font-size:16px;font-family:inherit;}
@@ -104,10 +100,6 @@ h1{font-size:19px;margin:0;}
 </div>
 <div class="topbar">
   <h1>Open Orders</h1>
-  <div class="tabs">
-    <button class="tab-btn active" id="tabOpen" type="button">Open</button>
-    <button class="tab-btn" id="tabDelivered" type="button">Delivered</button>
-  </div>
 </div>
 <div class="account-row">
   <div id="accountName" style="font-weight:700;font-size:13.5px;"></div>
@@ -220,7 +212,6 @@ let stops = new Set();
 let notifications = [];
 let currentUserId = null;
 try { currentUserId = localStorage.getItem(LS_CURRENT_USER); } catch(e){}
-let view = "open";
 let flagTargetId = null;
 let flatCatalogue = [];
 let productCategories = [];
@@ -314,11 +305,16 @@ document.getElementById("enableAlertsBtn").addEventListener("click", async () =>
   document.getElementById("alertsRow").hidden = true;
 });
 
-function alertUser(title, body){
+function alertUser(title, body, urgent){
   showToast(`${title}${body ? " — " + body : ""}`);
   playChime();
+  if (urgent && navigator.vibrate) { try { navigator.vibrate([300, 150, 300, 150, 300]); } catch(e){} }
   if ("Notification" in window && Notification.permission === "granted") {
-    try { new Notification(title, { body }); } catch(e){}
+    try {
+      new Notification(title, urgent
+        ? { body, requireInteraction: true, tag: "urgent-" + Date.now(), vibrate: [300, 150, 300, 150, 300] }
+        : { body });
+    } catch(e){}
   }
 }
 
@@ -351,12 +347,12 @@ function checkPersonalNotifications(list){
   const ids = new Set(list.map(n => n.id));
   if (knownNotificationIds === null) { knownNotificationIds = ids; return; }
   list.filter(n => !knownNotificationIds.has(n.id) && (n.toUserId === "all" || n.toUserId === currentUserId) && n.fromUserId !== currentUserId)
-    .forEach(n => alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message));
+    .forEach(n => alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent));
   knownNotificationIds = ids;
 }
-async function pushNotification(toUserId, message){
+async function pushNotification(toUserId, message, urgent){
   const me = users.find(u => u.id === currentUserId);
-  notifications.push({ id: "n" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), toUserId, fromUserId: currentUserId, fromName: me ? me.name : "Someone", message });
+  notifications.push({ id: "n" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), toUserId, fromUserId: currentUserId, fromName: me ? me.name : "Someone", message, urgent: !!urgent });
   notifications = notifications.slice(-50);
   await saveDoc(LS_NOTIFICATIONS, notifications);
   knownNotificationIds = new Set(notifications.map(n => n.id));
@@ -396,19 +392,19 @@ async function init(){
   if (!users.length) users = [{ id:"710603", name:"Tom", perms:{ placeOrders:true, productsOnStop:true, xzRead:true, backendAccess:true, orderScreen:true } }];
   applyLoginState();
   await pullOrders();
-  setInterval(pullOrders, 5000);
+  setInterval(pullOrders, 1000);
 }
 
 function render(){
   const wrap = document.getElementById("grid");
   wrap.innerHTML = "";
-  const list = openOrders.filter(o => view === "open" ? !o.delivered : o.delivered)
+  const list = openOrders.slice()
     .sort((a,b) => (b.flagged - a.flagged) || ((b.ready?1:0) - (a.ready?1:0)) || (b.ts - a.ts));
-  if (!list.length) { wrap.innerHTML = `<div class="empty">${view === "open" ? "Nothing open right now." : "No delivered orders yet."}</div>`; return; }
+  if (!list.length) { wrap.innerHTML = `<div class="empty">Nothing open right now.</div>`; return; }
   list.forEach(o => {
     const card = document.createElement("div");
     const subItem = o.items.find(i => i.substituted);
-    card.className = "order-card" + (o.flagged ? " flagged" : (subItem ? " substituted" : (o.ready ? " ready" : ""))) + (o.delivered ? " delivered" : "");
+    card.className = "order-card" + (o.flagged ? " flagged" : (subItem ? " substituted" : (o.ready ? " ready" : "")));
     const itemsText = o.items.map(i => i.substituted ? `${i.qty}× ${i.name} (£0.00 — sub for ${i.subFor})` : `${i.qty}× ${i.name}`).join(", ");
     card.innerHTML = `
       <div class="order-head">
@@ -422,46 +418,33 @@ function render(){
       ${!o.flagged && subItem ? `<div class="order-sub-note">✓ Substituted ${subItem.name} for ${subItem.subFor} — free</div>` : ""}
       <div class="order-actions"></div>`;
     const actions = card.querySelector(".order-actions");
-    if (!o.delivered) {
-      if (o.flagged) {
-        if (o.flagIntent !== "refund") {
-          const acceptBtn = document.createElement("button");
-          acceptBtn.className = "btn btn-ghost"; acceptBtn.textContent = "Accepted";
-          acceptBtn.addEventListener("click", () => resolveFlag(o.id, "accepted"));
-          actions.appendChild(acceptBtn);
-        }
-        const refundBtn = document.createElement("button");
-        refundBtn.className = "btn btn-danger"; refundBtn.textContent = "Refunded";
-        refundBtn.addEventListener("click", () => resolveFlag(o.id, "refunded"));
-        actions.appendChild(refundBtn);
-      } else {
-        const flagBtn = document.createElement("button");
-        flagBtn.className = "btn btn-ghost"; flagBtn.textContent = "Flag issue";
-        flagBtn.addEventListener("click", () => openFlagModal(o.id));
-        actions.appendChild(flagBtn);
-        if (o.ready) {
-          const deliverBtn = document.createElement("button");
-          deliverBtn.className = "btn btn-success"; deliverBtn.textContent = "Mark Delivered";
-          deliverBtn.addEventListener("click", () => markDelivered(o.id));
-          actions.appendChild(deliverBtn);
-        } else {
-          const readyBtn = document.createElement("button");
-          readyBtn.className = "btn btn-accent"; readyBtn.textContent = "Ready for Delivery";
-          readyBtn.addEventListener("click", () => markReady(o.id));
-          actions.appendChild(readyBtn);
-        }
+    if (o.flagged) {
+      if (o.flagIntent !== "refund") {
+        const acceptBtn = document.createElement("button");
+        acceptBtn.className = "btn btn-ghost"; acceptBtn.textContent = "Accepted";
+        acceptBtn.addEventListener("click", () => resolveFlag(o.id, "accepted"));
+        actions.appendChild(acceptBtn);
       }
+      const refundBtn = document.createElement("button");
+      refundBtn.className = "btn btn-danger"; refundBtn.textContent = "Refunded";
+      refundBtn.addEventListener("click", () => resolveFlag(o.id, "refunded"));
+      actions.appendChild(refundBtn);
     } else {
-      if (o.placedById) {
-        const againBtn = document.createElement("button");
-        againBtn.className = "btn btn-ghost"; againBtn.textContent = "Notify Again";
-        againBtn.addEventListener("click", async () => { await pushNotification(o.placedById, `Table ${o.table || "?"} — order delivered`); showToast("Notified " + o.placedBy); });
-        actions.appendChild(againBtn);
+      const flagBtn = document.createElement("button");
+      flagBtn.className = "btn btn-ghost"; flagBtn.textContent = "Flag issue";
+      flagBtn.addEventListener("click", () => openFlagModal(o.id));
+      actions.appendChild(flagBtn);
+      if (o.ready) {
+        const deliverBtn = document.createElement("button");
+        deliverBtn.className = "btn btn-success"; deliverBtn.textContent = "Mark Delivered";
+        deliverBtn.addEventListener("click", () => markDelivered(o.id));
+        actions.appendChild(deliverBtn);
+      } else {
+        const readyBtn = document.createElement("button");
+        readyBtn.className = "btn btn-accent"; readyBtn.textContent = "Ready for Delivery";
+        readyBtn.addEventListener("click", () => markReady(o.id));
+        actions.appendChild(readyBtn);
       }
-      const allBtn = document.createElement("button");
-      allBtn.className = "btn btn-accent"; allBtn.textContent = "Notify All";
-      allBtn.addEventListener("click", async () => { await pushNotification("all", `Table ${o.table || "?"} — order delivered`); showToast("Notified everyone"); });
-      actions.appendChild(allBtn);
     }
     wrap.appendChild(card);
   });
@@ -469,10 +452,8 @@ function render(){
 
 async function markDelivered(id){
   const o = openOrders.find(x => x.id === id);
-  if (o) {
-    o.delivered = true;
-    if (o.placedById) await pushNotification(o.placedById, `Table ${o.table || "?"} — order delivered`);
-  }
+  if (o && o.placedById) await pushNotification(o.placedById, `Table ${o.table || "?"} — order delivered`);
+  openOrders = openOrders.filter(x => x.id !== id);
   await saveDoc(LS_ORDERS, openOrders);
   render();
 }
@@ -653,19 +634,6 @@ document.getElementById("flagConfirm").addEventListener("click", async () => {
   render();
 });
 
-document.getElementById("tabOpen").addEventListener("click", () => {
-  view = "open";
-  document.getElementById("tabOpen").classList.add("active");
-  document.getElementById("tabDelivered").classList.remove("active");
-  render();
-});
-document.getElementById("tabDelivered").addEventListener("click", () => {
-  view = "delivered";
-  document.getElementById("tabDelivered").classList.add("active");
-  document.getElementById("tabOpen").classList.remove("active");
-  render();
-});
-
 document.getElementById("serviceBtn").addEventListener("click", () => {
   const wrap = document.getElementById("serviceUserList");
   wrap.innerHTML = "";
@@ -676,7 +644,7 @@ document.getElementById("serviceBtn").addEventListener("click", () => {
     b.type = "button"; b.className = "btn btn-ghost";
     b.textContent = u.name;
     b.addEventListener("click", async () => {
-      await pushNotification(u.id, `needs you at the bar`);
+      await pushNotification(u.id, `needs you at the bar`, true);
       document.getElementById("serviceModal").hidden = true;
       showToast(`Notified ${u.name}`);
     });

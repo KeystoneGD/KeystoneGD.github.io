@@ -885,7 +885,7 @@ async function connectDb(){
   } catch (e) { dbNs = null; }
   if (!dbNs) return;
   await pullState(PERSISTED_KEYS);
-  setInterval(() => pullState(PERSISTED_KEYS.filter(i => i.live)), 5000);
+  setInterval(() => pullState(PERSISTED_KEYS.filter(i => i.live)), 1000);
 }
 
 let cart = loadJSON(LS_CART, {});
@@ -1483,11 +1483,16 @@ function playChime(){
     }
   } catch(e){}
 }
-function alertUser(title, body){
+function alertUser(title, body, urgent){
   showToast(`${title}${body ? " — " + body : ""}`);
   playChime();
+  if (urgent && navigator.vibrate) { try { navigator.vibrate([300, 150, 300, 150, 300]); } catch(e){} }
   if ("Notification" in window && Notification.permission === "granted") {
-    try { new Notification(title, { body }); } catch(e){}
+    try {
+      new Notification(title, urgent
+        ? { body, requireInteraction: true, tag: "urgent-" + Date.now(), vibrate: [300, 150, 300, 150, 300] }
+        : { body });
+    } catch(e){}
   }
 }
 document.getElementById("enableAlertsBtn").addEventListener("click", async () => {
@@ -1501,12 +1506,12 @@ function checkPersonalNotifications(list){
   const ids = new Set(list.map(n => n.id));
   if (knownNotificationIds === null) { knownNotificationIds = ids; return; }
   list.filter(n => !knownNotificationIds.has(n.id) && (n.toUserId === "all" || n.toUserId === currentUserId) && n.fromUserId !== currentUserId)
-    .forEach(n => alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message));
+    .forEach(n => alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent));
   knownNotificationIds = ids;
 }
-function pushNotification(toUserId, message){
+function pushNotification(toUserId, message, urgent){
   const me = currentUser;
-  notifications.push({ id: "n" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), toUserId, fromUserId: currentUserId, fromName: me ? me.name : "Someone", message });
+  notifications.push({ id: "n" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), toUserId, fromUserId: currentUserId, fromName: me ? me.name : "Someone", message, urgent: !!urgent });
   notifications = notifications.slice(-50);
   saveJSON(LS_NOTIFICATIONS, notifications);
   knownNotificationIds = new Set(notifications.map(n => n.id));
@@ -1665,10 +1670,8 @@ function renderOpenOrdersList(){
 }
 function markOrderDelivered(id){
   const o = openOrders.find(x => x.id === id);
-  if (o) {
-    o.delivered = true;
-    if (o.placedById) pushNotification(o.placedById, `Table ${o.table || "?"} — order delivered`);
-  }
+  if (o && o.placedById) pushNotification(o.placedById, `Table ${o.table || "?"} — order delivered`);
+  openOrders = openOrders.filter(x => x.id !== id);
   saveJSON(LS_ORDERS, openOrders);
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
