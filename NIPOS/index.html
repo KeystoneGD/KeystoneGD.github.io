@@ -167,6 +167,13 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 .order-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow);}
 .order-card.flagged{border-color:var(--danger);background:var(--danger-soft);}
 .order-card.ready{border-color:var(--gold);background:var(--gold-soft);}
+
+.backup-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;flex-wrap:wrap;}
+.backup-head h3{font-size:14px;margin:0;}
+.backup-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border);}
+.backup-badge.found{background:var(--accent-soft);color:var(--accent);border-color:transparent;}
+.backup-meta{font-size:12px;color:var(--text-muted);margin-bottom:8px;line-height:1.5;}
+.backup-ta{width:100%;min-height:64px;max-height:180px;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px;font-family:ui-monospace,monospace;font-size:10.5px;resize:vertical;margin-bottom:8px;}
 .order-card.substituted{border-color:var(--accent);background:rgba(60,192,200,.14);}
 .order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
 .order-table{font-weight:800;font-size:15px;font-family:'Manrope',sans-serif;}
@@ -406,6 +413,13 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
         </button>
         <span class="chevron">›</span>
       </div>
+      <div class="admin-row" id="localBackupRow">
+        <button class="admin-row-main" type="button">
+          <span class="name">Local Sales Backup</span>
+          <span class="sub">What's saved on this device, in case a sync is missed</span>
+        </button>
+        <span class="chevron">›</span>
+      </div>
 
       <div class="section-title">Reports</div>
       <div class="admin-row special" id="adminHistoryRow">
@@ -463,6 +477,17 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     <div class="empty-state" id="abandonedEmpty" style="display:none;padding:16px 10px;">No abandoned orders.</div>
 
     <button class="btn btn-ghost btn-block" id="exportAllBtn" style="margin-top:8px;">Export all sales (every shift)</button>
+  </div>
+</div>
+
+<div class="sheet" id="localBackupSheet">
+  <div class="sheet-head">
+    <button class="icon-btn" id="localBackupBack" aria-label="Back">←</button>
+    <h2>Local Sales Backup</h2>
+  </div>
+  <div class="sheet-body">
+    <p class="admin-note">This device keeps its own backup copy of sales alongside the shared one. If a sync is ever missed, this is what's actually saved here right now — useful to check and copy before doing anything else on this device.</p>
+    <div id="localBackupList"></div>
   </div>
 </div>
 
@@ -1593,6 +1618,58 @@ document.getElementById("adminEndOfShiftRow").querySelector(".admin-row-main").a
   renderPastZ(); openSheet("endOfShiftSheet");
 });
 document.getElementById("endOfShiftBack").addEventListener("click", () => closeSheet("endOfShiftSheet"));
+document.getElementById("localBackupRow").querySelector(".admin-row-main").addEventListener("click", () => {
+  renderLocalBackup(); openSheet("localBackupSheet");
+});
+document.getElementById("localBackupBack").addEventListener("click", () => closeSheet("localBackupSheet"));
+
+const LOCAL_BACKUP_KEYS = [
+  { key: LS_HIST, label: "Sales log (Past Orders)" },
+  { key: LS_Z, label: "Past Z Reports" },
+  { key: LS_ABANDONED, label: "Abandoned orders" },
+  { key: LS_REFUNDS, label: "Refunds" },
+  { key: LS_GRAT, label: "Gratuities" },
+  { key: LS_ORDERS, label: "Open orders (not yet delivered)" }
+];
+
+function renderLocalBackup(){
+  const list = document.getElementById("localBackupList");
+  list.innerHTML = "";
+  LOCAL_BACKUP_KEYS.forEach(({ key, label }) => {
+    let raw = null;
+    try { raw = localStorage.getItem(key); } catch (e) {}
+
+    let count = null, oldest = null, newest = null;
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          count = parsed.length;
+          const times = parsed.map(x => x && (x.ts || x.closedAt)).filter(Boolean);
+          if (times.length) { oldest = Math.min(...times); newest = Math.max(...times); }
+        }
+      } catch (e) {}
+    }
+
+    const found = !!raw && count !== 0;
+    const card = document.createElement("div");
+    card.className = "order-card";
+    card.innerHTML = `
+      <div class="backup-head">
+        <h3>${label}</h3>
+        <span class="backup-badge ${found ? "found" : ""}">${raw === null ? "not present" : (count === null ? "present" : count + " item" + (count === 1 ? "" : "s"))}</span>
+      </div>
+      <div class="backup-meta">${oldest ? `Earliest ${new Date(oldest).toLocaleString()} · Latest ${new Date(newest).toLocaleString()}` : "&nbsp;"}</div>
+      <textarea class="backup-ta" readonly>${raw ? raw.replace(/</g,"&lt;") : "(nothing stored under this key on this device)"}</textarea>
+      <button class="btn btn-ghost btn-block backup-copy-btn" ${raw ? "" : "disabled"}>Copy this box</button>
+    `;
+    const btn = card.querySelector(".backup-copy-btn");
+    if (raw) {
+      btn.addEventListener("click", () => copyLines([raw], "Copied — paste it into a message"));
+    }
+    list.appendChild(card);
+  });
+}
 document.getElementById("stoppedRow").querySelector(".admin-row-main").addEventListener("click", () => showStoppedCategories());
 document.getElementById("openOrdersRow").querySelector(".admin-row-main").addEventListener("click", () => showOpenOrders());
 document.getElementById("titleRow").querySelector(".admin-row-main").addEventListener("click", async () => {
