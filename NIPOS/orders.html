@@ -46,6 +46,11 @@ h1{font-size:19px;margin:0;}
 .btn-danger{background:var(--danger-soft);color:var(--danger);}
 .btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border);}
 .empty{color:var(--text-muted);font-size:14px;padding:40px 10px;text-align:center;grid-column:1/-1;}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--success);color:var(--success-ink);padding:10px 18px;border-radius:999px;font-weight:700;font-size:14px;box-shadow:var(--shadow);z-index:80;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;text-align:center;max-width:88vw;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+.sound-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.sound-row[hidden]{display:none;}
+.sound-row .btn{width:auto;flex:none;padding:7px 14px;font-size:12.5px;}
 
 .modal-overlay{position:fixed;inset:0;background:rgba(4,10,11,.6);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;}
 .modal-overlay[hidden]{display:none;}
@@ -72,6 +77,20 @@ h1{font-size:19px;margin:0;}
 .login-card input{width:100%;padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:22px;text-align:center;font-weight:700;letter-spacing:4px;margin-bottom:14px;}
 .account-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
 .account-row .btn{width:auto;flex:none;padding:9px 14px;font-size:13px;}
+.toolbar-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+.toolbar-row .btn{width:auto;flex:none;padding:8px 14px;font-size:13px;}
+.toolbar-row[hidden]{display:none;}
+.placed-by{font-size:11.5px;color:var(--text-muted);margin-bottom:6px;}
+.stock-cat{font-size:12px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin:16px 0 4px;}
+.stock-cat:first-child{margin-top:0;}
+.stock-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:14px;}
+.stock-row:last-child{border-bottom:0;}
+.switch{position:relative;display:inline-block;width:46px;height:28px;flex:0 0 auto;}
+.switch input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;padding:0;border:0;cursor:pointer;-webkit-appearance:none;appearance:none;}
+.switch .slider{position:absolute;inset:0;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;transition:.15s;pointer-events:none;}
+.switch .slider::before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:var(--text);opacity:.85;border-radius:50%;transition:.15s;}
+.switch input:checked + .slider{background:var(--accent);border-color:var(--accent);}
+.switch input:checked + .slider::before{transform:translateX(18px);background:var(--accent-ink);opacity:1;}
 </style>
 </head>
 <body>
@@ -94,8 +113,40 @@ h1{font-size:19px;margin:0;}
   <div id="accountName" style="font-weight:700;font-size:13.5px;"></div>
   <button class="btn btn-ghost" id="accountSignOutBtn">Sign out</button>
 </div>
+<div class="toolbar-row" id="toolbarRow">
+  <button class="btn btn-ghost" id="stockBtn" type="button" hidden>🛑 Products on Stop</button>
+  <button class="btn btn-accent" id="serviceBtn" type="button">🔔 Service</button>
+</div>
+<div class="sound-row" id="alertsRow">
+  <div id="alertsStatus" style="font-size:12.5px;color:var(--text-muted);">🔕 Tap to get a sound + alert when a new order comes in</div>
+  <button class="btn btn-accent" id="enableAlertsBtn">Enable alerts</button>
+</div>
 <div class="status" id="dbStatus">Connecting…</div>
 <div class="grid" id="grid"></div>
+
+<div class="modal-overlay" id="stockModal" hidden>
+  <div class="modal-card" style="max-width:480px;">
+    <h3>Products on Stop</h3>
+    <p>Flip an item off to pull it from the till instantly.</p>
+    <input type="text" id="stockSearch" placeholder="Search drinks/food…">
+    <div id="stockList" style="max-height:50vh;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="stockCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="serviceModal" hidden>
+  <div class="modal-card">
+    <h3>Call for service</h3>
+    <p>Select who should head to the bar.</p>
+    <div class="modal-item-list" id="serviceUserList"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="serviceCloseBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
 
 <div class="modal-overlay" id="flagModal" hidden>
   <div class="modal-card">
@@ -151,6 +202,8 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const LS_ORDERS = "starlightTill.openOrders.v1";
 const LS_USERS = "starlightTill.users.v1";
 const LS_CURRENT_USER = "starlightTill.currentUser.v1";
+const LS_STOPS = "starlightTill.stops.v1";
+const LS_NOTIFICATIONS = "starlightTill.notifications.v1";
 function makeSupabaseDb(client){
   return { doc(path){ return {
     async set(body){ await client.from("app_state").upsert({ key: path, value: body.value }); },
@@ -163,18 +216,22 @@ function makeSupabaseDb(client){
 let dbNs = null;
 let openOrders = [];
 let users = [];
+let stops = new Set();
+let notifications = [];
 let currentUserId = null;
 try { currentUserId = localStorage.getItem(LS_CURRENT_USER); } catch(e){}
 let view = "open";
 let flagTargetId = null;
 let flatCatalogue = [];
+let productCategories = [];
 async function loadCatalogue(){
   try {
     const res = await fetch("products.json");
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
     flatCatalogue = data.categories.flatMap(c => c.items.map(i => ({ name: i.name, mode: c.mode, sizes: i.sizes || null })));
-  } catch(e) { flatCatalogue = []; }
+    productCategories = data.categories;
+  } catch(e) { flatCatalogue = []; productCategories = []; }
 }
 function modeOf(name){
   const hit = flatCatalogue.find(p => p.name === name);
@@ -190,6 +247,7 @@ function applyLoginState(){
     document.getElementById("loginGate").hidden = false;
     document.getElementById("loginMessage").textContent = u ? `Signed in as ${u.name}, but no Order Screen access.` : "Enter your PIN for Order Screen access.";
   }
+  document.getElementById("stockBtn").hidden = !(u && u.perms.productsOnStop);
 }
 document.getElementById("loginSubmitBtn").addEventListener("click", () => {
   const pin = document.getElementById("loginPinInput").value.trim();
@@ -224,13 +282,101 @@ async function saveDoc(key, val){
   try { await dbNs.doc("state/" + key).set({ value: val }); } catch(e){}
 }
 
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove("show"), 3200);
+}
+
+let audioCtx = null;
+function playChime(){
+  if (!audioCtx) return;
+  try {
+    for (let i = 0; i < 3; i++) {
+      const t0 = audioCtx.currentTime + i * 0.18;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "square"; osc.frequency.value = 1500;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.8, t0 + 0.008);
+      gain.gain.setValueAtTime(0.8, t0 + 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.14);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(t0); osc.stop(t0 + 0.15);
+    }
+  } catch(e){}
+}
+document.getElementById("enableAlertsBtn").addEventListener("click", async () => {
+  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); playChime(); } catch(e){}
+  if ("Notification" in window) { try { await Notification.requestPermission(); } catch(e){} }
+  document.getElementById("alertsRow").hidden = true;
+});
+
+function alertUser(title, body){
+  showToast(`${title}${body ? " — " + body : ""}`);
+  playChime();
+  if ("Notification" in window && Notification.permission === "granted") {
+    try { new Notification(title, { body }); } catch(e){}
+  }
+}
+
+let knownOrderStates = null;
+function checkOrderChanges(){
+  const stateNow = new Map(openOrders.map(o => [o.id, { flagged: !!o.flagged, ready: !!o.ready }]));
+  if (knownOrderStates === null) { knownOrderStates = stateNow; return; }
+  openOrders.forEach(o => {
+    const label = o.table ? `Table ${o.table}` : "Order";
+    const prev = knownOrderStates.get(o.id);
+    if (!prev) {
+      if (!o.delivered) alertUser("🔔 New order", `${label} — ${o.items.map(i => `${i.qty}× ${i.name}`).join(", ")}`);
+      return;
+    }
+    if (!prev.flagged && o.flagged) alertUser("⚠ Order flagged", `${label} — ${o.flagItem}: ${o.flagReason}`);
+    if (!prev.ready && o.ready) alertUser("✅ Ready for delivery", label);
+  });
+  knownOrderStates = stateNow;
+}
+
+let knownStops = null;
+function checkStopChanges(newStops){
+  if (knownStops === null) { knownStops = newStops; return; }
+  [...newStops].filter(name => !knownStops.has(name)).forEach(name => alertUser("🛑 Now on stop", name));
+  knownStops = newStops;
+}
+
+let knownNotificationIds = null;
+function checkPersonalNotifications(list){
+  const ids = new Set(list.map(n => n.id));
+  if (knownNotificationIds === null) { knownNotificationIds = ids; return; }
+  list.filter(n => !knownNotificationIds.has(n.id) && (n.toUserId === "all" || n.toUserId === currentUserId) && n.fromUserId !== currentUserId)
+    .forEach(n => alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message));
+  knownNotificationIds = ids;
+}
+async function pushNotification(toUserId, message){
+  const me = users.find(u => u.id === currentUserId);
+  notifications.push({ id: "n" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), toUserId, fromUserId: currentUserId, fromName: me ? me.name : "Someone", message });
+  notifications = notifications.slice(-50);
+  await saveDoc(LS_NOTIFICATIONS, notifications);
+  knownNotificationIds = new Set(notifications.map(n => n.id));
+}
+
 async function pullOrders(){
   if (!dbNs) return;
   openOrders = await loadDoc(LS_ORDERS, openOrders);
   const pulledUsers = await loadDoc(LS_USERS, users);
   if (pulledUsers.length) users = pulledUsers;
+  const pulledStops = await loadDoc(LS_STOPS, [...stops]);
+  const pulledNotifications = await loadDoc(LS_NOTIFICATIONS, notifications);
   applyLoginState();
+  checkOrderChanges();
+  checkStopChanges(new Set(pulledStops));
+  stops = new Set(pulledStops);
+  checkPersonalNotifications(pulledNotifications);
+  notifications = pulledNotifications;
   render();
+  if (!document.getElementById("stockModal").hidden) renderStockList();
 }
 
 async function init(){
@@ -270,6 +416,7 @@ function render(){
         <span class="order-time">${formatTime(o.ts)}</span>
         <span class="pill pill-${o.method}">${o.method === "cash" ? "Cash" : "Card"}</span>
       </div>
+      ${o.placedBy ? `<div class="placed-by">Placed by ${o.placedBy}</div>` : ""}
       <div class="order-items">${itemsText}</div>
       ${o.flagged ? `<div class="order-flag">⚠ ${o.flagItem}: ${o.flagReason}${o.flagIntent === "substitute" && o.flagSubstitute ? " — offer " + o.flagSubstitute + " instead" : (o.flagIntent === "refund" ? " — refund suggested" : "")}</div>` : ""}
       ${!o.flagged && subItem ? `<div class="order-sub-note">✓ Substituted ${subItem.name} for ${subItem.subFor} — free</div>` : ""}
@@ -277,10 +424,12 @@ function render(){
     const actions = card.querySelector(".order-actions");
     if (!o.delivered) {
       if (o.flagged) {
-        const acceptBtn = document.createElement("button");
-        acceptBtn.className = "btn btn-ghost"; acceptBtn.textContent = "Accepted";
-        acceptBtn.addEventListener("click", () => resolveFlag(o.id, "accepted"));
-        actions.appendChild(acceptBtn);
+        if (o.flagIntent !== "refund") {
+          const acceptBtn = document.createElement("button");
+          acceptBtn.className = "btn btn-ghost"; acceptBtn.textContent = "Accepted";
+          acceptBtn.addEventListener("click", () => resolveFlag(o.id, "accepted"));
+          actions.appendChild(acceptBtn);
+        }
         const refundBtn = document.createElement("button");
         refundBtn.className = "btn btn-danger"; refundBtn.textContent = "Refunded";
         refundBtn.addEventListener("click", () => resolveFlag(o.id, "refunded"));
@@ -302,6 +451,17 @@ function render(){
           actions.appendChild(readyBtn);
         }
       }
+    } else {
+      if (o.placedById) {
+        const againBtn = document.createElement("button");
+        againBtn.className = "btn btn-ghost"; againBtn.textContent = "Notify Again";
+        againBtn.addEventListener("click", async () => { await pushNotification(o.placedById, `Table ${o.table || "?"} — order delivered`); showToast("Notified " + o.placedBy); });
+        actions.appendChild(againBtn);
+      }
+      const allBtn = document.createElement("button");
+      allBtn.className = "btn btn-accent"; allBtn.textContent = "Notify All";
+      allBtn.addEventListener("click", async () => { await pushNotification("all", `Table ${o.table || "?"} — order delivered`); showToast("Notified everyone"); });
+      actions.appendChild(allBtn);
     }
     wrap.appendChild(card);
   });
@@ -309,7 +469,10 @@ function render(){
 
 async function markDelivered(id){
   const o = openOrders.find(x => x.id === id);
-  if (o) o.delivered = true;
+  if (o) {
+    o.delivered = true;
+    if (o.placedById) await pushNotification(o.placedById, `Table ${o.table || "?"} — order delivered`);
+  }
   await saveDoc(LS_ORDERS, openOrders);
   render();
 }
@@ -321,6 +484,13 @@ async function markReady(id){
 }
 async function resolveFlag(id, outcome){
   const o = openOrders.find(x => x.id === id);
+  if (outcome === "refunded") {
+    openOrders = openOrders.filter(x => x.id !== id);
+    await saveDoc(LS_ORDERS, openOrders);
+    showToast("Removed — process the refund from the till's Past Orders");
+    render();
+    return;
+  }
   if (o) {
     if (outcome === "accepted" && o.flagIntent === "substitute" && o.flagSubstitute) {
       o.items.push({ name: o.flagSubstitute, qty: 1, pence: 0, substituted: true, subFor: o.flagItem });
@@ -495,6 +665,58 @@ document.getElementById("tabDelivered").addEventListener("click", () => {
   document.getElementById("tabOpen").classList.remove("active");
   render();
 });
+
+document.getElementById("serviceBtn").addEventListener("click", () => {
+  const wrap = document.getElementById("serviceUserList");
+  wrap.innerHTML = "";
+  const others = users.filter(u => u.id !== currentUserId);
+  if (!others.length) { wrap.innerHTML = `<div class="empty" style="padding:10px 0;">No other users set up yet.</div>`; }
+  others.forEach(u => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "btn btn-ghost";
+    b.textContent = u.name;
+    b.addEventListener("click", async () => {
+      await pushNotification(u.id, `needs you at the bar`);
+      document.getElementById("serviceModal").hidden = true;
+      showToast(`Notified ${u.name}`);
+    });
+    wrap.appendChild(b);
+  });
+  document.getElementById("serviceModal").hidden = false;
+});
+document.getElementById("serviceCloseBtn").addEventListener("click", () => { document.getElementById("serviceModal").hidden = true; });
+
+document.getElementById("stockBtn").addEventListener("click", () => {
+  document.getElementById("stockSearch").value = "";
+  renderStockList();
+  document.getElementById("stockModal").hidden = false;
+});
+document.getElementById("stockCloseBtn").addEventListener("click", () => { document.getElementById("stockModal").hidden = true; });
+document.getElementById("stockSearch").addEventListener("input", renderStockList);
+function renderStockList(){
+  const wrap = document.getElementById("stockList");
+  const q = document.getElementById("stockSearch").value.trim().toLowerCase();
+  wrap.innerHTML = "";
+  productCategories.forEach(cat => {
+    const items = cat.items.filter(i => i.name.toLowerCase().includes(q));
+    if (!items.length) return;
+    const h = document.createElement("div");
+    h.className = "stock-cat"; h.textContent = cat.name;
+    wrap.appendChild(h);
+    items.forEach(p => {
+      const row = document.createElement("label");
+      row.className = "stock-row";
+      row.innerHTML = `<span>${p.name}</span><span class="switch"><input type="checkbox" ${stops.has(p.name) ? "checked" : ""}><span class="slider"></span></span>`;
+      row.querySelector('input[type="checkbox"]').addEventListener("change", async e => {
+        if (e.target.checked) stops.add(p.name); else stops.delete(p.name);
+        knownStops = new Set(stops);
+        await saveDoc(LS_STOPS, [...stops]);
+      });
+      wrap.appendChild(row);
+    });
+  });
+  if (!wrap.children.length) wrap.innerHTML = `<div class="empty" style="padding:20px 0;">No matches.</div>`;
+}
 
 init();
 </script>

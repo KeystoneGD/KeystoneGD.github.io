@@ -120,6 +120,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 .changerow .amt.short{color:var(--danger);}
 
 .hist-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;box-shadow:var(--shadow);}
+.hist-item.highlight{border-color:var(--danger);box-shadow:0 0 0 2px var(--danger);}
 .hist-item summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;align-items:center;gap:10px;}
 .hist-item summary::-webkit-details-marker{display:none;}
 .hist-item .htime{font-size:11px;color:var(--text-muted);font-weight:600;}
@@ -233,6 +234,9 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 .account-row .name{font-weight:700;font-size:14.5px;}
 .account-row .sub{font-size:12px;color:var(--text-muted);}
 .account-row .btn{width:auto;padding:9px 14px;font-size:13px;}
+.sound-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;margin-bottom:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;}
+.sound-row[hidden]{display:none;}
+.sound-row .btn{width:auto;flex:none;padding:8px 14px;font-size:12.5px;}
 
 @media print{
   body *{visibility:hidden;}
@@ -243,9 +247,9 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-
 </head>
 <body>
+
 <header class="top">
   <div class="brand-row">
     <button class="icon-btn" id="hamburgerBtn" aria-label="Menu" title="Menu">☰</button>
@@ -361,6 +365,10 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
           <div class="sub">Signed in</div>
         </div>
         <button class="btn btn-ghost" id="accountSignOutBtn">Sign out</button>
+      </div>
+      <div class="sound-row" id="alertsRow">
+        <div style="font-size:12.5px;color:var(--text-muted);">🔕 Tap to get a sound + alert for Service calls and delivery notices</div>
+        <button class="btn btn-accent" id="enableAlertsBtn">Enable alerts</button>
       </div>
 
       <div class="section-title">Products on Stop</div>
@@ -810,6 +818,7 @@ const LS_ORDERS = "starlightTill.openOrders.v1";
 const LS_REFUNDS = "starlightTill.refunds.v1";
 const LS_USERS = "starlightTill.users.v1";
 const LS_CURRENT_USER = "starlightTill.currentUser.v1";
+const LS_NOTIFICATIONS = "starlightTill.notifications.v1";
 let customProducts = loadJSON(LS_CUSTOM, []);
 customProducts.forEach(p => { BY_ID[p.id] = { ...p, hasOptions: false }; });
 let mixerOverrides = new Set(loadJSON(LS_MIXER_OVERRIDES, []));
@@ -821,12 +830,9 @@ if (!users.length) users = [{ id:"710603", name:"Tom", perms:{ placeOrders:true,
 let currentUserId = null;
 try { currentUserId = localStorage.getItem(LS_CURRENT_USER); } catch(e){}
 let currentUser = null;
+let notifications = loadJSON(LS_NOTIFICATIONS, []);
 function loadJSON(key, fallback){ try{ const v = JSON.parse(localStorage.getItem(key)); return v || fallback; }catch(e){ return fallback; } }
 let dbNs = null; // Supabase-backed doc() shim, or null if unavailable — every db call is best-effort on top of localStorage
-function saveJSON(key, val){
-  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
-  if (dbNs) { dbNs.doc("state/" + key).set({ value: val }).catch(() => {}); }
-}
 function makeSupabaseDb(client){
   return { doc(path){ return {
     async set(body){ await client.from("app_state").upsert({ key: path, value: body.value }); },
@@ -835,6 +841,10 @@ function makeSupabaseDb(client){
       return { exists: !!data, data: () => ({ value: data ? data.value : undefined }) };
     }
   }; } };
+}
+function saveJSON(key, val){
+  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+  if (dbNs) { dbNs.doc("state/" + key).set({ value: val }).catch(() => {}); }
 }
 
 const PERSISTED_KEYS = [
@@ -851,6 +861,7 @@ const PERSISTED_KEYS = [
   { key: LS_CUSTOM_DISCOUNTS, set: v => { customDiscounts = v; renderDiscountChips(); }, live: true },
   { key: LS_ORDERS, set: v => { openOrders = v; renderOpenOrdersBadge(); if (adminView === "openOrders") renderOpenOrdersList(); }, live: true },
   { key: LS_USERS, set: v => { if (v.length) users = v; currentUser = currentUserId ? users.find(u => u.id === currentUserId) : null; applyLoginState(); }, live: true },
+  { key: LS_NOTIFICATIONS, set: v => { checkPersonalNotifications(v); notifications = v; }, live: true },
   { key: LS_TITLE, set: v => { appTitle = v; document.getElementById("brandTitle").textContent = v; document.getElementById("titleRowSub").textContent = v; } },
   { key: LS_MODE, set: v => { menuMode = v; applyVisibility(); } }
 ];
@@ -1053,10 +1064,10 @@ async function addSpiritToCart(product){
     { label: "Double", value: "double", sub: fmt(product.pence * 2) }
   ]});
   if (!measure) return;
-  const tonicItems = (CAT.find(c => c.name === "Mixers") ? CAT.find(c => c.name === "Mixers").items : []).filter(i => !stops.has(i.id));
+  const tonicItems = (CAT.find(c => c.name === "Mixers") ? CAT.find(c => c.name === "Mixers").items : []).filter(i => !stops.has(i.name));
   const mixerList = product.mixerType === "both" ? tonicItems.concat(DASH_MIXERS) : DASH_MIXERS;
   const usedIds = new Set(mixerList.map(m => m.id));
-  const extraMixers = ALL_ITEMS.concat(customProducts).filter(p => (mixerOverrides.has(p.name) || p.isMixer) && !usedIds.has(p.id) && !stops.has(p.id));
+  const extraMixers = ALL_ITEMS.concat(customProducts).filter(p => (mixerOverrides.has(p.name) || p.isMixer) && !usedIds.has(p.id) && !stops.has(p.name));
   const mixerChoices = [{ label: "No mixer (neat)", value: "none" }].concat(
     mixerList.map(m => ({ label: m.name, value: m.id, sub: fmt(m.pence) })),
     extraMixers.map(m => ({ label: m.name, value: m.id, sub: fmt(m.pence) }))
@@ -1139,6 +1150,7 @@ CAT.forEach(cat => {
     const row = document.createElement("div");
     row.className = "product";
     row.dataset.id = p.id;
+    row.dataset.name = p.name;
     row.dataset.search = p.name.toLowerCase();
     row.innerHTML = `
       <div class="info"><div class="name">${p.name}</div><div class="price tabular">${p.isSized ? "From " : ""}${fmt(p.pence)}</div></div>
@@ -1157,7 +1169,7 @@ function applyVisibility(){
   const q = document.getElementById("search").value.trim().toLowerCase();
   menuEl.querySelectorAll(".product[data-id]").forEach(row => {
     const matches = row.dataset.search.includes(q);
-    row.style.display = (matches && !stops.has(row.dataset.id)) ? "" : "none";
+    row.style.display = (matches && !stops.has(row.dataset.name)) ? "" : "none";
   });
   menuEl.querySelectorAll(".category").forEach(cat => {
     const modeMatch = cat.dataset.mode === menuMode;
@@ -1423,7 +1435,7 @@ document.getElementById("chargeConfirm").addEventListener("click", async () => {
   if (pendingMethod === "cash") { sale.cashGiven = cashGivenPence; sale.change = Math.max(0, cashGivenPence - total); }
   history.unshift(sale);
   saveJSON(LS_HIST, history);
-  openOrders.unshift({ id: "o"+Date.now(), ts: Date.now(), table: sale.table, method: pendingMethod, items: items.map(i => ({ name: i.name, qty: i.qty })), delivered: false, ready: false, flagged: false, flagItem: null, flagReason: null, flagSubstitute: null, flagOutcome: null });
+  openOrders.unshift({ id: "o"+Date.now(), ts: Date.now(), saleTs: sale.ts, table: sale.table, method: pendingMethod, items: items.map(i => ({ name: i.name, qty: i.qty })), delivered: false, ready: false, flagged: false, flagItem: null, flagReason: null, flagSubstitute: null, flagOutcome: null, placedBy: currentUser ? currentUser.name : null, placedById: currentUser ? currentUser.id : null });
   saveJSON(LS_ORDERS, openOrders);
   cart = {}; discount = null; currentNotes = ""; currentTable = ""; document.getElementById("notesInput").value = ""; saveJSON(LS_CART, cart);
   renderQtys(); renderCartBar();
@@ -1451,6 +1463,53 @@ function showToast(msg){
   t.classList.add("show");
   clearTimeout(showToast._t);
   showToast._t = setTimeout(() => t.classList.remove("show"), 2400);
+}
+
+let audioCtx = null;
+function playChime(){
+  if (!audioCtx) return;
+  try {
+    for (let i = 0; i < 3; i++) {
+      const t0 = audioCtx.currentTime + i * 0.18;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "square"; osc.frequency.value = 1500;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.8, t0 + 0.008);
+      gain.gain.setValueAtTime(0.8, t0 + 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.14);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(t0); osc.stop(t0 + 0.15);
+    }
+  } catch(e){}
+}
+function alertUser(title, body){
+  showToast(`${title}${body ? " — " + body : ""}`);
+  playChime();
+  if ("Notification" in window && Notification.permission === "granted") {
+    try { new Notification(title, { body }); } catch(e){}
+  }
+}
+document.getElementById("enableAlertsBtn").addEventListener("click", async () => {
+  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); playChime(); } catch(e){}
+  if ("Notification" in window) { try { await Notification.requestPermission(); } catch(e){} }
+  document.getElementById("alertsRow").hidden = true;
+});
+
+let knownNotificationIds = null;
+function checkPersonalNotifications(list){
+  const ids = new Set(list.map(n => n.id));
+  if (knownNotificationIds === null) { knownNotificationIds = ids; return; }
+  list.filter(n => !knownNotificationIds.has(n.id) && (n.toUserId === "all" || n.toUserId === currentUserId) && n.fromUserId !== currentUserId)
+    .forEach(n => alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message));
+  knownNotificationIds = ids;
+}
+function pushNotification(toUserId, message){
+  const me = currentUser;
+  notifications.push({ id: "n" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), toUserId, fromUserId: currentUserId, fromName: me ? me.name : "Someone", message });
+  notifications = notifications.slice(-50);
+  saveJSON(LS_NOTIFICATIONS, notifications);
+  knownNotificationIds = new Set(notifications.map(n => n.id));
 }
 
 /* ---------- gratuities ---------- */
@@ -1586,11 +1645,12 @@ function renderOpenOrdersList(){
         <span class="order-table">${o.table ? "Table " + o.table : "No table"}</span>
         <span class="pill pill-${o.method}">${o.method === "cash" ? "Cash" : "Card"}</span>
       </div>
+      ${o.placedBy ? `<div class="order-sub-note" style="color:var(--text-muted);font-weight:400;">Placed by ${o.placedBy}</div>` : ""}
       <div class="order-items">${itemsText}</div>
       ${o.flagged ? `<div class="order-flag">⚠ ${o.flagItem}: ${o.flagReason}${o.flagIntent === "substitute" && o.flagSubstitute ? " — offer " + o.flagSubstitute + " instead" : (o.flagIntent === "refund" ? " — refund suggested" : "")}</div>` : ""}
       ${!o.flagged && subItem ? `<div class="order-sub-note">✓ Substituted ${subItem.name} for ${subItem.subFor} — free</div>` : ""}
       <div class="order-actions">
-        ${o.flagged ? `<button class="btn btn-ghost" data-act="accept">Accepted</button><button class="btn btn-danger" data-act="refund">Refunded</button>` : (o.ready ? `<button class="btn btn-success btn-block" data-act="deliver">Mark as Delivered</button>` : `<button class="btn btn-accent btn-block" data-act="ready">Ready for Delivery</button>`)}
+        ${o.flagged ? ((o.flagIntent === "refund" ? "" : `<button class="btn btn-ghost" data-act="accept">Accepted</button>`) + `<button class="btn btn-danger" data-act="refund">Refunded</button>`) : (o.ready ? `<button class="btn btn-success btn-block" data-act="deliver">Mark as Delivered</button>` : `<button class="btn btn-accent btn-block" data-act="ready">Ready for Delivery</button>`)}
       </div>`;
     const deliverBtn = row.querySelector('[data-act="deliver"]');
     if (deliverBtn) deliverBtn.addEventListener("click", () => markOrderDelivered(o.id));
@@ -1605,7 +1665,10 @@ function renderOpenOrdersList(){
 }
 function markOrderDelivered(id){
   const o = openOrders.find(x => x.id === id);
-  if (o) o.delivered = true;
+  if (o) {
+    o.delivered = true;
+    if (o.placedById) pushNotification(o.placedById, `Table ${o.table || "?"} — order delivered`);
+  }
   saveJSON(LS_ORDERS, openOrders);
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
@@ -1617,6 +1680,13 @@ function markOrderReady(id){
 }
 function resolveOrderFlag(id, outcome){
   const o = openOrders.find(x => x.id === id);
+  if (outcome === "refunded") {
+    openOrders = openOrders.filter(x => x.id !== id);
+    saveJSON(LS_ORDERS, openOrders);
+    renderOpenOrdersList(); renderOpenOrdersBadge();
+    if (o && o.saleTs) goToPastOrderForRefund(o.saleTs);
+    return;
+  }
   if (o) {
     if (outcome === "accepted" && o.flagIntent === "substitute" && o.flagSubstitute) {
       o.items.push({ name: o.flagSubstitute, qty: 1, pence: 0, substituted: true, subFor: o.flagItem });
@@ -1627,12 +1697,25 @@ function resolveOrderFlag(id, outcome){
   saveJSON(LS_ORDERS, openOrders);
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
+function goToPastOrderForRefund(saleTs){
+  closeSheet("adminSheet");
+  renderHistory();
+  openSheet("historySheet");
+  setTimeout(() => {
+    const el = document.querySelector(`.hist-item[data-ts="${saleTs}"]`);
+    if (!el) { showToast("Sale not found in Past Orders — it may be in a closed shift"); return; }
+    el.open = true;
+    el.scrollIntoView({ behavior:"smooth", block:"center" });
+    el.classList.add("highlight");
+    setTimeout(() => el.classList.remove("highlight"), 3000);
+  }, 100);
+}
 
 function renderStoppedCategories(){
   const wrap = document.getElementById("adminStoppedCatsList");
   wrap.innerHTML = "";
   CAT.forEach(cat => {
-    const stoppedCount = cat.items.filter(i => stops.has(i.id)).length;
+    const stoppedCount = cat.items.filter(i => stops.has(i.name)).length;
     const allStopped = stoppedCount === cat.items.length;
     const row = document.createElement("div");
     row.className = "admin-row";
@@ -1657,7 +1740,7 @@ function renderAdminHome(){
 function toggleCategoryStop(catId, on){
   const cat = CAT.find(c => c.id === catId);
   cat.items.forEach(i => {
-    if (on) { stops.add(i.id); removeProductFromCart(i.id); } else stops.delete(i.id);
+    if (on) { stops.add(i.name); removeProductFromCart(i.id); } else stops.delete(i.name);
   });
   saveJSON(LS_STOPS, [...stops]);
   saveJSON(LS_CART, cart);
@@ -1667,8 +1750,8 @@ function toggleCategoryStop(catId, on){
   if (adminView === "detail") renderAdminDetailList();
 }
 
-function toggleStop(id, on){
-  if (on) stops.add(id); else stops.delete(id);
+function toggleStop(id, name, on){
+  if (on) stops.add(name); else stops.delete(name);
   saveJSON(LS_STOPS, [...stops]);
   if (on && removeProductFromCart(id)) { saveJSON(LS_CART, cart); renderQtys(); renderCartBar(); }
   applyVisibility();
@@ -1696,9 +1779,9 @@ function renderAdminDetailList(){
     row.className = "product";
     row.innerHTML = `
       <div class="info"><div class="name">${p.name}</div><div class="price tabular">${fmt(p.pence)}</div></div>
-      <span class="switch"><input type="checkbox" ${stops.has(p.id) ? "checked" : ""}><span class="slider"></span></span>`;
+      <span class="switch"><input type="checkbox" ${stops.has(p.name) ? "checked" : ""}><span class="slider"></span></span>`;
     row.querySelector('input[type="checkbox"]').addEventListener("change", e => {
-      toggleStop(p.id, e.target.checked);
+      toggleStop(p.id, p.name, e.target.checked);
       renderAdminDetailList();
     });
     wrap.appendChild(row);
@@ -1721,6 +1804,7 @@ function renderHistory(){
     if (method === "cash") cashTotal += sale.total; else cardTotal += sale.total;
     const details = document.createElement("details");
     details.className = "hist-item";
+    details.dataset.ts = sale.ts;
     details.innerHTML = `
       <summary>
         <div>
