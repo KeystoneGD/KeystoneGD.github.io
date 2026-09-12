@@ -1969,21 +1969,40 @@ function shiftSnapshot(){
   return { cashTotal, cardTotal, grandTotal: cashTotal+cardTotal, gratuityTotal, discountTotal, abandonedTotal, refundTotal, txCount: history.length };
 }
 
-function buildReceiptHTML(title, subtitle, rows){
+function buildReceiptHTML(title, subtitle, rows, transactions){
   const rowsHtml = rows.map(([l,v]) => `<tr><td>${l}</td><td>${v}</td></tr>`).join("");
+  const txnHtml = (transactions && transactions.length) ? `
+    <h2>Every Transaction</h2>
+    <table class="txns">
+      <thead><tr><th>Time</th><th>Table</th><th>Items</th><th>Discount</th><th>Method</th><th>Total</th></tr></thead>
+      <tbody>
+        ${transactions.slice().reverse().map(sale => {
+          const time = new Date(sale.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+          const itemsText = sale.items.map(i => `${i.qty}× ${i.name}`).join(", ");
+          const discountText = sale.discountAmount ? `${sale.discountLabel} −${fmt(sale.discountAmount)}` : "—";
+          const method = sale.method === "cash" ? "Cash" : "Card";
+          return `<tr><td>${time}</td><td>${sale.table || "—"}</td><td>${itemsText}</td><td>${discountText}</td><td>${method}</td><td>${fmt(sale.total)}</td></tr>`;
+        }).join("")}
+      </tbody>
+    </table>` : "";
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;max-width:420px;margin:24px auto;color:#111;padding:0 16px;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;max-width:820px;margin:24px auto;color:#111;background:#fff;padding:0 16px;}
     h1{font-size:20px;margin:0 0 2px;}
+    h2{font-size:15px;margin:28px 0 10px;}
     .sub{color:#666;font-size:12px;margin:0 0 20px;}
     table{width:100%;border-collapse:collapse;}
     td{padding:9px 0;border-bottom:1px solid #ddd;font-size:14px;}
     td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}
-  </style></head><body><h1>${title}</h1><p class="sub">${subtitle}</p><table>${rowsHtml}</table></body></html>`;
+    table.txns th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:#666;padding:6px 8px;border-bottom:2px solid #111;}
+    table.txns td{padding:8px;font-size:12.5px;vertical-align:top;}
+    table.txns tr:nth-child(even){background:#f7f7f7;}
+    @media print{ table.txns tr{page-break-inside:avoid;} }
+  </style></head><body><h1>${title}</h1><p class="sub">${subtitle}</p><table>${rowsHtml}</table>${txnHtml}</body></html>`;
 }
-function openReportTab(title, subtitle, rows){
+function openReportTab(title, subtitle, rows, transactions){
   const win = window.open("", "_blank");
   if (!win) { showToast("Allow pop-ups to open the PDF report"); return; }
-  win.document.write(buildReceiptHTML(title, subtitle, rows));
+  win.document.write(buildReceiptHTML(title, subtitle, rows, transactions));
   win.document.close();
   setTimeout(() => { try { win.focus(); win.print(); } catch(e){} }, 350);
 }
@@ -2010,6 +2029,7 @@ document.getElementById("zReadBtn").addEventListener("click", async () => {
   const ok = await askConfirm({ title:"Close till?", message:"Archives today's totals as a Z report and resets the sales log for the next shift. Nothing is deleted — it's saved under Past Z Reports.", confirmLabel:"Close & archive", danger:true });
   if (!ok) return;
   const s = shiftSnapshot();
+  const closedTransactions = history;
   zReports.unshift({ id:"z"+Date.now(), closedAt: Date.now(), ...s, transactions: history, abandonedOrders: abandoned, gratuities, refunds });
   saveJSON(LS_Z, zReports);
   history = []; abandoned = []; gratuities = []; refunds = [];
@@ -2022,7 +2042,7 @@ document.getElementById("zReadBtn").addEventListener("click", async () => {
     ["Tips", fmt(s.gratuityTotal)], ["Discounts given", fmt(s.discountTotal)],
     ["Refunds given", fmt(s.refundTotal)],
     ["Abandoned (not counted)", fmt(s.abandonedTotal)], ["Transactions", String(s.txCount)]
-  ]);
+  ], closedTransactions);
 });
 
 function renderPastZ(){
@@ -2040,7 +2060,16 @@ function renderPastZ(){
         <div><span class="label">Card</span><span class="amount tabular">${fmt(z.cardTotal)}</span></div>
         <div><span class="label">Tips</span><span class="amount tabular">${fmt(z.gratuityTotal)}</span></div>
         <div><span class="label">Total</span><span class="amount tabular" style="color:var(--accent)">${fmt(z.grandTotal)}</span></div>
-      </div>`;
+      </div>
+      <button class="btn btn-ghost btn-block" data-act="viewz" style="margin-top:10px;">View full report</button>`;
+    card.querySelector('[data-act="viewz"]').addEventListener("click", () => {
+      openReportTab("Z Report — Closed", new Date(z.closedAt).toLocaleString(), [
+        ["Cash", fmt(z.cashTotal)], ["Card", fmt(z.cardTotal)], ["Takings", fmt(z.grandTotal)],
+        ["Tips", fmt(z.gratuityTotal)], ["Discounts given", fmt(z.discountTotal)],
+        ["Refunds given", fmt(z.refundTotal || 0)],
+        ["Abandoned (not counted)", fmt(z.abandonedTotal)], ["Transactions", String(z.txCount)]
+      ], z.transactions);
+    });
     wrap.appendChild(card);
   });
 }
