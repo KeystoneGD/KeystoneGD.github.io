@@ -1,0 +1,229 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Starlight Till — Orders</title>
+<style>
+:root{
+  --bg:#0c1719; --surface:#132427; --surface-2:#1b3236; --border:#2a474b;
+  --text:#eef7f7; --text-muted:#93b3b5;
+  --accent:#3cc0c8; --accent-ink:#052226;
+  --gold:#fecf46;
+  --success:#49c98d; --success-ink:#052018;
+  --danger:#ff7a68; --danger-soft:rgba(255,122,104,.14);
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 24px -12px rgba(0,0,0,.55);
+}
+*{box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;margin:0;padding:16px;padding-bottom:40px;}
+h1{font-size:19px;margin:0;}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;}
+.status{font-size:12px;color:var(--text-muted);margin-bottom:16px;}
+.status.ok{color:var(--success);}
+.status.bad{color:var(--danger);}
+.tabs{display:flex;gap:8px;}
+.tab-btn{border:1px solid var(--border);background:var(--surface-2);color:var(--text-muted);font-weight:700;font-size:13.5px;padding:9px 16px;border-radius:999px;cursor:pointer;}
+.tab-btn.active{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:16px;}
+.order-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow);}
+.order-card.flagged{border-color:var(--danger);background:var(--danger-soft);}
+.order-card.delivered{opacity:.55;}
+.order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;}
+.order-table{font-weight:800;font-size:16px;font-family:inherit;}
+.order-time{font-size:11px;color:var(--text-muted);}
+.pill{display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:2px 7px;border-radius:999px;flex:0 0 auto;}
+.pill-cash{background:rgba(73,201,141,.16);color:var(--success);}
+.pill-card{background:rgba(60,192,200,.16);color:var(--accent);}
+.order-items{font-size:13.5px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;}
+.order-flag{font-size:13px;font-weight:700;color:var(--danger);margin-bottom:10px;}
+.order-actions{display:flex;gap:8px;}
+.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;font-size:13.5px;cursor:pointer;flex:1;}
+.btn-accent{background:var(--accent);color:var(--accent-ink);}
+.btn-success{background:var(--success);color:var(--success-ink);}
+.btn-danger{background:var(--danger-soft);color:var(--danger);}
+.btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border);}
+.empty{color:var(--text-muted);font-size:14px;padding:40px 10px;text-align:center;grid-column:1/-1;}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(4,10,11,.6);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay[hidden]{display:none;}
+.modal-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;width:100%;max-width:420px;box-shadow:var(--shadow);}
+.modal-card h3{margin:0 0 6px;font-size:17px;}
+.modal-card p{margin:0 0 14px;font-size:13.5px;color:var(--text-muted);}
+.modal-card input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:15px;font-family:inherit;margin-bottom:16px;}
+.modal-actions{display:flex;gap:10px;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>Open Orders</h1>
+  <div class="tabs">
+    <button class="tab-btn active" id="tabOpen" type="button">Open</button>
+    <button class="tab-btn" id="tabDelivered" type="button">Delivered</button>
+  </div>
+</div>
+<div class="status" id="dbStatus">Connecting…</div>
+<div class="grid" id="grid"></div>
+
+<div class="modal-overlay" id="flagModal" hidden>
+  <div class="modal-card">
+    <h3 id="flagModalTitle">Flag order</h3>
+    <p>Let the floor know what's wrong so they can sort it at the table.</p>
+    <input type="text" id="flagInput" placeholder="e.g. Out of Fish Taco">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="flagCancel">Cancel</button>
+      <button class="btn btn-danger" id="flagConfirm">Flag order</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+const SUPABASE_URL = "https://djegigghjeisoyecxeyo.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqZWdpZ2doamVpc295ZWN4ZXlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNjE1NTcsImV4cCI6MjEwNDczNzU1N30.X40pprKgeeu3bQ_STG9sCUZg4763ot8ZJFeJ8VFXvdM";
+const LS_ORDERS = "starlightTill.openOrders.v1";
+let dbNs = null;
+function makeSupabaseDb(client){
+  return { doc(path){ return {
+    async set(body){ await client.from("app_state").upsert({ key: path, value: body.value }); },
+    async get(){
+      const { data } = await client.from("app_state").select("value").eq("key", path).maybeSingle();
+      return { exists: !!data, data: () => ({ value: data ? data.value : undefined }) };
+    }
+  }; } };
+}
+let openOrders = [];
+let view = "open";
+let flagTargetId = null;
+
+function fmt(pence){ return "£" + (pence/100).toFixed(2); }
+function formatTime(ts){
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+async function loadDoc(key, fallback){
+  try {
+    const snap = await dbNs.doc("state/" + key).get();
+    if (snap.exists) { const body = snap.data(); if (body && body.value !== undefined) return body.value; }
+  } catch(e){}
+  return fallback;
+}
+async function saveDoc(key, val){
+  try { await dbNs.doc("state/" + key).set({ value: val }); } catch(e){}
+}
+
+async function pullOrders(){
+  if (!dbNs) return;
+  openOrders = await loadDoc(LS_ORDERS, openOrders);
+  render();
+}
+
+async function init(){
+  const statusEl = document.getElementById("dbStatus");
+  try {
+    dbNs = makeSupabaseDb(supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
+  } catch(e) { dbNs = null; }
+  if (!dbNs) {
+    statusEl.textContent = "No database connection.";
+    statusEl.className = "status bad";
+    return;
+  }
+  statusEl.textContent = "Connected — updates automatically.";
+  statusEl.className = "status ok";
+  await pullOrders();
+  setInterval(pullOrders, 5000);
+}
+
+function render(){
+  const wrap = document.getElementById("grid");
+  wrap.innerHTML = "";
+  const list = openOrders.filter(o => view === "open" ? !o.delivered : o.delivered)
+    .sort((a,b) => (b.flagged - a.flagged) || (b.ts - a.ts));
+  if (!list.length) { wrap.innerHTML = `<div class="empty">${view === "open" ? "Nothing open right now." : "No delivered orders yet."}</div>`; return; }
+  list.forEach(o => {
+    const card = document.createElement("div");
+    card.className = "order-card" + (o.flagged ? " flagged" : "") + (o.delivered ? " delivered" : "");
+    const itemsText = o.items.map(i => `${i.qty}× ${i.name}`).join(", ");
+    card.innerHTML = `
+      <div class="order-head">
+        <span class="order-table">${o.table ? "Table " + o.table : "No table"}</span>
+        <span class="order-time">${formatTime(o.ts)}</span>
+        <span class="pill pill-${o.method}">${o.method === "cash" ? "Cash" : "Card"}</span>
+      </div>
+      <div class="order-items">${itemsText}</div>
+      ${o.flagged ? `<div class="order-flag">⚠ ${o.flagNote || "Flagged"}</div>` : ""}
+      <div class="order-actions"></div>`;
+    const actions = card.querySelector(".order-actions");
+    if (!o.delivered) {
+      if (o.flagged) {
+        const clearBtn = document.createElement("button");
+        clearBtn.className = "btn btn-ghost"; clearBtn.textContent = "Clear flag";
+        clearBtn.addEventListener("click", () => clearFlag(o.id));
+        actions.appendChild(clearBtn);
+      } else {
+        const flagBtn = document.createElement("button");
+        flagBtn.className = "btn btn-ghost"; flagBtn.textContent = "Flag issue";
+        flagBtn.addEventListener("click", () => openFlagModal(o.id));
+        actions.appendChild(flagBtn);
+      }
+      const deliverBtn = document.createElement("button");
+      deliverBtn.className = "btn btn-success"; deliverBtn.textContent = "Mark Delivered";
+      deliverBtn.addEventListener("click", () => markDelivered(o.id));
+      actions.appendChild(deliverBtn);
+    }
+    wrap.appendChild(card);
+  });
+}
+
+async function markDelivered(id){
+  const o = openOrders.find(x => x.id === id);
+  if (o) o.delivered = true;
+  await saveDoc(LS_ORDERS, openOrders);
+  render();
+}
+async function clearFlag(id){
+  const o = openOrders.find(x => x.id === id);
+  if (o) { o.flagged = false; o.flagNote = ""; }
+  await saveDoc(LS_ORDERS, openOrders);
+  render();
+}
+function openFlagModal(id){
+  flagTargetId = id;
+  document.getElementById("flagInput").value = "";
+  document.getElementById("flagModal").hidden = false;
+  setTimeout(() => document.getElementById("flagInput").focus(), 50);
+}
+function closeFlagModal(){
+  document.getElementById("flagModal").hidden = true;
+  flagTargetId = null;
+}
+document.getElementById("flagCancel").addEventListener("click", closeFlagModal);
+document.getElementById("flagConfirm").addEventListener("click", async () => {
+  const note = document.getElementById("flagInput").value.trim();
+  const o = openOrders.find(x => x.id === flagTargetId);
+  if (o) { o.flagged = true; o.flagNote = note; }
+  await saveDoc(LS_ORDERS, openOrders);
+  closeFlagModal();
+  render();
+});
+document.getElementById("flagInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("flagConfirm").click();
+});
+
+document.getElementById("tabOpen").addEventListener("click", () => {
+  view = "open";
+  document.getElementById("tabOpen").classList.add("active");
+  document.getElementById("tabDelivered").classList.remove("active");
+  render();
+});
+document.getElementById("tabDelivered").addEventListener("click", () => {
+  view = "delivered";
+  document.getElementById("tabDelivered").classList.add("active");
+  document.getElementById("tabOpen").classList.remove("active");
+  render();
+});
+
+init();
+</script>
+</body>
+</html>

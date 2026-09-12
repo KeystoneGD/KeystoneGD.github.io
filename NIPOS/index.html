@@ -162,6 +162,16 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 .admin-row.special .admin-row-main .name{color:var(--accent);}
 .count-badge{background:var(--danger-soft);color:var(--danger);font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;flex:0 0 auto;}
 
+.order-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow);}
+.order-card.flagged{border-color:var(--danger);background:var(--danger-soft);}
+.order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.order-table{font-weight:800;font-size:15px;font-family:'Manrope',sans-serif;}
+.order-items{font-size:13.5px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;}
+.order-flag{font-size:13px;font-weight:700;color:var(--danger);margin-bottom:10px;}
+.order-actions{display:flex;gap:8px;}
+.order-actions .btn{width:auto;}
+.order-actions .btn-block{flex:1;}
+
 .report-table{width:100%;border-collapse:collapse;margin-bottom:20px;}
 .report-table caption{text-align:left;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:700;margin-bottom:8px;caption-side:top;}
 .report-table th,.report-table td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--border);font-size:13.5px;}
@@ -343,6 +353,16 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
         <span class="chevron">›</span>
       </div>
 
+      <div class="section-title">Open Orders</div>
+      <div class="admin-row special" id="openOrdersRow">
+        <button class="admin-row-main" type="button">
+          <span class="name">Open Orders</span>
+          <span class="sub">Awaiting delivery — mark as delivered once served</span>
+        </button>
+        <span class="count-badge" id="openOrdersCountBadge">0</span>
+        <span class="chevron">›</span>
+      </div>
+
       <div class="section-title">Settings</div>
       <div class="admin-row" id="titleRow">
         <button class="admin-row-main" type="button">
@@ -382,6 +402,10 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     <div id="adminDetail" hidden>
       <p class="admin-note" id="adminDetailNote"></p>
       <div id="adminDetailList"></div>
+    </div>
+    <div id="adminOpenOrders" hidden>
+      <p class="admin-note">Orders placed but not yet delivered to the table.</p>
+      <div id="adminOpenOrdersList"></div>
     </div>
   </div>
 </div>
@@ -533,9 +557,14 @@ const PRODUCTS = [
   ["Fever Tree Ginger Ale",2.45],["Fever Tree Indian Tonic Water",2.45],
   ["Fever Tree Mediterranean Tonic Water",2.45],["Fever Tree Slimline Tonic",2.45]
 ]],
-["Draught Beers and Ciders", "", [
-  ["Aspall Cyder (4.5%)",5.75],["Carling (4%)",5.15],["Carling Black Fruits Cider (3.4%)",6.10],
-  ["Guinness (4.1%)",5.95],["Madri (4.6%)",5.95],["Staropramen (5%)",5.95],["Worthington (3.4%)",5.35]
+["Draught Beers and Ciders", "Sizes shown when you select a draught.", [
+  ["Aspall Cyder (4.5%)", [["Pint",5.75],["Half Pint",2.95],["Shandy",5.75],["Half Pint Shandy",2.95],["Two Pint Cup",10.65],["Pitcher (4pt)",20.70]]],
+  ["Carling (4%)", [["Pint",5.15],["Half Pint",2.65],["Shandy",5.15],["Half Pint Shandy",2.65],["Two Pint Cup",9.55],["Pitcher (4pt)",18.55]]],
+  ["Carling Black Fruits Cider (3.4%)", [["Pint",6.10],["Half Pint",3.05],["Shandy",6.10],["Half Pint Shandy",3.05],["Two Pint Cup",11.30],["Pitcher (4pt)",21.90]]],
+  ["Guinness (4.1%)", [["Pint",5.95],["Half Pint",3.05],["Two Pint Cup",11.05]]],
+  ["Madri (4.6%)", [["Pint",5.95],["Half Pint",3.05],["Shandy",5.95],["Half Pint Shandy",3.05],["Two Pint Cup",11.05],["Pitcher (4pt)",21.40]]],
+  ["Staropramen (5%)", [["Pint",5.95],["Half Pint",3.05],["Shandy",5.95],["Half Pint Shandy",3.05],["Two Pint Cup",11.05],["Pitcher (4pt)",21.55]]],
+  ["Worthington (3.4%)", [["Pint",5.35],["Half Pint",2.75],["Shandy",5.35],["Half Pint Shandy",2.75],["Pitcher (4pt)",19.30]]]
 ]],
 ["Bottled Beers and Ciders", "", [
   ["Budweiser 330ml (4.5%)",4.90],["Corona 330ml (4.5%)",4.90],["Peroni 330ml (5.0%)",4.90],
@@ -673,9 +702,15 @@ const FOOD_PRODUCTS = [
   ["Biscoff Billionaire Milkshake",5.75],["Strawberries & Cream Milkshake",5.75],
   ["Dubai Style Cookie Milkshake",5.75],["Oreo Chocolate Milkshake",5.75]
 ]],
-["Lavazza Coffee & Hot Drinks", "", [
-  ["Americano",2.85],["Regular Flat White",3.45],["Latte",3.45],["Regular Tea",3.10],
-  ["Cappuccino",3.45],["Mocha",4.15],["Espresso",2.35],["Hot Chocolate",4.10]
+["Lavazza Coffee & Hot Drinks", "Sizes shown when you select a drink.", [
+  ["Americano", [["Small",2.85],["Regular",3.30]]],
+  ["Regular Flat White",3.45],
+  ["Latte", [["Small",3.45],["Regular",3.75]]],
+  ["Regular Tea",3.10],
+  ["Cappuccino", [["Small",3.45],["Regular",3.75]]],
+  ["Mocha", [["Small",4.15],["Regular",4.65]]],
+  ["Espresso", [["Single",2.35],["Double",2.75]]],
+  ["Hot Chocolate", [["With Cream",4.10],["With Cream & Marshmallows",4.40]]]
 ]]
 ];
 
@@ -736,11 +771,13 @@ const LS_CUSTOM = "starlightTill.customProducts.v1";
 const LS_MIXER_OVERRIDES = "starlightTill.mixerOverrides.v1";
 const LS_HH_OVERRIDE = "starlightTill.hhOverride.v1";
 const LS_CUSTOM_DISCOUNTS = "starlightTill.customDiscounts.v1";
+const LS_ORDERS = "starlightTill.openOrders.v1";
 let customProducts = loadJSON(LS_CUSTOM, []);
 customProducts.forEach(p => { BY_ID[p.id] = { ...p, hasOptions: false }; });
 let mixerOverrides = new Set(loadJSON(LS_MIXER_OVERRIDES, []));
 let hhOverride = loadJSON(LS_HH_OVERRIDE, null);
 let customDiscounts = loadJSON(LS_CUSTOM_DISCOUNTS, []);
+let openOrders = loadJSON(LS_ORDERS, []);
 function loadJSON(key, fallback){ try{ const v = JSON.parse(localStorage.getItem(key)); return v || fallback; }catch(e){ return fallback; } }
 let dbNs = null; // Supabase-backed doc() shim, or null if unavailable — every db call is best-effort on top of localStorage
 function saveJSON(key, val){
@@ -768,6 +805,7 @@ const PERSISTED_KEYS = [
   { key: LS_MIXER_OVERRIDES, set: v => { mixerOverrides = new Set(v); }, live: true },
   { key: LS_HH_OVERRIDE, set: v => { hhOverride = v; }, live: true },
   { key: LS_CUSTOM_DISCOUNTS, set: v => { customDiscounts = v; renderDiscountChips(); }, live: true },
+  { key: LS_ORDERS, set: v => { openOrders = v; renderOpenOrdersBadge(); if (adminView === "openOrders") renderOpenOrdersList(); }, live: true },
   { key: LS_PIN, set: v => { adminPin = v; } },
   { key: LS_TITLE, set: v => { appTitle = v; document.getElementById("brandTitle").textContent = v; document.getElementById("titleRowSub").textContent = v; } },
   { key: LS_MODE, set: v => { menuMode = v; applyVisibility(); } }
@@ -824,11 +862,14 @@ function lineInfo(key){
   const product = BY_ID[parts[0]];
   if (parts.length === 1) return { name: product.name, pence: product.pence };
   if (parts[1] === "beer") {
-    const cordial = CORDIAL_OPTIONS.find(c => c.id === parts[2]);
+    const size = product.sizes ? product.sizes[Number(parts[2])] : null;
+    const cordial = CORDIAL_OPTIONS.find(c => c.id === parts[3]);
     const extras = [];
     if (cordial && cordial.id !== "none") extras.push(cordial.name);
-    if (parts[3] === "top") extras.push("Lemonade Top");
-    return { name: product.name + (extras.length ? ` (${extras.join(" & ")})` : ""), pence: product.pence };
+    if (parts[4] === "top") extras.push("Lemonade Top");
+    const sizeLabel = size ? size.label : "";
+    const name = `${product.name}${sizeLabel ? ` (${sizeLabel})` : ""}${extras.length ? ` + ${extras.join(" & ")}` : ""}`;
+    return { name, pence: size ? size.pence : product.pence };
   }
   if (parts[1] === "sized") {
     const size = product.sizes[Number(parts[2])];
@@ -984,6 +1025,16 @@ async function addSpiritToCart(product){
 }
 
 async function addBeerToCart(product){
+  let sizeIndex = 0;
+  if (product.sizes && product.sizes.length > 1) {
+    const chosen = await askChoice({
+      title: product.name,
+      message: "Choose a size.",
+      choices: product.sizes.map((s, i) => ({ label: s.label, value: String(i), sub: fmt(s.pence) }))
+    });
+    if (chosen === null) return;
+    sizeIndex = Number(chosen);
+  }
   const cordialId = await askChoice({ title: product.name, message: "Add a cordial? (free)", choices: CORDIAL_OPTIONS.map(c => ({ label: c.name, value: c.id })) });
   if (cordialId === null) return;
   const top = await askChoice({ title: product.name, message: "Lemonade top?", choices: [
@@ -991,7 +1042,7 @@ async function addBeerToCart(product){
     { label: "Yes — lemonade top", value: "top" }
   ]});
   if (top === null) return;
-  const key = `${product.id}::beer::${cordialId}::${top}`;
+  const key = `${product.id}::beer::${sizeIndex}::${cordialId}::${top}`;
   cart[key] = (cart[key] || 0) + 1;
   saveJSON(LS_CART, cart); renderQtys(); renderCartBar();
 }
@@ -1315,6 +1366,8 @@ document.getElementById("chargeConfirm").addEventListener("click", async () => {
   if (pendingMethod === "cash") { sale.cashGiven = cashGivenPence; sale.change = Math.max(0, cashGivenPence - total); }
   history.unshift(sale);
   saveJSON(LS_HIST, history);
+  openOrders.unshift({ id: "o"+Date.now(), ts: Date.now(), table: sale.table, method: pendingMethod, items: items.map(i => ({ name: i.name, qty: i.qty })), delivered: false, flagged: false, flagNote: "" });
+  saveJSON(LS_ORDERS, openOrders);
   cart = {}; discount = null; currentNotes = ""; document.getElementById("notesInput").value = ""; saveJSON(LS_CART, cart);
   renderQtys(); renderCartBar();
   closeSheet("chargeSheet");
@@ -1380,6 +1433,7 @@ document.getElementById("adminEndOfShiftRow").querySelector(".admin-row-main").a
 });
 document.getElementById("endOfShiftBack").addEventListener("click", () => closeSheet("endOfShiftSheet"));
 document.getElementById("stoppedRow").querySelector(".admin-row-main").addEventListener("click", () => showStoppedCategories());
+document.getElementById("openOrdersRow").querySelector(".admin-row-main").addEventListener("click", () => showOpenOrders());
 document.getElementById("titleRow").querySelector(".admin-row-main").addEventListener("click", async () => {
   const val = await askText({ title:"App name", message:"Shown at the top of the till screen.", placeholder:"Starlight Till", value: appTitle, inputType:"text", inputMode:"text" });
   if (val === null) return;
@@ -1398,6 +1452,7 @@ function showAdminHome(){
   document.getElementById("adminHome").hidden = false;
   document.getElementById("adminStoppedCats").hidden = true;
   document.getElementById("adminDetail").hidden = true;
+  document.getElementById("adminOpenOrders").hidden = true;
   renderAdminHome();
 }
 
@@ -1407,7 +1462,65 @@ function showStoppedCategories(){
   document.getElementById("adminHome").hidden = true;
   document.getElementById("adminStoppedCats").hidden = false;
   document.getElementById("adminDetail").hidden = true;
+  document.getElementById("adminOpenOrders").hidden = true;
   renderStoppedCategories();
+}
+
+function showOpenOrders(){
+  adminView = "openOrders";
+  document.getElementById("adminTitle").textContent = "Open Orders";
+  document.getElementById("adminHome").hidden = true;
+  document.getElementById("adminStoppedCats").hidden = true;
+  document.getElementById("adminDetail").hidden = true;
+  document.getElementById("adminOpenOrders").hidden = false;
+  renderOpenOrdersList();
+}
+
+function renderOpenOrdersBadge(){
+  const el = document.getElementById("openOrdersCountBadge");
+  if (!el) return;
+  const openCount = openOrders.filter(o => !o.delivered).length;
+  const flaggedCount = openOrders.filter(o => !o.delivered && o.flagged).length;
+  el.textContent = flaggedCount > 0 ? `${openCount} (${flaggedCount} flagged)` : String(openCount);
+}
+
+function renderOpenOrdersList(){
+  const wrap = document.getElementById("adminOpenOrdersList");
+  wrap.innerHTML = "";
+  const open = openOrders.filter(o => !o.delivered);
+  if (!open.length) { wrap.innerHTML = `<div class="empty-state">Nothing open right now.</div>`; return; }
+  open.forEach(o => {
+    const row = document.createElement("div");
+    row.className = "order-card" + (o.flagged ? " flagged" : "");
+    const itemsText = o.items.map(i => `${i.qty}× ${i.name}`).join(", ");
+    row.innerHTML = `
+      <div class="order-head">
+        <span class="order-table">${o.table ? "Table " + o.table : "No table"}</span>
+        <span class="pill pill-${o.method}">${o.method === "cash" ? "Cash" : "Card"}</span>
+      </div>
+      <div class="order-items">${itemsText}</div>
+      ${o.flagged ? `<div class="order-flag">⚠ ${o.flagNote || "Flagged"}</div>` : ""}
+      <div class="order-actions">
+        ${o.flagged ? `<button class="btn btn-ghost" data-act="clearflag">Clear flag</button>` : ""}
+        <button class="btn btn-success btn-block" data-act="deliver">Mark as Delivered</button>
+      </div>`;
+    row.querySelector('[data-act="deliver"]').addEventListener("click", () => markOrderDelivered(o.id));
+    const clearBtn = row.querySelector('[data-act="clearflag"]');
+    if (clearBtn) clearBtn.addEventListener("click", () => clearOrderFlag(o.id));
+    wrap.appendChild(row);
+  });
+}
+function markOrderDelivered(id){
+  const o = openOrders.find(x => x.id === id);
+  if (o) o.delivered = true;
+  saveJSON(LS_ORDERS, openOrders);
+  renderOpenOrdersList(); renderOpenOrdersBadge();
+}
+function clearOrderFlag(id){
+  const o = openOrders.find(x => x.id === id);
+  if (o) { o.flagged = false; o.flagNote = ""; }
+  saveJSON(LS_ORDERS, openOrders);
+  renderOpenOrdersList(); renderOpenOrdersBadge();
 }
 
 function renderStoppedCategories(){
@@ -1433,6 +1546,7 @@ function renderStoppedCategories(){
 
 function renderAdminHome(){
   document.getElementById("stoppedCountBadge").textContent = stops.size;
+  renderOpenOrdersBadge();
 }
 
 function toggleCategoryStop(catId, on){
@@ -1669,6 +1783,8 @@ document.getElementById("zReadBtn").addEventListener("click", async () => {
   saveJSON(LS_Z, zReports);
   history = []; abandoned = []; gratuities = [];
   saveJSON(LS_HIST, history); saveJSON(LS_ABANDONED, abandoned); saveJSON(LS_GRAT, gratuities);
+  openOrders = openOrders.filter(o => !o.delivered);
+  saveJSON(LS_ORDERS, openOrders);
   renderHistory();
   openReportTab("Z Report — Closed", new Date().toLocaleString(), [
     ["Cash", fmt(s.cashTotal)], ["Card", fmt(s.cardTotal)], ["Takings", fmt(s.grandTotal)],
