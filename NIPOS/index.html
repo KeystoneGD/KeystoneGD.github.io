@@ -840,6 +840,7 @@ const LS_MIXER_OVERRIDES = "starlightTill.mixerOverrides.v1";
 const LS_HH_OVERRIDE = "starlightTill.hhOverride.v1";
 const LS_CUSTOM_DISCOUNTS = "starlightTill.customDiscounts.v1";
 const LS_ORDERS = "starlightTill.openOrders.v1";
+const LS_DELIVERED = "starlightTill.deliveredOrders.v1";
 const LS_REFUNDS = "starlightTill.refunds.v1";
 const LS_USERS = "starlightTill.users.v1";
 const LS_CURRENT_USER = "starlightTill.currentUser.v1";
@@ -850,6 +851,7 @@ let mixerOverrides = new Set(loadJSON(LS_MIXER_OVERRIDES, []));
 let hhOverride = loadJSON(LS_HH_OVERRIDE, null);
 let customDiscounts = loadJSON(LS_CUSTOM_DISCOUNTS, []);
 let openOrders = loadJSON(LS_ORDERS, []);
+let deliveredOrders = loadJSON(LS_DELIVERED, []);
 let lastOrdersMutationTs = 0;
 async function saveOrders(){
   lastOrdersMutationTs = Date.now();
@@ -893,6 +895,7 @@ const PERSISTED_KEYS = [
   { key: LS_HH_OVERRIDE, set: v => { hhOverride = v; }, live: true },
   { key: LS_CUSTOM_DISCOUNTS, set: v => { customDiscounts = v; renderDiscountChips(); }, live: true },
   { key: LS_ORDERS, set: v => { openOrders = v; renderOpenOrdersBadge(); if (adminView === "openOrders") renderOpenOrdersList(); }, live: true, guardTs: () => lastOrdersMutationTs },
+  { key: LS_DELIVERED, set: v => { deliveredOrders = v; } },
   { key: LS_USERS, set: v => { if (v.length) users = v; currentUser = currentUserId ? users.find(u => u.id === currentUserId) : null; applyLoginState(); }, live: true },
   { key: LS_NOTIFICATIONS, set: v => { checkPersonalNotifications(v); notifications = v; }, live: true },
   { key: LS_TITLE, set: v => { appTitle = v; document.getElementById("brandTitle").textContent = v; document.getElementById("titleRowSub").textContent = v; } },
@@ -1629,7 +1632,8 @@ const LOCAL_BACKUP_KEYS = [
   { key: LS_ABANDONED, label: "Abandoned orders" },
   { key: LS_REFUNDS, label: "Refunds" },
   { key: LS_GRAT, label: "Gratuities" },
-  { key: LS_ORDERS, label: "Open orders (not yet delivered)" }
+  { key: LS_ORDERS, label: "Open orders (not yet delivered)" },
+  { key: LS_DELIVERED, label: "Delivered / resolved orders" }
 ];
 
 function renderLocalBackup(){
@@ -1755,9 +1759,15 @@ function renderOpenOrdersList(){
     wrap.appendChild(row);
   });
 }
+function archiveOrder(o, resolution){
+  if (!o) return;
+  deliveredOrders.unshift({ ...o, resolution, resolvedAt: Date.now() });
+  saveJSON(LS_DELIVERED, deliveredOrders);
+}
 async function markOrderDelivered(id){
   const o = openOrders.find(x => x.id === id);
   if (o && o.placedById) pushNotification(o.placedById, `Table ${o.table || "?"} — order delivered`);
+  archiveOrder(o, "delivered");
   openOrders = openOrders.filter(x => x.id !== id);
   await saveOrders();
   renderOpenOrdersList(); renderOpenOrdersBadge();
@@ -1771,6 +1781,7 @@ async function markOrderReady(id){
 async function resolveOrderFlag(id, outcome){
   const o = openOrders.find(x => x.id === id);
   if (outcome === "refunded") {
+    archiveOrder(o, "refunded");
     openOrders = openOrders.filter(x => x.id !== id);
     await saveOrders();
     renderOpenOrdersList(); renderOpenOrdersBadge();
