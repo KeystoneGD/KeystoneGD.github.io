@@ -155,6 +155,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 .admin-note{font-size:12.5px;color:var(--text-muted);margin:0 0 14px;line-height:1.5;}
 .admin-row{display:flex;align-items:center;gap:10px;padding:13px 0;border-bottom:1px solid var(--border);}
+.admin-row[hidden]{display:none;}
 .admin-row-main{flex:1;min-width:0;text-align:left;background:none;border:0;padding:0;display:flex;flex-direction:column;gap:2px;cursor:pointer;color:var(--text);}
 .admin-row-main .name{font-size:15px;font-weight:600;}
 .admin-row-main .sub{font-size:12px;color:var(--text-muted);}
@@ -164,6 +165,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 .order-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow);}
 .order-card.flagged{border-color:var(--danger);background:var(--danger-soft);}
+.order-card.ready{border-color:var(--gold);background:var(--gold-soft);}
 .order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
 .order-table{font-weight:800;font-size:15px;font-family:'Manrope',sans-serif;}
 .order-items{font-size:13.5px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;}
@@ -217,6 +219,18 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:var(--success);color:var(--success-ink);padding:10px 18px;border-radius:999px;font-weight:700;font-size:14px;box-shadow:var(--shadow);z-index:60;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;text-align:center;max-width:88vw;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+
+.login-gate{position:fixed;inset:0;z-index:70;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;}
+.login-gate[hidden]{display:none;}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px 24px;max-width:340px;width:100%;text-align:center;box-shadow:var(--shadow);}
+.login-card h2{margin:0 0 8px;font-size:20px;}
+.login-card p{margin:0 0 18px;font-size:13.5px;color:var(--text-muted);line-height:1.5;}
+.login-card input{width:100%;padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:22px;text-align:center;font-weight:700;letter-spacing:4px;margin-bottom:14px;}
+.login-card input:focus{outline:2px solid var(--accent);outline-offset:1px;}
+.account-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;margin-bottom:8px;border-bottom:1px solid var(--border);}
+.account-row .name{font-weight:700;font-size:14.5px;}
+.account-row .sub{font-size:12px;color:var(--text-muted);}
+.account-row .btn{width:auto;padding:9px 14px;font-size:13px;}
 
 @media print{
   body *{visibility:hidden;}
@@ -281,10 +295,6 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   </div>
   <div class="sheet-body">
     <div class="table-row">
-      <label for="tableInput">Table number</label>
-      <input type="text" inputmode="numeric" id="tableInput" placeholder="e.g. 12">
-    </div>
-    <div class="table-row">
       <label for="notesInput">Notes</label>
       <textarea id="notesInput" placeholder="e.g. 6 glasses, no ice, running a tab"></textarea>
     </div>
@@ -343,6 +353,14 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   </div>
   <div class="sheet-body">
     <div id="adminHome">
+      <div class="account-row">
+        <div>
+          <div class="name" id="accountName"></div>
+          <div class="sub">Signed in</div>
+        </div>
+        <button class="btn btn-ghost" id="accountSignOutBtn">Sign out</button>
+      </div>
+
       <div class="section-title">Products on Stop</div>
       <div class="admin-row special" id="stoppedRow">
         <button class="admin-row-main" type="button">
@@ -390,7 +408,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
       <div class="admin-row special" id="adminEndOfShiftRow">
         <button class="admin-row-main" type="button">
           <span class="name">🔒 End of Shift</span>
-          <span class="sub">Close till & shift report — PIN required</span>
+          <span class="sub">Close till & shift report</span>
         </button>
         <span class="chevron">›</span>
       </div>
@@ -513,6 +531,22 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="login-gate" id="loginGate">
+  <div class="login-card">
+    <h2>Sign in</h2>
+    <p id="loginMessage">Enter your PIN to start your shift.</p>
+    <input type="password" inputmode="numeric" id="loginPinInput" placeholder="PIN" autocomplete="off">
+    <button class="btn btn-accent btn-block" id="loginSubmitBtn">Sign in</button>
+  </div>
+</div>
+<div class="login-gate" id="lockedScreen" hidden>
+  <div class="login-card">
+    <h2>No access</h2>
+    <p>Signed in as <span id="lockedUserName"></span> — no permission to place orders here. Ask a manager, or sign out below.</p>
+    <button class="btn btn-ghost btn-block" id="lockedLogoutBtn">Sign out</button>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -764,7 +798,6 @@ const LS_ABANDONED = "starlightTill.abandoned.v1";
 const LS_GRAT = "starlightTill.gratuities.v1";
 const LS_STOPS = "starlightTill.stops.v1";
 const LS_Z = "starlightTill.zreports.v1";
-const LS_PIN = "starlightTill.pin.v1";
 const LS_TITLE = "starlightTill.title.v1";
 const LS_MODE = "starlightTill.mode.v1";
 const LS_CUSTOM = "starlightTill.customProducts.v1";
@@ -772,12 +805,20 @@ const LS_MIXER_OVERRIDES = "starlightTill.mixerOverrides.v1";
 const LS_HH_OVERRIDE = "starlightTill.hhOverride.v1";
 const LS_CUSTOM_DISCOUNTS = "starlightTill.customDiscounts.v1";
 const LS_ORDERS = "starlightTill.openOrders.v1";
+const LS_REFUNDS = "starlightTill.refunds.v1";
+const LS_USERS = "starlightTill.users.v1";
+const LS_CURRENT_USER = "starlightTill.currentUser.v1";
 let customProducts = loadJSON(LS_CUSTOM, []);
 customProducts.forEach(p => { BY_ID[p.id] = { ...p, hasOptions: false }; });
 let mixerOverrides = new Set(loadJSON(LS_MIXER_OVERRIDES, []));
 let hhOverride = loadJSON(LS_HH_OVERRIDE, null);
 let customDiscounts = loadJSON(LS_CUSTOM_DISCOUNTS, []);
 let openOrders = loadJSON(LS_ORDERS, []);
+let users = loadJSON(LS_USERS, []);
+if (!users.length) users = [{ id:"710603", name:"Tom", perms:{ placeOrders:true, productsOnStop:true, xzRead:true, backendAccess:true, orderScreen:true } }];
+let currentUserId = null;
+try { currentUserId = localStorage.getItem(LS_CURRENT_USER); } catch(e){}
+let currentUser = null;
 function loadJSON(key, fallback){ try{ const v = JSON.parse(localStorage.getItem(key)); return v || fallback; }catch(e){ return fallback; } }
 let dbNs = null; // Supabase-backed doc() shim, or null if unavailable — every db call is best-effort on top of localStorage
 function saveJSON(key, val){
@@ -798,6 +839,7 @@ const PERSISTED_KEYS = [
   { key: LS_CART, set: v => { cart = v; renderQtys(); renderCartBar(); } },
   { key: LS_HIST, set: v => { history = v; } },
   { key: LS_ABANDONED, set: v => { abandoned = v; } },
+  { key: LS_REFUNDS, set: v => { refunds = v; } },
   { key: LS_GRAT, set: v => { gratuities = v; } },
   { key: LS_STOPS, set: v => { stops = new Set(v); applyVisibility(); }, live: true },
   { key: LS_Z, set: v => { zReports = v; } },
@@ -806,7 +848,7 @@ const PERSISTED_KEYS = [
   { key: LS_HH_OVERRIDE, set: v => { hhOverride = v; }, live: true },
   { key: LS_CUSTOM_DISCOUNTS, set: v => { customDiscounts = v; renderDiscountChips(); }, live: true },
   { key: LS_ORDERS, set: v => { openOrders = v; renderOpenOrdersBadge(); if (adminView === "openOrders") renderOpenOrdersList(); }, live: true },
-  { key: LS_PIN, set: v => { adminPin = v; } },
+  { key: LS_USERS, set: v => { if (v.length) users = v; currentUser = currentUserId ? users.find(u => u.id === currentUserId) : null; applyLoginState(); }, live: true },
   { key: LS_TITLE, set: v => { appTitle = v; document.getElementById("brandTitle").textContent = v; document.getElementById("titleRowSub").textContent = v; } },
   { key: LS_MODE, set: v => { menuMode = v; applyVisibility(); } }
 ];
@@ -836,6 +878,7 @@ async function connectDb(){
 let cart = loadJSON(LS_CART, {});
 let history = loadJSON(LS_HIST, []);
 let abandoned = loadJSON(LS_ABANDONED, []);
+let refunds = loadJSON(LS_REFUNDS, []);
 let gratuities = loadJSON(LS_GRAT, []);
 let stops = new Set(loadJSON(LS_STOPS, []));
 let zReports = loadJSON(LS_Z, []);
@@ -907,16 +950,15 @@ function priceBreakdown(){
   const hh = isHappyHourNow();
   let cocktailPence = 0, otherPence = 0;
   if (hh) {
-    const byPrice = {};
+    const prices = [];
     Object.entries(cart).forEach(([key, qty]) => {
-      if (COCKTAIL_IDS.has(key)) { const p = BY_ID[key].pence; byPrice[p] = (byPrice[p] || 0) + qty; }
+      if (COCKTAIL_IDS.has(key)) { const p = BY_ID[key].pence; for (let i = 0; i < qty; i++) prices.push(p); }
       else otherPence += lineInfo(key).pence * qty;
     });
-    Object.entries(byPrice).forEach(([priceStr, qty]) => {
-      const price = Number(priceStr);
-      const pairs = Math.floor(qty / 2), remainder = qty % 2;
-      cocktailPence += pairs * Math.round(price * 1.5) + remainder * price;
-    });
+    prices.sort((a, b) => b - a);
+    for (let i = 0; i < prices.length; i += 2) {
+      cocktailPence += (i + 1 < prices.length) ? prices[i] + Math.round(prices[i + 1] * 0.5) : prices[i];
+    }
   } else {
     Object.entries(cart).forEach(([key, qty]) => {
       if (COCKTAIL_IDS.has(key)) cocktailPence += lineInfo(key).pence * qty;
@@ -1206,7 +1248,6 @@ document.getElementById("cartClear").addEventListener("click", async () => {
 });
 
 function renderCartSheet(){
-  document.getElementById("tableInput").value = currentTable;
   document.getElementById("notesInput").value = currentNotes;
   document.getElementById("hhStatus").hidden = !isHappyHourNow();
   const wrap = document.getElementById("cartLines");
@@ -1232,7 +1273,6 @@ function renderCartSheet(){
 }
 let currentTable = "";
 let currentNotes = "";
-document.getElementById("tableInput").addEventListener("input", e => { currentTable = e.target.value; });
 document.getElementById("notesInput").addEventListener("input", e => { currentNotes = e.target.value; });
 
 function renderDiscountChips(){
@@ -1308,8 +1348,23 @@ function openCharge(method){
   closeSheet("cartSheet");
   openSheet("chargeSheet");
 }
-document.getElementById("goCash").addEventListener("click", () => openCharge("cash"));
-document.getElementById("goCard").addEventListener("click", () => openCharge("card"));
+async function requireTableNumber(){
+  while (true) {
+    const val = await askText({ title:"Table number", message:"Enter the table number for this order before taking payment.", placeholder:"e.g. 12", inputMode:"numeric" });
+    if (val === null) return null;
+    if (val.trim()) return val.trim();
+    showToast("Enter a table number to continue");
+  }
+}
+async function startCharge(method){
+  if (cartCount() === 0) return;
+  const table = await requireTableNumber();
+  if (table === null) return;
+  currentTable = table;
+  openCharge(method);
+}
+document.getElementById("goCash").addEventListener("click", () => startCharge("cash"));
+document.getElementById("goCard").addEventListener("click", () => startCharge("card"));
 document.getElementById("chargeBack").addEventListener("click", () => { closeSheet("chargeSheet"); openSheet("cartSheet"); });
 document.getElementById("chargeCancel").addEventListener("click", () => { closeSheet("chargeSheet"); openSheet("cartSheet"); });
 
@@ -1366,9 +1421,9 @@ document.getElementById("chargeConfirm").addEventListener("click", async () => {
   if (pendingMethod === "cash") { sale.cashGiven = cashGivenPence; sale.change = Math.max(0, cashGivenPence - total); }
   history.unshift(sale);
   saveJSON(LS_HIST, history);
-  openOrders.unshift({ id: "o"+Date.now(), ts: Date.now(), table: sale.table, method: pendingMethod, items: items.map(i => ({ name: i.name, qty: i.qty })), delivered: false, flagged: false, flagNote: "" });
+  openOrders.unshift({ id: "o"+Date.now(), ts: Date.now(), table: sale.table, method: pendingMethod, items: items.map(i => ({ name: i.name, qty: i.qty })), delivered: false, ready: false, flagged: false, flagItem: null, flagReason: null, flagSubstitute: null, flagOutcome: null });
   saveJSON(LS_ORDERS, openOrders);
-  cart = {}; discount = null; currentNotes = ""; document.getElementById("notesInput").value = ""; saveJSON(LS_CART, cart);
+  cart = {}; discount = null; currentNotes = ""; currentTable = ""; document.getElementById("notesInput").value = ""; saveJSON(LS_CART, cart);
   renderQtys(); renderCartBar();
   closeSheet("chargeSheet");
   showToast("Sale logged — " + fmt(total));
@@ -1407,9 +1462,42 @@ document.getElementById("gratuityBtn").addEventListener("click", async () => {
   showToast("Gratuity logged — " + fmt(Math.round(pounds * 100)));
 });
 
+/* ---------- login / permissions ---------- */
+function applyLoginState(){
+  currentUser = currentUserId ? users.find(u => u.id === currentUserId) : null;
+  document.getElementById("loginGate").hidden = !!currentUser;
+  if (!currentUser) { document.getElementById("lockedScreen").hidden = true; return; }
+  const locked = !currentUser.perms.placeOrders;
+  document.getElementById("lockedScreen").hidden = !locked;
+  document.getElementById("lockedUserName").textContent = currentUser.name;
+  document.getElementById("accountName").textContent = currentUser.name;
+  document.getElementById("stoppedRow").hidden = !currentUser.perms.productsOnStop;
+  document.getElementById("openOrdersRow").hidden = !currentUser.perms.orderScreen;
+  document.getElementById("xReadRow").hidden = !currentUser.perms.xzRead;
+  document.getElementById("adminEndOfShiftRow").hidden = !currentUser.perms.xzRead;
+}
+function signIn(pin){
+  const u = users.find(x => x.id === pin);
+  if (!u) { showToast("Incorrect PIN"); return; }
+  currentUserId = u.id;
+  try { localStorage.setItem(LS_CURRENT_USER, u.id); } catch(e){}
+  document.getElementById("loginPinInput").value = "";
+  applyLoginState();
+}
+function signOut(){
+  currentUserId = null; currentUser = null;
+  try { localStorage.removeItem(LS_CURRENT_USER); } catch(e){}
+  showAdminHome(); closeSheet("adminSheet");
+  applyLoginState();
+}
+document.getElementById("loginSubmitBtn").addEventListener("click", () => signIn(document.getElementById("loginPinInput").value.trim()));
+document.getElementById("loginPinInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginSubmitBtn").click(); });
+document.getElementById("lockedLogoutBtn").addEventListener("click", signOut);
+document.getElementById("accountSignOutBtn").addEventListener("click", signOut);
+applyLoginState();
+
 /* ---------- admin ---------- */
 let adminView = "home", adminDetailCatId = null, adminDetailOrigin = "home";
-let adminPin = loadJSON(LS_PIN, null) || "710603";
 let appTitle = loadJSON(LS_TITLE, null) || "Starlight Till";
 document.getElementById("brandTitle").textContent = appTitle;
 document.getElementById("titleRowSub").textContent = appTitle;
@@ -1425,10 +1513,7 @@ document.getElementById("adminBack").addEventListener("click", () => {
 document.getElementById("adminHistoryRow").querySelector(".admin-row-main").addEventListener("click", () => {
   renderHistory(); openSheet("historySheet");
 });
-document.getElementById("adminEndOfShiftRow").querySelector(".admin-row-main").addEventListener("click", async () => {
-  const entered = await askText({ title:"Admin PIN", message:"Enter the PIN to access End of Shift.", placeholder:"PIN", inputType:"password", inputMode:"numeric" });
-  if (entered === null) return;
-  if (entered !== adminPin) { showToast("Incorrect PIN"); return; }
+document.getElementById("adminEndOfShiftRow").querySelector(".admin-row-main").addEventListener("click", () => {
   renderPastZ(); openSheet("endOfShiftSheet");
 });
 document.getElementById("endOfShiftBack").addEventListener("click", () => closeSheet("endOfShiftSheet"));
@@ -1491,7 +1576,7 @@ function renderOpenOrdersList(){
   if (!open.length) { wrap.innerHTML = `<div class="empty-state">Nothing open right now.</div>`; return; }
   open.forEach(o => {
     const row = document.createElement("div");
-    row.className = "order-card" + (o.flagged ? " flagged" : "");
+    row.className = "order-card" + (o.flagged ? " flagged" : (o.ready ? " ready" : ""));
     const itemsText = o.items.map(i => `${i.qty}× ${i.name}`).join(", ");
     row.innerHTML = `
       <div class="order-head">
@@ -1499,14 +1584,18 @@ function renderOpenOrdersList(){
         <span class="pill pill-${o.method}">${o.method === "cash" ? "Cash" : "Card"}</span>
       </div>
       <div class="order-items">${itemsText}</div>
-      ${o.flagged ? `<div class="order-flag">⚠ ${o.flagNote || "Flagged"}</div>` : ""}
+      ${o.flagged ? `<div class="order-flag">⚠ ${o.flagItem}: ${o.flagReason}${o.flagSubstitute ? " — offer " + o.flagSubstitute : ""}</div>` : ""}
       <div class="order-actions">
-        ${o.flagged ? `<button class="btn btn-ghost" data-act="clearflag">Clear flag</button>` : ""}
-        <button class="btn btn-success btn-block" data-act="deliver">Mark as Delivered</button>
+        ${o.flagged ? `<button class="btn btn-ghost" data-act="accept">Accepted</button><button class="btn btn-danger" data-act="refund">Refunded</button>` : (o.ready ? `<button class="btn btn-success btn-block" data-act="deliver">Mark as Delivered</button>` : `<button class="btn btn-accent btn-block" data-act="ready">Ready for Delivery</button>`)}
       </div>`;
-    row.querySelector('[data-act="deliver"]').addEventListener("click", () => markOrderDelivered(o.id));
-    const clearBtn = row.querySelector('[data-act="clearflag"]');
-    if (clearBtn) clearBtn.addEventListener("click", () => clearOrderFlag(o.id));
+    const deliverBtn = row.querySelector('[data-act="deliver"]');
+    if (deliverBtn) deliverBtn.addEventListener("click", () => markOrderDelivered(o.id));
+    const readyBtn = row.querySelector('[data-act="ready"]');
+    if (readyBtn) readyBtn.addEventListener("click", () => markOrderReady(o.id));
+    const acceptBtn = row.querySelector('[data-act="accept"]');
+    if (acceptBtn) acceptBtn.addEventListener("click", () => resolveOrderFlag(o.id, "accepted"));
+    const refundBtn = row.querySelector('[data-act="refund"]');
+    if (refundBtn) refundBtn.addEventListener("click", () => resolveOrderFlag(o.id, "refunded"));
     wrap.appendChild(row);
   });
 }
@@ -1516,9 +1605,15 @@ function markOrderDelivered(id){
   saveJSON(LS_ORDERS, openOrders);
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
-function clearOrderFlag(id){
+function markOrderReady(id){
   const o = openOrders.find(x => x.id === id);
-  if (o) { o.flagged = false; o.flagNote = ""; }
+  if (o) o.ready = true;
+  saveJSON(LS_ORDERS, openOrders);
+  renderOpenOrdersList(); renderOpenOrdersBadge();
+}
+function resolveOrderFlag(id, outcome){
+  const o = openOrders.find(x => x.id === id);
+  if (o) { o.flagged = false; o.flagOutcome = outcome; }
   saveJSON(LS_ORDERS, openOrders);
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
@@ -1606,6 +1701,7 @@ document.getElementById("historyBack").addEventListener("click", () => closeShee
 function renderHistory(){
   const list = document.getElementById("histList");
   const empty = document.getElementById("histEmpty");
+  const canRefund = !!(currentUser && currentUser.perms.xzRead);
   list.innerHTML = "";
   empty.style.display = history.length ? "none" : "";
   let grand = 0, cashTotal = 0, cardTotal = 0;
@@ -1624,7 +1720,7 @@ function renderHistory(){
         <div class="htotal tabular">${fmt(sale.total)}</div>
       </summary>
       <div class="hdetail">
-        ${sale.items.map(i => `<div class="row"><span>${i.qty} × ${i.name}</span><span class="tabular">${fmt(i.pence*i.qty)}</span></div>`).join("")}
+        ${sale.items.map((i, idx) => `<div class="row"><span>${i.qty} × ${i.name}</span><span class="tabular" style="display:flex;align-items:center;gap:8px;">${fmt(i.pence*i.qty)}${canRefund && !i.refunded ? `<button type="button" class="btn-danger refund-btn" data-sale-ts="${sale.ts}" data-item-idx="${idx}" style="width:auto;margin:0;padding:4px 9px;font-size:11.5px;">Refund</button>` : ""}${i.refunded ? `<span class="pill" style="color:var(--danger);background:rgba(255,122,104,.14);">Refunded</span>` : ""}</span></div>`).join("")}
         ${sale.discountAmount ? `<div class="row"><span>Subtotal</span><span class="tabular">${fmt(sale.base)}</span></div><div class="row"><span>${sale.discountLabel}</span><span class="tabular">−${fmt(sale.discountAmount)}</span></div>` : ""}
         ${sale.happyHour ? `<div class="row"><span>Happy Hour applied</span><span></span></div>` : ""}
         ${sale.method === "cash" && sale.cashGiven != null ? `<div class="row"><span>Cash given</span><span class="tabular">${fmt(sale.cashGiven)}</span></div><div class="row"><span>Change given</span><span class="tabular">${fmt(sale.change||0)}</span></div>` : ""}
@@ -1657,6 +1753,30 @@ function renderHistory(){
       </div>`;
     aList.appendChild(details);
   });
+}
+document.getElementById("histList").addEventListener("click", e => {
+  const btn = e.target.closest(".refund-btn");
+  if (!btn) return;
+  e.preventDefault();
+  refundItem(Number(btn.dataset.saleTs), Number(btn.dataset.itemIdx));
+});
+async function refundItem(saleTs, itemIdx){
+  const sale = history.find(s => s.ts === saleTs);
+  if (!sale) return;
+  const item = sale.items[itemIdx];
+  if (!item || item.refunded) return;
+  const ratio = sale.base > 0 ? Math.max(0, (sale.base - (sale.discountAmount||0)) / sale.base) : 1;
+  const listedPence = item.pence * item.qty;
+  const refundPence = Math.round(listedPence * ratio);
+  const discountNote = ratio < 1 ? ` (today's discount already taken off — full price would be ${fmt(listedPence)})` : "";
+  const ok = await askConfirm({ title:"Refund this item?", message:`Refund ${item.qty} × ${item.name} — ${fmt(refundPence)}${discountNote}.`, confirmLabel:"Refund", danger:true });
+  if (!ok) return;
+  item.refunded = true;
+  refunds.unshift({ ts: Date.now(), saleTs: sale.ts, itemName: item.name, qty: item.qty, pence: refundPence, method: sale.method || "card" });
+  saveJSON(LS_HIST, history);
+  saveJSON(LS_REFUNDS, refunds);
+  renderHistory();
+  showToast(`Refunded ${fmt(refundPence)}`);
 }
 function itemCount(sale){ return sale.items.reduce((s,i) => s+i.qty, 0); }
 function formatTime(ts){
@@ -1731,12 +1851,15 @@ document.getElementById("histClear").addEventListener("click", async () => {
 
 /* ---------- end of shift: X / Z ---------- */
 function shiftSnapshot(){
-  const cashTotal = history.filter(s => (s.method||"card") === "cash").reduce((s,x) => s+x.total, 0);
-  const cardTotal = history.filter(s => (s.method||"card") === "card").reduce((s,x) => s+x.total, 0);
+  const refundCash = refunds.filter(r => (r.method||"card") === "cash").reduce((s,r) => s+r.pence, 0);
+  const refundCard = refunds.filter(r => (r.method||"card") === "card").reduce((s,r) => s+r.pence, 0);
+  const cashTotal = history.filter(s => (s.method||"card") === "cash").reduce((s,x) => s+x.total, 0) - refundCash;
+  const cardTotal = history.filter(s => (s.method||"card") === "card").reduce((s,x) => s+x.total, 0) - refundCard;
   const gratuityTotal = gratuities.reduce((s,g) => s+g.amount, 0);
   const discountTotal = history.reduce((s,x) => s+(x.discountAmount||0), 0);
   const abandonedTotal = abandoned.reduce((s,x) => s+x.total, 0);
-  return { cashTotal, cardTotal, grandTotal: cashTotal+cardTotal, gratuityTotal, discountTotal, abandonedTotal, txCount: history.length };
+  const refundTotal = refundCash + refundCard;
+  return { cashTotal, cardTotal, grandTotal: cashTotal+cardTotal, gratuityTotal, discountTotal, abandonedTotal, refundTotal, txCount: history.length };
 }
 
 function buildReceiptHTML(title, subtitle, rows){
@@ -1764,6 +1887,7 @@ function renderXRead(){
   xReadRows = [
     ["Cash", fmt(s.cashTotal)], ["Card", fmt(s.cardTotal)], ["Takings", fmt(s.grandTotal)],
     ["Tips", fmt(s.gratuityTotal)], ["Discounts given", fmt(s.discountTotal)],
+    ["Refunds given", fmt(s.refundTotal)],
     ["Abandoned (not counted)", fmt(s.abandonedTotal)], ["Transactions", String(s.txCount)]
   ];
   document.getElementById("xReadRange").textContent = new Date().toLocaleString();
@@ -1779,16 +1903,17 @@ document.getElementById("zReadBtn").addEventListener("click", async () => {
   const ok = await askConfirm({ title:"Close till?", message:"Archives today's totals as a Z report and resets the sales log for the next shift. Nothing is deleted — it's saved under Past Z Reports.", confirmLabel:"Close & archive", danger:true });
   if (!ok) return;
   const s = shiftSnapshot();
-  zReports.unshift({ id:"z"+Date.now(), closedAt: Date.now(), ...s, transactions: history, abandonedOrders: abandoned, gratuities });
+  zReports.unshift({ id:"z"+Date.now(), closedAt: Date.now(), ...s, transactions: history, abandonedOrders: abandoned, gratuities, refunds });
   saveJSON(LS_Z, zReports);
-  history = []; abandoned = []; gratuities = [];
-  saveJSON(LS_HIST, history); saveJSON(LS_ABANDONED, abandoned); saveJSON(LS_GRAT, gratuities);
+  history = []; abandoned = []; gratuities = []; refunds = [];
+  saveJSON(LS_HIST, history); saveJSON(LS_ABANDONED, abandoned); saveJSON(LS_GRAT, gratuities); saveJSON(LS_REFUNDS, refunds);
   openOrders = openOrders.filter(o => !o.delivered);
   saveJSON(LS_ORDERS, openOrders);
   renderHistory();
   openReportTab("Z Report — Closed", new Date().toLocaleString(), [
     ["Cash", fmt(s.cashTotal)], ["Card", fmt(s.cardTotal)], ["Takings", fmt(s.grandTotal)],
     ["Tips", fmt(s.gratuityTotal)], ["Discounts given", fmt(s.discountTotal)],
+    ["Refunds given", fmt(s.refundTotal)],
     ["Abandoned (not counted)", fmt(s.abandonedTotal)], ["Transactions", String(s.txCount)]
   ]);
 });
