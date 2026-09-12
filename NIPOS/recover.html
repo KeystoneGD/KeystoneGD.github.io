@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Sales Log Recovery</title>
+<style>
+:root{
+  --bg:#0c1719; --surface:#132427; --surface-2:#1b3236; --border:#2a474b;
+  --text:#e8f3f3; --text-muted:#8fb0b0;
+  --accent:#3cc0c8; --accent-ink:#052226; --accent-soft:rgba(60,192,200,.16);
+  --danger:#ff7a68; --danger-soft:rgba(255,122,104,.14);
+  --good:#6fd88f; --good-soft:rgba(111,216,143,.14);
+}
+*{box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'Inter',system-ui,sans-serif;margin:0;padding:16px 14px 60px;}
+h1{font-size:19px;margin:4px 0 2px;}
+.sub{color:var(--text-muted);font-size:13px;margin:0 0 16px;line-height:1.5;}
+.warn{background:var(--danger-soft);border:1px solid var(--danger);color:var(--danger);border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.5;margin-bottom:18px;font-weight:600;}
+.origin{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--text-muted);margin-bottom:18px;word-break:break-all;}
+.origin b{color:var(--text);}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px;}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap;}
+.card-head h2{font-size:14.5px;margin:0;font-family:ui-monospace,monospace;}
+.badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;}
+.badge.found{background:var(--good-soft);color:var(--good);}
+.badge.empty{background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border);}
+.meta{font-size:12.5px;color:var(--text-muted);margin-bottom:8px;line-height:1.6;}
+.meta b{color:var(--text);}
+textarea{width:100%;min-height:90px;max-height:220px;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;font-family:ui-monospace,monospace;font-size:11px;resize:vertical;}
+button{border:0;border-radius:10px;padding:11px 16px;font-size:14px;font-weight:700;cursor:pointer;width:100%;margin-top:8px;}
+.btn-copy{background:var(--accent);color:var(--accent-ink);}
+.btn-copy.copied{background:var(--good);}
+footer{color:var(--text-muted);font-size:12px;text-align:center;margin-top:20px;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<h1>🧾 Sales Log Recovery</h1>
+<p class="sub">Read-only viewer for what's saved on <b>this device, in this browser</b>. It doesn't change or delete anything — it just shows you what's here so it can be copied and sent over before it's overwritten.</p>
+
+<div class="warn">⚠️ Don't ring up any sales or open the till app on this device until you've copied everything below and sent it across.</div>
+
+<div class="origin">Checking storage for: <b id="originText"></b><br>If this isn't the same web address as the till, this won't show the till's data — open this page from the till's own site instead.</div>
+
+<div id="cards"></div>
+
+<footer>Nothing here is sent anywhere automatically. Copy each box and paste it into a message/email yourself.</footer>
+
+<script>
+const KEYS = [
+  { key: "starlightTill.history.v1", label: "Sales log (Past Orders)" },
+  { key: "starlightTill.zreports.v1", label: "Past Z Reports" },
+  { key: "starlightTill.abandoned.v1", label: "Abandoned orders" },
+  { key: "starlightTill.refunds.v1", label: "Refunds" },
+  { key: "starlightTill.gratuities.v1", label: "Gratuities" },
+  { key: "starlightTill.openOrders.v1", label: "Open orders (not yet delivered)" }
+];
+
+document.getElementById("originText").textContent = location.origin;
+
+function fmtTime(ms){
+  if (!ms || isNaN(ms)) return "—";
+  const d = new Date(ms);
+  return d.toLocaleString(undefined, { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" });
+}
+
+const cardsEl = document.getElementById("cards");
+
+KEYS.forEach(({ key, label }) => {
+  let raw = null;
+  try { raw = localStorage.getItem(key); } catch (e) {}
+
+  let count = null, oldest = null, newest = null, parsed = null;
+  if (raw) {
+    try {
+      parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        count = parsed.length;
+        const times = parsed.map(x => x && (x.ts || x.closedAt)).filter(Boolean);
+        if (times.length) { oldest = Math.min(...times); newest = Math.max(...times); }
+      }
+    } catch (e) {}
+  }
+
+  const card = document.createElement("div");
+  card.className = "card";
+
+  const found = !!raw && count !== 0;
+  card.innerHTML = `
+    <div class="card-head">
+      <h2>${label}</h2>
+      <span class="badge ${found ? "found" : "empty"}">${raw === null ? "not present" : (count === null ? "present" : count + " item" + (count === 1 ? "" : "s"))}</span>
+    </div>
+    <div class="meta">
+      ${key}<br>
+      ${oldest ? `Earliest: <b>${fmtTime(oldest)}</b> &nbsp;·&nbsp; Latest: <b>${fmtTime(newest)}</b>` : ""}
+    </div>
+    <textarea readonly>${raw ? raw.replace(/</g,"&lt;") : "(nothing stored under this key on this device)"}</textarea>
+    <button class="btn-copy" ${raw ? "" : "disabled"}>Copy this box</button>
+  `;
+
+  const btn = card.querySelector("button");
+  const ta = card.querySelector("textarea");
+  if (raw) {
+    btn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(raw);
+      } catch (e) {
+        ta.focus(); ta.select();
+        try { document.execCommand("copy"); } catch (e2) {}
+      }
+      btn.textContent = "Copied ✓";
+      btn.classList.add("copied");
+      setTimeout(() => { btn.textContent = "Copy this box"; btn.classList.remove("copied"); }, 2000);
+    });
+  }
+
+  cardsEl.appendChild(card);
+});
+</script>
+
+</body>
+</html>
