@@ -825,6 +825,14 @@ let mixerOverrides = new Set(loadJSON(LS_MIXER_OVERRIDES, []));
 let hhOverride = loadJSON(LS_HH_OVERRIDE, null);
 let customDiscounts = loadJSON(LS_CUSTOM_DISCOUNTS, []);
 let openOrders = loadJSON(LS_ORDERS, []);
+let lastOrdersMutationTs = 0;
+async function saveOrders(){
+  lastOrdersMutationTs = Date.now();
+  try { localStorage.setItem(LS_ORDERS, JSON.stringify(openOrders)); } catch(e){}
+  try {
+    if (dbNs) await dbNs.doc("state/" + LS_ORDERS).set({ value: openOrders });
+  } catch(e){}
+}
 let users = loadJSON(LS_USERS, []);
 if (!users.length) users = [{ id:"710603", name:"Tom", perms:{ placeOrders:true, productsOnStop:true, xzRead:true, backendAccess:true, orderScreen:true } }];
 let currentUserId = null;
@@ -859,7 +867,7 @@ const PERSISTED_KEYS = [
   { key: LS_MIXER_OVERRIDES, set: v => { mixerOverrides = new Set(v); }, live: true },
   { key: LS_HH_OVERRIDE, set: v => { hhOverride = v; }, live: true },
   { key: LS_CUSTOM_DISCOUNTS, set: v => { customDiscounts = v; renderDiscountChips(); }, live: true },
-  { key: LS_ORDERS, set: v => { openOrders = v; renderOpenOrdersBadge(); if (adminView === "openOrders") renderOpenOrdersList(); }, live: true },
+  { key: LS_ORDERS, set: v => { openOrders = v; renderOpenOrdersBadge(); if (adminView === "openOrders") renderOpenOrdersList(); }, live: true, guardTs: () => lastOrdersMutationTs },
   { key: LS_USERS, set: v => { if (v.length) users = v; currentUser = currentUserId ? users.find(u => u.id === currentUserId) : null; applyLoginState(); }, live: true },
   { key: LS_NOTIFICATIONS, set: v => { checkPersonalNotifications(v); notifications = v; }, live: true },
   { key: LS_TITLE, set: v => { appTitle = v; document.getElementById("brandTitle").textContent = v; document.getElementById("titleRowSub").textContent = v; } },
@@ -870,10 +878,12 @@ async function pullState(items){
   if (!dbNs) return;
   for (const item of items) {
     try {
+      const fetchStartedAt = Date.now();
       const snap = await dbNs.doc("state/" + item.key).get();
       if (snap.exists) {
         const body = snap.data();
-        if (body && body.value !== undefined) item.set(body.value);
+        const guarded = item.guardTs && (fetchStartedAt - item.guardTs() <= 2000);
+        if (body && body.value !== undefined && !guarded) item.set(body.value);
       }
     } catch (e) {}
   }
@@ -1436,7 +1446,7 @@ document.getElementById("chargeConfirm").addEventListener("click", async () => {
   history.unshift(sale);
   saveJSON(LS_HIST, history);
   openOrders.unshift({ id: "o"+Date.now(), ts: Date.now(), saleTs: sale.ts, table: sale.table, method: pendingMethod, items: items.map(i => ({ name: i.name, qty: i.qty })), delivered: false, ready: false, flagged: false, flagItem: null, flagReason: null, flagSubstitute: null, flagOutcome: null, placedBy: currentUser ? currentUser.name : null, placedById: currentUser ? currentUser.id : null });
-  saveJSON(LS_ORDERS, openOrders);
+  await saveOrders();
   cart = {}; discount = null; currentNotes = ""; currentTable = ""; document.getElementById("notesInput").value = ""; saveJSON(LS_CART, cart);
   renderQtys(); renderCartBar();
   closeSheet("chargeSheet");
@@ -1668,24 +1678,24 @@ function renderOpenOrdersList(){
     wrap.appendChild(row);
   });
 }
-function markOrderDelivered(id){
+async function markOrderDelivered(id){
   const o = openOrders.find(x => x.id === id);
   if (o && o.placedById) pushNotification(o.placedById, `Table ${o.table || "?"} — order delivered`);
   openOrders = openOrders.filter(x => x.id !== id);
-  saveJSON(LS_ORDERS, openOrders);
+  await saveOrders();
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
-function markOrderReady(id){
+async function markOrderReady(id){
   const o = openOrders.find(x => x.id === id);
   if (o) o.ready = true;
-  saveJSON(LS_ORDERS, openOrders);
+  await saveOrders();
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
-function resolveOrderFlag(id, outcome){
+async function resolveOrderFlag(id, outcome){
   const o = openOrders.find(x => x.id === id);
   if (outcome === "refunded") {
     openOrders = openOrders.filter(x => x.id !== id);
-    saveJSON(LS_ORDERS, openOrders);
+    await saveOrders();
     renderOpenOrdersList(); renderOpenOrdersBadge();
     if (o && o.saleTs) goToPastOrderForRefund(o.saleTs);
     return;
@@ -1697,7 +1707,7 @@ function resolveOrderFlag(id, outcome){
     o.flagged = false;
     o.flagOutcome = outcome;
   }
-  saveJSON(LS_ORDERS, openOrders);
+  await saveOrders();
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
 function goToPastOrderForRefund(saleTs){
@@ -2005,7 +2015,7 @@ document.getElementById("zReadBtn").addEventListener("click", async () => {
   history = []; abandoned = []; gratuities = []; refunds = [];
   saveJSON(LS_HIST, history); saveJSON(LS_ABANDONED, abandoned); saveJSON(LS_GRAT, gratuities); saveJSON(LS_REFUNDS, refunds);
   openOrders = openOrders.filter(o => !o.delivered);
-  saveJSON(LS_ORDERS, openOrders);
+  await saveOrders();
   renderHistory();
   openReportTab("Z Report — Closed", new Date().toLocaleString(), [
     ["Cash", fmt(s.cashTotal)], ["Card", fmt(s.cardTotal)], ["Takings", fmt(s.grandTotal)],

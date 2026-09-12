@@ -360,7 +360,9 @@ async function pushNotification(toUserId, message, urgent){
 
 async function pullOrders(){
   if (!dbNs) return;
-  openOrders = await loadDoc(LS_ORDERS, openOrders);
+  const fetchStartedAt = Date.now();
+  const fetchedOrders = await loadDoc(LS_ORDERS, openOrders);
+  if (fetchStartedAt - lastOrdersMutationTs > 2000) openOrders = fetchedOrders;
   const pulledUsers = await loadDoc(LS_USERS, users);
   if (pulledUsers.length) users = pulledUsers;
   const pulledStops = await loadDoc(LS_STOPS, [...stops]);
@@ -450,24 +452,29 @@ function render(){
   });
 }
 
+let lastOrdersMutationTs = 0;
+async function saveOrders(){
+  lastOrdersMutationTs = Date.now();
+  await saveDoc(LS_ORDERS, openOrders);
+}
 async function markDelivered(id){
   const o = openOrders.find(x => x.id === id);
   if (o && o.placedById) await pushNotification(o.placedById, `Table ${o.table || "?"} — order delivered`);
   openOrders = openOrders.filter(x => x.id !== id);
-  await saveDoc(LS_ORDERS, openOrders);
+  await saveOrders();
   render();
 }
 async function markReady(id){
   const o = openOrders.find(x => x.id === id);
   if (o) o.ready = true;
-  await saveDoc(LS_ORDERS, openOrders);
+  await saveOrders();
   render();
 }
 async function resolveFlag(id, outcome){
   const o = openOrders.find(x => x.id === id);
   if (outcome === "refunded") {
     openOrders = openOrders.filter(x => x.id !== id);
-    await saveDoc(LS_ORDERS, openOrders);
+    await saveOrders();
     showToast("Removed — process the refund from the till's Past Orders");
     render();
     return;
@@ -479,7 +486,7 @@ async function resolveFlag(id, outcome){
     o.flagged = false;
     o.flagOutcome = outcome;
   }
-  await saveDoc(LS_ORDERS, openOrders);
+  await saveOrders();
   render();
 }
 
@@ -629,7 +636,7 @@ document.getElementById("flagConfirm").addEventListener("click", async () => {
     o.flagSubstitute = flagIntent === "substitute" ? flagSubstituteName : null;
     o.flagOutcome = null;
   }
-  await saveDoc(LS_ORDERS, openOrders);
+  await saveOrders();
   closeFlagModal();
   render();
 });
