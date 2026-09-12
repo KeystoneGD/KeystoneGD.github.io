@@ -33,7 +33,7 @@ h1{font-size:19px;margin:4px 0 2px;}
 .switch .slider::before{content:"";position:absolute;width:24px;height:24px;left:4px;top:4px;background:var(--text);opacity:.85;border-radius:50%;transition:.15s;}
 .switch input:checked + .slider{background:var(--accent);border-color:var(--accent);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:var(--accent-ink);opacity:1;}
-input[type="text"], input[type="number"]{width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:15px;font-family:inherit;}
+input[type="text"], input[type="number"], select{width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:15px;font-family:inherit;}
 label.field{display:block;font-size:11.5px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em;margin:10px 0 5px;}
 .btn{border:0;border-radius:10px;padding:11px 18px;font-weight:700;font-size:14.5px;cursor:pointer;width:100%;margin-top:12px;}
 .btn-accent{background:var(--accent);color:var(--accent-ink);}
@@ -273,7 +273,7 @@ function renderCatalogue(){
       const row = document.createElement("label");
       row.className = "row";
       row.innerHTML = `
-        <span class="info"><span class="name">${p.name}</span><span class="price">${fmt(p.pence)}</span></span>
+        <div class="info"><div class="name">${p.name}</div><div class="price">${fmt(p.pence)}</div></div>
         <span class="switch"><input type="checkbox" ${mixerOverrides.has(p.name) ? "checked" : ""}><span class="slider"></span></span>`;
       row.querySelector('input[type="checkbox"]').addEventListener("change", async e => {
         if (e.target.checked) mixerOverrides.add(p.name); else mixerOverrides.delete(p.name);

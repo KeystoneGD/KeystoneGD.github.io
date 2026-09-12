@@ -761,23 +761,20 @@ const PERSISTED_KEYS = [
   { key: LS_HIST, set: v => { history = v; } },
   { key: LS_ABANDONED, set: v => { abandoned = v; } },
   { key: LS_GRAT, set: v => { gratuities = v; } },
-  { key: LS_STOPS, set: v => { stops = new Set(v); applyVisibility(); } },
+  { key: LS_STOPS, set: v => { stops = new Set(v); applyVisibility(); }, live: true },
   { key: LS_Z, set: v => { zReports = v; } },
-  { key: LS_CUSTOM, set: v => { customProducts = v; customProducts.forEach(p => { BY_ID[p.id] = { ...p, hasOptions: false }; }); } },
-  { key: LS_MIXER_OVERRIDES, set: v => { mixerOverrides = new Set(v); } },
-  { key: LS_HH_OVERRIDE, set: v => { hhOverride = v; } },
-  { key: LS_CUSTOM_DISCOUNTS, set: v => { customDiscounts = v; renderDiscountChips(); } },
+  { key: LS_CUSTOM, set: v => { customProducts = v; customProducts.forEach(p => { BY_ID[p.id] = { ...p, hasOptions: false }; }); }, live: true },
+  { key: LS_MIXER_OVERRIDES, set: v => { mixerOverrides = new Set(v); }, live: true },
+  { key: LS_HH_OVERRIDE, set: v => { hhOverride = v; }, live: true },
+  { key: LS_CUSTOM_DISCOUNTS, set: v => { customDiscounts = v; renderDiscountChips(); }, live: true },
   { key: LS_PIN, set: v => { adminPin = v; } },
   { key: LS_TITLE, set: v => { appTitle = v; document.getElementById("brandTitle").textContent = v; document.getElementById("titleRowSub").textContent = v; } },
   { key: LS_MODE, set: v => { menuMode = v; applyVisibility(); } }
 ];
 
-async function connectDb(){
-  try {
-    dbNs = makeSupabaseDb(supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
-  } catch (e) { dbNs = null; }
+async function pullState(items){
   if (!dbNs) return;
-  for (const item of PERSISTED_KEYS) {
+  for (const item of items) {
     try {
       const snap = await dbNs.doc("state/" + item.key).get();
       if (snap.exists) {
@@ -786,6 +783,15 @@ async function connectDb(){
       }
     } catch (e) {}
   }
+}
+
+async function connectDb(){
+  try {
+    dbNs = makeSupabaseDb(supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
+  } catch (e) { dbNs = null; }
+  if (!dbNs) return;
+  await pullState(PERSISTED_KEYS);
+  setInterval(() => pullState(PERSISTED_KEYS.filter(i => i.live)), 30000);
 }
 
 let cart = loadJSON(LS_CART, {});
