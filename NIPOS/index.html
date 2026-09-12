@@ -468,7 +468,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     <div class="empty-state" id="histEmpty" style="display:none;">No sales logged yet.<br>Completed sales will appear here.</div>
     <div class="hist-actions">
       <button class="btn btn-ghost btn-block" id="histCopy">Copy as text</button>
-      <button class="btn btn-danger btn-block" id="histClear">Clear history</button>
+      <button class="btn btn-danger btn-block" id="histClear" disabled title="Temporarily disabled">Clear history (disabled)</button>
     </div>
 
     <div class="section-title">Abandoned Orders</div>
@@ -1768,7 +1768,7 @@ async function markOrderDelivered(id){
   const o = openOrders.find(x => x.id === id);
   if (o && o.placedById) pushNotification(o.placedById, `Table ${o.table || "?"} — order delivered`);
   archiveOrder(o, "delivered");
-  openOrders = openOrders.filter(x => x.id !== id);
+  if (o) o.delivered = true;
   await saveOrders();
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
@@ -1782,7 +1782,7 @@ async function resolveOrderFlag(id, outcome){
   const o = openOrders.find(x => x.id === id);
   if (outcome === "refunded") {
     archiveOrder(o, "refunded");
-    openOrders = openOrders.filter(x => x.id !== id);
+    if (o) o.delivered = true;
     await saveOrders();
     renderOpenOrdersList(); renderOpenOrdersBadge();
     if (o && o.saleTs) goToPastOrderForRefund(o.saleTs);
@@ -2038,10 +2038,7 @@ document.getElementById("exportAllBtn").addEventListener("click", async () => {
 });
 
 document.getElementById("histClear").addEventListener("click", async () => {
-  if (!history.length) return;
-  const ok = await askConfirm({ title:"Delete all logged sales?", message:"This can't be undone.", confirmLabel:"Delete all", danger:true });
-  if (!ok) return;
-  history = []; saveJSON(LS_HIST, history); renderHistory();
+  showToast("Clearing sales is switched off for now");
 });
 
 /* ---------- end of shift: X / Z ---------- */
@@ -2114,16 +2111,12 @@ document.getElementById("xReadPdfBtn").addEventListener("click", () => window.pr
 
 document.getElementById("zReadBtn").addEventListener("click", async () => {
   if (!history.length && !abandoned.length && !gratuities.length) { showToast("Nothing to close out yet"); return; }
-  const ok = await askConfirm({ title:"Close till?", message:"Archives today's totals as a Z report and resets the sales log for the next shift. Nothing is deleted — it's saved under Past Z Reports.", confirmLabel:"Close & archive", danger:true });
+  const ok = await askConfirm({ title:"Close till?", message:"Archives today's totals as a Z report under Past Z Reports. Data pruning is switched off for now, so the sales log itself is NOT cleared afterward — it stays as-is.", confirmLabel:"Close & archive", danger:true });
   if (!ok) return;
   const s = shiftSnapshot();
   const closedTransactions = history;
   zReports.unshift({ id:"z"+Date.now(), closedAt: Date.now(), ...s, transactions: history, abandonedOrders: abandoned, gratuities, refunds });
   saveJSON(LS_Z, zReports);
-  history = []; abandoned = []; gratuities = []; refunds = [];
-  saveJSON(LS_HIST, history); saveJSON(LS_ABANDONED, abandoned); saveJSON(LS_GRAT, gratuities); saveJSON(LS_REFUNDS, refunds);
-  openOrders = openOrders.filter(o => !o.delivered);
-  await saveOrders();
   renderHistory();
   openReportTab("Z Report — Closed", new Date().toLocaleString(), [
     ["Cash", fmt(s.cashTotal)], ["Card", fmt(s.cardTotal)], ["Takings", fmt(s.grandTotal)],
