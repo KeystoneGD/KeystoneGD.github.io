@@ -332,6 +332,23 @@
       ]
     },
     {
+      "name": "Lavazza Coffee & Hot Drinks",
+      "mode": "drink",
+      "note": "",
+      "isSpirit": false,
+      "isBeer": false,
+      "items": [
+        { "name": "Americano", "pence": 285 },
+        { "name": "Regular Flat White", "pence": 345 },
+        { "name": "Latte", "pence": 345 },
+        { "name": "Regular Tea", "pence": 310 },
+        { "name": "Cappuccino", "pence": 345 },
+        { "name": "Mocha", "pence": 415 },
+        { "name": "Espresso", "pence": 235 },
+        { "name": "Hot Chocolate", "pence": 410 }
+      ]
+    },
+    {
       "name": "Deals and Offers",
       "mode": "food",
       "note": "Table ordering only.",
@@ -567,23 +584,6 @@
         { "name": "Strawberries & Cream Milkshake", "pence": 575 },
         { "name": "Dubai Style Cookie Milkshake", "pence": 575 },
         { "name": "Oreo Chocolate Milkshake", "pence": 575 }
-      ]
-    },
-    {
-      "name": "Lavazza Coffee & Hot Drinks",
-      "mode": "food",
-      "note": "",
-      "isSpirit": false,
-      "isBeer": false,
-      "items": [
-        { "name": "Americano", "pence": 285 },
-        { "name": "Regular Flat White", "pence": 345 },
-        { "name": "Latte", "pence": 345 },
-        { "name": "Regular Tea", "pence": 310 },
-        { "name": "Cappuccino", "pence": 345 },
-        { "name": "Mocha", "pence": 415 },
-        { "name": "Espresso", "pence": 235 },
-        { "name": "Hot Chocolate", "pence": 410 }
       ]
     }
   ]

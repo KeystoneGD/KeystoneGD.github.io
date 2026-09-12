@@ -28,7 +28,9 @@ h1{font-size:19px;margin:0;}
 .order-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow);}
 .order-card.flagged{border-color:var(--danger);background:var(--danger-soft);}
 .order-card.ready{border-color:var(--gold);background:rgba(254,207,70,.14);}
+.order-card.substituted{border-color:var(--accent);background:rgba(60,192,200,.14);}
 .order-card.delivered{opacity:.55;}
+.order-sub-note{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:10px;}
 .order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;}
 .order-table{font-weight:800;font-size:16px;font-family:inherit;}
 .order-time{font-size:11px;color:var(--text-muted);}
@@ -53,10 +55,14 @@ h1{font-size:19px;margin:0;}
 .modal-card input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:15px;font-family:inherit;margin-bottom:16px;}
 .modal-actions{display:flex;gap:10px;}
 .modal-item-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+.modal-item-list[hidden]{display:none;}
 .modal-item-list .btn{flex:none;text-align:left;}
 .chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
 .chip{border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-weight:700;font-size:13px;padding:8px 14px;border-radius:999px;cursor:pointer;}
 .chip.active{background:var(--danger-soft);border-color:var(--danger);color:var(--danger);}
+.sub-chosen{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-weight:700;}
+.sub-chosen[hidden]{display:none;}
+.sub-chosen .btn{width:auto;flex:none;padding:6px 12px;font-size:12.5px;}
 
 .login-gate{position:fixed;inset:0;z-index:70;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;}
 .login-gate[hidden]{display:none;}
@@ -103,12 +109,35 @@ h1{font-size:19px;margin:0;}
     </div>
     <div id="flagStepReason" hidden>
       <h3>Flag <span id="flagItemName"></span></h3>
-      <p>What's wrong, and what should staff offer instead?</p>
+      <p>What's wrong?</p>
       <div class="chip-row" id="flagReasonChips"></div>
       <input type="text" id="flagOtherInput" placeholder="Describe the issue" hidden>
-      <input type="text" id="flagSubInput" placeholder="Suggest a substitute (optional), e.g. Pepsi Max Regular">
       <div class="modal-actions">
         <button class="btn btn-ghost" id="flagCancel2">Cancel</button>
+        <button class="btn btn-danger" id="flagNextBtn">Next</button>
+      </div>
+    </div>
+    <div id="flagStepIntent" hidden>
+      <h3>How should this be handled?</h3>
+      <p>Offer a refund, or swap in a substitute at no extra charge.</p>
+      <div class="chip-row" id="flagIntentChips">
+        <button type="button" class="chip" data-intent="refund">Offer Refund</button>
+        <button type="button" class="chip" data-intent="substitute">Substitute</button>
+      </div>
+      <div id="flagSubPickerWrap" hidden>
+        <input type="text" id="flagSubSearch" placeholder="Search for a substitute…">
+        <div class="modal-item-list" id="flagSubResults" hidden></div>
+        <div id="flagSubSizeWrap" hidden>
+          <p>Pick a size for <strong id="flagSubSizeName"></strong></p>
+          <div class="chip-row" id="flagSubSizeChips"></div>
+        </div>
+        <div class="sub-chosen" id="flagSubChosen" hidden>
+          <span id="flagSubChosenName"></span>
+          <button type="button" class="btn btn-ghost" id="flagSubClear">Change</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="flagCancel3">Cancel</button>
         <button class="btn btn-danger" id="flagConfirm">Flag item</button>
       </div>
     </div>
@@ -120,7 +149,8 @@ h1{font-size:19px;margin:0;}
 const SUPABASE_URL = "https://djegigghjeisoyecxeyo.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqZWdpZ2doamVpc295ZWN4ZXlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNjE1NTcsImV4cCI6MjEwNDczNzU1N30.X40pprKgeeu3bQ_STG9sCUZg4763ot8ZJFeJ8VFXvdM";
 const LS_ORDERS = "starlightTill.openOrders.v1";
-let dbNs = null;
+const LS_USERS = "starlightTill.users.v1";
+const LS_CURRENT_USER = "starlightTill.currentUser.v1";
 function makeSupabaseDb(client){
   return { doc(path){ return {
     async set(body){ await client.from("app_state").upsert({ key: path, value: body.value }); },
@@ -130,14 +160,26 @@ function makeSupabaseDb(client){
     }
   }; } };
 }
-const LS_USERS = "starlightTill.users.v1";
-const LS_CURRENT_USER = "starlightTill.currentUser.v1";
+let dbNs = null;
 let openOrders = [];
 let users = [];
 let currentUserId = null;
 try { currentUserId = localStorage.getItem(LS_CURRENT_USER); } catch(e){}
 let view = "open";
 let flagTargetId = null;
+let flatCatalogue = [];
+async function loadCatalogue(){
+  try {
+    const res = await fetch("products.json");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    flatCatalogue = data.categories.flatMap(c => c.items.map(i => ({ name: i.name, mode: c.mode, sizes: i.sizes || null })));
+  } catch(e) { flatCatalogue = []; }
+}
+function modeOf(name){
+  const hit = flatCatalogue.find(p => p.name === name);
+  return hit ? hit.mode : null;
+}
 
 function applyLoginState(){
   const u = currentUserId ? users.find(x => x.id === currentUserId) : null;
@@ -192,6 +234,7 @@ async function pullOrders(){
 }
 
 async function init(){
+  await loadCatalogue();
   const statusEl = document.getElementById("dbStatus");
   try {
     dbNs = makeSupabaseDb(supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
@@ -218,8 +261,9 @@ function render(){
   if (!list.length) { wrap.innerHTML = `<div class="empty">${view === "open" ? "Nothing open right now." : "No delivered orders yet."}</div>`; return; }
   list.forEach(o => {
     const card = document.createElement("div");
-    card.className = "order-card" + (o.flagged ? " flagged" : (o.ready ? " ready" : "")) + (o.delivered ? " delivered" : "");
-    const itemsText = o.items.map(i => `${i.qty}× ${i.name}`).join(", ");
+    const subItem = o.items.find(i => i.substituted);
+    card.className = "order-card" + (o.flagged ? " flagged" : (subItem ? " substituted" : (o.ready ? " ready" : ""))) + (o.delivered ? " delivered" : "");
+    const itemsText = o.items.map(i => i.substituted ? `${i.qty}× ${i.name} (£0.00 — sub for ${i.subFor})` : `${i.qty}× ${i.name}`).join(", ");
     card.innerHTML = `
       <div class="order-head">
         <span class="order-table">${o.table ? "Table " + o.table : "No table"}</span>
@@ -227,7 +271,8 @@ function render(){
         <span class="pill pill-${o.method}">${o.method === "cash" ? "Cash" : "Card"}</span>
       </div>
       <div class="order-items">${itemsText}</div>
-      ${o.flagged ? `<div class="order-flag">⚠ ${o.flagItem}: ${o.flagReason}${o.flagSubstitute ? " — offer " + o.flagSubstitute : ""}</div>` : ""}
+      ${o.flagged ? `<div class="order-flag">⚠ ${o.flagItem}: ${o.flagReason}${o.flagIntent === "substitute" && o.flagSubstitute ? " — offer " + o.flagSubstitute + " instead" : (o.flagIntent === "refund" ? " — refund suggested" : "")}</div>` : ""}
+      ${!o.flagged && subItem ? `<div class="order-sub-note">✓ Substituted ${subItem.name} for ${subItem.subFor} — free</div>` : ""}
       <div class="order-actions"></div>`;
     const actions = card.querySelector(".order-actions");
     if (!o.delivered) {
@@ -276,7 +321,13 @@ async function markReady(id){
 }
 async function resolveFlag(id, outcome){
   const o = openOrders.find(x => x.id === id);
-  if (o) { o.flagged = false; o.flagOutcome = outcome; }
+  if (o) {
+    if (outcome === "accepted" && o.flagIntent === "substitute" && o.flagSubstitute) {
+      o.items.push({ name: o.flagSubstitute, qty: 1, pence: 0, substituted: true, subFor: o.flagItem });
+    }
+    o.flagged = false;
+    o.flagOutcome = outcome;
+  }
   await saveDoc(LS_ORDERS, openOrders);
   render();
 }
@@ -284,9 +335,12 @@ async function resolveFlag(id, outcome){
 const FLAG_REASONS = ["Out of stock", "Wrong item", "Damaged/spilled", "Other"];
 let flagItemIdx = null;
 let flagReason = null;
+let flagTargetMode = null;
+let flagIntent = null;
+let flagSubstituteName = null;
 
 function openFlagModal(id){
-  flagTargetId = id; flagItemIdx = null; flagReason = null;
+  flagTargetId = id; flagItemIdx = null; flagReason = null; flagIntent = null; flagSubstituteName = null;
   const o = openOrders.find(x => x.id === id);
   const list = document.getElementById("flagItemList");
   list.innerHTML = "";
@@ -299,19 +353,96 @@ function openFlagModal(id){
   });
   document.getElementById("flagStepItem").hidden = false;
   document.getElementById("flagStepReason").hidden = true;
+  document.getElementById("flagStepIntent").hidden = true;
   document.getElementById("flagModal").hidden = false;
 }
 function selectFlagItem(idx){
   flagItemIdx = idx; flagReason = null;
   const o = openOrders.find(x => x.id === flagTargetId);
+  flagTargetMode = modeOf(o.items[idx].name);
   document.getElementById("flagItemName").textContent = o.items[idx].name;
-  document.getElementById("flagSubInput").value = "";
   document.getElementById("flagOtherInput").value = "";
   document.getElementById("flagOtherInput").hidden = true;
   renderReasonChips();
   document.getElementById("flagStepItem").hidden = true;
   document.getElementById("flagStepReason").hidden = false;
 }
+document.getElementById("flagNextBtn").addEventListener("click", () => {
+  if (!flagReason) { alert("Pick a reason."); return; }
+  if (flagReason === "Other" && !document.getElementById("flagOtherInput").value.trim()) { alert("Describe the issue."); return; }
+  flagIntent = null; flagSubstituteName = null;
+  document.querySelectorAll("#flagIntentChips .chip").forEach(b => b.classList.remove("active"));
+  document.getElementById("flagSubPickerWrap").hidden = true;
+  document.getElementById("flagSubSearch").value = "";
+  document.getElementById("flagSubSearch").hidden = false;
+  document.getElementById("flagSubResults").hidden = true;
+  document.getElementById("flagSubSizeWrap").hidden = true;
+  document.getElementById("flagSubChosen").hidden = true;
+  document.getElementById("flagStepReason").hidden = true;
+  document.getElementById("flagStepIntent").hidden = false;
+});
+document.querySelectorAll("#flagIntentChips .chip").forEach(btn => {
+  btn.addEventListener("click", () => {
+    flagIntent = btn.dataset.intent;
+    document.querySelectorAll("#flagIntentChips .chip").forEach(b => b.classList.toggle("active", b === btn));
+    const showPicker = flagIntent === "substitute";
+    document.getElementById("flagSubPickerWrap").hidden = !showPicker;
+  });
+});
+function renderSubResults(query){
+  const wrap = document.getElementById("flagSubResults");
+  const q = query.trim().toLowerCase();
+  if (!q) { wrap.hidden = true; wrap.innerHTML = ""; return; }
+  const matches = flatCatalogue.filter(p => (!flagTargetMode || p.mode === flagTargetMode) && p.name.toLowerCase().includes(q)).slice(0, 8);
+  wrap.innerHTML = "";
+  matches.forEach(p => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "btn btn-ghost";
+    b.textContent = p.name;
+    b.addEventListener("click", () => chooseSubstitute(p.name));
+    wrap.appendChild(b);
+  });
+  wrap.hidden = matches.length === 0;
+}
+function chooseSubstitute(name){
+  const entry = flatCatalogue.find(p => p.name === name);
+  if (entry && entry.sizes && entry.sizes.length) {
+    document.getElementById("flagSubResults").hidden = true;
+    document.getElementById("flagSubSizeName").textContent = name;
+    renderSubSizeChips(name, entry.sizes);
+    document.getElementById("flagSubSizeWrap").hidden = false;
+    return;
+  }
+  finalizeSubstitute(name);
+}
+function renderSubSizeChips(name, sizes){
+  const wrap = document.getElementById("flagSubSizeChips");
+  wrap.innerHTML = "";
+  sizes.forEach(s => {
+    const chip = document.createElement("button");
+    chip.type = "button"; chip.className = "chip";
+    chip.textContent = s.label;
+    chip.addEventListener("click", () => finalizeSubstitute(`${name} (${s.label})`));
+    wrap.appendChild(chip);
+  });
+}
+function finalizeSubstitute(label){
+  flagSubstituteName = label;
+  document.getElementById("flagSubSearch").hidden = true;
+  document.getElementById("flagSubResults").hidden = true;
+  document.getElementById("flagSubSizeWrap").hidden = true;
+  document.getElementById("flagSubChosenName").textContent = label;
+  document.getElementById("flagSubChosen").hidden = false;
+}
+document.getElementById("flagSubSearch").addEventListener("input", e => renderSubResults(e.target.value));
+document.getElementById("flagSubClear").addEventListener("click", () => {
+  flagSubstituteName = null;
+  document.getElementById("flagSubChosen").hidden = true;
+  document.getElementById("flagSubSizeWrap").hidden = true;
+  document.getElementById("flagSubSearch").hidden = false;
+  document.getElementById("flagSubSearch").value = "";
+  document.getElementById("flagSubSearch").focus();
+});
 function renderReasonChips(){
   const wrap = document.getElementById("flagReasonChips");
   wrap.innerHTML = "";
@@ -334,15 +465,17 @@ function closeFlagModal(){
 }
 document.getElementById("flagCancel1").addEventListener("click", closeFlagModal);
 document.getElementById("flagCancel2").addEventListener("click", closeFlagModal);
+document.getElementById("flagCancel3").addEventListener("click", closeFlagModal);
 document.getElementById("flagConfirm").addEventListener("click", async () => {
-  if (!flagReason) { alert("Pick a reason."); return; }
-  if (flagReason === "Other" && !document.getElementById("flagOtherInput").value.trim()) { alert("Describe the issue."); return; }
+  if (!flagIntent) { alert("Choose Offer Refund or Substitute."); return; }
+  if (flagIntent === "substitute" && !flagSubstituteName) { alert("Pick a substitute item."); return; }
   const o = openOrders.find(x => x.id === flagTargetId);
   if (o) {
     o.flagged = true;
     o.flagItem = o.items[flagItemIdx].name;
     o.flagReason = flagReason === "Other" ? document.getElementById("flagOtherInput").value.trim() : flagReason;
-    o.flagSubstitute = document.getElementById("flagSubInput").value.trim();
+    o.flagIntent = flagIntent;
+    o.flagSubstitute = flagIntent === "substitute" ? flagSubstituteName : null;
     o.flagOutcome = null;
   }
   await saveDoc(LS_ORDERS, openOrders);

@@ -166,10 +166,12 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 .order-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow);}
 .order-card.flagged{border-color:var(--danger);background:var(--danger-soft);}
 .order-card.ready{border-color:var(--gold);background:var(--gold-soft);}
+.order-card.substituted{border-color:var(--accent);background:rgba(60,192,200,.14);}
 .order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
 .order-table{font-weight:800;font-size:15px;font-family:'Manrope',sans-serif;}
 .order-items{font-size:13.5px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;}
 .order-flag{font-size:13px;font-weight:700;color:var(--danger);margin-bottom:10px;}
+.order-sub-note{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:10px;}
 .order-actions{display:flex;gap:8px;}
 .order-actions .btn{width:auto;}
 .order-actions .btn-block{flex:1;}
@@ -667,6 +669,16 @@ const PRODUCTS = [
 ]],
 ["Brandy", "", [
   ["Courvoisier VS (40%)",3.70],["Courvoisier VSOP (40%)",4.70],["Jules Clarion (36%)",3.55]
+]],
+["Lavazza Coffee & Hot Drinks", "Sizes shown when you select a drink.", [
+  ["Americano", [["Small",2.85],["Regular",3.30]]],
+  ["Regular Flat White",3.45],
+  ["Latte", [["Small",3.45],["Regular",3.75]]],
+  ["Regular Tea",3.10],
+  ["Cappuccino", [["Small",3.45],["Regular",3.75]]],
+  ["Mocha", [["Small",4.15],["Regular",4.65]]],
+  ["Espresso", [["Single",2.35],["Double",2.75]]],
+  ["Hot Chocolate", [["With Cream",4.10],["With Cream & Marshmallows",4.40]]]
 ]]
 ];
 
@@ -735,16 +747,6 @@ const FOOD_PRODUCTS = [
 ["Magical Milkshakes", "", [
   ["Biscoff Billionaire Milkshake",5.75],["Strawberries & Cream Milkshake",5.75],
   ["Dubai Style Cookie Milkshake",5.75],["Oreo Chocolate Milkshake",5.75]
-]],
-["Lavazza Coffee & Hot Drinks", "Sizes shown when you select a drink.", [
-  ["Americano", [["Small",2.85],["Regular",3.30]]],
-  ["Regular Flat White",3.45],
-  ["Latte", [["Small",3.45],["Regular",3.75]]],
-  ["Regular Tea",3.10],
-  ["Cappuccino", [["Small",3.45],["Regular",3.75]]],
-  ["Mocha", [["Small",4.15],["Regular",4.65]]],
-  ["Espresso", [["Single",2.35],["Double",2.75]]],
-  ["Hot Chocolate", [["With Cream",4.10],["With Cream & Marshmallows",4.40]]]
 ]]
 ];
 
@@ -1576,15 +1578,17 @@ function renderOpenOrdersList(){
   if (!open.length) { wrap.innerHTML = `<div class="empty-state">Nothing open right now.</div>`; return; }
   open.forEach(o => {
     const row = document.createElement("div");
-    row.className = "order-card" + (o.flagged ? " flagged" : (o.ready ? " ready" : ""));
-    const itemsText = o.items.map(i => `${i.qty}× ${i.name}`).join(", ");
+    const subItem = o.items.find(i => i.substituted);
+    row.className = "order-card" + (o.flagged ? " flagged" : (subItem ? " substituted" : (o.ready ? " ready" : "")));
+    const itemsText = o.items.map(i => i.substituted ? `${i.qty}× ${i.name} (£0.00 — sub for ${i.subFor})` : `${i.qty}× ${i.name}`).join(", ");
     row.innerHTML = `
       <div class="order-head">
         <span class="order-table">${o.table ? "Table " + o.table : "No table"}</span>
         <span class="pill pill-${o.method}">${o.method === "cash" ? "Cash" : "Card"}</span>
       </div>
       <div class="order-items">${itemsText}</div>
-      ${o.flagged ? `<div class="order-flag">⚠ ${o.flagItem}: ${o.flagReason}${o.flagSubstitute ? " — offer " + o.flagSubstitute : ""}</div>` : ""}
+      ${o.flagged ? `<div class="order-flag">⚠ ${o.flagItem}: ${o.flagReason}${o.flagIntent === "substitute" && o.flagSubstitute ? " — offer " + o.flagSubstitute + " instead" : (o.flagIntent === "refund" ? " — refund suggested" : "")}</div>` : ""}
+      ${!o.flagged && subItem ? `<div class="order-sub-note">✓ Substituted ${subItem.name} for ${subItem.subFor} — free</div>` : ""}
       <div class="order-actions">
         ${o.flagged ? `<button class="btn btn-ghost" data-act="accept">Accepted</button><button class="btn btn-danger" data-act="refund">Refunded</button>` : (o.ready ? `<button class="btn btn-success btn-block" data-act="deliver">Mark as Delivered</button>` : `<button class="btn btn-accent btn-block" data-act="ready">Ready for Delivery</button>`)}
       </div>`;
@@ -1613,7 +1617,13 @@ function markOrderReady(id){
 }
 function resolveOrderFlag(id, outcome){
   const o = openOrders.find(x => x.id === id);
-  if (o) { o.flagged = false; o.flagOutcome = outcome; }
+  if (o) {
+    if (outcome === "accepted" && o.flagIntent === "substitute" && o.flagSubstitute) {
+      o.items.push({ name: o.flagSubstitute, qty: 1, pence: 0, substituted: true, subFor: o.flagItem });
+    }
+    o.flagged = false;
+    o.flagOutcome = outcome;
+  }
   saveJSON(LS_ORDERS, openOrders);
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
