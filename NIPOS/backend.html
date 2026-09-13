@@ -38,6 +38,14 @@ label.field{display:block;font-size:11.5px;color:var(--text-muted);font-weight:6
 .btn{border:0;border-radius:10px;padding:11px 18px;font-weight:700;font-size:14.5px;cursor:pointer;width:100%;margin-top:12px;}
 .btn-accent{background:var(--accent);color:var(--accent-ink);}
 .btn-danger{background:var(--danger-soft);color:var(--danger);width:auto;margin:0;padding:6px 12px;font-size:12.5px;}
+.btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border);width:auto;margin:8px 0 0;padding:8px 14px;font-size:13px;}
+.sized-row{display:flex;align-items:center;gap:8px;padding:6px 0;}
+.sized-row input.sized-label{flex:1;}
+.sized-row input.sized-price{width:100px;}
+.size-toggle-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+.size-toggle-row:last-child{border-bottom:0;}
+.size-toggle-row .name{flex:1;font-size:14px;}
+.size-toggle-row input[type="number"]{width:100px;padding:8px 10px;}
 .category h2{font-size:13px;color:var(--accent);margin:18px 0 4px;}
 .mixer-details{margin:26px 0 8px;}
 .mixer-details > summary{cursor:pointer;list-style:none;}
@@ -89,9 +97,14 @@ label.field{display:block;font-size:11.5px;color:var(--text-muted);font-weight:6
   <input type="text" id="newUserName" placeholder="e.g. Tom">
   <label class="field">PIN</label>
   <input type="text" inputmode="numeric" id="newUserPin" placeholder="e.g. 710603">
+  <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Account Active</span></span><span class="switch"><input type="checkbox" id="permActive" checked><span class="slider"></span></span></label>
   <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Place Orders</span></span><span class="switch"><input type="checkbox" id="permPlaceOrders" checked><span class="slider"></span></span></label>
   <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Products on Stop</span></span><span class="switch"><input type="checkbox" id="permProductsOnStop"><span class="slider"></span></span></label>
+  <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Recovery Tool</span></span><span class="switch"><input type="checkbox" id="permRecoveryTool"><span class="slider"></span></span></label>
+  <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Call to Service</span></span><span class="switch"><input type="checkbox" id="permCallToService"><span class="slider"></span></span></label>
+  <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Clear History on Orders</span></span><span class="switch"><input type="checkbox" id="permClearHistory"><span class="slider"></span></span></label>
   <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">X and Z Read</span></span><span class="switch"><input type="checkbox" id="permXzRead"><span class="slider"></span></span></label>
+  <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Access End of Day</span></span><span class="switch"><input type="checkbox" id="permEndOfDay"><span class="slider"></span></span></label>
   <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Backend Access</span></span><span class="switch"><input type="checkbox" id="permBackendAccess"><span class="slider"></span></span></label>
   <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Order Screen</span></span><span class="switch"><input type="checkbox" id="permOrderScreen"><span class="slider"></span></span></label>
   <button class="btn btn-accent" id="addUserBtn">Add user</button>
@@ -120,12 +133,50 @@ label.field{display:block;font-size:11.5px;color:var(--text-muted);font-weight:6
 <p class="note">Shows up as a tap-to-apply chip on the till, same as the built-in discounts.</p>
 <div class="card" id="offerList"><div class="empty">None added yet.</div></div>
 
-<div class="section-title">Add a Custom Product</div>
+<div class="section-title">Add a Product</div>
 <div class="card">
   <label class="field">Name</label>
-  <input type="text" id="newName" placeholder="e.g. Birthday Cake Slice">
-  <label class="field">Price (£)</label>
-  <input type="number" id="newPrice" step="0.01" placeholder="e.g. 4.50">
+  <input type="text" id="newName" placeholder="e.g. Bacardi">
+
+  <label class="field">Type</label>
+  <select id="newType">
+    <option value="spirit">Spirit (single/double, optional mixer)</option>
+    <option value="draught">Draught (pint/half/cup/pitcher)</option>
+    <option value="sized">Multiple sizes (e.g. glass sizes)</option>
+    <option value="flat">Single price item</option>
+  </select>
+
+  <div id="spiritFields">
+    <label class="field">Single price (£)</label>
+    <input type="number" id="spiritSingle" step="0.01" placeholder="e.g. 4.20">
+    <label class="field">Double price (£)</label>
+    <input type="number" id="spiritDouble" step="0.01" placeholder="e.g. 7.80">
+    <label class="row" style="border:0;padding:10px 0 0;">
+      <span class="info"><span class="name">Requires a mixer</span></span>
+      <span class="switch"><input type="checkbox" id="spiritMixer"><span class="slider"></span></span>
+    </label>
+  </div>
+
+  <div id="draughtFields" hidden>
+    <p class="note">Tick the sizes it's offered in and set a price for each.</p>
+    <div id="draughtSizeRows"></div>
+  </div>
+
+  <div id="sizedFields" hidden>
+    <p class="note">Add each size and its price.</p>
+    <div id="sizedRows"></div>
+    <button type="button" class="btn btn-ghost" id="addSizeRowBtn">+ Add a size</button>
+    <label class="field">Menu</label>
+    <select id="sizedMode"><option value="drink">Drinks</option><option value="food">Food</option></select>
+  </div>
+
+  <div id="flatFields" hidden>
+    <label class="field">Price (£)</label>
+    <input type="number" id="flatPrice" step="0.01" placeholder="e.g. 4.50">
+    <label class="field">Menu</label>
+    <select id="flatMode"><option value="drink">Drinks</option><option value="food">Food</option></select>
+  </div>
+
   <label class="row" style="border:0;padding:10px 0 0;">
     <span class="info"><span class="name">Also usable as a mixer</span></span>
     <span class="switch"><input type="checkbox" id="newIsMixer"><span class="slider"></span></span>
@@ -154,6 +205,7 @@ const LS_CUSTOM_DISCOUNTS = "starlightTill.customDiscounts.v1";
 const LS_USERS = "starlightTill.users.v1";
 const LS_CURRENT_USER = "starlightTill.currentUser.v1";
 let dbNs = null;
+let supabaseClient = null;
 function makeSupabaseDb(client){
   return { doc(path){ return {
     async set(body){ await client.from("app_state").upsert({ key: path, value: body.value }); },
@@ -187,10 +239,39 @@ async function saveDoc(key, val){
   try { await dbNs.doc("state/" + key).set({ value: val }); } catch(e){}
 }
 
+// Staff accounts, custom discounts and mixer overrides used to be one shared array every device
+// blind-overwrote whole — two admins editing at once could erase each other's changes. Each is now
+// a table of independent rows, one per item, addressed by its own id.
+function rowStore(table, limit){
+  limit = limit || 500;
+  return {
+    async save(row){
+      if (!supabaseClient) return;
+      try { await supabaseClient.from(table).upsert({ id: row.id, ts: row.ts, data: row }); } catch(e){}
+    },
+    async remove(id){
+      if (!supabaseClient) return;
+      try { await supabaseClient.from(table).delete().eq("id", id); } catch(e){}
+    },
+    async fetchAll(){
+      if (!supabaseClient) return null;
+      try {
+        const { data, error } = await supabaseClient.from(table).select("data").order("ts", { ascending: false }).limit(limit);
+        if (error) return null;
+        return data.map(r => r.data);
+      } catch(e){ return null; }
+    }
+  };
+}
+const mixerOverridesStore = rowStore("mixer_overrides", 1000);
+const customDiscountsStore = rowStore("custom_discounts", 500);
+const staffStore = rowStore("staff_users", 500);
+
 async function init(){
   const statusEl = document.getElementById("dbStatus");
   try {
-    dbNs = makeSupabaseDb(supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    dbNs = makeSupabaseDb(supabaseClient);
   } catch(e) { dbNs = null; }
   if (!dbNs) {
     statusEl.textContent = "No database connection.";
@@ -199,12 +280,13 @@ async function init(){
     statusEl.textContent = "Connected — changes save automatically.";
     statusEl.className = "status ok";
     customProducts = await loadDoc(LS_CUSTOM, []);
-    mixerOverrides = new Set(await loadDoc(LS_MIXER_OVERRIDES, []));
+    const mixerRows = await mixerOverridesStore.fetchAll();
+    mixerOverrides = new Set((mixerRows || []).map(r => r.name));
     hhOverride = await loadDoc(LS_HH_OVERRIDE, null);
-    customDiscounts = await loadDoc(LS_CUSTOM_DISCOUNTS, []);
-    users = await loadDoc(LS_USERS, []);
+    customDiscounts = await customDiscountsStore.fetchAll() || [];
+    users = await staffStore.fetchAll() || [];
   }
-  if (!users.length) users = [{ id:"710603", name:"Tom", perms:{ placeOrders:true, productsOnStop:true, xzRead:true, backendAccess:true, orderScreen:true } }];
+  if (!users.length) users = [{ id:"710603", name:"Tom", perms:{ active:true, placeOrders:true, productsOnStop:true, recoveryTool:true, callToService:true, clearHistory:true, xzRead:true, endOfDay:true, backendAccess:true, orderScreen:true } }];
   document.getElementById("hhMode").value = hhOverride === true ? "on" : hhOverride === false ? "off" : "auto";
   renderOfferList();
   renderUserList();
@@ -228,7 +310,8 @@ async function init(){
 }
 
 function applyLoginState(){
-  const u = currentUserId ? users.find(x => x.id === currentUserId) : null;
+  let u = currentUserId ? users.find(x => x.id === currentUserId) : null;
+  if (u && u.perms.active === false) { u = null; currentUserId = null; try { localStorage.removeItem(LS_CURRENT_USER); } catch(e){} }
   if (u && u.perms.backendAccess) {
     document.getElementById("loginGate").hidden = true;
     document.getElementById("accountName").textContent = "Signed in as " + u.name;
@@ -241,6 +324,7 @@ document.getElementById("loginSubmitBtn").addEventListener("click", () => {
   const pin = document.getElementById("loginPinInput").value.trim();
   const u = users.find(x => x.id === pin);
   if (!u) { alert("Incorrect PIN."); return; }
+  if (u.perms.active === false) { alert("This account is disabled."); return; }
   currentUserId = u.id;
   try { localStorage.setItem(LS_CURRENT_USER, u.id); } catch(e){}
   document.getElementById("loginPinInput").value = "";
@@ -253,7 +337,7 @@ document.getElementById("accountSignOutBtn").addEventListener("click", () => {
   applyLoginState();
 });
 
-const PERM_LABELS = { placeOrders:"Place Orders", productsOnStop:"Products on Stop", xzRead:"X and Z Read", backendAccess:"Backend Access", orderScreen:"Order Screen" };
+const PERM_LABELS = { active:"Account Active", placeOrders:"Place Orders", productsOnStop:"Products on Stop", recoveryTool:"Recovery Tool", callToService:"Call to Service", clearHistory:"Clear History on Orders", xzRead:"X and Z Read", endOfDay:"Access End of Day", backendAccess:"Backend Access", orderScreen:"Order Screen" };
 function renderUserList(){
   const wrap = document.getElementById("userList");
   wrap.innerHTML = "";
@@ -275,7 +359,7 @@ function renderUserList(){
 async function deleteUser(id){
   if (!confirm("Delete this user?")) return;
   users = users.filter(u => u.id !== id);
-  await saveDoc(LS_USERS, users);
+  await staffStore.remove(id);
   renderUserList();
 }
 document.getElementById("addUserBtn").addEventListener("click", async () => {
@@ -285,21 +369,38 @@ document.getElementById("addUserBtn").addEventListener("click", async () => {
   if (!pin) { alert("Enter a PIN."); return; }
   if (users.some(u => u.id === pin)) { alert("That PIN is already used by another user."); return; }
   const perms = {
+    active: document.getElementById("permActive").checked,
     placeOrders: document.getElementById("permPlaceOrders").checked,
     productsOnStop: document.getElementById("permProductsOnStop").checked,
+    recoveryTool: document.getElementById("permRecoveryTool").checked,
+    callToService: document.getElementById("permCallToService").checked,
+    clearHistory: document.getElementById("permClearHistory").checked,
     xzRead: document.getElementById("permXzRead").checked,
+    endOfDay: document.getElementById("permEndOfDay").checked,
     backendAccess: document.getElementById("permBackendAccess").checked,
     orderScreen: document.getElementById("permOrderScreen").checked
   };
-  users.push({ id: pin, name, perms });
-  await saveDoc(LS_USERS, users);
+  const user = { id: pin, ts: Date.now(), name, perms };
+  users.push(user);
+  await staffStore.save(user);
   document.getElementById("newUserName").value = "";
   document.getElementById("newUserPin").value = "";
+  document.getElementById("permActive").checked = true;
   document.getElementById("permPlaceOrders").checked = true;
-  ["permProductsOnStop","permXzRead","permBackendAccess","permOrderScreen"].forEach(id => { document.getElementById(id).checked = false; });
+  ["permProductsOnStop","permRecoveryTool","permCallToService","permClearHistory","permXzRead","permEndOfDay","permBackendAccess","permOrderScreen"].forEach(id => { document.getElementById(id).checked = false; });
   renderUserList();
 });
 
+function productSummary(p){
+  if (p.type === "spirit") {
+    const dbl = p.doublePence != null ? p.doublePence : p.pence * 2;
+    return `Single ${fmt(p.pence)} · Double ${fmt(dbl)}${p.mixerType ? " · needs a mixer" : ""}`;
+  }
+  if (p.type === "draught" || p.type === "sized") {
+    return (p.sizes || []).map(s => `${s.label} ${fmt(s.pence)}`).join(" · ");
+  }
+  return fmt(p.pence);
+}
 function renderCustomList(){
   const wrap = document.getElementById("customList");
   wrap.innerHTML = "";
@@ -307,10 +408,11 @@ function renderCustomList(){
   customProducts.forEach(p => {
     const row = document.createElement("div");
     row.className = "row";
+    const typeLabel = { spirit:"Spirit", draught:"Draught", sized:"Sized" }[p.type] || "Flat";
     row.innerHTML = `
       <div class="info">
-        <div class="name">${p.name}${p.isMixer ? '<span class="pill">Mixer</span>' : ""}</div>
-        <div class="price">${fmt(p.pence)}</div>
+        <div class="name">${p.name}<span class="pill">${typeLabel}</span>${p.isMixer ? '<span class="pill">Mixer</span>' : ""}</div>
+        <div class="price">${productSummary(p)}</div>
       </div>
       <button class="btn btn-danger" data-id="${p.id}">Delete</button>`;
     row.querySelector("button").addEventListener("click", () => deleteCustom(p.id));
@@ -325,19 +427,111 @@ async function deleteCustom(id){
   renderCustomList();
 }
 
+const DRAUGHT_SIZE_DEFS = [
+  { key: "pint", label: "Pint" },
+  { key: "half", label: "Half Pint" },
+  { key: "cup", label: "Two Pint Cup" },
+  { key: "pitcher", label: "Pitcher (4pt)" }
+];
+function renderDraughtSizeRows(){
+  const wrap = document.getElementById("draughtSizeRows");
+  wrap.innerHTML = DRAUGHT_SIZE_DEFS.map(d => `
+    <div class="size-toggle-row">
+      <span class="switch"><input type="checkbox" data-size-toggle="${d.key}"><span class="slider"></span></span>
+      <span class="name">${d.label}</span>
+      <input type="number" step="0.01" placeholder="Price £" data-size-key="${d.key}" disabled>
+    </div>`).join("");
+  wrap.querySelectorAll("[data-size-toggle]").forEach(cb => {
+    cb.addEventListener("change", () => {
+      const input = wrap.querySelector(`[data-size-key="${cb.dataset.sizeToggle}"]`);
+      input.disabled = !cb.checked;
+      if (cb.checked) input.focus();
+    });
+  });
+}
+function addSizedRow(){
+  const wrap = document.getElementById("sizedRows");
+  const row = document.createElement("div");
+  row.className = "sized-row";
+  row.innerHTML = `
+    <input type="text" placeholder="Size name e.g. 175ml" class="sized-label">
+    <input type="number" step="0.01" placeholder="Price £" class="sized-price">
+    <button type="button" class="btn btn-danger">×</button>`;
+  row.querySelector("button").addEventListener("click", () => row.remove());
+  wrap.appendChild(row);
+}
+function resetSizedRows(){ document.getElementById("sizedRows").innerHTML = ""; addSizedRow(); addSizedRow(); }
+document.getElementById("addSizeRowBtn").addEventListener("click", addSizedRow);
+function updateTypeFields(){
+  const type = document.getElementById("newType").value;
+  document.getElementById("spiritFields").hidden = type !== "spirit";
+  document.getElementById("draughtFields").hidden = type !== "draught";
+  document.getElementById("sizedFields").hidden = type !== "sized";
+  document.getElementById("flatFields").hidden = type !== "flat";
+}
+document.getElementById("newType").addEventListener("change", updateTypeFields);
+updateTypeFields();
+renderDraughtSizeRows();
+resetSizedRows();
+
 document.getElementById("addBtn").addEventListener("click", async () => {
   const name = document.getElementById("newName").value.trim();
-  const priceStr = document.getElementById("newPrice").value;
-  const isMixer = document.getElementById("newIsMixer").checked;
-  const pounds = parseFloat(priceStr);
   if (!name) { alert("Enter a name."); return; }
-  if (!isFinite(pounds) || pounds < 0) { alert("Enter a valid price."); return; }
-  const product = { id: "custom" + Date.now(), name, pence: Math.round(pounds * 100), isMixer };
+  const type = document.getElementById("newType").value;
+  const isMixer = document.getElementById("newIsMixer").checked;
+  const product = { id: "custom" + Date.now(), name, type, isMixer };
+
+  if (type === "spirit") {
+    const single = parseFloat(document.getElementById("spiritSingle").value);
+    const doubleVal = parseFloat(document.getElementById("spiritDouble").value);
+    if (!isFinite(single) || single < 0) { alert("Enter a valid single price."); return; }
+    if (!isFinite(doubleVal) || doubleVal < 0) { alert("Enter a valid double price."); return; }
+    product.pence = Math.round(single * 100);
+    product.doublePence = Math.round(doubleVal * 100);
+    product.mixerType = document.getElementById("spiritMixer").checked ? "both" : null;
+  } else if (type === "draught") {
+    const sizes = [];
+    DRAUGHT_SIZE_DEFS.forEach(d => {
+      const cb = document.querySelector(`[data-size-toggle="${d.key}"]`);
+      const input = document.querySelector(`[data-size-key="${d.key}"]`);
+      if (cb.checked) {
+        const p = parseFloat(input.value);
+        if (isFinite(p) && p >= 0) sizes.push({ label: d.label, pence: Math.round(p * 100) });
+      }
+    });
+    if (!sizes.length) { alert("Tick at least one size and enter its price."); return; }
+    product.sizes = sizes;
+    product.pence = sizes[0].pence;
+    product.mode = "drink";
+  } else if (type === "sized") {
+    const rows = [...document.querySelectorAll("#sizedRows .sized-row")];
+    const sizes = [];
+    rows.forEach(row => {
+      const label = row.querySelector(".sized-label").value.trim();
+      const p = parseFloat(row.querySelector(".sized-price").value);
+      if (label && isFinite(p) && p >= 0) sizes.push({ label, pence: Math.round(p * 100) });
+    });
+    if (!sizes.length) { alert("Add at least one size with a name and price."); return; }
+    product.sizes = sizes;
+    product.pence = sizes[0].pence;
+    product.mode = document.getElementById("sizedMode").value;
+  } else {
+    const pounds = parseFloat(document.getElementById("flatPrice").value);
+    if (!isFinite(pounds) || pounds < 0) { alert("Enter a valid price."); return; }
+    product.pence = Math.round(pounds * 100);
+    product.mode = document.getElementById("flatMode").value;
+  }
+
   customProducts.push(product);
   await saveDoc(LS_CUSTOM, customProducts);
   document.getElementById("newName").value = "";
-  document.getElementById("newPrice").value = "";
+  document.getElementById("spiritSingle").value = "";
+  document.getElementById("spiritDouble").value = "";
+  document.getElementById("spiritMixer").checked = false;
+  document.getElementById("flatPrice").value = "";
   document.getElementById("newIsMixer").checked = false;
+  renderDraughtSizeRows();
+  resetSizedRows();
   renderCustomList();
   renderCatalogue();
 });
@@ -368,7 +562,7 @@ function renderOfferList(){
 async function deleteOffer(id){
   if (!confirm("Delete this offer?")) return;
   customDiscounts = customDiscounts.filter(o => o.id !== id);
-  await saveDoc(LS_CUSTOM_DISCOUNTS, customDiscounts);
+  await customDiscountsStore.remove(id);
   renderOfferList();
 }
 
@@ -377,8 +571,9 @@ document.getElementById("addOfferBtn").addEventListener("click", async () => {
   const pct = parseFloat(document.getElementById("offerPct").value);
   if (!label) { alert("Enter a name."); return; }
   if (!isFinite(pct) || pct <= 0 || pct >= 100) { alert("Enter a % between 0 and 100."); return; }
-  customDiscounts.push({ id: "custom" + Date.now(), label, pct });
-  await saveDoc(LS_CUSTOM_DISCOUNTS, customDiscounts);
+  const offer = { id: "custom" + Date.now(), ts: Date.now(), label, pct };
+  customDiscounts.push(offer);
+  await customDiscountsStore.save(offer);
   document.getElementById("offerName").value = "";
   document.getElementById("offerPct").value = "";
   renderOfferList();
@@ -406,8 +601,8 @@ function renderCatalogue(){
         <div class="info"><div class="name">${p.name}</div><div class="price">${fmt(p.pence)}</div></div>
         <span class="switch"><input type="checkbox" ${mixerOverrides.has(p.name) ? "checked" : ""}><span class="slider"></span></span>`;
       row.querySelector('input[type="checkbox"]').addEventListener("change", async e => {
-        if (e.target.checked) mixerOverrides.add(p.name); else mixerOverrides.delete(p.name);
-        await saveDoc(LS_MIXER_OVERRIDES, [...mixerOverrides]);
+        if (e.target.checked) { mixerOverrides.add(p.name); await mixerOverridesStore.save({ id: p.name, ts: Date.now(), name: p.name }); }
+        else { mixerOverrides.delete(p.name); await mixerOverridesStore.remove(p.name); }
       });
       card.appendChild(row);
     });

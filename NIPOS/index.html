@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Starlight Till</title>
 <meta name="description" content="Pocket point-of-sale for taking cash-register-style orders and logging card sales at Starlight Suite.">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0c1719">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Till">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&display=swap">
 <style>
 :root{
@@ -167,13 +174,6 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 .order-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow);}
 .order-card.flagged{border-color:var(--danger);background:var(--danger-soft);}
 .order-card.ready{border-color:var(--gold);background:var(--gold-soft);}
-
-.backup-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;flex-wrap:wrap;}
-.backup-head h3{font-size:14px;margin:0;}
-.backup-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border);}
-.backup-badge.found{background:var(--accent-soft);color:var(--accent);border-color:transparent;}
-.backup-meta{font-size:12px;color:var(--text-muted);margin-bottom:8px;line-height:1.5;}
-.backup-ta{width:100%;min-height:64px;max-height:180px;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px;font-family:ui-monospace,monospace;font-size:10.5px;resize:vertical;margin-bottom:8px;}
 .order-card.substituted{border-color:var(--accent);background:rgba(60,192,200,.14);}
 .order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
 .order-table{font-weight:800;font-size:15px;font-family:'Manrope',sans-serif;}
@@ -413,13 +413,6 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
         </button>
         <span class="chevron">›</span>
       </div>
-      <div class="admin-row" id="localBackupRow">
-        <button class="admin-row-main" type="button">
-          <span class="name">Local Sales Backup</span>
-          <span class="sub">What's saved on this device, in case a sync is missed</span>
-        </button>
-        <span class="chevron">›</span>
-      </div>
 
       <div class="section-title">Reports</div>
       <div class="admin-row special" id="adminHistoryRow">
@@ -468,7 +461,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     <div class="empty-state" id="histEmpty" style="display:none;">No sales logged yet.<br>Completed sales will appear here.</div>
     <div class="hist-actions">
       <button class="btn btn-ghost btn-block" id="histCopy">Copy as text</button>
-      <button class="btn btn-danger btn-block" id="histClear" disabled title="Temporarily disabled">Clear history (disabled)</button>
+      <button class="btn btn-danger btn-block" id="histClear">Clear history</button>
     </div>
 
     <div class="section-title">Abandoned Orders</div>
@@ -477,17 +470,6 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     <div class="empty-state" id="abandonedEmpty" style="display:none;padding:16px 10px;">No abandoned orders.</div>
 
     <button class="btn btn-ghost btn-block" id="exportAllBtn" style="margin-top:8px;">Export all sales (every shift)</button>
-  </div>
-</div>
-
-<div class="sheet" id="localBackupSheet">
-  <div class="sheet-head">
-    <button class="icon-btn" id="localBackupBack" aria-label="Back">←</button>
-    <h2>Local Sales Backup</h2>
-  </div>
-  <div class="sheet-body">
-    <p class="admin-note">This device keeps its own backup copy of sales alongside the shared one. If a sync is ever missed, this is what's actually saved here right now — useful to check and copy before doing anything else on this device.</p>
-    <div id="localBackupList"></div>
   </div>
 </div>
 
@@ -840,28 +822,24 @@ const LS_MIXER_OVERRIDES = "starlightTill.mixerOverrides.v1";
 const LS_HH_OVERRIDE = "starlightTill.hhOverride.v1";
 const LS_CUSTOM_DISCOUNTS = "starlightTill.customDiscounts.v1";
 const LS_ORDERS = "starlightTill.openOrders.v1";
-const LS_DELIVERED = "starlightTill.deliveredOrders.v1";
 const LS_REFUNDS = "starlightTill.refunds.v1";
 const LS_USERS = "starlightTill.users.v1";
 const LS_CURRENT_USER = "starlightTill.currentUser.v1";
 const LS_NOTIFICATIONS = "starlightTill.notifications.v1";
+function hydrateCustomProduct(p){
+  const isSpirit = p.type === "spirit";
+  const isBeer = p.type === "draught";
+  const isSized = p.type === "sized" && Array.isArray(p.sizes) && p.sizes.length > 0;
+  return { ...p, isSpirit, isBeer, isSized, mixerType: isSpirit ? (p.mixerType || null) : null, hasOptions: isSpirit || isBeer || isSized };
+}
 let customProducts = loadJSON(LS_CUSTOM, []);
-customProducts.forEach(p => { BY_ID[p.id] = { ...p, hasOptions: false }; });
+customProducts.forEach(p => { BY_ID[p.id] = hydrateCustomProduct(p); });
 let mixerOverrides = new Set(loadJSON(LS_MIXER_OVERRIDES, []));
 let hhOverride = loadJSON(LS_HH_OVERRIDE, null);
 let customDiscounts = loadJSON(LS_CUSTOM_DISCOUNTS, []);
 let openOrders = loadJSON(LS_ORDERS, []);
-let deliveredOrders = loadJSON(LS_DELIVERED, []);
-let lastOrdersMutationTs = 0;
-async function saveOrders(){
-  lastOrdersMutationTs = Date.now();
-  try { localStorage.setItem(LS_ORDERS, JSON.stringify(openOrders)); } catch(e){}
-  try {
-    if (dbNs) await dbNs.doc("state/" + LS_ORDERS).set({ value: openOrders });
-  } catch(e){}
-}
 let users = loadJSON(LS_USERS, []);
-if (!users.length) users = [{ id:"710603", name:"Tom", perms:{ placeOrders:true, productsOnStop:true, xzRead:true, backendAccess:true, orderScreen:true } }];
+if (!users.length) users = [{ id:"710603", name:"Tom", perms:{ active:true, placeOrders:true, productsOnStop:true, recoveryTool:true, callToService:true, clearHistory:true, xzRead:true, endOfDay:true, backendAccess:true, orderScreen:true } }];
 let currentUserId = null;
 try { currentUserId = localStorage.getItem(LS_CURRENT_USER); } catch(e){}
 let currentUser = null;
@@ -877,27 +855,78 @@ function makeSupabaseDb(client){
     }
   }; } };
 }
+let supabaseClient = null;
 function saveJSON(key, val){
   try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
   if (dbNs) { dbNs.doc("state/" + key).set({ value: val }).catch(() => {}); }
 }
+function saveLocal(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+function saveLocalHistory(){ saveLocal(LS_HIST, history); }
+
+// Every shared log used to be one array that every device blind-overwrote whole — whichever device
+// saved last silently erased everyone else's changes. Each of these is now a table of independent
+// rows, one per event, addressed by its own id — a device only ever writes its own row, so two
+// devices can never clobber each other. Views (Past Orders, X/Z-Read, the Order Screen) read a
+// fresh copy of the whole table rather than trusting a locally-merged copy.
+function rowStore(table, limit){
+  limit = limit || 1000;
+  return {
+    async save(row){
+      if (!supabaseClient) return;
+      try { await supabaseClient.from(table).upsert({ id: row.id, ts: row.ts, data: row }); } catch(e){}
+    },
+    async remove(id){
+      if (!supabaseClient) return;
+      try { await supabaseClient.from(table).delete().eq("id", id); } catch(e){}
+    },
+    async fetchAll(){
+      if (!supabaseClient) return null;
+      try {
+        const { data, error } = await supabaseClient.from(table).select("data").order("ts", { ascending: false }).limit(limit);
+        if (error) return null;
+        return data.map(r => r.data);
+      } catch(e){ return null; }
+    },
+    async clear(){
+      if (!supabaseClient) return;
+      try { await supabaseClient.from(table).delete().gte("ts", 0); } catch(e){}
+    }
+  };
+}
+const salesStore = rowStore("sales", 5000);
+const abandonedStore = rowStore("abandoned", 5000);
+const gratuitiesStore = rowStore("gratuities", 5000);
+const refundsStore = rowStore("refunds", 5000);
+const notificationsStore = rowStore("notifications", 200);
+const ordersStore = rowStore("open_orders", 2000);
+const stopsStore = rowStore("stops", 1000);
+const mixerOverridesStore = rowStore("mixer_overrides", 1000);
+const customDiscountsStore = rowStore("custom_discounts", 500);
+const staffStore = rowStore("staff_users", 500);
+async function storeZReportRemote(id, closedAt, summary, html){
+  if (!supabaseClient) return;
+  try { await supabaseClient.from("z_reports").upsert({ id, closed_at: closedAt, summary, html }); } catch(e){}
+}
+async function pullRowStores(){
+  const orders = await ordersStore.fetchAll();
+  if (orders) { openOrders = orders; renderOpenOrdersBadge(); if (adminView === "openOrders") renderOpenOrdersList(); }
+  const notifs = await notificationsStore.fetchAll();
+  if (notifs) { checkPersonalNotifications(notifs); notifications = notifs; }
+  const stopRows = await stopsStore.fetchAll();
+  if (stopRows) { stops = new Set(stopRows.map(r => r.name)); applyVisibility(); }
+  const mixerRows = await mixerOverridesStore.fetchAll();
+  if (mixerRows) mixerOverrides = new Set(mixerRows.map(r => r.name));
+  const discountRows = await customDiscountsStore.fetchAll();
+  if (discountRows) { customDiscounts = discountRows; renderDiscountChips(); }
+  const staffRows = await staffStore.fetchAll();
+  if (staffRows && staffRows.length) { users = staffRows; currentUser = currentUserId ? users.find(u => u.id === currentUserId) : null; applyLoginState(); }
+}
 
 const PERSISTED_KEYS = [
   { key: LS_CART, set: v => { cart = v; renderQtys(); renderCartBar(); } },
-  { key: LS_HIST, set: v => { history = v; } },
-  { key: LS_ABANDONED, set: v => { abandoned = v; } },
-  { key: LS_REFUNDS, set: v => { refunds = v; } },
-  { key: LS_GRAT, set: v => { gratuities = v; } },
-  { key: LS_STOPS, set: v => { stops = new Set(v); applyVisibility(); }, live: true },
   { key: LS_Z, set: v => { zReports = v; } },
-  { key: LS_CUSTOM, set: v => { customProducts = v; customProducts.forEach(p => { BY_ID[p.id] = { ...p, hasOptions: false }; }); }, live: true },
-  { key: LS_MIXER_OVERRIDES, set: v => { mixerOverrides = new Set(v); }, live: true },
+  { key: LS_CUSTOM, set: v => { customProducts = v; customProducts.forEach(p => { BY_ID[p.id] = hydrateCustomProduct(p); }); renderCustomCategories(); }, live: true },
   { key: LS_HH_OVERRIDE, set: v => { hhOverride = v; }, live: true },
-  { key: LS_CUSTOM_DISCOUNTS, set: v => { customDiscounts = v; renderDiscountChips(); }, live: true },
-  { key: LS_ORDERS, set: v => { openOrders = v; renderOpenOrdersBadge(); if (adminView === "openOrders") renderOpenOrdersList(); }, live: true, guardTs: () => lastOrdersMutationTs },
-  { key: LS_DELIVERED, set: v => { deliveredOrders = v; } },
-  { key: LS_USERS, set: v => { if (v.length) users = v; currentUser = currentUserId ? users.find(u => u.id === currentUserId) : null; applyLoginState(); }, live: true },
-  { key: LS_NOTIFICATIONS, set: v => { checkPersonalNotifications(v); notifications = v; }, live: true },
   { key: LS_TITLE, set: v => { appTitle = v; document.getElementById("brandTitle").textContent = v; document.getElementById("titleRowSub").textContent = v; } },
   { key: LS_MODE, set: v => { menuMode = v; applyVisibility(); } }
 ];
@@ -906,12 +935,10 @@ async function pullState(items){
   if (!dbNs) return;
   for (const item of items) {
     try {
-      const fetchStartedAt = Date.now();
       const snap = await dbNs.doc("state/" + item.key).get();
       if (snap.exists) {
         const body = snap.data();
-        const guarded = item.guardTs && (fetchStartedAt - item.guardTs() <= 2000);
-        if (body && body.value !== undefined && !guarded) item.set(body.value);
+        if (body && body.value !== undefined) item.set(body.value);
       }
     } catch (e) {}
   }
@@ -919,11 +946,13 @@ async function pullState(items){
 
 async function connectDb(){
   try {
-    dbNs = makeSupabaseDb(supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    dbNs = makeSupabaseDb(supabaseClient);
   } catch (e) { dbNs = null; }
   if (!dbNs) return;
   await pullState(PERSISTED_KEYS);
-  setInterval(() => pullState(PERSISTED_KEYS.filter(i => i.live)), 1000);
+  await pullRowStores();
+  setInterval(() => { pullState(PERSISTED_KEYS.filter(i => i.live)); pullRowStores(); }, 1000);
 }
 
 let cart = loadJSON(LS_CART, {});
@@ -954,6 +983,7 @@ function findMixer(mixerId){
 function lineInfo(key){
   const parts = key.split("::");
   const product = BY_ID[parts[0]];
+  if (!product) return { name: "Removed item", pence: 0 };
   if (parts.length === 1) return { name: product.name, pence: product.pence };
   if (parts[1] === "beer") {
     const size = product.sizes ? product.sizes[Number(parts[2])] : null;
@@ -970,7 +1000,8 @@ function lineInfo(key){
     return { name: `${product.name} (${size.label})`, pence: size.pence };
   }
   const measure = parts[1], mixer = findMixer(parts[2]);
-  const pence = (measure === "double" ? product.pence * 2 : product.pence) + (mixer ? mixer.pence : 0);
+  const doublePence = product.doublePence != null ? product.doublePence : product.pence * 2;
+  const pence = (measure === "double" ? doublePence : product.pence) + (mixer ? mixer.pence : 0);
   const name = `${product.name} (${measure === "double" ? "Double" : "Single"}${mixer ? " & " + mixer.name : ""})`;
   return { name, pence };
 }
@@ -1097,21 +1128,25 @@ function showInfo(opts){ return openModal({ ...opts, withInput: false, hideCance
 function askChoice(opts){ return openModal({ ...opts, withInput: false }); }
 
 async function addSpiritToCart(product){
+  const doublePence = product.doublePence != null ? product.doublePence : product.pence * 2;
   const measure = await askChoice({ title: product.name, message: "Choose a measure.", choices: [
     { label: "Single", value: "single", sub: fmt(product.pence) },
-    { label: "Double", value: "double", sub: fmt(product.pence * 2) }
+    { label: "Double", value: "double", sub: fmt(doublePence) }
   ]});
   if (!measure) return;
-  const tonicItems = (CAT.find(c => c.name === "Mixers") ? CAT.find(c => c.name === "Mixers").items : []).filter(i => !stops.has(i.name));
-  const mixerList = product.mixerType === "both" ? tonicItems.concat(DASH_MIXERS) : DASH_MIXERS;
-  const usedIds = new Set(mixerList.map(m => m.id));
-  const extraMixers = ALL_ITEMS.concat(customProducts).filter(p => (mixerOverrides.has(p.name) || p.isMixer) && !usedIds.has(p.id) && !stops.has(p.name));
-  const mixerChoices = [{ label: "No mixer (neat)", value: "none" }].concat(
-    mixerList.map(m => ({ label: m.name, value: m.id, sub: fmt(m.pence) })),
-    extraMixers.map(m => ({ label: m.name, value: m.id, sub: fmt(m.pence) }))
-  );
-  const mixerId = await askChoice({ title: "Add a mixer?", message: `For the ${product.name}.`, choices: mixerChoices });
-  if (mixerId === null) return;
+  let mixerId = "none";
+  if (product.mixerType) {
+    const tonicItems = (CAT.find(c => c.name === "Mixers") ? CAT.find(c => c.name === "Mixers").items : []).filter(i => !stops.has(i.name));
+    const mixerList = product.mixerType === "both" ? tonicItems.concat(DASH_MIXERS) : DASH_MIXERS;
+    const usedIds = new Set(mixerList.map(m => m.id));
+    const extraMixers = ALL_ITEMS.concat(customProducts).filter(p => (mixerOverrides.has(p.name) || p.isMixer) && !usedIds.has(p.id) && !stops.has(p.name));
+    const mixerChoices = [{ label: "No mixer (neat)", value: "none" }].concat(
+      mixerList.map(m => ({ label: m.name, value: m.id, sub: fmt(m.pence) })),
+      extraMixers.map(m => ({ label: m.name, value: m.id, sub: fmt(m.pence) }))
+    );
+    mixerId = await askChoice({ title: "Add a mixer?", message: `For the ${product.name}.`, choices: mixerChoices });
+    if (mixerId === null) return;
+  }
   const key = `${product.id}::${measure}::${mixerId}`;
   cart[key] = (cart[key] || 0) + 1;
   saveJSON(LS_CART, cart); renderQtys(); renderCartBar();
@@ -1202,6 +1237,62 @@ CAT.forEach(cat => {
   section.appendChild(list);
   menuEl.appendChild(section);
 });
+
+// Custom products (added on the Backend page) render into their own sections here, grouped by
+// what kind of item they are, so they show up as normal browsable/sellable items on the till.
+const CUSTOM_CAT_DEFS = [
+  { bucket: "spirit", id: "customSpiritsCat", name: "Custom Spirits", mode: "drink" },
+  { bucket: "draught", id: "customDraughtCat", name: "Custom Draught", mode: "drink" },
+  { bucket: "drink", id: "customDrinksCat", name: "Custom Drinks", mode: "drink" },
+  { bucket: "food", id: "customFoodCat", name: "Custom Food", mode: "food" }
+];
+function customBucketFor(p){
+  if (p.type === "spirit") return "spirit";
+  if (p.type === "draught") return "draught";
+  return p.mode === "food" ? "food" : "drink";
+}
+function renderCustomCategories(){
+  const groups = { spirit: [], draught: [], drink: [], food: [] };
+  customProducts.forEach(p => groups[customBucketFor(p)].push(p));
+  CUSTOM_CAT_DEFS.forEach(def => {
+    const items = groups[def.bucket];
+    let section = document.getElementById(def.id);
+    if (!items.length) { if (section) section.style.display = "none"; return; }
+    if (!section) {
+      section = document.createElement("section");
+      section.className = "category";
+      section.id = def.id;
+      section.dataset.mode = def.mode;
+      section.innerHTML = `<h2>${def.name}</h2>`;
+      const list = document.createElement("div");
+      list.className = "items";
+      section.appendChild(list);
+      menuEl.appendChild(section);
+    }
+    section.style.display = "";
+    const list = section.querySelector(".items");
+    list.innerHTML = "";
+    items.forEach(raw => {
+      const p = BY_ID[raw.id] || hydrateCustomProduct(raw);
+      const row = document.createElement("div");
+      row.className = "product";
+      row.dataset.id = p.id;
+      row.dataset.name = p.name;
+      row.dataset.search = p.name.toLowerCase();
+      row.innerHTML = `
+        <div class="info"><div class="name">${p.name}</div><div class="price tabular">${p.sizes && p.sizes.length > 1 ? "From " : ""}${fmt(p.pence)}</div></div>
+        <div class="stepper empty${p.hasOptions ? " spirit" : ""}" data-id="${p.id}">
+          <button class="minus" aria-label="Remove one">−</button>
+          <span class="qty tabular">0</span>
+          <button class="plus" aria-label="Add one">+</button>
+        </div>`;
+      list.appendChild(row);
+    });
+  });
+  renderQtys();
+  applyVisibility();
+}
+renderCustomCategories();
 
 function applyVisibility(){
   const q = document.getElementById("search").value.trim().toLowerCase();
@@ -1469,12 +1560,15 @@ document.getElementById("chargeConfirm").addEventListener("click", async () => {
     if (!ok) return;
   }
   const items = Object.entries(cart).map(([key, qty]) => { const info = lineInfo(key); return { name: info.name, pence: info.pence, qty }; });
-  const sale = { ts: Date.now(), items, base, discountAmount, discountLabel, happyHour: isHappyHourNow(), method: pendingMethod, total, table: currentTable.trim() || null, notes: currentNotes.trim() || null };
+  const sale = { id: "s"+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), items, base, discountAmount, discountLabel, happyHour: isHappyHourNow(), method: pendingMethod, total, table: currentTable.trim() || null, notes: currentNotes.trim() || null };
   if (pendingMethod === "cash") { sale.cashGiven = cashGivenPence; sale.change = Math.max(0, cashGivenPence - total); }
   history.unshift(sale);
-  saveJSON(LS_HIST, history);
-  openOrders.unshift({ id: "o"+Date.now(), ts: Date.now(), saleTs: sale.ts, table: sale.table, method: pendingMethod, items: items.map(i => ({ name: i.name, qty: i.qty })), delivered: false, ready: false, flagged: false, flagItem: null, flagReason: null, flagSubstitute: null, flagOutcome: null, placedBy: currentUser ? currentUser.name : null, placedById: currentUser ? currentUser.id : null });
-  await saveOrders();
+  saveLocalHistory();
+  salesStore.save(sale);
+  const newOrder = { id: "o"+Date.now(), ts: Date.now(), saleTs: sale.ts, table: sale.table, method: pendingMethod, items: items.map(i => ({ name: i.name, qty: i.qty })), notes: sale.notes, delivered: false, ready: false, flagged: false, flagItem: null, flagReason: null, flagSubstitute: null, flagOutcome: null, placedBy: currentUser ? currentUser.name : null, placedById: currentUser ? currentUser.id : null };
+  openOrders.unshift(newOrder);
+  ordersStore.save(newOrder);
+  logOrderToDiscord(sale);
   cart = {}; discount = null; currentNotes = ""; currentTable = ""; document.getElementById("notesInput").value = ""; saveJSON(LS_CART, cart);
   renderQtys(); renderCartBar();
   closeSheet("chargeSheet");
@@ -1487,8 +1581,10 @@ document.getElementById("cancelOrderBtn").addEventListener("click", async () => 
   const ok = await askConfirm({ title:"Log as abandoned order?", message:`This order was worth ${fmt(total)}. It'll be kept for reference but won't count toward your takings.`, confirmLabel:"Log as abandoned" });
   if (!ok) return;
   const items = Object.entries(cart).map(([key, qty]) => { const info = lineInfo(key); return { name: info.name, pence: info.pence, qty }; });
-  abandoned.unshift({ ts: Date.now(), items, base, discountAmount, discountLabel, happyHour: isHappyHourNow(), total, table: currentTable.trim() || null, notes: currentNotes.trim() || null });
-  saveJSON(LS_ABANDONED, abandoned);
+  const abandonedOrder = { id: "a"+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), items, base, discountAmount, discountLabel, happyHour: isHappyHourNow(), total, table: currentTable.trim() || null, notes: currentNotes.trim() || null };
+  abandoned.unshift(abandonedOrder);
+  saveLocal(LS_ABANDONED, abandoned);
+  abandonedStore.save(abandonedOrder);
   cart = {}; discount = null; currentNotes = ""; document.getElementById("notesInput").value = ""; saveJSON(LS_CART, cart);
   renderQtys(); renderCartBar();
   closeSheet("cartSheet");
@@ -1533,9 +1629,44 @@ function alertUser(title, body, urgent){
     } catch(e){}
   }
 }
+const SEND_PUSH_URL = "https://djegigghjeisoyecxeyo.supabase.co/functions/v1/send-push";
+const VAPID_PUBLIC_KEY = "BIsWuuC6kXfpzLch6fyertHwGCXxMy3GToZK05uJjilcHIg-DkrQaIZxzbhYsKLkFqw5z0qTzmKsts433AnOxvY";
+function urlBase64ToUint8Array(base64String){
+  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  const arr = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) arr[i] = rawData.charCodeAt(i);
+  return arr;
+}
+async function savePushSubscription(sub){
+  if (!supabaseClient || !sub) return;
+  const json = sub.toJSON ? sub.toJSON() : sub;
+  const id = "px" + btoa(json.endpoint).replace(/[^a-zA-Z0-9]/g, "").slice(0, 60);
+  try { await supabaseClient.from("push_subscriptions").upsert({ id, user_id: currentUserId || "unknown", endpoint: json.endpoint, subscription: json }); } catch(e){}
+}
+async function enablePush(){
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.register("sw.js");
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
+    await savePushSubscription(sub);
+  } catch(e){}
+}
+async function sendPushNotification(toUserId, fromUserId, fromName, message, urgent){
+  try {
+    await fetch(SEND_PUSH_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY },
+      body: JSON.stringify({ toUserId, fromUserId, title: fromName ? `${fromName} says` : "Notification", body: message, urgent: !!urgent })
+    });
+  } catch(e){}
+}
 document.getElementById("enableAlertsBtn").addEventListener("click", async () => {
   try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); playChime(); } catch(e){}
   if ("Notification" in window) { try { await Notification.requestPermission(); } catch(e){} }
+  await enablePush();
   document.getElementById("alertsRow").hidden = true;
 });
 
@@ -1547,12 +1678,76 @@ function checkPersonalNotifications(list){
     .forEach(n => alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent));
   knownNotificationIds = ids;
 }
-function pushNotification(toUserId, message, urgent){
+const DISCORD_ORDER_WEBHOOK = "https://discord.com/api/webhooks/1548638278977069176/phF4dnaGijnUWjvwB2AhtgRmW1Jkpa9e3o_SCu2Di-nxySIYWUaBV4ZUFOA6nNUI_p8d";
+const DISCORD_ZREAD_WEBHOOK = "https://discord.com/api/webhooks/1548640661333483570/NJdeXsDg2ucCguV8Gnm4fj2_zwdhbHfFgyothigQfs6tZu-ZH7lJhI3-QRb34m6t5W-w";
+const DISCORD_STOP_WEBHOOK = "https://discord.com/api/webhooks/1548640586964402227/SotvSZd9k35pvCkX-iW-J_KfIYv-R6p-HPLl-RGBD2BTfP8hQmOe3Vkd8ILGnTnQNx9Q";
+async function postDiscordEmbed(webhook, embed, file){
+  try {
+    if (file) {
+      const form = new FormData();
+      form.append("payload_json", JSON.stringify({ embeds: [embed] }));
+      form.append("files[0]", file.blob, file.name);
+      await fetch(webhook, { method: "POST", body: form });
+    } else {
+      await fetch(webhook, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ embeds: [embed] }) });
+    }
+  } catch(e){}
+}
+async function logOrderToDiscord(sale){
+  const drinks = sale.items.map(i => `${i.qty}x ${i.name}`).join("\n") || "-";
+  const discount = sale.discountAmount ? `${sale.discountLabel || "Discount"} -${fmt(sale.discountAmount)}` : "None";
+  postDiscordEmbed(DISCORD_ORDER_WEBHOOK, {
+    title: `NEW ORDER — TABLE ${sale.table || "N/A"}`,
+    color: 0x3cc0c8,
+    fields: [
+      { name: "Placed by", value: currentUser ? currentUser.name : "Unknown", inline: true },
+      { name: "Time", value: new Date(sale.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), inline: true },
+      { name: "Paid by", value: sale.method === "cash" ? "Cash" : "Card", inline: true },
+      { name: "Drinks", value: drinks },
+      { name: "Order Notes", value: sale.notes || "-" },
+      { name: "Total", value: fmt(sale.total), inline: true },
+      { name: "Discount", value: discount, inline: true }
+    ],
+    timestamp: new Date(sale.ts).toISOString()
+  });
+}
+async function logStopToDiscord(name, on){
+  postDiscordEmbed(DISCORD_STOP_WEBHOOK, {
+    title: on ? "🛑 Product Stopped" : "✅ Product Back In Stock",
+    color: on ? 0xff7a68 : 0x49c98d,
+    fields: [
+      { name: "Product", value: name, inline: true },
+      { name: "By", value: currentUser ? currentUser.name : "Unknown", inline: true }
+    ],
+    timestamp: new Date().toISOString()
+  });
+}
+async function logZReadToDiscord(s, reportHtml){
+  postDiscordEmbed(DISCORD_ZREAD_WEBHOOK, {
+    title: "🧾 Z Read — Till Closed",
+    color: 0xfecf46,
+    fields: [
+      { name: "Cash", value: fmt(s.cashTotal), inline: true },
+      { name: "Card", value: fmt(s.cardTotal), inline: true },
+      { name: "Takings", value: fmt(s.grandTotal), inline: true },
+      { name: "Tips", value: fmt(s.gratuityTotal), inline: true },
+      { name: "Discounts", value: fmt(s.discountTotal), inline: true },
+      { name: "Refunds", value: fmt(s.refundTotal), inline: true },
+      { name: "Transactions", value: String(s.txCount), inline: true },
+      { name: "Closed by", value: currentUser ? currentUser.name : "Unknown", inline: true }
+    ],
+    timestamp: new Date().toISOString()
+  }, { blob: new Blob([reportHtml], { type: "text/html" }), name: `z-read-${Date.now()}.html` });
+}
+async function pushNotification(toUserId, message, urgent){
   const me = currentUser;
-  notifications.push({ id: "n" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), toUserId, fromUserId: currentUserId, fromName: me ? me.name : "Someone", message, urgent: !!urgent });
-  notifications = notifications.slice(-50);
-  saveJSON(LS_NOTIFICATIONS, notifications);
+  const notif = { id: "n" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), toUserId, fromUserId: currentUserId, fromName: me ? me.name : "Someone", message, urgent: !!urgent };
+  notifications.unshift(notif);
+  notifications = notifications.slice(0, 50);
+  saveLocal(LS_NOTIFICATIONS, notifications);
+  notificationsStore.save(notif);
   knownNotificationIds = new Set(notifications.map(n => n.id));
+  sendPushNotification(toUserId, currentUserId, me ? me.name : "Someone", message, urgent);
 }
 
 /* ---------- gratuities ---------- */
@@ -1561,14 +1756,17 @@ document.getElementById("gratuityBtn").addEventListener("click", async () => {
   if (val === null) return;
   const pounds = parseFloat(val);
   if (!isFinite(pounds) || pounds <= 0) { showToast("Enter a valid amount"); return; }
-  gratuities.push({ ts: Date.now(), amount: Math.round(pounds * 100) });
-  saveJSON(LS_GRAT, gratuities);
+  const grat = { id: "g"+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), amount: Math.round(pounds * 100) };
+  gratuities.push(grat);
+  saveLocal(LS_GRAT, gratuities);
+  gratuitiesStore.save(grat);
   showToast("Gratuity logged — " + fmt(Math.round(pounds * 100)));
 });
 
 /* ---------- login / permissions ---------- */
 function applyLoginState(){
   currentUser = currentUserId ? users.find(u => u.id === currentUserId) : null;
+  if (currentUser && currentUser.perms.active === false) { signOut(); return; }
   document.getElementById("loginGate").hidden = !!currentUser;
   if (!currentUser) { document.getElementById("lockedScreen").hidden = true; return; }
   const locked = !currentUser.perms.placeOrders;
@@ -1578,15 +1776,20 @@ function applyLoginState(){
   document.getElementById("stoppedRow").hidden = !currentUser.perms.productsOnStop;
   document.getElementById("openOrdersRow").hidden = !currentUser.perms.orderScreen;
   document.getElementById("xReadRow").hidden = !currentUser.perms.xzRead;
-  document.getElementById("adminEndOfShiftRow").hidden = !currentUser.perms.xzRead;
+  document.getElementById("adminEndOfShiftRow").hidden = !currentUser.perms.endOfDay;
+  document.getElementById("histClear").hidden = !currentUser.perms.clearHistory;
 }
 function signIn(pin){
   const u = users.find(x => x.id === pin);
   if (!u) { showToast("Incorrect PIN"); return; }
+  if (u.perms.active === false) { showToast("This account is disabled"); return; }
   currentUserId = u.id;
   try { localStorage.setItem(LS_CURRENT_USER, u.id); } catch(e){}
   document.getElementById("loginPinInput").value = "";
   applyLoginState();
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistration().then(reg => reg && reg.pushManager.getSubscription()).then(sub => sub && savePushSubscription(sub)).catch(() => {});
+  }
 }
 function signOut(){
   currentUserId = null; currentUser = null;
@@ -1614,66 +1817,18 @@ document.getElementById("adminBack").addEventListener("click", () => {
   else if (adminView === "detail") { if (adminDetailOrigin === "stoppedCats") showStoppedCategories(); else showAdminHome(); }
   else showAdminHome();
 });
-document.getElementById("adminHistoryRow").querySelector(".admin-row-main").addEventListener("click", () => {
+document.getElementById("adminHistoryRow").querySelector(".admin-row-main").addEventListener("click", async () => {
+  const remoteSales = await salesStore.fetchAll();
+  if (remoteSales) { history = remoteSales; saveLocalHistory(); }
+  abandoned = await abandonedStore.fetchAll() || abandoned;
+  gratuities = await gratuitiesStore.fetchAll() || gratuities;
+  refunds = await refundsStore.fetchAll() || refunds;
   renderHistory(); openSheet("historySheet");
 });
 document.getElementById("adminEndOfShiftRow").querySelector(".admin-row-main").addEventListener("click", () => {
   renderPastZ(); openSheet("endOfShiftSheet");
 });
 document.getElementById("endOfShiftBack").addEventListener("click", () => closeSheet("endOfShiftSheet"));
-document.getElementById("localBackupRow").querySelector(".admin-row-main").addEventListener("click", () => {
-  renderLocalBackup(); openSheet("localBackupSheet");
-});
-document.getElementById("localBackupBack").addEventListener("click", () => closeSheet("localBackupSheet"));
-
-const LOCAL_BACKUP_KEYS = [
-  { key: LS_HIST, label: "Sales log (Past Orders)" },
-  { key: LS_Z, label: "Past Z Reports" },
-  { key: LS_ABANDONED, label: "Abandoned orders" },
-  { key: LS_REFUNDS, label: "Refunds" },
-  { key: LS_GRAT, label: "Gratuities" },
-  { key: LS_ORDERS, label: "Open orders (not yet delivered)" },
-  { key: LS_DELIVERED, label: "Delivered / resolved orders" }
-];
-
-function renderLocalBackup(){
-  const list = document.getElementById("localBackupList");
-  list.innerHTML = "";
-  LOCAL_BACKUP_KEYS.forEach(({ key, label }) => {
-    let raw = null;
-    try { raw = localStorage.getItem(key); } catch (e) {}
-
-    let count = null, oldest = null, newest = null;
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          count = parsed.length;
-          const times = parsed.map(x => x && (x.ts || x.closedAt)).filter(Boolean);
-          if (times.length) { oldest = Math.min(...times); newest = Math.max(...times); }
-        }
-      } catch (e) {}
-    }
-
-    const found = !!raw && count !== 0;
-    const card = document.createElement("div");
-    card.className = "order-card";
-    card.innerHTML = `
-      <div class="backup-head">
-        <h3>${label}</h3>
-        <span class="backup-badge ${found ? "found" : ""}">${raw === null ? "not present" : (count === null ? "present" : count + " item" + (count === 1 ? "" : "s"))}</span>
-      </div>
-      <div class="backup-meta">${oldest ? `Earliest ${new Date(oldest).toLocaleString()} · Latest ${new Date(newest).toLocaleString()}` : "&nbsp;"}</div>
-      <textarea class="backup-ta" readonly>${raw ? raw.replace(/</g,"&lt;") : "(nothing stored under this key on this device)"}</textarea>
-      <button class="btn btn-ghost btn-block backup-copy-btn" ${raw ? "" : "disabled"}>Copy this box</button>
-    `;
-    const btn = card.querySelector(".backup-copy-btn");
-    if (raw) {
-      btn.addEventListener("click", () => copyLines([raw], "Copied — paste it into a message"));
-    }
-    list.appendChild(card);
-  });
-}
 document.getElementById("stoppedRow").querySelector(".admin-row-main").addEventListener("click", () => showStoppedCategories());
 document.getElementById("openOrdersRow").querySelector(".admin-row-main").addEventListener("click", () => showOpenOrders());
 document.getElementById("titleRow").querySelector(".admin-row-main").addEventListener("click", async () => {
@@ -1759,31 +1914,24 @@ function renderOpenOrdersList(){
     wrap.appendChild(row);
   });
 }
-function archiveOrder(o, resolution){
-  if (!o) return;
-  deliveredOrders.unshift({ ...o, resolution, resolvedAt: Date.now() });
-  saveJSON(LS_DELIVERED, deliveredOrders);
-}
 async function markOrderDelivered(id){
   const o = openOrders.find(x => x.id === id);
   if (o && o.placedById) pushNotification(o.placedById, `Table ${o.table || "?"} — order delivered`);
-  archiveOrder(o, "delivered");
-  if (o) o.delivered = true;
-  await saveOrders();
+  openOrders = openOrders.filter(x => x.id !== id);
+  await ordersStore.remove(id);
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
 async function markOrderReady(id){
   const o = openOrders.find(x => x.id === id);
   if (o) o.ready = true;
-  await saveOrders();
+  if (o) await ordersStore.save(o);
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
 async function resolveOrderFlag(id, outcome){
   const o = openOrders.find(x => x.id === id);
   if (outcome === "refunded") {
-    archiveOrder(o, "refunded");
-    if (o) o.delivered = true;
-    await saveOrders();
+    openOrders = openOrders.filter(x => x.id !== id);
+    await ordersStore.remove(id);
     renderOpenOrdersList(); renderOpenOrdersBadge();
     if (o && o.saleTs) goToPastOrderForRefund(o.saleTs);
     return;
@@ -1794,8 +1942,8 @@ async function resolveOrderFlag(id, outcome){
     }
     o.flagged = false;
     o.flagOutcome = outcome;
+    await ordersStore.save(o);
   }
-  await saveOrders();
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
 function goToPastOrderForRefund(saleTs){
@@ -1852,8 +2000,10 @@ function toggleCategoryStop(catId, on){
 }
 
 function toggleStop(id, name, on){
-  if (on) stops.add(name); else stops.delete(name);
-  saveJSON(LS_STOPS, [...stops]);
+  if (on) { stops.add(name); stopsStore.save({ id: name, ts: Date.now(), name }); }
+  else { stops.delete(name); stopsStore.remove(name); }
+  try{ localStorage.setItem(LS_STOPS, JSON.stringify([...stops])); }catch(e){}
+  logStopToDiscord(name, on);
   if (on && removeProductFromCart(id)) { saveJSON(LS_CART, cart); renderQtys(); renderCartBar(); }
   applyVisibility();
   renderAdminHome();
@@ -1967,9 +2117,12 @@ async function refundItem(saleTs, itemIdx){
   const ok = await askConfirm({ title:"Refund this item?", message:`Refund ${item.qty} × ${item.name} — ${fmt(refundPence)}${discountNote}.`, confirmLabel:"Refund", danger:true });
   if (!ok) return;
   item.refunded = true;
-  refunds.unshift({ ts: Date.now(), saleTs: sale.ts, itemName: item.name, qty: item.qty, pence: refundPence, method: sale.method || "card" });
-  saveJSON(LS_HIST, history);
-  saveJSON(LS_REFUNDS, refunds);
+  const refundRow = { id: "r"+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), saleTs: sale.ts, itemName: item.name, qty: item.qty, pence: refundPence, method: sale.method || "card" };
+  refunds.unshift(refundRow);
+  saveLocalHistory();
+  salesStore.save(sale);
+  saveLocal(LS_REFUNDS, refunds);
+  refundsStore.save(refundRow);
   renderHistory();
   showToast(`Refunded ${fmt(refundPence)}`);
 }
@@ -2038,7 +2191,10 @@ document.getElementById("exportAllBtn").addEventListener("click", async () => {
 });
 
 document.getElementById("histClear").addEventListener("click", async () => {
-  showToast("Clearing sales is switched off for now");
+  if (!history.length) return;
+  const ok = await askConfirm({ title:"Delete all logged sales?", message:"This can't be undone.", confirmLabel:"Delete all", danger:true });
+  if (!ok) return;
+  history = []; saveLocalHistory(); await salesStore.clear(); renderHistory();
 });
 
 /* ---------- end of shift: X / Z ---------- */
@@ -2104,26 +2260,48 @@ function renderXRead(){
   document.getElementById("xReadRange").textContent = new Date().toLocaleString();
   document.getElementById("xReadRows").innerHTML = xReadRows.map(([l,v]) => `<tr><td>${l}</td><td class="num tabular">${v}</td></tr>`).join("");
 }
-document.getElementById("xReadRow").querySelector(".admin-row-main").addEventListener("click", () => { renderXRead(); openSheet("xReadSheet"); });
+document.getElementById("xReadRow").querySelector(".admin-row-main").addEventListener("click", async () => {
+  const remoteSales = await salesStore.fetchAll();
+  if (remoteSales) { history = remoteSales; saveLocalHistory(); }
+  abandoned = await abandonedStore.fetchAll() || abandoned;
+  gratuities = await gratuitiesStore.fetchAll() || gratuities;
+  refunds = await refundsStore.fetchAll() || refunds;
+  renderXRead(); openSheet("xReadSheet");
+});
 document.getElementById("xReadBack").addEventListener("click", () => closeSheet("xReadSheet"));
 document.getElementById("xReadCopyBtn").addEventListener("click", () => copyLines(xReadRows.map(([l,v]) => `${l}\t${v}`), "Copied — paste into Notes, email, or a spreadsheet"));
 document.getElementById("xReadPdfBtn").addEventListener("click", () => window.print());
 
 document.getElementById("zReadBtn").addEventListener("click", async () => {
+  // Reconcile with the database one more time so this Z report reflects every till's sales, not just this device's.
+  const remoteSales = await salesStore.fetchAll();
+  if (remoteSales) { history = remoteSales; saveLocalHistory(); }
   if (!history.length && !abandoned.length && !gratuities.length) { showToast("Nothing to close out yet"); return; }
-  const ok = await askConfirm({ title:"Close till?", message:"Archives today's totals as a Z report under Past Z Reports. Data pruning is switched off for now, so the sales log itself is NOT cleared afterward — it stays as-is.", confirmLabel:"Close & archive", danger:true });
+  const ok = await askConfirm({ title:"Close till?", message:"Archives today's totals as a Z report (with a full itemized backup) and resets the sales log for the next shift.", confirmLabel:"Close & archive", danger:true });
   if (!ok) return;
+  abandoned = await abandonedStore.fetchAll() || abandoned;
+  gratuities = await gratuitiesStore.fetchAll() || gratuities;
+  refunds = await refundsStore.fetchAll() || refunds;
   const s = shiftSnapshot();
   const closedTransactions = history;
-  zReports.unshift({ id:"z"+Date.now(), closedAt: Date.now(), ...s, transactions: history, abandonedOrders: abandoned, gratuities, refunds });
-  saveJSON(LS_Z, zReports);
-  renderHistory();
-  openReportTab("Z Report — Closed", new Date().toLocaleString(), [
+  const zId = "z"+Date.now();
+  const zClosedAt = Date.now();
+  const zRows = [
     ["Cash", fmt(s.cashTotal)], ["Card", fmt(s.cardTotal)], ["Takings", fmt(s.grandTotal)],
     ["Tips", fmt(s.gratuityTotal)], ["Discounts given", fmt(s.discountTotal)],
     ["Refunds given", fmt(s.refundTotal)],
     ["Abandoned (not counted)", fmt(s.abandonedTotal)], ["Transactions", String(s.txCount)]
-  ], closedTransactions);
+  ];
+  const reportHtml = buildReceiptHTML("Z Report — Closed", new Date(zClosedAt).toLocaleString(), zRows, closedTransactions);
+  zReports.unshift({ id:zId, closedAt: zClosedAt, ...s, transactions: history, abandonedOrders: abandoned, gratuities, refunds });
+  saveJSON(LS_Z, zReports);
+  logZReadToDiscord(s, reportHtml); // Discord backup
+  storeZReportRemote(zId, zClosedAt, s, reportHtml); // durable copy — pull it later even if Past Z Reports is cleared locally
+  await salesStore.clear(); await abandonedStore.clear(); await gratuitiesStore.clear(); await refundsStore.clear(); // reset the till's per-shift logs, like a real till's Z read
+  history = []; abandoned = []; gratuities = []; refunds = [];
+  saveLocalHistory(); saveLocal(LS_ABANDONED, abandoned); saveLocal(LS_GRAT, gratuities); saveLocal(LS_REFUNDS, refunds);
+  renderHistory();
+  openReportTab("Z Report — Closed", new Date(zClosedAt).toLocaleString(), zRows, closedTransactions);
 });
 
 function renderPastZ(){
