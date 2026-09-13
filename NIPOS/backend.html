@@ -54,6 +54,14 @@ label.field{display:block;font-size:11.5px;color:var(--text-muted);font-weight:6
 .mixer-details[open] > summary::before{content:"▾ ";}
 .mixer-details[open] > summary{margin-bottom:8px;}
 .mixer-details .note{margin-top:8px;}
+.edit-cat-row{padding:10px 0;border-bottom:1px solid var(--border);}
+.edit-cat-row:last-child{border-bottom:0;}
+.edit-cat-row .name{font-weight:600;font-size:14.5px;margin-bottom:8px;}
+.edit-cat-sizes{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;}
+.edit-cat-size{display:flex;flex-direction:column;gap:4px;min-width:90px;}
+.edit-cat-size label{font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;}
+.edit-cat-size input{width:90px;padding:8px 10px;font-size:14px;}
+.edit-cat-save{width:auto;margin:0;padding:8px 14px;font-size:12.5px;align-self:flex-end;}
 .search{margin-bottom:14px;}
 .empty{color:var(--text-muted);font-size:13px;padding:14px 0;text-align:center;}
 .status{font-size:12px;color:var(--text-muted);margin-bottom:16px;}
@@ -188,6 +196,13 @@ label.field{display:block;font-size:11.5px;color:var(--text-muted);font-weight:6
 <div class="card" id="customList"><div class="empty">None added yet.</div></div>
 
 <details class="mixer-details">
+  <summary class="section-title">Edit Catalogue</summary>
+  <p class="note">Change the price of any built-in drink or food item. Sized items (wines, draughts, coffees) show one price field per size — edit the ones you need and tap Save on that row.</p>
+  <div class="search"><input type="text" id="editCatSearch" placeholder="Search items…"></div>
+  <div id="editCatalogue"><div class="empty">Loading…</div></div>
+</details>
+
+<details class="mixer-details">
   <summary class="section-title">Assign Mixers</summary>
   <p class="note">Flip one on and it appears as an extra mixer option whenever staff add a spirit, alongside the usual tonics and dashes.</p>
   <div class="search"><input type="text" id="search" placeholder="Search drinks…"></div>
@@ -266,6 +281,64 @@ function rowStore(table, limit){
 const mixerOverridesStore = rowStore("mixer_overrides", 1000);
 const customDiscountsStore = rowStore("custom_discounts", 500);
 const staffStore = rowStore("staff_users", 500);
+const categoriesStore = rowStore("categories", 200);
+const catalogueItemsStore = rowStore("catalogue_items", 2000);
+let realCategories = [];
+let realItems = [];
+
+function fmtPoundsFromPence(pence){ return (pence/100).toFixed(2); }
+function renderEditCatalogue(){
+  const wrap = document.getElementById("editCatalogue");
+  if (!realCategories.length) { wrap.innerHTML = `<div class="empty">Loading…</div>`; return; }
+  const q = document.getElementById("editCatSearch").value.trim().toLowerCase();
+  wrap.innerHTML = "";
+  const byCat = {};
+  realItems.forEach(it => { (byCat[it.categoryId] = byCat[it.categoryId] || []).push(it); });
+  realCategories.slice().sort((a,b) => a.order - b.order).forEach(cat => {
+    const items = (byCat[cat.id] || []).filter(it => it.name.toLowerCase().includes(q)).sort((a,b) => a.order - b.order);
+    if (!items.length) return;
+    const sec = document.createElement("div");
+    sec.className = "category";
+    sec.innerHTML = `<h2>${cat.name}</h2>`;
+    const card = document.createElement("div");
+    card.className = "card";
+    items.forEach(it => {
+      const row = document.createElement("div");
+      row.className = "edit-cat-row";
+      const sizes = it.sizes && it.sizes.length ? it.sizes : [{ label: null, pence: it.pence }];
+      row.innerHTML = `
+        <div class="name">${it.name}</div>
+        <div class="edit-cat-sizes">
+          ${sizes.map((s, i) => `
+            <div class="edit-cat-size">
+              ${s.label ? `<label>${s.label}</label>` : ""}
+              <input type="number" step="0.01" data-size-idx="${i}" value="${fmtPoundsFromPence(s.pence)}">
+            </div>`).join("")}
+          <button type="button" class="btn btn-accent edit-cat-save">Save</button>
+        </div>`;
+      const saveBtn = row.querySelector(".edit-cat-save");
+      saveBtn.addEventListener("click", async () => {
+        const inputs = [...row.querySelectorAll("[data-size-idx]")];
+        const values = inputs.map(inp => Math.round(parseFloat(inp.value) * 100));
+        if (values.some(v => !isFinite(v) || v < 0)) { alert("Enter valid prices."); return; }
+        if (it.sizes && it.sizes.length) {
+          it.sizes = it.sizes.map((s, i) => ({ ...s, pence: values[i] }));
+          it.pence = it.sizes[0].pence;
+        } else {
+          it.pence = values[0];
+        }
+        await catalogueItemsStore.save(it);
+        saveBtn.textContent = "Saved ✓";
+        setTimeout(() => { saveBtn.textContent = "Save"; }, 1200);
+      });
+      card.appendChild(row);
+    });
+    sec.appendChild(card);
+    wrap.appendChild(sec);
+  });
+  if (!wrap.children.length) wrap.innerHTML = `<div class="empty">No matches.</div>`;
+}
+document.getElementById("editCatSearch").addEventListener("input", renderEditCatalogue);
 
 async function init(){
   const statusEl = document.getElementById("dbStatus");
@@ -307,6 +380,10 @@ async function init(){
 
   renderCustomList();
   renderCatalogue();
+
+  realCategories = await categoriesStore.fetchAll() || [];
+  realItems = await catalogueItemsStore.fetchAll() || [];
+  renderEditCatalogue();
 }
 
 function applyLoginState(){

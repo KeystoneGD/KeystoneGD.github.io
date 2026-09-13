@@ -804,10 +804,13 @@ function buildCats(list, mode){
     };
   });
 }
-const CAT = [...buildCats(PRODUCTS, "drink"), ...buildCats(FOOD_PRODUCTS, "food")];
-const ALL_ITEMS = CAT.flatMap(c => c.items);
-const BY_ID = Object.fromEntries(ALL_ITEMS.map(p => [p.id, p]));
-const COCKTAIL_IDS = new Set(CAT.find(c => c.name.startsWith("Cocktails")).items.map(i => i.id));
+// The built-in catalogue below is only the bootstrap fallback, rendered immediately so the till is
+// never blank. As soon as the database catalogue loads (loadCatalogueFromDb, near the menu-building
+// code) it replaces these — that's the copy Backend's "Edit Catalogue" can actually reprice.
+let CAT = [...buildCats(PRODUCTS, "drink"), ...buildCats(FOOD_PRODUCTS, "food")];
+let ALL_ITEMS = CAT.flatMap(c => c.items);
+let BY_ID = Object.fromEntries(ALL_ITEMS.map(p => [p.id, p]));
+let COCKTAIL_IDS = new Set(CAT.find(c => c.name.startsWith("Cocktails")).items.map(i => i.id));
 
 const LS_CART = "starlightTill.cart.v1";
 const LS_HIST = "starlightTill.history.v1";
@@ -952,7 +955,9 @@ async function connectDb(){
   if (!dbNs) return;
   await pullState(PERSISTED_KEYS);
   await pullRowStores();
+  await loadCatalogueFromDb();
   setInterval(() => { pullState(PERSISTED_KEYS.filter(i => i.live)); pullRowStores(); }, 1000);
+  setInterval(loadCatalogueFromDb, 15000); // the catalogue rarely changes — no need to poll it every second
 }
 
 let cart = loadJSON(LS_CART, {});
@@ -1211,32 +1216,71 @@ document.getElementById("addProductBtn").addEventListener("click", addCustomProd
 const menuEl = document.getElementById("menu");
 let menuMode = loadJSON(LS_MODE, null) || "drink";
 
-CAT.forEach(cat => {
-  const section = document.createElement("section");
-  section.className = "category";
-  section.id = cat.id;
-  section.dataset.mode = cat.mode;
-  section.innerHTML = `<h2>${cat.name}</h2>` + (cat.note ? `<p class="note">${cat.note}</p>` : "");
-  const list = document.createElement("div");
-  list.className = "items";
-  cat.items.forEach(p => {
-    const row = document.createElement("div");
-    row.className = "product";
-    row.dataset.id = p.id;
-    row.dataset.name = p.name;
-    row.dataset.search = p.name.toLowerCase();
-    row.innerHTML = `
-      <div class="info"><div class="name">${p.name}</div><div class="price tabular">${p.isSized ? "From " : ""}${fmt(p.pence)}</div></div>
-      <div class="stepper empty${p.hasOptions ? " spirit" : ""}" data-id="${p.id}">
-        <button class="minus" aria-label="Remove one">−</button>
-        <span class="qty tabular">0</span>
-        <button class="plus" aria-label="Add one">+</button>
-      </div>`;
-    list.appendChild(row);
+function renderMenuSections(){
+  menuEl.querySelectorAll(".category").forEach(el => el.remove());
+  CAT.forEach(cat => {
+    const section = document.createElement("section");
+    section.className = "category";
+    section.id = cat.id;
+    section.dataset.mode = cat.mode;
+    section.innerHTML = `<h2>${cat.name}</h2>` + (cat.note ? `<p class="note">${cat.note}</p>` : "");
+    const list = document.createElement("div");
+    list.className = "items";
+    cat.items.forEach(p => {
+      const row = document.createElement("div");
+      row.className = "product";
+      row.dataset.id = p.id;
+      row.dataset.name = p.name;
+      row.dataset.search = p.name.toLowerCase();
+      row.innerHTML = `
+        <div class="info"><div class="name">${p.name}</div><div class="price tabular">${p.sizes && p.sizes.length > 1 ? "From " : ""}${fmt(p.pence)}</div></div>
+        <div class="stepper empty${p.hasOptions ? " spirit" : ""}" data-id="${p.id}">
+          <button class="minus" aria-label="Remove one">−</button>
+          <span class="qty tabular">0</span>
+          <button class="plus" aria-label="Add one">+</button>
+        </div>`;
+      list.appendChild(row);
+    });
+    section.appendChild(list);
+    menuEl.appendChild(section);
   });
-  section.appendChild(list);
-  menuEl.appendChild(section);
-});
+}
+renderMenuSections();
+
+// Products and categories now live in the database, so Backend can reprice or edit any item — the
+// hardcoded CAT above is only the bootstrap fallback shown until this first load completes.
+const categoriesStore = rowStore("categories", 200);
+const catalogueItemsStore = rowStore("catalogue_items", 2000);
+function catalogueFromDb(catRows, itemRows){
+  const byCat = {};
+  itemRows.forEach(it => { (byCat[it.categoryId] = byCat[it.categoryId] || []).push(it); });
+  return catRows.slice().sort((a,b) => a.order - b.order).map(c => {
+    const items = (byCat[c.id] || []).slice().sort((a,b) => a.order - b.order).map(it => {
+      const isSized = !!(it.sizes && it.sizes.length);
+      const pence = isSized ? it.sizes[0].pence : it.pence;
+      return {
+        id: it.id, name: it.name, pence,
+        isSpirit: c.isSpirit, isBeer: c.isBeer, isSized, sizes: it.sizes || null,
+        mixerType: c.mixerType, hasOptions: c.isSpirit || c.isBeer || isSized
+      };
+    });
+    return { id: c.id, name: c.name, note: c.note, mode: c.mode, isSpirit: c.isSpirit, isBeer: c.isBeer, items };
+  });
+}
+async function loadCatalogueFromDb(){
+  const catRows = await categoriesStore.fetchAll();
+  const itemRows = await catalogueItemsStore.fetchAll();
+  if (!catRows || !itemRows || !catRows.length || !itemRows.length) return; // keep the hardcoded fallback
+  CAT = catalogueFromDb(catRows, itemRows);
+  ALL_ITEMS = CAT.flatMap(c => c.items);
+  BY_ID = Object.fromEntries(ALL_ITEMS.map(p => [p.id, p]));
+  const cocktailCat = CAT.find(c => c.name.startsWith("Cocktails"));
+  COCKTAIL_IDS = new Set(cocktailCat ? cocktailCat.items.map(i => i.id) : []);
+  renderMenuSections();
+  renderCustomCategories();
+  renderQtys();
+  applyVisibility();
+}
 
 // Custom products (added on the Backend page) render into their own sections here, grouped by
 // what kind of item they are, so they show up as normal browsable/sellable items on the till.
@@ -1989,9 +2033,10 @@ function renderAdminHome(){
 function toggleCategoryStop(catId, on){
   const cat = CAT.find(c => c.id === catId);
   cat.items.forEach(i => {
-    if (on) { stops.add(i.name); removeProductFromCart(i.id); } else stops.delete(i.name);
+    if (on) { stops.add(i.name); removeProductFromCart(i.id); stopsStore.save({ id: i.name, ts: Date.now(), name: i.name }); }
+    else { stops.delete(i.name); stopsStore.remove(i.name); }
   });
-  saveJSON(LS_STOPS, [...stops]);
+  try{ localStorage.setItem(LS_STOPS, JSON.stringify([...stops])); }catch(e){}
   saveJSON(LS_CART, cart);
   renderQtys(); renderCartBar(); applyVisibility();
   renderAdminHome();
