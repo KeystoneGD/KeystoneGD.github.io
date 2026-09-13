@@ -432,9 +432,46 @@ function renderUserList(){
         <div class="name">${u.name} <span class="pill">${u.id}</span></div>
         <div class="price">${permsList}</div>
       </div>
-      <button class="btn btn-danger" data-id="${u.id}">Delete</button>`;
-    row.querySelector("button").addEventListener("click", () => deleteUser(u.id));
+      <button class="btn btn-ghost edit-user-btn" type="button">Edit</button>
+      <button class="btn btn-danger del-user-btn" type="button">Delete</button>`;
+
+    const panel = document.createElement("div");
+    panel.hidden = true;
+    panel.style.cssText = "padding:6px 0 14px;border-bottom:1px solid var(--border);";
+    panel.innerHTML = `
+      <label class="field">Name</label>
+      <input type="text" class="edit-name">
+      <label class="field">PIN</label>
+      <input type="text" inputmode="numeric" class="edit-pin">
+      ` + Object.entries(PERM_LABELS).map(([key,label]) => `
+      <label class="row" style="border:0;padding:8px 0 0;">
+        <span class="info"><span class="name">${label}</span></span>
+        <span class="switch"><input type="checkbox" data-perm="${key}" ${u.perms[key] ? "checked" : ""}><span class="slider"></span></span>
+      </label>`).join("") + `<button class="btn btn-accent save-user-btn" type="button" style="margin-top:8px;">Save</button>`;
+    panel.querySelector(".edit-name").value = u.name;
+    panel.querySelector(".edit-pin").value = u.id;
+
+    row.querySelector(".edit-user-btn").addEventListener("click", () => { panel.hidden = !panel.hidden; });
+    row.querySelector(".del-user-btn").addEventListener("click", () => deleteUser(u.id));
+    panel.querySelector(".save-user-btn").addEventListener("click", async (e) => {
+      const name = panel.querySelector(".edit-name").value.trim();
+      const pin = panel.querySelector(".edit-pin").value.trim();
+      if (!name) { alert("Enter a name."); return; }
+      if (!pin) { alert("Enter a PIN."); return; }
+      if (pin !== u.id && users.some(other => other !== u && other.id === pin)) { alert("That PIN is already used by another user."); return; }
+      const perms = {};
+      panel.querySelectorAll("[data-perm]").forEach(inp => { perms[inp.dataset.perm] = inp.checked; });
+      if (pin !== u.id) await staffStore.remove(u.id);
+      u.id = pin; u.name = name; u.perms = perms;
+      await staffStore.save(u);
+      row.querySelector(".name").innerHTML = `${u.name} <span class="pill">${u.id}</span>`;
+      row.querySelector(".price").textContent = Object.entries(perms).filter(([,v]) => v).map(([k]) => PERM_LABELS[k]).join(", ") || "No permissions";
+      e.target.textContent = "Saved ✓";
+      setTimeout(() => { e.target.textContent = "Save"; }, 1200);
+    });
+
     wrap.appendChild(row);
+    wrap.appendChild(panel);
   });
 }
 async function deleteUser(id){
