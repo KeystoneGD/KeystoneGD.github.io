@@ -3,7 +3,7 @@
     {
       "name": "Cocktails - Hand-Crafted Classic Cocktails",
       "mode": "drink",
-      "note": "Happy Hour: Buy 2 Cocktails, pay for 1.5 — 3–6pm & 9.30pm onwards.",
+      "note": "Happy Hour: Buy 2 Cocktails, pay for 1.5 (3-6pm & 9.30pm onwards).",
       "isSpirit": false,
       "isBeer": false,
       "items": [

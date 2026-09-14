@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NIPOS — Backend</title>
+<title>NIPOS - Backend</title>
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -158,6 +158,10 @@ table.data-table tr:last-child td{border-bottom:0;}
 .mini-menu summary::before{content:"▸ ";}
 .mini-menu[open] summary::before{content:"▾ ";}
 .mini-menu-body{padding-top:10px;}
+.dropdown-field{margin-top:6px;border-top:0;padding-top:0;}
+.dropdown-field summary{border:1px solid var(--border);background:var(--surface-2);border-radius:9px;padding:10px 12px;font-size:14px;font-weight:500;color:var(--text);}
+.dropdown-field summary::before{float:right;}
+.dropdown-field[open] summary{border-radius:9px 9px 0 0;}
 .check-list{max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:4px 12px;}
 .list-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);}
 .list-row:last-child{border-bottom:0;}
@@ -269,7 +273,7 @@ table.data-table tr:last-child td{border-bottom:0;}
       <div class="card" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
         <div style="font-weight:700;font-size:13.5px;">Happy Hour cocktail pricing</div>
         <select id="hhMode" style="max-width:280px;">
-          <option value="auto">Automatic — 3–6pm &amp; 9.30pm onwards</option>
+          <option value="auto">Automatic (3-6pm &amp; 9.30pm onwards)</option>
           <option value="on">Force ON</option>
           <option value="off">Force OFF</option>
         </select>
@@ -415,9 +419,15 @@ table.data-table tr:last-child td{border-bottom:0;}
     <label class="field">PIN (6+ digits)</label>
     <input type="text" inputmode="numeric" id="umPin" placeholder="e.g. 710603">
     <label class="field">Venues</label>
-    <div class="check-list" id="umVenues"></div>
+    <details class="mini-menu dropdown-field">
+      <summary id="umVenuesSummary">None selected</summary>
+      <div class="mini-menu-body check-list" id="umVenues"></div>
+    </details>
     <label class="field">Groups</label>
-    <div class="check-list" id="umGroups"></div>
+    <details class="mini-menu dropdown-field">
+      <summary id="umGroupsSummary">None selected</summary>
+      <div class="mini-menu-body check-list" id="umGroups"></div>
+    </details>
     <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Account Active</span></span><span class="switch"><input type="checkbox" id="umActive" checked><span class="slider"></span></span></label>
     <label class="row" id="umGlobalAdminRow" style="border:0;padding:8px 0 0;" hidden><span class="info"><span class="name">Global Admin (all venues)</span></span><span class="switch"><input type="checkbox" id="umGlobalAdmin"><span class="slider"></span></span></label>
     <details class="mini-menu">
@@ -434,7 +444,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 <div class="modal-overlay" id="groupsModal" hidden>
   <div class="modal-card">
     <h3>Manage groups</h3>
-    <p class="note">e.g. Bar Staff, Table Service, Team Leader, Manager — shown as a "Groups" option in the Order Screen's Service call.</p>
+    <p class="note">e.g. Bar Staff, Table Service, Team Leader, Manager. Shown as a "Groups" option in the Order Screen's Service call.</p>
     <div class="check-list" id="groupsList" style="margin-bottom:12px;"></div>
     <label class="field">New group name</label>
     <input type="text" id="newGroupName" placeholder="e.g. Bar Staff">
@@ -547,7 +557,7 @@ async function init(){
     statusEl.className = "status bad";
     return;
   }
-  statusEl.textContent = "Connected — changes save automatically.";
+  statusEl.textContent = "Connected, changes save automatically.";
   statusEl.className = "status ok";
 
   const session = await getSession();
@@ -565,7 +575,7 @@ async function init(){
   applyLoginState();
 }
 
-// Unlike the till/orders screen, Backend never blocks on a venue picker — the sidebar's venue
+// Unlike the till/orders screen, Backend never blocks on a venue picker. The sidebar's venue
 // switcher already covers changing venues, so just get into the app with whatever venue is
 // remembered (or the first one) and let people switch from there.
 async function resolveVenueSelection(){
@@ -1205,6 +1215,18 @@ async function deleteUser(id){
   renderUserList();
 }
 
+function updateDropdownSummary(listId, summaryId, checkboxSelector, noun){
+  const list = document.getElementById(listId);
+  const summary = document.getElementById(summaryId);
+  const refresh = () => {
+    const checked = [...list.querySelectorAll(checkboxSelector + ":checked")];
+    if (!checked.length) { summary.textContent = "None selected"; return; }
+    const names = checked.map(cb => cb.closest(".row").querySelector(".name").textContent);
+    summary.textContent = names.length <= 2 ? names.join(", ") : `${names.length} ${noun}s selected`;
+  };
+  list.querySelectorAll(checkboxSelector).forEach(cb => cb.addEventListener("change", refresh));
+  refresh();
+}
 function openUserModal(mode, user){
   userModalMode = mode; editingUser = user || null;
   const canGrantGlobalAdmin = !!(currentUser && currentUser.perms.globalAdmin);
@@ -1214,7 +1236,9 @@ function openUserModal(mode, user){
   document.getElementById("umVenues").innerHTML = myVenues.map(v => `
     <label class="row" style="border:0;padding:8px 0;"><span class="info"><span class="name">${v.name}</span></span><span class="switch"><input type="checkbox" data-venue="${v.id}" ${(user ? (user.venueIds||[]).includes(v.id) : myVenues.length===1) ? "checked" : ""}><span class="slider"></span></span></label>`).join("");
   document.getElementById("umGroups").innerHTML = allGroups.length ? allGroups.map(g => `
-    <label class="row" style="border:0;padding:8px 0;"><span class="info"><span class="name">${g.name}</span></span><span class="switch"><input type="checkbox" data-group="${g.id}" ${(user && (user.groupIds||[]).includes(g.id)) ? "checked" : ""}><span class="slider"></span></span></label>`).join("") : `<div class="empty">No groups yet — add one from "Manage groups".</div>`;
+    <label class="row" style="border:0;padding:8px 0;"><span class="info"><span class="name">${g.name}</span></span><span class="switch"><input type="checkbox" data-group="${g.id}" ${(user && (user.groupIds||[]).includes(g.id)) ? "checked" : ""}><span class="slider"></span></span></label>`).join("") : `<div class="empty">No groups yet, add one from "Manage groups".</div>`;
+  updateDropdownSummary("umVenues", "umVenuesSummary", "[data-venue]", "venue");
+  updateDropdownSummary("umGroups", "umGroupsSummary", "[data-group]", "group");
   document.getElementById("umActive").checked = user ? user.perms.active !== false : true;
   document.getElementById("umGlobalAdminRow").hidden = !canGrantGlobalAdmin;
   document.getElementById("umGlobalAdmin").checked = user ? !!user.perms.globalAdmin : false;
@@ -1309,7 +1333,7 @@ function openVenueModal(mode, venue){
   document.getElementById("vmWebhookZread").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.zread || "") : "";
   document.getElementById("vmWebhookStop").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.stop || "") : "";
   document.getElementById("vmStaff").innerHTML = users.map(u => `
-    <label class="row" style="border:0;padding:8px 0;"><span class="info"><span class="name">${u.name}</span></span><span class="switch"><input type="checkbox" data-staff="${u.id}" ${venue && (u.venueIds||[]).includes(venue.id) ? "checked" : ""}><span class="slider"></span></span></label>`).join("") || `<div class="empty">No staff yet — add some from Users first.</div>`;
+    <label class="row" style="border:0;padding:8px 0;"><span class="info"><span class="name">${u.name}</span></span><span class="switch"><input type="checkbox" data-staff="${u.id}" ${venue && (u.venueIds||[]).includes(venue.id) ? "checked" : ""}><span class="slider"></span></span></label>`).join("") || `<div class="empty">No staff yet, add some from Users first.</div>`;
   document.getElementById("venueModal").hidden = false;
 }
 document.getElementById("openAddVenueBtn").addEventListener("click", () => openVenueModal("add", null));

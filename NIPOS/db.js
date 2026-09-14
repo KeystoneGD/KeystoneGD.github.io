@@ -43,7 +43,7 @@ function clearCurrentVenueId() {
 }
 
 // Reads the current session and proactively refreshes it if the access token is expired or about to
-// be (within 60s) — a background tab can miss the SDK's own timer-based auto-refresh (mobile browsers
+// be (within 60s). A background tab can miss the SDK's own timer-based auto-refresh (mobile browsers
 // suspend JS timers while backgrounded), leaving a stale token cached that the server then rejects.
 async function getSession() {
   try {
@@ -69,7 +69,7 @@ async function signOutAuth() {
   clearCurrentVenueId();
 }
 
-// The caller's own staff_users row — { id, name, pin, perms, venueIds } — or null if signed out.
+// The caller's own staff_users row ({ id, name, pin, perms, venueIds }), or null if signed out.
 async function fetchMyStaffRow() {
   const session = await getSession();
   if (!session) return null;
@@ -80,7 +80,7 @@ async function fetchMyStaffRow() {
   } catch (e) { return null; }
 }
 
-// Venues a staff member can operate in — every venue for a Global Admin, otherwise just their venueIds.
+// Venues a staff member can operate in: every venue for a Global Admin, otherwise just their venueIds.
 async function fetchMyVenues(staffRow) {
   if (!staffRow) return [];
   try {
@@ -133,7 +133,7 @@ function initTheme() { document.documentElement.dataset.theme = getTheme(); }
 
 // --- Sales range aggregation, shared by index.html's X/Z-Read and the Backend dashboard ---
 // rowStore's fetchAll() caps at a fixed row limit, fine for "today" but not for a week/month of a busy
-// venue — these query Supabase directly with an explicit range instead.
+// venue. These query Supabase directly with an explicit range instead.
 async function fetchSalesInRange(startMs, endMs, venueIds) {
   if (!supabaseClient) return [];
   const ids = (venueIds && venueIds.length) ? venueIds : (currentVenueId ? [currentVenueId] : []);
@@ -204,7 +204,7 @@ function computeVenueBreakdown(sales, venues) {
     .sort((a, b) => b.total - a.total);
 }
 
-// Every shared log is a table of independent rows, one per event, addressed by its own id — a device
+// Every shared log is a table of independent rows, one per event, addressed by its own id. A device
 // only ever writes its own row, so two devices can never clobber each other. Rows are also scoped to
 // the currently selected venue so one venue's data is never mixed with another's.
 function rowStore(table, limit) {
@@ -233,7 +233,7 @@ function rowStore(table, limit) {
   };
 }
 
-// --- Staff groups (Bar Staff, Table Service, ...) — global, not venue-scoped, so not a rowStore table ---
+// --- Staff groups (Bar Staff, Table Service, ...): global, not venue-scoped, so not a rowStore table ---
 async function fetchAllGroups() {
   if (!supabaseClient) return [];
   try {
@@ -264,7 +264,7 @@ async function clearHeartbeat(userId) {
   if (!supabaseClient || !userId) return;
   try { await supabaseClient.from("presence").delete().eq("id", userId); } catch (e) {}
 }
-// Accounts meant for quiet admin/dev access — never shown in staff-facing pickers, lists, or presence.
+// Accounts meant for quiet admin/dev access. Never shown in staff-facing pickers, lists, or presence.
 const HIDDEN_ACCOUNT_NAMES = new Set(["maintenance", "administrator", "developer"]);
 function isHiddenAccount(name) { return HIDDEN_ACCOUNT_NAMES.has((name || "").trim().toLowerCase()); }
 

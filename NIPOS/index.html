@@ -366,7 +366,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   </div>
   <div class="sheet-foot" style="display:flex;gap:8px;">
     <button class="btn btn-ghost" id="chargeCancel">Back to order</button>
-    <button class="btn btn-success btn-block" id="chargeConfirm">Payment taken — log sale</button>
+    <button class="btn btn-success btn-block" id="chargeConfirm">Payment taken, log sale</button>
   </div>
 </div>
 
@@ -407,7 +407,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
       <div class="admin-row special" id="openOrdersRow">
         <button class="admin-row-main" type="button">
           <span class="name">Open Orders</span>
-          <span class="sub">Awaiting delivery — mark as delivered once served</span>
+          <span class="sub">Awaiting delivery, mark as delivered once served</span>
         </button>
         <span class="count-badge" id="openOrdersCountBadge">0</span>
         <span class="chevron">›</span>
@@ -480,7 +480,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     </div>
 
     <div class="section-title">Abandoned Orders</div>
-    <p class="admin-note" style="margin-top:-6px;">Logged with Cancel order. Shown for reference only — not counted in takings.</p>
+    <p class="admin-note" style="margin-top:-6px;">Logged with Cancel order. Shown for reference only, not counted in takings.</p>
     <div id="abandonedList"></div>
     <div class="empty-state" id="abandonedEmpty" style="display:none;padding:16px 10px;">No abandoned orders.</div>
 
@@ -495,7 +495,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   </div>
   <div class="sheet-body">
     <div class="hist-actions">
-      <button class="btn btn-danger btn-block" id="zReadBtn">Z Reading — close till</button>
+      <button class="btn btn-danger btn-block" id="zReadBtn">Z Reading (close till)</button>
     </div>
     <div class="hist-actions">
       <button class="btn btn-accent btn-block" id="reportBtn">Shift Report</button>
@@ -583,14 +583,14 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 <div class="login-gate" id="lockedScreen" hidden>
   <div class="login-card">
     <h2>No access</h2>
-    <p>Signed in as <span id="lockedUserName"></span> — no permission to place orders here. Ask a manager, or sign out below.</p>
+    <p>Signed in as <span id="lockedUserName"></span>, no permission to place orders here. Ask a manager, or sign out below.</p>
     <button class="btn btn-ghost btn-block" id="lockedLogoutBtn">Sign out</button>
   </div>
 </div>
 <div class="login-gate" id="lockdownScreen" hidden>
   <div class="login-card">
     <h2 id="lockdownTitle">Orders Suspended</h2>
-    <p id="lockdownMessage">A manager has paused order-taking. Hang tight — this will lift automatically once they turn it back on.</p>
+    <p id="lockdownMessage">A manager has paused order-taking. Hang tight, this will lift automatically once they turn it back on.</p>
   </div>
 </div>
 
@@ -599,7 +599,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 <script>
 initTheme();
 const PRODUCTS = [
-["Cocktails - Hand-Crafted Classic Cocktails", "Happy Hour: Buy 2 Cocktails, pay for 1.5 — 3–6pm & 9.30pm onwards.", [
+["Cocktails - Hand-Crafted Classic Cocktails", "Happy Hour: Buy 2 Cocktails, pay for 1.5 (3-6pm & 9.30pm onwards).", [
   ["Indulgent Biscoff Espresso Martini",12.95],["Zombie",12.95],["Zombie Sharer",18.95],
   ["Ultimate Pina Colada",12.95],["Disco Ball Woo Woo",12.95],["Strawberry Daiquiri",8.95],
   ["Strawberry Daiquiri Sharer",13.35],["Long Island Iced Tea",8.95],["Long Island Iced Tea Sharer",13.35],
@@ -835,7 +835,7 @@ function buildCats(list, mode){
 }
 // The built-in catalogue below is only the bootstrap fallback, rendered immediately so the till is
 // never blank. As soon as the database catalogue loads (loadCatalogueFromDb, near the menu-building
-// code) it replaces these — that's the copy Backend's "Edit Catalogue" can actually reprice.
+// code) it replaces these. That's the copy Backend's "Edit Catalogue" can actually reprice.
 let CAT = [...buildCats(PRODUCTS, "drink"), ...buildCats(FOOD_PRODUCTS, "food")];
 let ALL_ITEMS = CAT.flatMap(c => c.items);
 let BY_ID = Object.fromEntries(ALL_ITEMS.map(p => [p.id, p]));
@@ -869,7 +869,7 @@ let hhOverride = loadJSON(LS_HH_OVERRIDE, null);
 let customDiscounts = loadJSON(LS_CUSTOM_DISCOUNTS, []);
 let openOrders = loadJSON(LS_ORDERS, []);
 // currentUser is the caller's own staff_users row ({ id, name, pin, perms, venueIds }), fetched fresh
-// after a real Supabase Auth sign-in — see db.js's fetchMyStaffRow(). currentUserId mirrors currentUser.id
+// after a real Supabase Auth sign-in (see db.js's fetchMyStaffRow()). currentUserId mirrors currentUser.id
 // so the rest of this file (notifications, push) can keep addressing "who" without a null-check every time.
 let currentUser = null;
 let currentUserId = null;
@@ -877,7 +877,7 @@ let myVenues = [];
 let currentVenue = null;
 let notifications = loadJSON(LS_NOTIFICATIONS, []);
 function loadJSON(key, fallback){ try{ const v = JSON.parse(localStorage.getItem(key)); return v || fallback; }catch(e){ return fallback; } }
-let dbNs = null; // Supabase-backed doc() shim, or null if unavailable — every db call is best-effort on top of localStorage
+let dbNs = null; // Supabase-backed doc() shim, or null if unavailable. Every db call is best-effort on top of localStorage
 function saveJSON(key, val){
   try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
   if (dbNs) { dbNs.doc("state/" + key).set({ value: val }).catch(() => {}); }
@@ -941,14 +941,13 @@ async function connectDb(){
   } catch (e) { dbNs = null; supabaseClient = null; }
   if (!dbNs) return;
   await restoreSession();
-  setInterval(() => { if (currentVenue) { pullState(PERSISTED_KEYS.filter(i => i.live)); pullRowStores(); } }, 1000);
-  setInterval(() => { if (currentVenue) loadCatalogueFromDb(); }, 15000); // the catalogue rarely changes — no need to poll it every second
+  setInterval(() => { if (currentVenue) { pullState(PERSISTED_KEYS.filter(i => i.live)); pullRowStores(); checkLockdown(); } }, 1000);
+  setInterval(() => { if (currentVenue) loadCatalogueFromDb(); }, 15000); // the catalogue rarely changes, no need to poll it every second
   setInterval(() => { if (currentVenue && currentUser) sendHeartbeat(currentUserId, currentUser.name); }, 45000);
-  setInterval(() => { if (currentVenue) checkLockdown(); }, 15000);
 }
 
 // A Global Admin can pause order-taking (Suspend All Orders / Service Break) from Backend's Settings
-// page — this is the till-side enforcement, a full-screen lock until they turn it back off.
+// page. This is the till-side enforcement, a full-screen lock until they turn it back off.
 async function checkLockdown(){
   if (!supabaseClient) return;
   try {
@@ -957,11 +956,11 @@ async function checkLockdown(){
     const screen = document.getElementById("lockdownScreen");
     if (s.ordersSuspended) {
       document.getElementById("lockdownTitle").textContent = "Orders Suspended";
-      document.getElementById("lockdownMessage").textContent = "A manager has paused order-taking. Hang tight — this will lift automatically once they turn it back on.";
+      document.getElementById("lockdownMessage").textContent = "A manager has paused order-taking. Hang tight, this will lift automatically once they turn it back on.";
       screen.hidden = false;
     } else if (s.serviceBreak) {
       document.getElementById("lockdownTitle").textContent = "On a Service Break";
-      document.getElementById("lockdownMessage").textContent = "The till is paused for a service break. Hang tight — this will lift automatically once it ends.";
+      document.getElementById("lockdownMessage").textContent = "The till is paused for a service break. Hang tight, this will lift automatically once it ends.";
       screen.hidden = false;
     } else {
       screen.hidden = true;
@@ -1212,7 +1211,7 @@ async function addBeerToCart(product){
   if (cordialId === null) return;
   const top = await askChoice({ title: product.name, message: "Lemonade top?", choices: [
     { label: "No", value: "notop" },
-    { label: "Yes — lemonade top", value: "top" }
+    { label: "Yes, lemonade top", value: "top" }
   ]});
   if (top === null) return;
   const key = `${product.id}::beer::${sizeIndex}::${cordialId}::${top}`;
@@ -1287,7 +1286,7 @@ function renderMenuSections(){
 }
 renderMenuSections();
 
-// Products and categories now live in the database, so Backend can reprice or edit any item — the
+// Products and categories now live in the database, so Backend can reprice or edit any item. The
 // hardcoded CAT above is only the bootstrap fallback shown until this first load completes.
 const categoriesStore = rowStore("categories", 200);
 const catalogueItemsStore = rowStore("catalogue_items", 2000);
@@ -1564,12 +1563,12 @@ function openCharge(method){
   const cashHelper = document.getElementById("cashHelper");
   if (method === "cash") {
     hint.textContent = "Work out change below, then log the sale.";
-    confirmBtn.textContent = "Cash received — log sale";
+    confirmBtn.textContent = "Cash received, log sale";
     cashHelper.hidden = false;
     openCashHelper(total);
   } else {
     hint.innerHTML = "Key this amount into the card machine.<br>Once it's approved, log the sale below.";
-    confirmBtn.textContent = "Payment taken — log sale";
+    confirmBtn.textContent = "Payment taken, log sale";
     cashHelper.hidden = true;
   }
   closeSheet("cartSheet");
@@ -1656,7 +1655,7 @@ document.getElementById("chargeConfirm").addEventListener("click", async () => {
   cart = {}; discount = null; currentNotes = ""; currentTable = ""; document.getElementById("notesInput").value = ""; saveJSON(LS_CART, cart);
   renderQtys(); renderCartBar();
   closeSheet("chargeSheet");
-  showToast("Sale logged — " + fmt(total));
+  showToast("Sale logged: " + fmt(total));
 });
 
 document.getElementById("cancelOrderBtn").addEventListener("click", async () => {
@@ -1672,7 +1671,7 @@ document.getElementById("cancelOrderBtn").addEventListener("click", async () => 
   cart = {}; discount = null; currentNotes = ""; document.getElementById("notesInput").value = ""; saveJSON(LS_CART, cart);
   renderQtys(); renderCartBar();
   closeSheet("cartSheet");
-  showToast("Order logged as abandoned — not counted");
+  showToast("Order logged as abandoned, not counted");
 });
 
 function showToast(msg){
@@ -1702,7 +1701,7 @@ function playChime(){
   } catch(e){}
 }
 function alertUser(title, body, urgent){
-  showToast(`${title}${body ? " — " + body : ""}`);
+  showToast(`${title}${body ? ": " + body : ""}`);
   playChime();
   if (urgent && navigator.vibrate) { try { navigator.vibrate([300, 150, 300, 150, 300]); } catch(e){} }
   if ("Notification" in window && Notification.permission === "granted") {
@@ -1762,7 +1761,7 @@ function checkPersonalNotifications(list){
     .forEach(n => alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent));
   knownNotificationIds = ids;
 }
-// Each venue configures its own Discord webhooks in Backend (Venues section) — no more one hardcoded
+// Each venue configures its own Discord webhooks in Backend (Venues section), no more one hardcoded
 // channel for every site. postDiscordEmbed() silently no-ops if the current venue hasn't set one.
 async function postDiscordEmbed(webhook, embed, file){
   if (!webhook) return;
@@ -1781,7 +1780,7 @@ async function logOrderToDiscord(sale){
   const drinks = sale.items.map(i => `${i.qty}x ${i.name}`).join("\n") || "-";
   const discount = sale.discountAmount ? `${sale.discountLabel || "Discount"} -${fmt(sale.discountAmount)}` : "None";
   postDiscordEmbed(currentVenue && currentVenue.discordWebhooks && currentVenue.discordWebhooks.order, {
-    title: `NEW ORDER — TABLE ${sale.table || "N/A"}`,
+    title: `NEW ORDER - TABLE ${sale.table || "N/A"}`,
     color: 0x3cc0c8,
     fields: [
       { name: "Placed by", value: currentUser ? currentUser.name : "Unknown", inline: true },
@@ -1808,7 +1807,7 @@ async function logStopToDiscord(name, on){
 }
 async function logZReadToDiscord(s, reportHtml){
   postDiscordEmbed(currentVenue && currentVenue.discordWebhooks && currentVenue.discordWebhooks.zread, {
-    title: "🧾 Z Read — Till Closed",
+    title: "🧾 Z Read - Till Closed",
     color: 0xfecf46,
     fields: [
       { name: "Cash", value: fmt(s.cashTotal), inline: true },
@@ -1836,7 +1835,7 @@ async function pushNotification(toUserId, message, urgent){
 
 /* ---------- gratuities ---------- */
 document.getElementById("gratuityBtn").addEventListener("click", async () => {
-  const val = await askText({ title:"Log a gratuity", message:"Cash tip received — kept separate from sales, for declaring at the end of the night.", placeholder:"e.g. 5.00" });
+  const val = await askText({ title:"Log a gratuity", message:"Cash tip received, kept separate from sales, for declaring at the end of the night.", placeholder:"e.g. 5.00" });
   if (val === null) return;
   const pounds = parseFloat(val);
   if (!isFinite(pounds) || pounds <= 0) { showToast("Enter a valid amount"); return; }
@@ -1844,7 +1843,7 @@ document.getElementById("gratuityBtn").addEventListener("click", async () => {
   gratuities.push(grat);
   saveLocal(LS_GRAT, gratuities);
   gratuitiesStore.save(grat);
-  showToast("Gratuity logged — " + fmt(Math.round(pounds * 100)));
+  showToast("Gratuity logged: " + fmt(Math.round(pounds * 100)));
 });
 
 /* ---------- login / permissions ---------- */
@@ -2009,7 +2008,7 @@ function renderOpenOrdersList(){
     const row = document.createElement("div");
     const subItem = o.items.find(i => i.substituted);
     row.className = "order-card" + (o.flagged ? " flagged" : (subItem ? " substituted" : (o.ready ? " ready" : "")));
-    const itemsText = o.items.map(i => i.substituted ? `${i.qty}× ${i.name} (£0.00 — sub for ${i.subFor})` : `${i.qty}× ${i.name}`).join(", ");
+    const itemsText = o.items.map(i => i.substituted ? `${i.qty}× ${i.name} (£0.00, sub for ${i.subFor})` : `${i.qty}× ${i.name}`).join(", ");
     row.innerHTML = `
       <div class="order-head">
         <span class="order-table">${o.table ? "Table " + o.table : "No table"}</span>
@@ -2017,8 +2016,8 @@ function renderOpenOrdersList(){
       </div>
       ${o.placedBy ? `<div class="order-sub-note" style="color:var(--text-muted);font-weight:400;">Placed by ${o.placedBy}</div>` : ""}
       <div class="order-items">${itemsText}</div>
-      ${o.flagged ? `<div class="order-flag">⚠ ${o.flagItem}: ${o.flagReason}${o.flagIntent === "substitute" && o.flagSubstitute ? " — offer " + o.flagSubstitute + " instead" : (o.flagIntent === "refund" ? " — refund suggested" : "")}</div>` : ""}
-      ${!o.flagged && subItem ? `<div class="order-sub-note">✓ Substituted ${subItem.name} for ${subItem.subFor} — free</div>` : ""}
+      ${o.flagged ? `<div class="order-flag">⚠ ${o.flagItem}: ${o.flagReason}${o.flagIntent === "substitute" && o.flagSubstitute ? ", offer " + o.flagSubstitute + " instead" : (o.flagIntent === "refund" ? ", refund suggested" : "")}</div>` : ""}
+      ${!o.flagged && subItem ? `<div class="order-sub-note">✓ Substituted ${subItem.name} for ${subItem.subFor}, free</div>` : ""}
       <div class="order-actions">
         ${o.flagged ? ((o.flagIntent === "refund" ? "" : `<button class="btn btn-ghost" data-act="accept">Accepted</button>`) + `<button class="btn btn-danger" data-act="refund">Refunded</button>`) : (o.ready ? `<button class="btn btn-success btn-block" data-act="deliver">Mark as Delivered</button>` : `<button class="btn btn-accent btn-block" data-act="ready">Ready for Delivery</button>`)}
       </div>`;
@@ -2035,7 +2034,7 @@ function renderOpenOrdersList(){
 }
 async function markOrderDelivered(id){
   const o = openOrders.find(x => x.id === id);
-  if (o && o.placedById) pushNotification(o.placedById, `Table ${o.table || "?"} — order delivered`);
+  if (o && o.placedById) pushNotification(o.placedById, `Table ${o.table || "?"}: order delivered`);
   openOrders = openOrders.filter(x => x.id !== id);
   await ordersStore.remove(id);
   renderOpenOrdersList(); renderOpenOrdersBadge();
@@ -2071,7 +2070,7 @@ function goToPastOrderForRefund(saleTs){
   openSheet("historySheet");
   setTimeout(() => {
     const el = document.querySelector(`.hist-item[data-ts="${saleTs}"]`);
-    if (!el) { showToast("Sale not found in Past Orders — it may be in a closed shift"); return; }
+    if (!el) { showToast("Sale not found in Past Orders, it may be in a closed shift"); return; }
     el.open = true;
     el.scrollIntoView({ behavior:"smooth", block:"center" });
     el.classList.add("highlight");
@@ -2233,8 +2232,8 @@ async function refundItem(saleTs, itemIdx){
   const ratio = sale.base > 0 ? Math.max(0, (sale.base - (sale.discountAmount||0)) / sale.base) : 1;
   const listedPence = item.pence * item.qty;
   const refundPence = Math.round(listedPence * ratio);
-  const discountNote = ratio < 1 ? ` (today's discount already taken off — full price would be ${fmt(listedPence)})` : "";
-  const ok = await askConfirm({ title:"Refund this item?", message:`Refund ${item.qty} × ${item.name} — ${fmt(refundPence)}${discountNote}.`, confirmLabel:"Refund", danger:true });
+  const discountNote = ratio < 1 ? ` (today's discount already taken off, full price would be ${fmt(listedPence)})` : "";
+  const ok = await askConfirm({ title:"Refund this item?", message:`Refund ${item.qty} × ${item.name} for ${fmt(refundPence)}${discountNote}.`, confirmLabel:"Refund", danger:true });
   if (!ok) return;
   item.refunded = true;
   const refundRow = { id: "r"+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), saleTs: sale.ts, itemName: item.name, qty: item.qty, pence: refundPence, method: sale.method || "card" };
@@ -2295,7 +2294,7 @@ async function copyLines(lines, successMsg){
 
 async function copyCurrentShift(){
   if (!history.length && !abandoned.length && !gratuities.length) { showToast("Nothing to copy yet"); return; }
-  await copyLines(salesLinesFor(history, abandoned, gratuities), "Copied — paste into Notes or a spreadsheet");
+  await copyLines(salesLinesFor(history, abandoned, gratuities), "Copied, paste into Notes or a spreadsheet");
 }
 document.getElementById("histCopy").addEventListener("click", copyCurrentShift);
 document.getElementById("reportCopyBtn").addEventListener("click", copyCurrentShift);
@@ -2307,7 +2306,7 @@ document.getElementById("exportAllBtn").addEventListener("click", async () => {
     lines.push("");
     lines = lines.concat(salesLinesFor(z.transactions, z.abandonedOrders, z.gratuities, `Closed ${formatTime(z.closedAt)}`));
   });
-  await copyLines(lines, "Copied every shift — paste into Notes or a spreadsheet");
+  await copyLines(lines, "Copied every shift, paste into Notes or a spreadsheet");
 });
 
 document.getElementById("histClear").addEventListener("click", async () => {
@@ -2319,7 +2318,7 @@ document.getElementById("histClear").addEventListener("click", async () => {
 
 /* ---------- end of shift: X / Z ---------- */
 function shiftSnapshot(){
-  // Shared with the Backend dashboard's own range aggregation — see computeSalesSummary() in db.js.
+  // Shared with the Backend dashboard's own range aggregation, see computeSalesSummary() in db.js.
   const summary = computeSalesSummary(history, refunds);
   const gratuityTotal = gratuities.reduce((s,g) => s+g.amount, 0);
   const abandonedTotal = abandoned.reduce((s,x) => s+x.total, 0);
@@ -2336,9 +2335,9 @@ function buildReceiptHTML(title, subtitle, rows, transactions){
         ${transactions.slice().reverse().map(sale => {
           const time = new Date(sale.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
           const itemsText = sale.items.map(i => `${i.qty}× ${i.name}`).join(", ");
-          const discountText = sale.discountAmount ? `${sale.discountLabel} −${fmt(sale.discountAmount)}` : "—";
+          const discountText = sale.discountAmount ? `${sale.discountLabel} −${fmt(sale.discountAmount)}` : "-";
           const method = sale.method === "cash" ? "Cash" : "Card";
-          return `<tr><td>${time}</td><td>${sale.table || "—"}</td><td>${itemsText}</td><td>${discountText}</td><td>${method}</td><td>${fmt(sale.total)}</td></tr>`;
+          return `<tr><td>${time}</td><td>${sale.table || "-"}</td><td>${itemsText}</td><td>${discountText}</td><td>${method}</td><td>${fmt(sale.total)}</td></tr>`;
         }).join("")}
       </tbody>
     </table>` : "";
@@ -2385,7 +2384,7 @@ document.getElementById("xReadRow").querySelector(".admin-row-main").addEventLis
   renderXRead(); openSheet("xReadSheet");
 });
 document.getElementById("xReadBack").addEventListener("click", () => closeSheet("xReadSheet"));
-document.getElementById("xReadCopyBtn").addEventListener("click", () => copyLines(xReadRows.map(([l,v]) => `${l}\t${v}`), "Copied — paste into Notes, email, or a spreadsheet"));
+document.getElementById("xReadCopyBtn").addEventListener("click", () => copyLines(xReadRows.map(([l,v]) => `${l}\t${v}`), "Copied, paste into Notes, email, or a spreadsheet"));
 document.getElementById("xReadPdfBtn").addEventListener("click", () => window.print());
 
 document.getElementById("zReadBtn").addEventListener("click", async () => {
@@ -2408,16 +2407,16 @@ document.getElementById("zReadBtn").addEventListener("click", async () => {
     ["Refunds given", fmt(s.refundTotal)],
     ["Abandoned (not counted)", fmt(s.abandonedTotal)], ["Transactions", String(s.txCount)]
   ];
-  const reportHtml = buildReceiptHTML("Z Report — Closed", new Date(zClosedAt).toLocaleString(), zRows, closedTransactions);
+  const reportHtml = buildReceiptHTML("Z Report - Closed", new Date(zClosedAt).toLocaleString(), zRows, closedTransactions);
   zReports.unshift({ id:zId, closedAt: zClosedAt, ...s, transactions: history, abandonedOrders: abandoned, gratuities, refunds });
   saveJSON(LS_Z, zReports);
   logZReadToDiscord(s, reportHtml); // Discord backup
-  storeZReportRemote(zId, zClosedAt, s, reportHtml); // durable copy — pull it later even if Past Z Reports is cleared locally
+  storeZReportRemote(zId, zClosedAt, s, reportHtml); // durable copy, pull it later even if Past Z Reports is cleared locally
   await salesStore.clear(); await abandonedStore.clear(); await gratuitiesStore.clear(); await refundsStore.clear(); // reset the till's per-shift logs, like a real till's Z read
   history = []; abandoned = []; gratuities = []; refunds = [];
   saveLocalHistory(); saveLocal(LS_ABANDONED, abandoned); saveLocal(LS_GRAT, gratuities); saveLocal(LS_REFUNDS, refunds);
   renderHistory();
-  openReportTab("Z Report — Closed", new Date(zClosedAt).toLocaleString(), zRows, closedTransactions);
+  openReportTab("Z Report - Closed", new Date(zClosedAt).toLocaleString(), zRows, closedTransactions);
 });
 
 function renderPastZ(){
@@ -2438,7 +2437,7 @@ function renderPastZ(){
       </div>
       <button class="btn btn-ghost btn-block" data-act="viewz" style="margin-top:10px;">View full report</button>`;
     card.querySelector('[data-act="viewz"]').addEventListener("click", () => {
-      openReportTab("Z Report — Closed", new Date(z.closedAt).toLocaleString(), [
+      openReportTab("Z Report - Closed", new Date(z.closedAt).toLocaleString(), [
         ["Cash", fmt(z.cashTotal)], ["Card", fmt(z.cardTotal)], ["Takings", fmt(z.grandTotal)],
         ["Tips", fmt(z.gratuityTotal)], ["Discounts given", fmt(z.discountTotal)],
         ["Refunds given", fmt(z.refundTotal || 0)],

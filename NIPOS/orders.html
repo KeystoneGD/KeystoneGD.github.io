@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NIPOS — Orders</title>
+<title>NIPOS - Orders</title>
 <link rel="manifest" href="manifest-orders.json">
 <meta name="theme-color" content="#0c1826">
 <meta name="mobile-web-app-capable" content="yes">
@@ -356,7 +356,7 @@ const stopsStore = rowStore("stops", 1000);
 const notificationsStore = rowStore("notifications", 200);
 
 // staff_users isn't venue-scoped by a column (RLS decides visibility from data.venueIds instead), so
-// it doesn't go through rowStore — fetch what's visible, then keep only this venue's members.
+// it doesn't go through rowStore. Fetch what's visible, then keep only this venue's members.
 async function fetchVenueStaff(){
   if (!supabaseClient || !currentVenueId) return [];
   try {
@@ -434,7 +434,7 @@ document.getElementById("enableAlertsBtn").addEventListener("click", async () =>
 });
 
 function alertUser(title, body, urgent){
-  showToast(`${title}${body ? " — " + body : ""}`);
+  showToast(`${title}${body ? ": " + body : ""}`);
   playChime();
   if (urgent && navigator.vibrate) { try { navigator.vibrate([300, 150, 300, 150, 300]); } catch(e){} }
   if ("Notification" in window && Notification.permission === "granted") {
@@ -454,10 +454,10 @@ function checkOrderChanges(){
     const label = o.table ? `Table ${o.table}` : "Order";
     const prev = knownOrderStates.get(o.id);
     if (!prev) {
-      if (!o.delivered) alertUser("🔔 New order", `${label} — ${o.items.map(i => `${i.qty}× ${i.name}`).join(", ")}`);
+      if (!o.delivered) alertUser("🔔 New order", `${label}: ${o.items.map(i => `${i.qty}× ${i.name}`).join(", ")}`);
       return;
     }
-    if (!prev.flagged && o.flagged) alertUser("⚠ Order flagged", `${label} — ${o.flagItem}: ${o.flagReason}`);
+    if (!prev.flagged && o.flagged) alertUser("⚠ Order flagged", `${label}: ${o.flagItem}, ${o.flagReason}`);
     if (!prev.ready && o.ready) alertUser("✅ Ready for delivery", label);
   });
   knownOrderStates = stateNow;
@@ -534,7 +534,7 @@ async function init(){
     statusEl.className = "status bad";
     return;
   }
-  statusEl.textContent = "Connected — updates automatically.";
+  statusEl.textContent = "Connected, updates automatically.";
   statusEl.className = "status ok";
   const session = await getSession();
   if (session) {
@@ -563,7 +563,7 @@ function render(){
     const card = document.createElement("div");
     const subItem = o.items.find(i => i.substituted);
     card.className = "order-card" + (o.flagged ? " flagged" : (subItem ? " substituted" : (o.ready ? " ready" : "")));
-    const itemsText = o.items.map(i => i.substituted ? `${i.qty}× ${i.name} (£0.00 — sub for ${i.subFor})` : `${i.qty}× ${i.name}`).join(", ");
+    const itemsText = o.items.map(i => i.substituted ? `${i.qty}× ${i.name} (£0.00, sub for ${i.subFor})` : `${i.qty}× ${i.name}`).join(", ");
     card.innerHTML = `
       <div class="order-head">
         <span class="order-table">${o.table ? "Table " + o.table : "No table"}</span>
@@ -573,8 +573,8 @@ function render(){
       ${o.placedBy ? `<div class="placed-by">Placed by ${o.placedBy}</div>` : ""}
       <div class="order-items">${itemsText}</div>
       ${o.notes ? `<div class="order-notes">📝 ${o.notes}</div>` : ""}
-      ${o.flagged ? `<div class="order-flag">⚠ ${o.flagItem}: ${o.flagReason}${o.flagIntent === "substitute" && o.flagSubstitute ? " — offer " + o.flagSubstitute + " instead" : (o.flagIntent === "refund" ? " — refund suggested" : "")}</div>` : ""}
-      ${!o.flagged && subItem ? `<div class="order-sub-note">✓ Substituted ${subItem.name} for ${subItem.subFor} — free</div>` : ""}
+      ${o.flagged ? `<div class="order-flag">⚠ ${o.flagItem}: ${o.flagReason}${o.flagIntent === "substitute" && o.flagSubstitute ? ", offer " + o.flagSubstitute + " instead" : (o.flagIntent === "refund" ? ", refund suggested" : "")}</div>` : ""}
+      ${!o.flagged && subItem ? `<div class="order-sub-note">✓ Substituted ${subItem.name} for ${subItem.subFor}, free</div>` : ""}
       <div class="order-actions"></div>`;
     const actions = card.querySelector(".order-actions");
     if (o.flagged) {
@@ -611,7 +611,7 @@ function render(){
 
 async function markDelivered(id){
   const o = openOrders.find(x => x.id === id);
-  if (o && o.placedById) await pushNotification(o.placedById, `Table ${o.table || "?"} — order delivered`);
+  if (o && o.placedById) await pushNotification(o.placedById, `Table ${o.table || "?"}: order delivered`);
   openOrders = openOrders.filter(x => x.id !== id);
   await ordersStore.remove(id);
   render();
@@ -627,7 +627,7 @@ async function resolveFlag(id, outcome){
   if (outcome === "refunded") {
     openOrders = openOrders.filter(x => x.id !== id);
     await ordersStore.remove(id);
-    showToast("Removed — process the refund from the till's Past Orders");
+    showToast("Removed, process the refund from the till's Past Orders");
     render();
     return;
   }
