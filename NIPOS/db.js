@@ -144,7 +144,7 @@ async function fetchSalesInRange(startMs, endMs, venueIds) {
     const { data, error } = await supabaseClient.from("sales").select("data,venue_id")
       .in("venue_id", ids).gte("ts", startMs).lte("ts", endMs).order("ts", { ascending: true }).limit(50000);
     if (error) return [];
-    return data.map(r => ({ ...r.data, venueId: r.venue_id }));
+    return data.map(r => ({ ...r.data, venueId: r.venue_id })).filter(s => !s.isTest);
   } catch (e) { return []; }
 }
 async function fetchRefundsInRange(startMs, endMs, venueIds) {
@@ -155,8 +155,168 @@ async function fetchRefundsInRange(startMs, endMs, venueIds) {
     const { data, error } = await supabaseClient.from("refunds").select("data,venue_id")
       .in("venue_id", ids).gte("ts", startMs).lte("ts", endMs).limit(50000);
     if (error) return [];
-    return data.map(r => ({ ...r.data, venueId: r.venue_id }));
+    return data.map(r => ({ ...r.data, venueId: r.venue_id })).filter(r => !r.isTest);
   } catch (e) { return []; }
+}
+
+// --- Maintenance Mode: lets an admin test the app without spamming real Discord channels or
+// polluting real takings. Every page that reads app_settings should set this after each fetch.
+let maintenanceMode = false;
+function maintenanceModeOn() { return maintenanceMode; }
+
+// Each venue configures its own Discord webhooks in Backend (Venues section), no more one hardcoded
+// channel for every site. Silently no-ops if the current venue hasn't set one, or Maintenance Mode
+// is on (so testing never pages real staff or spams a real channel).
+async function postDiscordEmbed(webhook, embed, file){
+  if (!webhook || maintenanceMode) return;
+  const opts = file ? (() => {
+    const form = new FormData();
+    form.append("payload_json", JSON.stringify({ embeds: [embed] }));
+    form.append("files[0]", file.blob, file.name);
+    return { method: "POST", body: form };
+  })() : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ embeds: [embed] }) };
+  // Discord's per-webhook limit is 5 requests/2s. On a busy night with several tills, that's
+  // enough to get briefly rate-limited - retry a couple of times using the Retry-After it sends
+  // back, rather than silently dropping the notification.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(webhook, opts);
+      if (res.status !== 429) return;
+      const retryAfter = parseFloat(res.headers.get("Retry-After")) || 1;
+      await new Promise(r => setTimeout(r, retryAfter * 1000));
+    } catch (e) { return; }
+  }
+}
+
+// Printable Z Report / receipt HTML, shared by the till and Backend's Z Reads page.
+function buildReceiptHTML(title, subtitle, rows, transactions){
+  const rowsHtml = rows.map(([l,v]) => `<tr><td>${l}</td><td>${v}</td></tr>`).join("");
+  const txnHtml = (transactions && transactions.length) ? `
+    <h2>Every Transaction</h2>
+    <table class="txns">
+      <thead><tr><th>Time</th><th>Table</th><th>Items</th><th>Discount</th><th>Method</th><th>Total</th></tr></thead>
+      <tbody>
+        ${transactions.slice().reverse().map(sale => {
+          const time = new Date(sale.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+          const itemsText = sale.items.map(i => `${i.qty}× ${i.name}`).join(", ");
+          const method = sale.method === "cash" ? "Cash" : "Card";
+          if (sale.isRefund) {
+            return `<tr style="color:#c53c2c;"><td>${time}</td><td>-</td><td>${itemsText} <strong>REFUND</strong></td><td>-</td><td>${method}</td><td>−£${(sale.total/100).toFixed(2)}</td></tr>`;
+          }
+          const discountText = sale.discountAmount ? `${sale.discountLabel} −£${(sale.discountAmount/100).toFixed(2)}` : "-";
+          return `<tr><td>${time}</td><td>${sale.table || "-"}</td><td>${itemsText}</td><td>${discountText}</td><td>${method}</td><td>£${(sale.total/100).toFixed(2)}</td></tr>`;
+        }).join("")}
+      </tbody>
+    </table>` : "";
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;max-width:820px;margin:24px auto;color:#111;background:#fff;padding:0 16px;}
+    h1{font-size:20px;margin:0 0 2px;}
+    h2{font-size:15px;margin:28px 0 10px;}
+    .sub{color:#666;font-size:12px;margin:0 0 20px;}
+    table{width:100%;border-collapse:collapse;}
+    td{padding:9px 0;border-bottom:1px solid #ddd;font-size:14px;}
+    td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}
+    table.txns th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:#666;padding:6px 8px;border-bottom:2px solid #111;}
+    table.txns td{padding:8px;font-size:12.5px;vertical-align:top;}
+    table.txns tr:nth-child(even){background:#f7f7f7;}
+    @media print{ table.txns tr{page-break-inside:avoid;} }
+  </style></head><body><h1>${title}</h1><p class="sub">${subtitle}</p><table>${rowsHtml}</table>${txnHtml}</body></html>`;
+}
+function openReportTab(title, subtitle, rows, transactions){
+  const win = window.open("", "_blank");
+  if (!win) { alert("Allow pop-ups to open the report"); return; }
+  win.document.write(buildReceiptHTML(title, subtitle, rows, transactions));
+  win.document.close();
+  setTimeout(() => { try { win.focus(); win.print(); } catch(e){} }, 350);
+}
+function zReportTitle(venueName, closedAt, closedByName){
+  const date = new Date(closedAt).toLocaleDateString();
+  return `Z-READ - ${venueName} - ${date} - By ${closedByName || "Unknown"}`;
+}
+function zReportRows(s){
+  return [
+    ["Cash", "£" + (s.cashTotal/100).toFixed(2)], ["Card", "£" + (s.cardTotal/100).toFixed(2)], ["Takings", "£" + (s.grandTotal/100).toFixed(2)],
+    ["Tips", "£" + ((s.gratuityTotal||0)/100).toFixed(2)], ["Discounts given", "£" + (s.discountTotal/100).toFixed(2)],
+    ["Refunds given", "£" + (s.refundTotal/100).toFixed(2)],
+    ["Abandoned (not counted)", "£" + ((s.abandonedTotal||0)/100).toFixed(2)], ["Transactions", String(s.txCount)]
+  ];
+}
+
+function mergeRefundsIntoTransactions(transactions, refundRows){
+  const refundEntries = (refundRows || []).map(r => ({ ts: r.ts, isRefund: true, items: [{ qty: r.qty, name: r.itemName }], method: r.method, total: r.pence }));
+  return transactions.concat(refundEntries).sort((a, b) => b.ts - a.ts);
+}
+
+// --- Shift boundary: Z Read used to hard-delete sales/refunds/gratuities, which meant a closed
+// shift's numbers vanished from the Dashboard's Week/Month view. Now Z Read just advances this
+// per-venue marker instead - the event-log tables keep every row forever, and the till's "current
+// shift" views (X/Z Read, Past Orders) filter to ts >= shiftStart while Week/Month keeps querying
+// the full range regardless of how many shifts have closed since.
+async function getShiftStart(venueId) {
+  if (!supabaseClient || !venueId) return 0;
+  try {
+    const { data } = await supabaseClient.from("app_state").select("value").eq("key", venueId + ":shiftStart").maybeSingle();
+    return (data && data.value) || 0;
+  } catch (e) { return 0; }
+}
+async function setShiftStart(venueId, ts) {
+  if (!supabaseClient || !venueId) return;
+  try { await supabaseClient.from("app_state").upsert({ key: venueId + ":shiftStart", value: ts }); } catch (e) {}
+}
+
+// Closes out a venue's current shift: sums everything since the last shift boundary, archives it
+// as a Z report, advances the boundary, and logs to the venue's zread webhook - usable from the
+// till (which also resets its own local cart/history state) or Backend (which just needs the
+// summary back to refresh its own views). Never deletes the underlying sales/refunds rows.
+async function performZRead(venue, closedByName) {
+  const shiftStart = await getShiftStart(venue.id);
+  const closedAt = Date.now();
+  const [sales, refunds] = await Promise.all([
+    fetchSalesInRange(shiftStart, closedAt, [venue.id]),
+    fetchRefundsInRange(shiftStart, closedAt, [venue.id])
+  ]);
+  let gratuities = [], abandoned = [];
+  try {
+    const [gRes, aRes] = await Promise.all([
+      supabaseClient.from("gratuities").select("data").eq("venue_id", venue.id).gte("ts", shiftStart).lte("ts", closedAt),
+      supabaseClient.from("abandoned").select("data").eq("venue_id", venue.id).gte("ts", shiftStart).lte("ts", closedAt)
+    ]);
+    gratuities = (gRes.data || []).map(r => r.data).filter(g => !g.isTest);
+    abandoned = (aRes.data || []).map(r => r.data).filter(a => !a.isTest);
+  } catch (e) {}
+  const summary = computeSalesSummary(sales, refunds);
+  const gratuityTotal = gratuities.reduce((s, g) => s + g.amount, 0);
+  const abandonedTotal = abandoned.reduce((s, x) => s + x.total, 0);
+  const closedBy = closedByName || "Unknown";
+  const fullSummary = { ...summary, gratuityTotal, abandonedTotal, closedBy };
+  const transactions = mergeRefundsIntoTransactions(sales, refunds);
+  const zId = "z" + closedAt;
+  try {
+    const { error } = await supabaseClient.from("z_reports").upsert({ id: zId, closed_at: closedAt, venue_id: venue.id, summary: fullSummary, transactions });
+    // Don't advance the shift boundary if the archive write itself failed - otherwise these sales
+    // would count toward neither this Z Read nor the next one.
+    if (error) return { error: error.message };
+  } catch (e) { return { error: "Network error" }; }
+  await setShiftStart(venue.id, closedAt);
+  const title = zReportTitle(venue.name, closedAt, closedBy);
+  if (venue.discordWebhooks && venue.discordWebhooks.zread) {
+    const reportHtml = buildReceiptHTML(title, new Date(closedAt).toLocaleString(), zReportRows(fullSummary), transactions);
+    postDiscordEmbed(venue.discordWebhooks.zread, {
+      title,
+      color: 0xfecf46,
+      fields: [
+        { name: "Venue", value: venue.name, inline: true },
+        { name: "Cash", value: "£" + (fullSummary.cashTotal / 100).toFixed(2), inline: true },
+        { name: "Card", value: "£" + (fullSummary.cardTotal / 100).toFixed(2), inline: true },
+        { name: "Takings", value: "£" + (fullSummary.grandTotal / 100).toFixed(2), inline: true },
+        { name: "Refunds", value: "£" + (fullSummary.refundTotal / 100).toFixed(2), inline: true },
+        { name: "Transactions", value: String(fullSummary.txCount), inline: true },
+        { name: "Closed by", value: closedByName || "Unknown", inline: true }
+      ],
+      timestamp: new Date(closedAt).toISOString()
+    }, { blob: new Blob([reportHtml], { type: "text/html" }), name: `z-read-${closedAt}.html` });
+  }
+  return { zId, closedAt, summary: fullSummary, transactions, sales, refunds, gratuities, abandoned };
 }
 
 function computeSalesSummary(sales, refunds) {
@@ -261,12 +421,26 @@ function rowStore(table, limit) {
       try {
         const { data, error } = await supabaseClient.from(table).select("data").eq("venue_id", currentVenueId).order("ts", { ascending: false }).limit(limit);
         if (error) return null;
-        return data.map(r => r.data);
+        // Maintenance Mode's test rows are invisible everywhere except the Backend Test Data view
+        // (countTest/clearTest below) - harmless no-op filter for tables that never set isTest.
+        return data.map(r => r.data).filter(row => !row.isTest);
       } catch (e) { return null; }
     },
     async clear() {
       if (!supabaseClient || !currentVenueId) return;
       try { await supabaseClient.from(table).delete().eq("venue_id", currentVenueId); } catch (e) {}
+    },
+    // Maintenance Mode support: count/clear rows tagged isTest for the current venue.
+    async countTest() {
+      if (!supabaseClient || !currentVenueId) return 0;
+      try {
+        const { count } = await supabaseClient.from(table).select("id", { count: "exact", head: true }).eq("venue_id", currentVenueId).eq("data->>isTest", "true");
+        return count || 0;
+      } catch (e) { return 0; }
+    },
+    async clearTest() {
+      if (!supabaseClient || !currentVenueId) return;
+      try { await supabaseClient.from(table).delete().eq("venue_id", currentVenueId).eq("data->>isTest", "true"); } catch (e) {}
     }
   };
 }

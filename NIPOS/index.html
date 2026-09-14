@@ -415,13 +415,6 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
       </div>
 
       <div class="section-title">Settings</div>
-      <div class="admin-row" id="titleRow">
-        <button class="admin-row-main" type="button">
-          <span class="name">App name</span>
-          <span class="sub" id="titleRowSub">NIPOS - Non Integrated POS</span>
-        </button>
-        <span class="chevron">›</span>
-      </div>
       <div class="admin-row" id="soundRow">
         <button class="admin-row-main" type="button">
           <span class="name">Notification sound</span>
@@ -874,7 +867,6 @@ const LS_ABANDONED = "starlightTill.abandoned.v1";
 const LS_GRAT = "starlightTill.gratuities.v1";
 const LS_STOPS = "starlightTill.stops.v1";
 const LS_Z = "starlightTill.zreports.v1";
-const LS_TITLE = "starlightTill.title.v1";
 const LS_MODE = "starlightTill.mode.v1";
 const LS_CUSTOM = "starlightTill.customProducts.v1";
 const LS_MIXER_OVERRIDES = "starlightTill.mixerOverrides.v1";
@@ -923,10 +915,6 @@ const ordersStore = rowStore("open_orders", 2000);
 const stopsStore = rowStore("stops", 1000);
 const mixerOverridesStore = rowStore("mixer_overrides", 1000);
 const customDiscountsStore = rowStore("custom_discounts", 500);
-async function storeZReportRemote(id, closedAt, summary, html){
-  if (!supabaseClient || !currentVenueId) return;
-  try { await supabaseClient.from("z_reports").upsert({ id, closed_at: closedAt, venue_id: currentVenueId, summary, html }); } catch(e){}
-}
 async function pullRowStores(){
   const orders = await ordersStore.fetchAll();
   if (orders) { openOrders = orders; renderOpenOrdersBadge(); if (adminView === "openOrders") renderOpenOrdersList(); }
@@ -945,7 +933,6 @@ const PERSISTED_KEYS = [
   { key: LS_Z, set: v => { zReports = v; } },
   { key: LS_CUSTOM, set: v => { customProducts = v; customProducts.forEach(p => { BY_ID[p.id] = hydrateCustomProduct(p); }); renderCustomCategories(); }, live: true },
   { key: LS_HH_OVERRIDE, set: v => { hhOverride = v; }, live: true },
-  { key: LS_TITLE, set: v => { appTitle = v; document.getElementById("brandTitle").textContent = v; document.getElementById("titleRowSub").textContent = v; } },
   { key: LS_MODE, set: v => { menuMode = v; applyVisibility(); } }
 ];
 
@@ -981,6 +968,7 @@ async function checkLockdown(){
   try {
     const { data } = await supabaseClient.from("app_settings").select("data").eq("id", "global").maybeSingle();
     const s = (data && data.data) || {};
+    maintenanceMode = !!s.maintenanceMode;
     const screen = document.getElementById("lockdownScreen");
     if (s.ordersSuspended) {
       document.getElementById("lockdownTitle").textContent = "Orders Suspended";
@@ -1021,6 +1009,7 @@ async function resolveVenueSelection(){
   applyLoginState();
   if (!currentVenue) return; // venue picker is showing
   knownNotificationIds = null; // rebaseline silently for the new venue instead of alerting on its whole history
+  shiftStart = await getShiftStart(currentVenue.id);
   await pullState(PERSISTED_KEYS);
   await pullRowStores();
   await loadCatalogueFromDb();
@@ -1035,6 +1024,7 @@ let refunds = loadJSON(LS_REFUNDS, []);
 let gratuities = loadJSON(LS_GRAT, []);
 let stops = new Set(loadJSON(LS_STOPS, []));
 let zReports = loadJSON(LS_Z, []);
+let shiftStart = 0; // ts of the last Z Read for the current venue; sales/refunds/gratuities before this belong to an already-closed shift
 let pendingMethod = "card";
 let discount = null; // { id, pct, offerPence, display }
 let cashGivenPence = 0;
@@ -1674,17 +1664,18 @@ document.getElementById("chargeConfirm").addEventListener("click", async () => {
   const items = Object.entries(cart).map(([key, qty]) => { const info = lineInfo(key); return { name: info.name, pence: info.pence, qty }; });
   const sale = { id: "s"+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), items, base, discountAmount, discountLabel, happyHour: isHappyHourNow(), method: pendingMethod, total, table: currentTable.trim() || null, notes: currentNotes.trim() || null };
   if (pendingMethod === "cash") { sale.cashGiven = cashGivenPence; sale.change = Math.max(0, cashGivenPence - total); }
-  history.unshift(sale);
-  saveLocalHistory();
+  if (maintenanceMode) sale.isTest = true;
+  if (!sale.isTest) { history.unshift(sale); saveLocalHistory(); }
   salesStore.save(sale);
   const newOrder = { id: "o"+Date.now(), ts: Date.now(), saleTs: sale.ts, table: sale.table, method: pendingMethod, items: items.map(i => ({ name: i.name, qty: i.qty })), notes: sale.notes, delivered: false, ready: false, flagged: false, flagItem: null, flagReason: null, flagSubstitute: null, flagOutcome: null, placedBy: currentUser ? currentUser.name : null, placedById: currentUser ? currentUser.id : null };
-  openOrders.unshift(newOrder);
+  if (sale.isTest) newOrder.isTest = true;
+  if (!newOrder.isTest) openOrders.unshift(newOrder);
   ordersStore.save(newOrder);
   logOrderToDiscord(sale);
   cart = {}; discount = null; currentNotes = ""; currentTable = ""; document.getElementById("notesInput").value = ""; saveJSON(LS_CART, cart);
   renderQtys(); renderCartBar();
   closeSheet("chargeSheet");
-  showToast("Sale logged: " + fmt(total));
+  showToast((sale.isTest ? "Test sale logged (Maintenance Mode): " : "Sale logged: ") + fmt(total));
 });
 
 document.getElementById("cancelOrderBtn").addEventListener("click", async () => {
@@ -1694,8 +1685,8 @@ document.getElementById("cancelOrderBtn").addEventListener("click", async () => 
   if (!ok) return;
   const items = Object.entries(cart).map(([key, qty]) => { const info = lineInfo(key); return { name: info.name, pence: info.pence, qty }; });
   const abandonedOrder = { id: "a"+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), items, base, discountAmount, discountLabel, happyHour: isHappyHourNow(), total, table: currentTable.trim() || null, notes: currentNotes.trim() || null };
-  abandoned.unshift(abandonedOrder);
-  saveLocal(LS_ABANDONED, abandoned);
+  if (maintenanceMode) abandonedOrder.isTest = true;
+  if (!abandonedOrder.isTest) { abandoned.unshift(abandonedOrder); saveLocal(LS_ABANDONED, abandoned); }
   abandonedStore.save(abandonedOrder);
   cart = {}; discount = null; currentNotes = ""; document.getElementById("notesInput").value = ""; saveJSON(LS_CART, cart);
   renderQtys(); renderCartBar();
@@ -1776,21 +1767,6 @@ function checkPersonalNotifications(list){
     .forEach(n => alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent));
   knownNotificationIds = ids;
 }
-// Each venue configures its own Discord webhooks in Backend (Venues section), no more one hardcoded
-// channel for every site. postDiscordEmbed() silently no-ops if the current venue hasn't set one.
-async function postDiscordEmbed(webhook, embed, file){
-  if (!webhook) return;
-  try {
-    if (file) {
-      const form = new FormData();
-      form.append("payload_json", JSON.stringify({ embeds: [embed] }));
-      form.append("files[0]", file.blob, file.name);
-      await fetch(webhook, { method: "POST", body: form });
-    } else {
-      await fetch(webhook, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ embeds: [embed] }) });
-    }
-  } catch(e){}
-}
 async function logOrderToDiscord(sale){
   const drinks = sale.items.map(i => `${i.qty}x ${i.name}`).join("\n") || "-";
   const discount = sale.discountAmount ? `${sale.discountLabel || "Discount"} -${fmt(sale.discountAmount)}` : "None";
@@ -1833,23 +1809,6 @@ async function logStopToDiscord(name, on){
     timestamp: new Date().toISOString()
   });
 }
-async function logZReadToDiscord(s, reportHtml){
-  postDiscordEmbed(currentVenue && currentVenue.discordWebhooks && currentVenue.discordWebhooks.zread, {
-    title: "🧾 Z Read - Till Closed",
-    color: 0xfecf46,
-    fields: [
-      { name: "Cash", value: fmt(s.cashTotal), inline: true },
-      { name: "Card", value: fmt(s.cardTotal), inline: true },
-      { name: "Takings", value: fmt(s.grandTotal), inline: true },
-      { name: "Tips", value: fmt(s.gratuityTotal), inline: true },
-      { name: "Discounts", value: fmt(s.discountTotal), inline: true },
-      { name: "Refunds", value: fmt(s.refundTotal), inline: true },
-      { name: "Transactions", value: String(s.txCount), inline: true },
-      { name: "Closed by", value: currentUser ? currentUser.name : "Unknown", inline: true }
-    ],
-    timestamp: new Date().toISOString()
-  }, { blob: new Blob([reportHtml], { type: "text/html" }), name: `z-read-${Date.now()}.html` });
-}
 async function pushNotification(toUserId, message, urgent){
   const me = currentUser;
   const notif = { id: "n" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), toUserId, fromUserId: currentUserId, fromName: me ? me.name : "Someone", message, urgent: !!urgent };
@@ -1868,8 +1827,8 @@ document.getElementById("gratuityBtn").addEventListener("click", async () => {
   const pounds = parseFloat(val);
   if (!isFinite(pounds) || pounds <= 0) { showToast("Enter a valid amount"); return; }
   const grat = { id: "g"+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), amount: Math.round(pounds * 100) };
-  gratuities.push(grat);
-  saveLocal(LS_GRAT, gratuities);
+  if (maintenanceMode) grat.isTest = true;
+  if (!grat.isTest) { gratuities.push(grat); saveLocal(LS_GRAT, gratuities); }
   gratuitiesStore.save(grat);
   showToast("Gratuity logged: " + fmt(Math.round(pounds * 100)));
 });
@@ -1954,9 +1913,8 @@ applyLoginState();
 
 /* ---------- admin ---------- */
 let adminView = "home", adminDetailCatId = null, adminDetailOrigin = "home";
-let appTitle = loadJSON(LS_TITLE, null) || "NIPOS - Non Integrated POS";
+const appTitle = "NIPOS - Non Integrated POS";
 document.getElementById("brandTitle").textContent = appTitle;
-document.getElementById("titleRowSub").textContent = appTitle;
 
 document.getElementById("adminBtn").addEventListener("click", () => {
   showAdminHome(); openSheet("adminSheet");
@@ -1966,12 +1924,22 @@ document.getElementById("adminBack").addEventListener("click", () => {
   else if (adminView === "detail") { if (adminDetailOrigin === "stoppedCats") showStoppedCategories(); else showAdminHome(); }
   else showAdminHome();
 });
+// Sales/refunds are never deleted any more (Z Read just advances shiftStart), so the till's own
+// "current shift" views pull the range since the last Z Read instead of an unbounded fetchAll().
+async function pullCurrentShift(){
+  const [sales, freshRefunds] = await Promise.all([
+    fetchSalesInRange(shiftStart, Date.now(), [currentVenueId]),
+    fetchRefundsInRange(shiftStart, Date.now(), [currentVenueId])
+  ]);
+  history = sales; refunds = freshRefunds;
+  saveLocalHistory(); saveLocal(LS_REFUNDS, refunds);
+  const ab = await abandonedStore.fetchAll();
+  if (ab) abandoned = ab.filter(a => a.ts >= shiftStart);
+  const gr = await gratuitiesStore.fetchAll();
+  if (gr) gratuities = gr.filter(g => g.ts >= shiftStart);
+}
 document.getElementById("adminHistoryRow").querySelector(".admin-row-main").addEventListener("click", async () => {
-  const remoteSales = await salesStore.fetchAll();
-  if (remoteSales) { history = remoteSales; saveLocalHistory(); }
-  abandoned = await abandonedStore.fetchAll() || abandoned;
-  gratuities = await gratuitiesStore.fetchAll() || gratuities;
-  refunds = await refundsStore.fetchAll() || refunds;
+  await pullCurrentShift();
   renderHistory(); openSheet("historySheet");
 });
 document.getElementById("adminEndOfShiftRow").querySelector(".admin-row-main").addEventListener("click", () => {
@@ -1980,17 +1948,6 @@ document.getElementById("adminEndOfShiftRow").querySelector(".admin-row-main").a
 document.getElementById("endOfShiftBack").addEventListener("click", () => closeSheet("endOfShiftSheet"));
 document.getElementById("stoppedRow").querySelector(".admin-row-main").addEventListener("click", () => showStoppedCategories());
 document.getElementById("openOrdersRow").querySelector(".admin-row-main").addEventListener("click", () => showOpenOrders());
-document.getElementById("titleRow").querySelector(".admin-row-main").addEventListener("click", async () => {
-  const val = await askText({ title:"App name", message:"Shown at the top of the till screen.", placeholder:"NIPOS - Non Integrated POS", value: appTitle, inputType:"text", inputMode:"text" });
-  if (val === null) return;
-  const trimmed = val.trim();
-  if (!trimmed) { showToast("Enter a name"); return; }
-  appTitle = trimmed;
-  saveJSON(LS_TITLE, appTitle);
-  document.getElementById("brandTitle").textContent = appTitle;
-  document.getElementById("titleRowSub").textContent = appTitle;
-  showToast("App name updated");
-});
 document.getElementById("soundRow").querySelector(".admin-row-main").addEventListener("click", async () => {
   const uploaded = await fetchNotificationSounds();
   const choices = [
@@ -2407,9 +2364,12 @@ document.getElementById("exportAllBtn").addEventListener("click", async () => {
 
 document.getElementById("histClear").addEventListener("click", async () => {
   if (!history.length) return;
-  const ok = await askConfirm({ title:"Delete all logged sales?", message:"This can't be undone.", confirmLabel:"Delete all", danger:true });
+  // Only ever clears the current, still-open shift - sales are never auto-deleted any more (Z Read
+  // just advances shiftStart), so a wider "delete everything" here would erase all-time history.
+  const ok = await askConfirm({ title:"Delete this shift's logged sales?", message:"Sales already covered by a past Z Read aren't touched. This can't be undone.", confirmLabel:"Delete all", danger:true });
   if (!ok) return;
-  history = []; saveLocalHistory(); await salesStore.clear(); renderHistory();
+  try { await supabaseClient.from("sales").delete().eq("venue_id", currentVenueId).gte("ts", shiftStart); } catch (e) {}
+  history = []; saveLocalHistory(); renderHistory();
 });
 
 /* ---------- end of shift: X / Z ---------- */
@@ -2421,50 +2381,6 @@ function shiftSnapshot(){
   return { ...summary, gratuityTotal, abandonedTotal };
 }
 
-function buildReceiptHTML(title, subtitle, rows, transactions){
-  const rowsHtml = rows.map(([l,v]) => `<tr><td>${l}</td><td>${v}</td></tr>`).join("");
-  const txnHtml = (transactions && transactions.length) ? `
-    <h2>Every Transaction</h2>
-    <table class="txns">
-      <thead><tr><th>Time</th><th>Table</th><th>Items</th><th>Discount</th><th>Method</th><th>Total</th></tr></thead>
-      <tbody>
-        ${transactions.slice().reverse().map(sale => {
-          const time = new Date(sale.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-          const itemsText = sale.items.map(i => `${i.qty}× ${i.name}`).join(", ");
-          const method = sale.method === "cash" ? "Cash" : "Card";
-          if (sale.isRefund) {
-            return `<tr style="color:#c53c2c;"><td>${time}</td><td>-</td><td>${itemsText} <strong>REFUND</strong></td><td>-</td><td>${method}</td><td>−${fmt(sale.total)}</td></tr>`;
-          }
-          const discountText = sale.discountAmount ? `${sale.discountLabel} −${fmt(sale.discountAmount)}` : "-";
-          return `<tr><td>${time}</td><td>${sale.table || "-"}</td><td>${itemsText}</td><td>${discountText}</td><td>${method}</td><td>${fmt(sale.total)}</td></tr>`;
-        }).join("")}
-      </tbody>
-    </table>` : "";
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;max-width:820px;margin:24px auto;color:#111;background:#fff;padding:0 16px;}
-    h1{font-size:20px;margin:0 0 2px;}
-    h2{font-size:15px;margin:28px 0 10px;}
-    .sub{color:#666;font-size:12px;margin:0 0 20px;}
-    table{width:100%;border-collapse:collapse;}
-    td{padding:9px 0;border-bottom:1px solid #ddd;font-size:14px;}
-    td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}
-    table.txns th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:#666;padding:6px 8px;border-bottom:2px solid #111;}
-    table.txns td{padding:8px;font-size:12.5px;vertical-align:top;}
-    table.txns tr:nth-child(even){background:#f7f7f7;}
-    @media print{ table.txns tr{page-break-inside:avoid;} }
-  </style></head><body><h1>${title}</h1><p class="sub">${subtitle}</p><table>${rowsHtml}</table>${txnHtml}</body></html>`;
-}
-function mergeRefundsIntoTransactions(transactions, refundRows){
-  const refundEntries = (refundRows || []).map(r => ({ ts: r.ts, isRefund: true, items: [{ qty: r.qty, name: r.itemName }], method: r.method, total: r.pence }));
-  return transactions.concat(refundEntries).sort((a, b) => b.ts - a.ts);
-}
-function openReportTab(title, subtitle, rows, transactions){
-  const win = window.open("", "_blank");
-  if (!win) { showToast("Allow pop-ups to open the PDF report"); return; }
-  win.document.write(buildReceiptHTML(title, subtitle, rows, transactions));
-  win.document.close();
-  setTimeout(() => { try { win.focus(); win.print(); } catch(e){} }, 350);
-}
 
 let xReadRows = [];
 function renderXRead(){
@@ -2479,11 +2395,7 @@ function renderXRead(){
   document.getElementById("xReadRows").innerHTML = xReadRows.map(([l,v]) => `<tr><td>${l}</td><td class="num tabular">${v}</td></tr>`).join("");
 }
 document.getElementById("xReadRow").querySelector(".admin-row-main").addEventListener("click", async () => {
-  const remoteSales = await salesStore.fetchAll();
-  if (remoteSales) { history = remoteSales; saveLocalHistory(); }
-  abandoned = await abandonedStore.fetchAll() || abandoned;
-  gratuities = await gratuitiesStore.fetchAll() || gratuities;
-  refunds = await refundsStore.fetchAll() || refunds;
+  await pullCurrentShift();
   renderXRead(); openSheet("xReadSheet");
 });
 document.getElementById("xReadBack").addEventListener("click", () => closeSheet("xReadSheet"));
@@ -2492,34 +2404,20 @@ document.getElementById("xReadPdfBtn").addEventListener("click", () => window.pr
 
 document.getElementById("zReadBtn").addEventListener("click", async () => {
   // Reconcile with the database one more time so this Z report reflects every till's sales, not just this device's.
-  const remoteSales = await salesStore.fetchAll();
-  if (remoteSales) { history = remoteSales; saveLocalHistory(); }
+  await pullCurrentShift();
   if (!history.length && !abandoned.length && !gratuities.length) { showToast("Nothing to close out yet"); return; }
-  const ok = await askConfirm({ title:"Close till?", message:"Archives today's totals as a Z report (with a full itemized backup) and resets the sales log for the next shift.", confirmLabel:"Close & archive", danger:true });
+  const ok = await askConfirm({ title:"Close till?", message:"Archives today's totals as a Z report (with a full itemized backup) and starts a new shift.", confirmLabel:"Close & archive", danger:true });
   if (!ok) return;
-  abandoned = await abandonedStore.fetchAll() || abandoned;
-  gratuities = await gratuitiesStore.fetchAll() || gratuities;
-  refunds = await refundsStore.fetchAll() || refunds;
-  const s = shiftSnapshot();
-  const closedTransactions = mergeRefundsIntoTransactions(history, refunds);
-  const zId = "z"+Date.now();
-  const zClosedAt = Date.now();
-  const zRows = [
-    ["Cash", fmt(s.cashTotal)], ["Card", fmt(s.cardTotal)], ["Takings", fmt(s.grandTotal)],
-    ["Tips", fmt(s.gratuityTotal)], ["Discounts given", fmt(s.discountTotal)],
-    ["Refunds given", fmt(s.refundTotal)],
-    ["Abandoned (not counted)", fmt(s.abandonedTotal)], ["Transactions", String(s.txCount)]
-  ];
-  const reportHtml = buildReceiptHTML("Z Report - Closed", new Date(zClosedAt).toLocaleString(), zRows, closedTransactions);
-  zReports.unshift({ id:zId, closedAt: zClosedAt, ...s, transactions: closedTransactions, abandonedOrders: abandoned, gratuities, refunds });
+  const result = await performZRead(currentVenue, currentUser ? currentUser.name : null);
+  if (result.error) { showToast("Z Read failed: " + result.error); return; }
+  const zRows = zReportRows(result.summary);
+  zReports.unshift({ id: result.zId, closedAt: result.closedAt, ...result.summary, transactions: result.transactions, abandonedOrders: result.abandoned, gratuities: result.gratuities, refunds: result.refunds });
   saveJSON(LS_Z, zReports);
-  logZReadToDiscord(s, reportHtml); // Discord backup
-  storeZReportRemote(zId, zClosedAt, s, reportHtml); // durable copy, pull it later even if Past Z Reports is cleared locally
-  await salesStore.clear(); await abandonedStore.clear(); await gratuitiesStore.clear(); await refundsStore.clear(); // reset the till's per-shift logs, like a real till's Z read
+  shiftStart = result.closedAt;
   history = []; abandoned = []; gratuities = []; refunds = [];
   saveLocalHistory(); saveLocal(LS_ABANDONED, abandoned); saveLocal(LS_GRAT, gratuities); saveLocal(LS_REFUNDS, refunds);
   renderHistory();
-  openReportTab("Z Report - Closed", new Date(zClosedAt).toLocaleString(), zRows, closedTransactions);
+  openReportTab(zReportTitle(currentVenue.name, result.closedAt, result.summary.closedBy), new Date(result.closedAt).toLocaleString(), zRows, result.transactions);
 });
 
 function renderPastZ(){
@@ -2540,7 +2438,7 @@ function renderPastZ(){
       </div>
       <button class="btn btn-ghost btn-block" data-act="viewz" style="margin-top:10px;">View full report</button>`;
     card.querySelector('[data-act="viewz"]').addEventListener("click", () => {
-      openReportTab("Z Report - Closed", new Date(z.closedAt).toLocaleString(), [
+      openReportTab(zReportTitle(currentVenue.name, z.closedAt, z.closedBy), new Date(z.closedAt).toLocaleString(), [
         ["Cash", fmt(z.cashTotal)], ["Card", fmt(z.cardTotal)], ["Takings", fmt(z.grandTotal)],
         ["Tips", fmt(z.gratuityTotal)], ["Discounts given", fmt(z.discountTotal)],
         ["Refunds given", fmt(z.refundTotal || 0)],

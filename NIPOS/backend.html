@@ -214,6 +214,8 @@ table.data-table tr:last-child td{border-bottom:0;}
       <button class="nav-item" data-page="discounts"><span class="ic">%</span> Discounts</button>
       <button class="nav-item" data-page="users"><span class="ic">◍</span> Users</button>
       <button class="nav-item" data-page="venues" id="navVenues" hidden><span class="ic">⌂</span> Venues</button>
+      <button class="nav-item" data-page="zreads" id="navZReads" hidden><span class="ic">🧾</span> Z Reads</button>
+      <button class="nav-item" data-page="testdata" id="navTestData" hidden><span class="ic">🧪</span> Test Data</button>
       <button class="nav-item" data-page="settings" id="navSettings" hidden><span class="ic">⚙</span> Settings</button>
     </nav>
     <div class="sidebar-footer">
@@ -387,6 +389,24 @@ table.data-table tr:last-child td{border-bottom:0;}
       <div class="card" id="venueList"><div class="empty">Loading…</div></div>
     </section>
 
+    <section class="page" id="page-zreads">
+      <div class="page-header">
+        <h1>Z Reads</h1>
+        <button class="btn btn-danger btn-sm" id="backendZReadBtn">Z Read now</button>
+      </div>
+      <p class="note">Closes out <span id="zreadsVenueName">this venue</span>'s current shift and archives it below. Doesn't require being signed in on the till.</p>
+      <div class="card" id="zreadsList"><div class="empty">Loading…</div></div>
+    </section>
+
+    <section class="page" id="page-testdata">
+      <div class="page-header"><h1>Test Data</h1></div>
+      <p class="note">Only visible while Maintenance Mode is on (a database-only switch - see Backend's own setup notes). Anything logged while it's on is tagged, kept out of Z Reads and the Dashboard, and skips Discord webhooks entirely.</p>
+      <div class="card">
+        <p class="note" id="testDataSummary">Loading…</p>
+        <button class="btn btn-danger btn-sm" id="clearTestDataBtn">Clear test data</button>
+      </div>
+    </section>
+
     <section class="page" id="page-settings">
       <div class="page-header"><h1>Settings</h1></div>
       <div class="section-title">Lockdown</div>
@@ -534,6 +554,12 @@ const mixerOverridesStore = rowStore("mixer_overrides", 1000);
 const customDiscountsStore = rowStore("custom_discounts", 500);
 const categoriesStore = rowStore("categories", 200);
 const catalogueItemsStore = rowStore("catalogue_items", 2000);
+const salesStore = rowStore("sales", 5000);
+const ordersStore = rowStore("open_orders", 2000);
+const refundsStore = rowStore("refunds", 5000);
+const gratuitiesStore = rowStore("gratuities", 2000);
+const abandonedStore = rowStore("abandoned", 2000);
+const TEST_DATA_STORES = [salesStore, ordersStore, refundsStore, gratuitiesStore, abandonedStore];
 
 async function fetchAllVisibleStaff(){
   if (!supabaseClient) return [];
@@ -598,6 +624,8 @@ async function loadVenueData(){
   const isGlobalAdmin = !!(currentUser && currentUser.perms.globalAdmin);
   document.getElementById("navVenues").hidden = !isGlobalAdmin;
   document.getElementById("navSettings").hidden = !isGlobalAdmin;
+  document.getElementById("navZReads").hidden = !(currentUser && currentUser.perms.xzRead);
+  if (currentUser && currentUser.perms.xzRead) await renderZReads();
 
   hhOverride = await loadDoc(LS_HH_OVERRIDE, null);
   document.getElementById("hhMode").value = hhOverride === true ? "on" : hhOverride === false ? "off" : "auto";
@@ -781,7 +809,7 @@ function renderCharts(trend, best, summary){
   charts.trend = new Chart(document.getElementById("chartTrend"), {
     type: "line",
     data: { labels: lastTrend.map(t => t.label), datasets: [{ data: lastTrend.map(t => t.totalPence/100), borderColor: c.accent, backgroundColor: c.accent + "33", fill: true, tension: 0.3 }] },
-    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { color: c.grid } }, y: { grid: { color: c.grid }, ticks: { callback: v => "£" + v } } } }
+    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { color: c.grid } }, y: { grid: { color: c.grid }, ticks: { callback: v => "£" + v.toFixed(2) } } } }
   });
   charts.top = new Chart(document.getElementById("chartTop"), {
     type: "bar",
@@ -1402,6 +1430,40 @@ async function deleteVenueFlow(venue) {
   await resolveVenueSelection();
 }
 
+/* ---------- Z Reads ---------- */
+async function renderZReads(){
+  if (!currentVenue) return;
+  document.getElementById("zreadsVenueName").textContent = currentVenue.name;
+  const wrap = document.getElementById("zreadsList");
+  wrap.innerHTML = `<div class="empty">Loading…</div>`;
+  const { data, error } = await supabaseClient.from("z_reports").select("id,closed_at,summary,transactions").eq("venue_id", currentVenue.id).order("closed_at", { ascending: false }).limit(60);
+  if (error || !data || !data.length) { wrap.innerHTML = `<div class="empty">No Z Reads yet for this venue.</div>`; return; }
+  wrap.innerHTML = "";
+  data.forEach(z => {
+    const s = z.summary || {};
+    const title = zReportTitle(currentVenue.name, z.closed_at, s.closedBy);
+    const row = document.createElement("div");
+    row.className = "list-row";
+    row.innerHTML = `
+      <div class="info"><div class="name">${title}</div><div class="sub">${s.txCount || 0} sales · Cash ${fmt(s.cashTotal||0)} · Card ${fmt(s.cardTotal||0)} · Takings ${fmt(s.grandTotal||0)}</div></div>
+      <div class="actions"><button type="button" class="btn btn-ghost btn-sm">View full report</button></div>`;
+    row.querySelector("button").addEventListener("click", () => {
+      openReportTab(title, new Date(z.closed_at).toLocaleString(), zReportRows(s), z.transactions || []);
+    });
+    wrap.appendChild(row);
+  });
+}
+document.getElementById("backendZReadBtn").addEventListener("click", async () => {
+  if (!currentUser.perms.xzRead) { alert("You don't have permission to Z Read."); return; }
+  if (!currentVenue) return;
+  if (!confirm(`Close out ${currentVenue.name}'s current shift and archive it as a Z Read? This can't be undone.`)) return;
+  const result = await performZRead(currentVenue, currentUser.name);
+  if (result.error) { alert("Z Read failed: " + result.error); return; }
+  await renderZReads();
+  await loadDashboard();
+  openReportTab(zReportTitle(currentVenue.name, result.closedAt, result.summary.closedBy), new Date(result.closedAt).toLocaleString(), zReportRows(result.summary), result.transactions);
+});
+
 /* ---------- Settings ---------- */
 async function loadAppSettings(){
   try {
@@ -1411,7 +1473,27 @@ async function loadAppSettings(){
   document.getElementById("sessionTimeoutEnabled").checked = appSettings.sessionTimeoutMinutes != null;
   document.getElementById("sessionTimeoutMinutes").value = appSettings.sessionTimeoutMinutes || "";
   renderLockdownButtons();
+  // Maintenance Mode has no UI switch anywhere - it's flipped directly in the database
+  // (update app_settings set data = data || '{"maintenanceMode":true}' where id='global') so it can
+  // never be turned on by accident in production. This nav item only shows up while it's already on.
+  maintenanceMode = !!appSettings.maintenanceMode;
+  document.getElementById("navTestData").hidden = !maintenanceMode;
+  if (maintenanceMode) await renderTestDataSummary();
 }
+async function renderTestDataSummary(){
+  const counts = await Promise.all(TEST_DATA_STORES.map(s => s.countTest()));
+  const total = counts.reduce((a, b) => a + b, 0);
+  document.getElementById("testDataSummary").textContent = total
+    ? `${total} test record${total === 1 ? "" : "s"} for this venue from Maintenance Mode testing.`
+    : "No test data for this venue right now.";
+  document.getElementById("clearTestDataBtn").disabled = !total;
+}
+document.getElementById("clearTestDataBtn").addEventListener("click", async () => {
+  if (!confirm("Delete all Maintenance Mode test data for this venue? This can't be undone.")) return;
+  await Promise.all(TEST_DATA_STORES.map(s => s.clearTest()));
+  await renderTestDataSummary();
+  await loadDashboard();
+});
 async function saveAppSettings(patch){
   // Re-fetch right before writing so a second admin's concurrent toggle (e.g. Service Break while
   // this one flips Suspend Orders) can't be silently dropped by a stale local copy.
