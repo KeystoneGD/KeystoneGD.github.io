@@ -795,21 +795,29 @@ document.getElementById("flagConfirm").addEventListener("click", async () => {
 
 let serviceGroups = [];
 let onlineIds = new Set();
-function onlineDot(online){ return `<span style="width:8px;height:8px;border-radius:50%;background:${online ? "var(--success)" : "var(--border)"};flex:0 0 auto;"></span>`; }
+let serviceRefreshTimer = null;
+function closeServiceModal(){
+  document.getElementById("serviceModal").hidden = true;
+  clearInterval(serviceRefreshTimer);
+}
 
 function renderServicePeople(){
   const wrap = document.getElementById("serviceUserList");
   wrap.innerHTML = "";
-  const others = venueStaff.filter(u => u.id !== currentUserId && !isHiddenAccount(u.name));
+  const others = venueStaff.filter(u => u.id !== currentUserId && !isHiddenAccount(u.name))
+    .sort((a, b) => (onlineIds.has(b.id) ? 1 : 0) - (onlineIds.has(a.id) ? 1 : 0));
   if (!others.length) { wrap.innerHTML = `<div class="empty" style="padding:10px 0;">No other users set up yet.</div>`; return; }
   others.forEach(u => {
+    const online = onlineIds.has(u.id);
     const b = document.createElement("button");
     b.type = "button"; b.className = "btn btn-ghost";
-    b.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;";
-    b.innerHTML = `<span>${u.name}</span>` + onlineDot(onlineIds.has(u.id));
+    b.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;" + (online ? "" : "opacity:.55;");
+    b.innerHTML = `<span>${u.name}</span><span style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:${online ? "var(--success)" : "var(--text-muted)"};">
+      <span style="width:8px;height:8px;border-radius:50%;background:${online ? "var(--success)" : "var(--text-muted)"};flex:0 0 auto;"></span>${online ? "Online" : "Offline"}
+    </span>`;
     b.addEventListener("click", async () => {
       await pushNotification(u.id, `needs you at the bar`, true);
-      document.getElementById("serviceModal").hidden = true;
+      closeServiceModal();
       showToast(`Notified ${u.name}`);
     });
     wrap.appendChild(b);
@@ -829,7 +837,7 @@ function renderServiceGroups(){
     b.addEventListener("click", async () => {
       if (!members.length) return;
       await Promise.all(members.map(u => pushNotification(u.id, `needs you at the bar`, true)));
-      document.getElementById("serviceModal").hidden = true;
+      closeServiceModal();
       showToast(`Notified ${g.name} (${members.length})`);
     });
     wrap.appendChild(b);
@@ -847,16 +855,21 @@ document.getElementById("serviceTabGroups").addEventListener("click", () => {
   document.getElementById("serviceGroupList").hidden = false;
   document.getElementById("serviceUserList").hidden = true;
 });
-document.getElementById("serviceBtn").addEventListener("click", async () => {
-  serviceGroups = await fetchAllGroups();
+async function refreshServiceModal(){
   onlineIds = await fetchOnlineUserIds();
   const visibleOnline = venueStaff.filter(u => !isHiddenAccount(u.name) && onlineIds.has(u.id));
   document.getElementById("serviceOnlineCount").textContent = visibleOnline.length;
   renderServicePeople();
   renderServiceGroups();
+}
+document.getElementById("serviceBtn").addEventListener("click", async () => {
+  serviceGroups = await fetchAllGroups();
+  await refreshServiceModal();
   document.getElementById("serviceModal").hidden = false;
+  clearInterval(serviceRefreshTimer);
+  serviceRefreshTimer = setInterval(refreshServiceModal, 1000);
 });
-document.getElementById("serviceCloseBtn").addEventListener("click", () => { document.getElementById("serviceModal").hidden = true; });
+document.getElementById("serviceCloseBtn").addEventListener("click", closeServiceModal);
 
 document.getElementById("stockBtn").addEventListener("click", () => {
   document.getElementById("stockSearch").value = "";
