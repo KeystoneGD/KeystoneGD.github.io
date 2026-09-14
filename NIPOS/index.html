@@ -2271,15 +2271,11 @@ document.getElementById("histClear").addEventListener("click", async () => {
 
 /* ---------- end of shift: X / Z ---------- */
 function shiftSnapshot(){
-  const refundCash = refunds.filter(r => (r.method||"card") === "cash").reduce((s,r) => s+r.pence, 0);
-  const refundCard = refunds.filter(r => (r.method||"card") === "card").reduce((s,r) => s+r.pence, 0);
-  const cashTotal = history.filter(s => (s.method||"card") === "cash").reduce((s,x) => s+x.total, 0) - refundCash;
-  const cardTotal = history.filter(s => (s.method||"card") === "card").reduce((s,x) => s+x.total, 0) - refundCard;
+  // Shared with the Backend dashboard's own range aggregation — see computeSalesSummary() in db.js.
+  const summary = computeSalesSummary(history, refunds);
   const gratuityTotal = gratuities.reduce((s,g) => s+g.amount, 0);
-  const discountTotal = history.reduce((s,x) => s+(x.discountAmount||0), 0);
   const abandonedTotal = abandoned.reduce((s,x) => s+x.total, 0);
-  const refundTotal = refundCash + refundCard;
-  return { cashTotal, cardTotal, grandTotal: cashTotal+cardTotal, gratuityTotal, discountTotal, abandonedTotal, refundTotal, txCount: history.length };
+  return { ...summary, gratuityTotal, abandonedTotal };
 }
 
 function buildReceiptHTML(title, subtitle, rows, transactions){

@@ -114,6 +114,88 @@ function makeSupabaseDb(client) {
   }; } };
 }
 
+// --- Theme (light/dark), shared by every page ---
+const LS_THEME = "starlightTill.theme.v1";
+function getTheme() { try { return localStorage.getItem(LS_THEME) || "dark"; } catch (e) { return "dark"; } }
+function setTheme(theme) {
+  try { localStorage.setItem(LS_THEME, theme); } catch (e) {}
+  document.documentElement.dataset.theme = theme;
+}
+function initTheme() { document.documentElement.dataset.theme = getTheme(); }
+
+// --- Sales range aggregation, shared by index.html's X/Z-Read and the Backend dashboard ---
+// rowStore's fetchAll() caps at a fixed row limit, fine for "today" but not for a week/month of a busy
+// venue — these query Supabase directly with an explicit range instead.
+async function fetchSalesInRange(startMs, endMs, venueIds) {
+  if (!supabaseClient) return [];
+  const ids = (venueIds && venueIds.length) ? venueIds : (currentVenueId ? [currentVenueId] : []);
+  if (!ids.length) return [];
+  try {
+    const { data, error } = await supabaseClient.from("sales").select("data,venue_id")
+      .in("venue_id", ids).gte("ts", startMs).lte("ts", endMs).order("ts", { ascending: true }).limit(50000);
+    if (error) return [];
+    return data.map(r => ({ ...r.data, venueId: r.venue_id }));
+  } catch (e) { return []; }
+}
+async function fetchRefundsInRange(startMs, endMs, venueIds) {
+  if (!supabaseClient) return [];
+  const ids = (venueIds && venueIds.length) ? venueIds : (currentVenueId ? [currentVenueId] : []);
+  if (!ids.length) return [];
+  try {
+    const { data, error } = await supabaseClient.from("refunds").select("data,venue_id")
+      .in("venue_id", ids).gte("ts", startMs).lte("ts", endMs).limit(50000);
+    if (error) return [];
+    return data.map(r => ({ ...r.data, venueId: r.venue_id }));
+  } catch (e) { return []; }
+}
+
+function computeSalesSummary(sales, refunds) {
+  refunds = refunds || [];
+  const refundCash = refunds.filter(r => (r.method || "card") === "cash").reduce((s, r) => s + r.pence, 0);
+  const refundCard = refunds.filter(r => (r.method || "card") === "card").reduce((s, r) => s + r.pence, 0);
+  const cashTotal = sales.filter(s => (s.method || "card") === "cash").reduce((s, x) => s + x.total, 0) - refundCash;
+  const cardTotal = sales.filter(s => (s.method || "card") === "card").reduce((s, x) => s + x.total, 0) - refundCard;
+  const grandTotal = cashTotal + cardTotal;
+  const discountTotal = sales.reduce((s, x) => s + (x.discountAmount || 0), 0);
+  const txCount = sales.length;
+  return { cashTotal, cardTotal, grandTotal, discountTotal, refundTotal: refundCash + refundCard, txCount, avgOrderPence: txCount ? Math.round(grandTotal / txCount) : 0 };
+}
+
+function computeBestSellers(sales, limit) {
+  const itemStats = {};
+  sales.forEach(sale => {
+    (sale.items || []).forEach(i => {
+      if (!itemStats[i.name]) itemStats[i.name] = { name: i.name, qty: 0, revenue: 0 };
+      itemStats[i.name].qty += i.qty;
+      itemStats[i.name].revenue += i.pence * i.qty;
+    });
+  });
+  return Object.values(itemStats).sort((a, b) => b.qty - a.qty).slice(0, limit || 15);
+}
+
+// bucket: "hour" (0-23, for a single-day range) or "day" (YYYY-MM-DD, for anything longer)
+function computeSalesTrend(sales, bucket) {
+  const buckets = {};
+  sales.forEach(sale => {
+    const d = new Date(sale.ts);
+    const key = bucket === "hour" ? String(d.getHours()).padStart(2, "0") + ":00" : d.toISOString().slice(0, 10);
+    buckets[key] = (buckets[key] || 0) + sale.total;
+  });
+  return Object.entries(buckets).sort((a, b) => a[0] < b[0] ? -1 : 1).map(([label, totalPence]) => ({ label, totalPence }));
+}
+
+function computeVenueBreakdown(sales, venues) {
+  const byVenue = {};
+  sales.forEach(sale => {
+    const id = sale.venueId;
+    if (!byVenue[id]) byVenue[id] = { venueId: id, total: 0, txCount: 0 };
+    byVenue[id].total += sale.total;
+    byVenue[id].txCount += 1;
+  });
+  return Object.values(byVenue).map(row => ({ ...row, name: (venues.find(v => v.id === row.venueId) || {}).name || row.venueId }))
+    .sort((a, b) => b.total - a.total);
+}
+
 // Every shared log is a table of independent rows, one per event, addressed by its own id — a device
 // only ever writes its own row, so two devices can never clobber each other. Rows are also scoped to
 // the currently selected venue so one venue's data is never mixed with another's.
