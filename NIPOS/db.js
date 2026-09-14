@@ -42,10 +42,18 @@ function clearCurrentVenueId() {
   try { localStorage.removeItem(LS_CURRENT_VENUE); } catch (e) {}
 }
 
+// Reads the current session and proactively refreshes it if the access token is expired or about to
+// be (within 60s) — a background tab can miss the SDK's own timer-based auto-refresh (mobile browsers
+// suspend JS timers while backgrounded), leaving a stale token cached that the server then rejects.
 async function getSession() {
   try {
     const { data } = await supabaseClient.auth.getSession();
-    return data.session || null;
+    let session = data.session || null;
+    if (session && session.expires_at && session.expires_at * 1000 < Date.now() + 60000) {
+      const { data: refreshed, error } = await supabaseClient.auth.refreshSession();
+      session = (!error && refreshed.session) ? refreshed.session : null;
+    }
+    return session;
   } catch (e) { return null; }
 }
 
