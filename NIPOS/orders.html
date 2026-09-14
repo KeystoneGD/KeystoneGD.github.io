@@ -109,11 +109,20 @@ h1{font-size:19px;margin:0;}
     <button class="btn btn-accent" id="loginSubmitBtn">Sign in</button>
   </div>
 </div>
+<div class="login-gate" id="venuePickerScreen" hidden>
+  <div class="login-card">
+    <h2>Choose a venue</h2>
+    <p>Signed in as <span id="venuePickerUserName"></span>.</p>
+    <div id="venuePickerList"></div>
+    <button class="btn btn-ghost" id="venuePickerLogoutBtn">Sign out</button>
+  </div>
+</div>
 <div class="topbar">
   <h1>Open Orders</h1>
 </div>
 <div class="account-row">
   <div id="accountName" style="font-weight:700;font-size:13.5px;"></div>
+  <button class="btn btn-ghost" id="switchVenueBtn" hidden>Switch venue</button>
   <button class="btn btn-ghost" id="accountSignOutBtn">Sign out</button>
 </div>
 <div class="toolbar-row" id="toolbarRow">
@@ -199,31 +208,20 @@ h1{font-size:19px;margin:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="db.js"></script>
 <script>
-const SUPABASE_URL = "https://djegigghjeisoyecxeyo.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqZWdpZ2doamVpc295ZWN4ZXlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNjE1NTcsImV4cCI6MjEwNDczNzU1N30.X40pprKgeeu3bQ_STG9sCUZg4763ot8ZJFeJ8VFXvdM";
 const LS_ORDERS = "starlightTill.openOrders.v1";
-const LS_USERS = "starlightTill.users.v1";
-const LS_CURRENT_USER = "starlightTill.currentUser.v1";
 const LS_STOPS = "starlightTill.stops.v1";
 const LS_NOTIFICATIONS = "starlightTill.notifications.v1";
-function makeSupabaseDb(client){
-  return { doc(path){ return {
-    async set(body){ await client.from("app_state").upsert({ key: path, value: body.value }); },
-    async get(){
-      const { data } = await client.from("app_state").select("value").eq("key", path).maybeSingle();
-      return { exists: !!data, data: () => ({ value: data ? data.value : undefined }) };
-    }
-  }; } };
-}
 let dbNs = null;
-let supabaseClient = null;
 let openOrders = [];
-let users = [];
+let venueStaff = []; // staff at the currently selected venue, for the "Call for service" list
 let stops = new Set();
 let notifications = [];
+let currentUser = null;
 let currentUserId = null;
-try { currentUserId = localStorage.getItem(LS_CURRENT_USER); } catch(e){}
+let myVenues = [];
+let currentVenue = null;
 let flagTargetId = null;
 let flatCatalogue = [];
 let productCategories = [];
@@ -242,37 +240,75 @@ function modeOf(name){
 }
 
 function applyLoginState(){
-  let u = currentUserId ? users.find(x => x.id === currentUserId) : null;
-  if (u && u.perms.active === false) { u = null; currentUserId = null; try { localStorage.removeItem(LS_CURRENT_USER); } catch(e){} }
+  const venuePicker = document.getElementById("venuePickerScreen");
+  if (currentUser && !currentVenue) {
+    document.getElementById("loginGate").hidden = true;
+    venuePicker.hidden = false;
+    document.getElementById("venuePickerUserName").textContent = currentUser.name;
+    renderVenuePicker();
+    return;
+  }
+  venuePicker.hidden = true;
+  const u = currentUser;
   if (u && u.perms.orderScreen) {
     document.getElementById("loginGate").hidden = true;
-    document.getElementById("accountName").textContent = "Signed in as " + u.name;
+    document.getElementById("accountName").textContent = "Signed in as " + u.name + (currentVenue ? " · " + currentVenue.name : "");
   } else {
     document.getElementById("loginGate").hidden = false;
     document.getElementById("loginMessage").textContent = u ? `Signed in as ${u.name}, but no Order Screen access.` : "Enter your PIN for Order Screen access.";
   }
+  document.getElementById("switchVenueBtn").hidden = myVenues.length < 2;
   document.getElementById("stockBtn").hidden = !(u && u.perms.productsOnStop);
   document.getElementById("serviceBtn").hidden = !(u && u.perms.callToService);
 }
-document.getElementById("loginSubmitBtn").addEventListener("click", () => {
-  const pin = document.getElementById("loginPinInput").value.trim();
-  const u = users.find(x => x.id === pin);
-  if (!u) { alert("Incorrect PIN."); return; }
-  if (u.perms.active === false) { alert("This account is disabled."); return; }
-  currentUserId = u.id;
-  try { localStorage.setItem(LS_CURRENT_USER, u.id); } catch(e){}
-  document.getElementById("loginPinInput").value = "";
+function renderVenuePicker(){
+  const wrap = document.getElementById("venuePickerList");
+  wrap.innerHTML = "";
+  myVenues.forEach(v => {
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "btn btn-accent"; btn.style.marginBottom = "8px";
+    btn.textContent = v.name;
+    btn.addEventListener("click", async () => { setCurrentVenueId(v.id); await resolveVenueSelection(); });
+    wrap.appendChild(btn);
+  });
+}
+async function resolveVenueSelection(){
+  if (!myVenues.length) { currentVenue = null; applyLoginState(); return; }
+  let venue = myVenues.find(v => v.id === currentVenueId);
+  if (!venue && myVenues.length === 1) { venue = myVenues[0]; setCurrentVenueId(venue.id); }
+  currentVenue = venue || null;
   applyLoginState();
+  if (currentVenue) await pullOrders();
+}
+document.getElementById("loginSubmitBtn").addEventListener("click", async () => {
+  const pin = document.getElementById("loginPinInput").value.trim();
+  const res = await signInWithPin(pin);
+  if (res.error) { alert(res.error); return; }
+  document.getElementById("loginPinInput").value = "";
+  currentUser = await fetchMyStaffRow();
+  currentUserId = currentUser ? currentUser.id : null;
+  if (!currentUser || currentUser.perms.active === false) {
+    alert(currentUser ? "This account is disabled." : "Account not found.");
+    await signOutAuth();
+    currentUser = null; currentUserId = null;
+    applyLoginState();
+    return;
+  }
+  myVenues = await fetchMyVenues(currentUser);
+  await resolveVenueSelection();
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.getRegistration().then(reg => reg && reg.pushManager.getSubscription()).then(sub => sub && savePushSubscription(sub)).catch(() => {});
   }
 });
 document.getElementById("loginPinInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginSubmitBtn").click(); });
-document.getElementById("accountSignOutBtn").addEventListener("click", () => {
-  currentUserId = null;
-  try { localStorage.removeItem(LS_CURRENT_USER); } catch(e){}
+async function signOutOrders(){
+  await signOutAuth();
+  currentUser = null; currentUserId = null; currentVenue = null; myVenues = [];
   applyLoginState();
-});
+}
+document.getElementById("accountSignOutBtn").addEventListener("click", signOutOrders);
+document.getElementById("venuePickerLogoutBtn").addEventListener("click", signOutOrders);
+document.getElementById("switchVenueBtn").addEventListener("click", () => { currentVenue = null; applyLoginState(); });
 
 function fmt(pence){ return "£" + (pence/100).toFixed(2); }
 function formatTime(ts){
@@ -291,35 +327,21 @@ async function saveDoc(key, val){
   try { await dbNs.doc("state/" + key).set({ value: val }); } catch(e){}
 }
 
-// Open orders and notifications used to be one shared array every device blind-overwrote whole —
-// whichever device saved last silently erased everyone else's changes. Each is now a table of
-// independent rows, one per order/notification, addressed by its own id — a device only ever
-// writes its own row, so two devices can never clobber each other.
-function rowStore(table, limit){
-  limit = limit || 1000;
-  return {
-    async save(row){
-      if (!supabaseClient) return;
-      try { await supabaseClient.from(table).upsert({ id: row.id, ts: row.ts, data: row }); } catch(e){}
-    },
-    async remove(id){
-      if (!supabaseClient) return;
-      try { await supabaseClient.from(table).delete().eq("id", id); } catch(e){}
-    },
-    async fetchAll(){
-      if (!supabaseClient) return null;
-      try {
-        const { data, error } = await supabaseClient.from(table).select("data").order("ts", { ascending: false }).limit(limit);
-        if (error) return null;
-        return data.map(r => r.data);
-      } catch(e){ return null; }
-    }
-  };
-}
+// rowStore()/makeSupabaseDb() now live in db.js, shared with index.html/backend.html, and are venue-aware.
 const ordersStore = rowStore("open_orders", 2000);
 const stopsStore = rowStore("stops", 1000);
-const staffStore = rowStore("staff_users", 500);
 const notificationsStore = rowStore("notifications", 200);
+
+// staff_users isn't venue-scoped by a column (RLS decides visibility from data.venueIds instead), so
+// it doesn't go through rowStore — fetch what's visible, then keep only this venue's members.
+async function fetchVenueStaff(){
+  if (!supabaseClient || !currentVenueId) return [];
+  try {
+    const { data, error } = await supabaseClient.from("staff_users").select("id,data");
+    if (error || !data) return [];
+    return data.map(r => ({ id: r.id, ...r.data })).filter(u => (u.venueIds || []).includes(currentVenueId));
+  } catch(e){ return []; }
+}
 
 function showToast(msg){
   const t = document.getElementById("toast");
@@ -358,10 +380,10 @@ function urlBase64ToUint8Array(base64String){
   return arr;
 }
 async function savePushSubscription(sub){
-  if (!supabaseClient || !sub) return;
+  if (!supabaseClient || !sub || !currentVenueId) return;
   const json = sub.toJSON ? sub.toJSON() : sub;
   const id = "px" + btoa(json.endpoint).replace(/[^a-zA-Z0-9]/g, "").slice(0, 60);
-  try { await supabaseClient.from("push_subscriptions").upsert({ id, user_id: currentUserId || "unknown", endpoint: json.endpoint, subscription: json }); } catch(e){}
+  try { await supabaseClient.from("push_subscriptions").upsert({ id, user_id: currentUserId || "unknown", venue_id: currentVenueId, endpoint: json.endpoint, subscription: json }); } catch(e){}
 }
 async function enablePush(){
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
@@ -433,11 +455,12 @@ function checkPersonalNotifications(list){
     .forEach(n => alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent));
   knownNotificationIds = ids;
 }
-const DISCORD_STOP_WEBHOOK = "https://discord.com/api/webhooks/1548640586964402227/SotvSZd9k35pvCkX-iW-J_KfIYv-R6p-HPLl-RGBD2BTfP8hQmOe3Vkd8ILGnTnQNx9Q";
 async function logStopToDiscord(name, on){
-  const me = users.find(u => u.id === currentUserId);
+  const webhook = currentVenue && currentVenue.discordWebhooks && currentVenue.discordWebhooks.stop;
+  if (!webhook) return;
+  const me = currentUser;
   try {
-    await fetch(DISCORD_STOP_WEBHOOK, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ embeds: [{
+    await fetch(webhook, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ embeds: [{
       title: on ? "🛑 Product Stopped" : "✅ Product Back In Stock",
       color: on ? 0xff7a68 : 0x49c98d,
       fields: [
@@ -449,7 +472,7 @@ async function logStopToDiscord(name, on){
   } catch(e){}
 }
 async function pushNotification(toUserId, message, urgent){
-  const me = users.find(u => u.id === currentUserId);
+  const me = currentUser;
   const notif = { id: "n" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), toUserId, fromUserId: currentUserId, fromName: me ? me.name : "Someone", message, urgent: !!urgent };
   notifications.unshift(notif);
   notifications = notifications.slice(0, 50);
@@ -459,11 +482,10 @@ async function pushNotification(toUserId, message, urgent){
 }
 
 async function pullOrders(){
-  if (!dbNs) return;
+  if (!dbNs || !currentVenueId) return;
   const fetchedOrders = await ordersStore.fetchAll();
   if (fetchedOrders) openOrders = fetchedOrders;
-  const pulledUsers = await staffStore.fetchAll();
-  if (pulledUsers && pulledUsers.length) users = pulledUsers;
+  venueStaff = await fetchVenueStaff();
   const stopRows = await stopsStore.fetchAll();
   const pulledStops = stopRows ? stopRows.map(r => r.name) : [...stops];
   const pulledNotifications = await notificationsStore.fetchAll() || notifications;
@@ -481,9 +503,9 @@ async function init(){
   await loadCatalogue();
   const statusEl = document.getElementById("dbStatus");
   try {
-    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    connectAuthClient();
     dbNs = makeSupabaseDb(supabaseClient);
-  } catch(e) { dbNs = null; }
+  } catch(e) { dbNs = null; supabaseClient = null; }
   if (!dbNs) {
     statusEl.textContent = "No database connection.";
     statusEl.className = "status bad";
@@ -491,10 +513,19 @@ async function init(){
   }
   statusEl.textContent = "Connected — updates automatically.";
   statusEl.className = "status ok";
-  users = await staffStore.fetchAll() || [];
-  if (!users.length) users = [{ id:"710603", name:"Tom", perms:{ active:true, placeOrders:true, productsOnStop:true, recoveryTool:true, callToService:true, clearHistory:true, xzRead:true, endOfDay:true, backendAccess:true, orderScreen:true } }];
+  const session = await getSession();
+  if (session) {
+    currentUser = await fetchMyStaffRow();
+    currentUserId = currentUser ? currentUser.id : null;
+    if (currentUser && currentUser.perms.active !== false) {
+      myVenues = await fetchMyVenues(currentUser);
+      await resolveVenueSelection();
+    } else {
+      await signOutAuth();
+      currentUser = null; currentUserId = null;
+    }
+  }
   applyLoginState();
-  await pullOrders();
   setInterval(pullOrders, 1000);
 }
 
@@ -741,7 +772,7 @@ document.getElementById("flagConfirm").addEventListener("click", async () => {
 document.getElementById("serviceBtn").addEventListener("click", () => {
   const wrap = document.getElementById("serviceUserList");
   wrap.innerHTML = "";
-  const others = users.filter(u => u.id !== currentUserId);
+  const others = venueStaff.filter(u => u.id !== currentUserId);
   if (!others.length) { wrap.innerHTML = `<div class="empty" style="padding:10px 0;">No other users set up yet.</div>`; }
   others.forEach(u => {
     const b = document.createElement("button");

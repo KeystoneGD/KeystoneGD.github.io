@@ -90,13 +90,49 @@ label.field{display:block;font-size:11.5px;color:var(--text-muted);font-weight:6
     <button class="btn btn-accent" id="loginSubmitBtn">Sign in</button>
   </div>
 </div>
+<div class="login-gate" id="venuePickerScreen" hidden>
+  <div class="login-card">
+    <h2>Choose a venue</h2>
+    <p>Signed in as <span id="venuePickerUserName"></span>.</p>
+    <div id="venuePickerList"></div>
+    <button class="btn btn-ghost" id="venuePickerLogoutBtn">Sign out</button>
+  </div>
+</div>
 
 <h1>Starlight Till — Backend</h1>
 <div class="sub">Manage custom products and which drinks show up as mixers. Changes sync to the till automatically.</div>
 <div class="status" id="dbStatus">Connecting…</div>
 <div class="account-row">
   <div id="accountName" style="font-weight:700;font-size:14.5px;"></div>
+  <button class="btn btn-ghost" id="switchVenueBtn" hidden style="background:var(--surface-2);color:var(--text);border:1px solid var(--border);">Switch venue</button>
   <button class="btn btn-ghost" id="accountSignOutBtn" style="background:var(--surface-2);color:var(--text);border:1px solid var(--border);">Sign out</button>
+</div>
+
+<div class="section-title" id="venuesTitle" hidden>Venues</div>
+<p class="note" id="venuesNote" hidden>Global Admin only. Add a venue here, then assign staff to it below.</p>
+<div class="card" id="venueList" hidden><div class="empty">Loading…</div></div>
+<div class="section-title" id="addVenueTitle" hidden>Add a Venue</div>
+<div class="card" id="addVenueCard" hidden>
+  <label class="field">Name</label>
+  <input type="text" id="newVenueName" placeholder="e.g. Riverside Bar">
+  <label class="field">Discord webhook — new orders (optional)</label>
+  <input type="text" id="newVenueWebhookOrder" placeholder="https://discord.com/api/webhooks/...">
+  <label class="field">Discord webhook — Z-reads (optional)</label>
+  <input type="text" id="newVenueWebhookZread" placeholder="https://discord.com/api/webhooks/...">
+  <label class="field">Discord webhook — stop list (optional)</label>
+  <input type="text" id="newVenueWebhookStop" placeholder="https://discord.com/api/webhooks/...">
+  <button class="btn btn-accent" id="addVenueBtn">Add venue</button>
+</div>
+
+<div class="section-title" id="sessionSettingsTitle" hidden>Session Settings</div>
+<div class="card" id="sessionSettingsCard" hidden>
+  <label class="row" style="border:0;padding:0 0 10px;">
+    <span class="info"><span class="name">Time out idle sessions</span></span>
+    <span class="switch"><input type="checkbox" id="sessionTimeoutEnabled"><span class="slider"></span></span>
+  </label>
+  <label class="field">Minutes idle before sign-out</label>
+  <input type="number" id="sessionTimeoutMinutes" min="1" step="1" placeholder="e.g. 30">
+  <button class="btn btn-accent" id="saveSessionSettingsBtn" style="margin-top:10px;">Save</button>
 </div>
 
 <div class="section-title">Users</div>
@@ -107,9 +143,12 @@ label.field{display:block;font-size:11.5px;color:var(--text-muted);font-weight:6
 <div class="card">
   <label class="field">Name</label>
   <input type="text" id="newUserName" placeholder="e.g. Tom">
-  <label class="field">PIN</label>
+  <label class="field">PIN (6+ digits)</label>
   <input type="text" inputmode="numeric" id="newUserPin" placeholder="e.g. 710603">
+  <label class="field">Venues</label>
+  <div id="newUserVenues"></div>
   <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Account Active</span></span><span class="switch"><input type="checkbox" id="permActive" checked><span class="slider"></span></span></label>
+  <label class="row" id="newUserGlobalAdminRow" style="border:0;padding:10px 0 0;" hidden><span class="info"><span class="name">Global Admin (all venues)</span></span><span class="switch"><input type="checkbox" id="permGlobalAdmin"><span class="slider"></span></span></label>
   <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Place Orders</span></span><span class="switch"><input type="checkbox" id="permPlaceOrders" checked><span class="slider"></span></span></label>
   <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Products on Stop</span></span><span class="switch"><input type="checkbox" id="permProductsOnStop"><span class="slider"></span></span></label>
   <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Recovery Tool</span></span><span class="switch"><input type="checkbox" id="permRecoveryTool"><span class="slider"></span></span></label>
@@ -214,26 +253,13 @@ label.field{display:block;font-size:11.5px;color:var(--text-muted);font-weight:6
 </details>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="db.js"></script>
 <script>
-const SUPABASE_URL = "https://djegigghjeisoyecxeyo.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqZWdpZ2doamVpc295ZWN4ZXlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNjE1NTcsImV4cCI6MjEwNDczNzU1N30.X40pprKgeeu3bQ_STG9sCUZg4763ot8ZJFeJ8VFXvdM";
 const LS_CUSTOM = "starlightTill.customProducts.v1";
 const LS_MIXER_OVERRIDES = "starlightTill.mixerOverrides.v1";
 const LS_HH_OVERRIDE = "starlightTill.hhOverride.v1";
 const LS_CUSTOM_DISCOUNTS = "starlightTill.customDiscounts.v1";
-const LS_USERS = "starlightTill.users.v1";
-const LS_CURRENT_USER = "starlightTill.currentUser.v1";
 let dbNs = null;
-let supabaseClient = null;
-function makeSupabaseDb(client){
-  return { doc(path){ return {
-    async set(body){ await client.from("app_state").upsert({ key: path, value: body.value }); },
-    async get(){
-      const { data } = await client.from("app_state").select("value").eq("key", path).maybeSingle();
-      return { exists: !!data, data: () => ({ value: data ? data.value : undefined }) };
-    }
-  }; } };
-}
 let customProducts = [];
 let mixerOverrides = new Set();
 let hhOverride = null;
@@ -241,9 +267,12 @@ let customDiscounts = [];
 let categories = [];
 let catalogueError = null;
 let uid = 0;
-let users = [];
+let users = []; // every staff member visible to me (RLS-filtered): my own venues, or everyone if Global Admin
+let venues = []; // venues visible to me — same rule
+let currentUser = null;
 let currentUserId = null;
-try { currentUserId = localStorage.getItem(LS_CURRENT_USER); } catch(e){}
+let myVenues = [];
+let currentVenue = null;
 
 function fmt(pence){ return "£" + (pence/100).toFixed(2); }
 
@@ -258,37 +287,32 @@ async function saveDoc(key, val){
   try { await dbNs.doc("state/" + key).set({ value: val }); } catch(e){}
 }
 
-// Staff accounts, custom discounts and mixer overrides used to be one shared array every device
-// blind-overwrote whole — two admins editing at once could erase each other's changes. Each is now
-// a table of independent rows, one per item, addressed by its own id.
-function rowStore(table, limit){
-  limit = limit || 500;
-  return {
-    async save(row){
-      if (!supabaseClient) return;
-      try { await supabaseClient.from(table).upsert({ id: row.id, ts: row.ts, data: row }); } catch(e){}
-    },
-    async remove(id){
-      if (!supabaseClient) return;
-      try { await supabaseClient.from(table).delete().eq("id", id); } catch(e){}
-    },
-    async fetchAll(){
-      if (!supabaseClient) return null;
-      try {
-        const { data, error } = await supabaseClient.from(table).select("data").order("ts", { ascending: false }).limit(limit);
-        if (error) return null;
-        return data.map(r => r.data);
-      } catch(e){ return null; }
-    }
-  };
-}
+// rowStore()/makeSupabaseDb() now live in db.js, shared with index.html/orders.html, and are venue-aware.
 const mixerOverridesStore = rowStore("mixer_overrides", 1000);
 const customDiscountsStore = rowStore("custom_discounts", 500);
-const staffStore = rowStore("staff_users", 500);
 const categoriesStore = rowStore("categories", 200);
 const catalogueItemsStore = rowStore("catalogue_items", 2000);
 let realCategories = [];
 let realItems = [];
+
+// staff_users isn't venue-scoped by a column (RLS decides visibility from data.venueIds instead), so
+// it doesn't go through rowStore — RLS itself returns only what this signed-in admin can see.
+async function fetchAllVisibleStaff(){
+  if (!supabaseClient) return [];
+  try {
+    const { data, error } = await supabaseClient.from("staff_users").select("id,data");
+    if (error || !data) return [];
+    return data.map(r => ({ id: r.id, ...r.data }));
+  } catch(e){ return []; }
+}
+async function fetchAllVisibleVenues(){
+  if (!supabaseClient) return [];
+  try {
+    const { data, error } = await supabaseClient.from("venues").select("id,data").order("ts", { ascending: true });
+    if (error || !data) return [];
+    return data.map(r => ({ id: r.id, ...r.data }));
+  } catch(e){ return []; }
+}
 
 function fmtPoundsFromPence(pence){ return (pence/100).toFixed(2); }
 function renderEditCatalogue(){
@@ -347,27 +371,16 @@ document.getElementById("editCatSearch").addEventListener("input", renderEditCat
 async function init(){
   const statusEl = document.getElementById("dbStatus");
   try {
-    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    connectAuthClient();
     dbNs = makeSupabaseDb(supabaseClient);
-  } catch(e) { dbNs = null; }
+  } catch(e) { dbNs = null; supabaseClient = null; }
   if (!dbNs) {
     statusEl.textContent = "No database connection.";
     statusEl.className = "status bad";
-  } else {
-    statusEl.textContent = "Connected — changes save automatically.";
-    statusEl.className = "status ok";
-    customProducts = await loadDoc(LS_CUSTOM, []);
-    const mixerRows = await mixerOverridesStore.fetchAll();
-    mixerOverrides = new Set((mixerRows || []).map(r => r.name));
-    hhOverride = await loadDoc(LS_HH_OVERRIDE, null);
-    customDiscounts = await customDiscountsStore.fetchAll() || [];
-    users = await staffStore.fetchAll() || [];
+    return;
   }
-  if (!users.length) users = [{ id:"710603", name:"Tom", perms:{ active:true, placeOrders:true, productsOnStop:true, recoveryTool:true, callToService:true, clearHistory:true, xzRead:true, endOfDay:true, backendAccess:true, orderScreen:true } }];
-  document.getElementById("hhMode").value = hhOverride === true ? "on" : hhOverride === false ? "off" : "auto";
-  renderOfferList();
-  renderUserList();
-  applyLoginState();
+  statusEl.textContent = "Connected — changes save automatically.";
+  statusEl.className = "status ok";
 
   try {
     const res = await fetch("products.json");
@@ -382,54 +395,132 @@ async function init(){
     catalogueError = "Couldn't load products.json (" + e.message + "). Make sure products.json is published alongside this page.";
   }
 
+  const session = await getSession();
+  if (session) {
+    currentUser = await fetchMyStaffRow();
+    currentUserId = currentUser ? currentUser.id : null;
+    if (currentUser && currentUser.perms.active !== false) {
+      myVenues = await fetchMyVenues(currentUser);
+      await resolveVenueSelection();
+    } else {
+      await signOutAuth();
+      currentUser = null; currentUserId = null;
+    }
+  }
+  applyLoginState();
+}
+
+async function resolveVenueSelection(){
+  if (!myVenues.length) { currentVenue = null; applyLoginState(); return; }
+  let venue = myVenues.find(v => v.id === currentVenueId);
+  if (!venue && myVenues.length === 1) { venue = myVenues[0]; setCurrentVenueId(venue.id); }
+  currentVenue = venue || null;
+  applyLoginState();
+  if (currentVenue) await loadVenueData();
+}
+
+// Everything venue-scoped (custom products, mixer overrides, discounts, staff, catalogue prices) only
+// loads once a venue is actually selected — RLS wouldn't return any of it before that anyway.
+async function loadVenueData(){
+  customProducts = await loadDoc(LS_CUSTOM, []);
+  const mixerRows = await mixerOverridesStore.fetchAll();
+  mixerOverrides = new Set((mixerRows || []).map(r => r.name));
+  hhOverride = await loadDoc(LS_HH_OVERRIDE, null);
+  customDiscounts = await customDiscountsStore.fetchAll() || [];
+  users = await fetchAllVisibleStaff();
+  document.getElementById("hhMode").value = hhOverride === true ? "on" : hhOverride === false ? "off" : "auto";
+  renderOfferList();
+  renderUserList();
   renderCustomList();
   renderCatalogue();
 
   realCategories = await categoriesStore.fetchAll() || [];
   realItems = await catalogueItemsStore.fetchAll() || [];
   renderEditCatalogue();
+
+  const isGlobalAdmin = !!(currentUser && currentUser.perms.globalAdmin);
+  ["venuesTitle","venuesNote","venueList","addVenueTitle","addVenueCard","sessionSettingsTitle","sessionSettingsCard"].forEach(id => { document.getElementById(id).hidden = !isGlobalAdmin; });
+  document.getElementById("newUserGlobalAdminRow").hidden = !isGlobalAdmin;
+  renderNewUserVenues();
+  if (isGlobalAdmin) {
+    venues = await fetchAllVisibleVenues();
+    renderVenues();
+    await loadSessionSettings();
+  }
 }
 
 function applyLoginState(){
-  let u = currentUserId ? users.find(x => x.id === currentUserId) : null;
-  if (u && u.perms.active === false) { u = null; currentUserId = null; try { localStorage.removeItem(LS_CURRENT_USER); } catch(e){} }
-  if (u && u.perms.backendAccess) {
+  const venuePicker = document.getElementById("venuePickerScreen");
+  if (currentUser && !currentVenue) {
     document.getElementById("loginGate").hidden = true;
-    document.getElementById("accountName").textContent = "Signed in as " + u.name;
+    venuePicker.hidden = false;
+    document.getElementById("venuePickerUserName").textContent = currentUser.name;
+    renderVenuePicker();
+    return;
+  }
+  venuePicker.hidden = true;
+  if (currentUser && currentUser.perms.backendAccess) {
+    document.getElementById("loginGate").hidden = true;
+    document.getElementById("accountName").textContent = "Signed in as " + currentUser.name + (currentVenue ? " · " + currentVenue.name : "");
   } else {
     document.getElementById("loginGate").hidden = false;
-    document.getElementById("loginMessage").textContent = u ? `Signed in as ${u.name}, but no Backend Access.` : "Enter your PIN for Backend Access.";
+    document.getElementById("loginMessage").textContent = currentUser ? `Signed in as ${currentUser.name}, but no Backend Access.` : "Enter your PIN for Backend Access.";
   }
+  document.getElementById("switchVenueBtn").hidden = myVenues.length < 2;
 }
-document.getElementById("loginSubmitBtn").addEventListener("click", () => {
+function renderVenuePicker(){
+  const wrap = document.getElementById("venuePickerList");
+  wrap.innerHTML = "";
+  myVenues.forEach(v => {
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "btn btn-accent"; btn.style.marginBottom = "8px";
+    btn.textContent = v.name;
+    btn.addEventListener("click", async () => { setCurrentVenueId(v.id); await resolveVenueSelection(); });
+    wrap.appendChild(btn);
+  });
+}
+document.getElementById("loginSubmitBtn").addEventListener("click", async () => {
   const pin = document.getElementById("loginPinInput").value.trim();
-  const u = users.find(x => x.id === pin);
-  if (!u) { alert("Incorrect PIN."); return; }
-  if (u.perms.active === false) { alert("This account is disabled."); return; }
-  currentUserId = u.id;
-  try { localStorage.setItem(LS_CURRENT_USER, u.id); } catch(e){}
+  const res = await signInWithPin(pin);
+  if (res.error) { alert(res.error); return; }
   document.getElementById("loginPinInput").value = "";
-  applyLoginState();
+  currentUser = await fetchMyStaffRow();
+  currentUserId = currentUser ? currentUser.id : null;
+  if (!currentUser || currentUser.perms.active === false) {
+    alert(currentUser ? "This account is disabled." : "Account not found.");
+    await signOutAuth();
+    currentUser = null; currentUserId = null;
+    applyLoginState();
+    return;
+  }
+  myVenues = await fetchMyVenues(currentUser);
+  await resolveVenueSelection();
 });
 document.getElementById("loginPinInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginSubmitBtn").click(); });
-document.getElementById("accountSignOutBtn").addEventListener("click", () => {
-  currentUserId = null;
-  try { localStorage.removeItem(LS_CURRENT_USER); } catch(e){}
+async function signOutBackend(){
+  await signOutAuth();
+  currentUser = null; currentUserId = null; currentVenue = null; myVenues = [];
   applyLoginState();
-});
+}
+document.getElementById("accountSignOutBtn").addEventListener("click", signOutBackend);
+document.getElementById("venuePickerLogoutBtn").addEventListener("click", signOutBackend);
+document.getElementById("switchVenueBtn").addEventListener("click", () => { currentVenue = null; applyLoginState(); });
+const PERM_KEYS_ORDERED = Object.keys(PERM_LABELS).filter(k => k !== "globalAdmin");
 
-const PERM_LABELS = { active:"Account Active", placeOrders:"Place Orders", productsOnStop:"Products on Stop", recoveryTool:"Recovery Tool", callToService:"Call to Service", clearHistory:"Clear History on Orders", xzRead:"X and Z Read", endOfDay:"Access End of Day", backendAccess:"Backend Access", orderScreen:"Order Screen" };
+function venueName(id){ const v = myVenues.find(x => x.id === id) || venues.find(x => x.id === id); return v ? v.name : id; }
+
 function renderUserList(){
   const wrap = document.getElementById("userList");
   wrap.innerHTML = "";
   if (!users.length) { wrap.innerHTML = `<div class="empty">None yet.</div>`; return; }
+  const canGrantGlobalAdmin = !!(currentUser && currentUser.perms.globalAdmin);
   users.forEach(u => {
     const permsList = Object.entries(u.perms).filter(([,v]) => v).map(([k]) => PERM_LABELS[k]).join(", ") || "No permissions";
     const row = document.createElement("div");
     row.className = "row";
     row.innerHTML = `
       <div class="info">
-        <div class="name">${u.name} <span class="pill">${u.id}</span></div>
+        <div class="name">${u.name} <span class="pill">${(u.venueIds || []).map(venueName).join(", ") || "No venues"}</span></div>
         <div class="price">${permsList}</div>
       </div>
       <button class="btn btn-ghost edit-user-btn" type="button">Edit</button>
@@ -441,15 +532,26 @@ function renderUserList(){
     panel.innerHTML = `
       <label class="field">Name</label>
       <input type="text" class="edit-name">
-      <label class="field">PIN</label>
+      <label class="field">PIN (6+ digits)</label>
       <input type="text" inputmode="numeric" class="edit-pin">
-      ` + Object.entries(PERM_LABELS).map(([key,label]) => `
+      <label class="field">Venues</label>
+      ` + myVenues.map(v => `
+      <label class="row" style="border:0;padding:6px 0 0;">
+        <span class="info"><span class="name">${v.name}</span></span>
+        <span class="switch"><input type="checkbox" data-venue="${v.id}" ${(u.venueIds || []).includes(v.id) ? "checked" : ""}><span class="slider"></span></span>
+      </label>`).join("") +
+      (canGrantGlobalAdmin ? `
+      <label class="row" style="border:0;padding:10px 0 0;">
+        <span class="info"><span class="name">Global Admin (all venues)</span></span>
+        <span class="switch"><input type="checkbox" class="edit-global-admin" ${u.perms.globalAdmin ? "checked" : ""}><span class="slider"></span></span>
+      </label>` : "") +
+      PERM_KEYS_ORDERED.map(key => `
       <label class="row" style="border:0;padding:8px 0 0;">
-        <span class="info"><span class="name">${label}</span></span>
+        <span class="info"><span class="name">${PERM_LABELS[key]}</span></span>
         <span class="switch"><input type="checkbox" data-perm="${key}" ${u.perms[key] ? "checked" : ""}><span class="slider"></span></span>
       </label>`).join("") + `<button class="btn btn-accent save-user-btn" type="button" style="margin-top:8px;">Save</button>`;
     panel.querySelector(".edit-name").value = u.name;
-    panel.querySelector(".edit-pin").value = u.id;
+    panel.querySelector(".edit-pin").value = u.pin || "";
 
     row.querySelector(".edit-user-btn").addEventListener("click", () => { panel.hidden = !panel.hidden; });
     row.querySelector(".del-user-btn").addEventListener("click", () => deleteUser(u.id));
@@ -457,15 +559,20 @@ function renderUserList(){
       const name = panel.querySelector(".edit-name").value.trim();
       const pin = panel.querySelector(".edit-pin").value.trim();
       if (!name) { alert("Enter a name."); return; }
-      if (!pin) { alert("Enter a PIN."); return; }
-      if (pin !== u.id && users.some(other => other !== u && other.id === pin)) { alert("That PIN is already used by another user."); return; }
+      if (!/^[0-9]{6,}$/.test(pin)) { alert("PIN must be 6+ digits."); return; }
       const perms = {};
       panel.querySelectorAll("[data-perm]").forEach(inp => { perms[inp.dataset.perm] = inp.checked; });
-      if (pin !== u.id) await staffStore.remove(u.id);
-      u.id = pin; u.name = name; u.perms = perms;
-      await staffStore.save(u);
-      row.querySelector(".name").innerHTML = `${u.name} <span class="pill">${u.id}</span>`;
-      row.querySelector(".price").textContent = Object.entries(perms).filter(([,v]) => v).map(([k]) => PERM_LABELS[k]).join(", ") || "No permissions";
+      const gaBox = panel.querySelector(".edit-global-admin");
+      perms.globalAdmin = gaBox ? gaBox.checked : !!u.perms.globalAdmin; // only a Global Admin editor can see/change this
+      const venueIds = [...panel.querySelectorAll("[data-venue]:checked")].map(inp => inp.dataset.venue);
+      if (pin !== u.pin) {
+        const res = await callManageStaff("changePin", { userId: u.id, newPin: pin });
+        if (res.error) { alert(res.error); return; }
+      }
+      const { error } = await supabaseClient.from("staff_users").update({ data: { name, pin, perms, venueIds } }).eq("id", u.id);
+      if (error) { alert(error.message); return; }
+      u.name = name; u.pin = pin; u.perms = perms; u.venueIds = venueIds;
+      renderUserList();
       e.target.textContent = "Saved ✓";
       setTimeout(() => { e.target.textContent = "Save"; }, 1200);
     });
@@ -476,18 +583,30 @@ function renderUserList(){
 }
 async function deleteUser(id){
   if (!confirm("Delete this user?")) return;
+  const res = await callManageStaff("delete", { userId: id });
+  if (res.error) { alert(res.error); return; }
   users = users.filter(u => u.id !== id);
-  await staffStore.remove(id);
   renderUserList();
+}
+function renderNewUserVenues(){
+  const wrap = document.getElementById("newUserVenues");
+  wrap.innerHTML = myVenues.map(v => `
+    <label class="row" style="border:0;padding:6px 0 0;">
+      <span class="info"><span class="name">${v.name}</span></span>
+      <span class="switch"><input type="checkbox" data-venue="${v.id}" ${myVenues.length === 1 ? "checked" : ""}><span class="slider"></span></span>
+    </label>`).join("");
 }
 document.getElementById("addUserBtn").addEventListener("click", async () => {
   const name = document.getElementById("newUserName").value.trim();
   const pin = document.getElementById("newUserPin").value.trim();
   if (!name) { alert("Enter a name."); return; }
-  if (!pin) { alert("Enter a PIN."); return; }
-  if (users.some(u => u.id === pin)) { alert("That PIN is already used by another user."); return; }
+  if (!/^[0-9]{6,}$/.test(pin)) { alert("PIN must be 6+ digits."); return; }
+  const venueIds = [...document.querySelectorAll("#newUserVenues [data-venue]:checked")].map(inp => inp.dataset.venue);
+  if (!venueIds.length) { alert("Pick at least one venue."); return; }
+  const gaEl = document.getElementById("permGlobalAdmin");
   const perms = {
     active: document.getElementById("permActive").checked,
+    globalAdmin: (gaEl && !document.getElementById("newUserGlobalAdminRow").hidden) ? gaEl.checked : false,
     placeOrders: document.getElementById("permPlaceOrders").checked,
     productsOnStop: document.getElementById("permProductsOnStop").checked,
     recoveryTool: document.getElementById("permRecoveryTool").checked,
@@ -498,15 +617,95 @@ document.getElementById("addUserBtn").addEventListener("click", async () => {
     backendAccess: document.getElementById("permBackendAccess").checked,
     orderScreen: document.getElementById("permOrderScreen").checked
   };
-  const user = { id: pin, ts: Date.now(), name, perms };
-  users.push(user);
-  await staffStore.save(user);
+  const res = await callManageStaff("create", { pin, name, perms, venueIds });
+  if (res.error) { alert(res.error); return; }
   document.getElementById("newUserName").value = "";
   document.getElementById("newUserPin").value = "";
   document.getElementById("permActive").checked = true;
+  if (gaEl) gaEl.checked = false;
   document.getElementById("permPlaceOrders").checked = true;
   ["permProductsOnStop","permRecoveryTool","permCallToService","permClearHistory","permXzRead","permEndOfDay","permBackendAccess","permOrderScreen"].forEach(id => { document.getElementById(id).checked = false; });
+  users = await fetchAllVisibleStaff();
   renderUserList();
+});
+
+function renderVenues(){
+  const wrap = document.getElementById("venueList");
+  wrap.innerHTML = "";
+  if (!venues.length) { wrap.innerHTML = `<div class="empty">None yet.</div>`; return; }
+  venues.forEach(v => {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.style.cssText = "flex-direction:column;align-items:stretch;gap:8px;";
+    row.innerHTML = `
+      <label class="field">Name</label>
+      <input type="text" class="v-name" value="${v.name.replace(/"/g,"&quot;")}">
+      <label class="field">Discord webhook — new orders</label>
+      <input type="text" class="v-webhook-order" value="${(v.discordWebhooks && v.discordWebhooks.order || "").replace(/"/g,"&quot;")}" placeholder="https://discord.com/api/webhooks/...">
+      <label class="field">Discord webhook — Z-reads</label>
+      <input type="text" class="v-webhook-zread" value="${(v.discordWebhooks && v.discordWebhooks.zread || "").replace(/"/g,"&quot;")}" placeholder="https://discord.com/api/webhooks/...">
+      <label class="field">Discord webhook — stop list</label>
+      <input type="text" class="v-webhook-stop" value="${(v.discordWebhooks && v.discordWebhooks.stop || "").replace(/"/g,"&quot;")}" placeholder="https://discord.com/api/webhooks/...">
+      <button type="button" class="btn btn-accent v-save-btn" style="margin-top:4px;">Save</button>`;
+    row.querySelector(".v-save-btn").addEventListener("click", async (e) => {
+      const name = row.querySelector(".v-name").value.trim();
+      if (!name) { alert("Enter a name."); return; }
+      const discordWebhooks = {
+        order: row.querySelector(".v-webhook-order").value.trim() || null,
+        zread: row.querySelector(".v-webhook-zread").value.trim() || null,
+        stop: row.querySelector(".v-webhook-stop").value.trim() || null
+      };
+      const { error } = await supabaseClient.from("venues").update({ data: { ...v, name, discordWebhooks } }).eq("id", v.id);
+      if (error) { alert(error.message); return; }
+      v.name = name; v.discordWebhooks = discordWebhooks;
+      e.target.textContent = "Saved ✓";
+      setTimeout(() => { e.target.textContent = "Save"; }, 1200);
+    });
+    wrap.appendChild(row);
+  });
+}
+document.getElementById("addVenueBtn").addEventListener("click", async () => {
+  const name = document.getElementById("newVenueName").value.trim();
+  if (!name) { alert("Enter a name."); return; }
+  const id = "venue_" + Date.now();
+  const data = {
+    name,
+    discordWebhooks: {
+      order: document.getElementById("newVenueWebhookOrder").value.trim() || null,
+      zread: document.getElementById("newVenueWebhookZread").value.trim() || null,
+      stop: document.getElementById("newVenueWebhookStop").value.trim() || null
+    },
+    active: true
+  };
+  const { error } = await supabaseClient.from("venues").insert({ id, ts: Date.now(), data });
+  if (error) { alert(error.message); return; }
+  document.getElementById("newVenueName").value = "";
+  document.getElementById("newVenueWebhookOrder").value = "";
+  document.getElementById("newVenueWebhookZread").value = "";
+  document.getElementById("newVenueWebhookStop").value = "";
+  venues = await fetchAllVisibleVenues();
+  myVenues = await fetchMyVenues(currentUser); // a Global Admin's own venue list is "every venue"
+  renderVenues();
+  renderNewUserVenues();
+});
+
+async function loadSessionSettings(){
+  try {
+    const { data } = await supabaseClient.from("app_settings").select("data").eq("id", "global").maybeSingle();
+    const minutes = data && data.data ? data.data.sessionTimeoutMinutes : null;
+    document.getElementById("sessionTimeoutEnabled").checked = minutes != null;
+    document.getElementById("sessionTimeoutMinutes").value = minutes || "";
+  } catch(e){}
+}
+document.getElementById("saveSessionSettingsBtn").addEventListener("click", async () => {
+  const enabled = document.getElementById("sessionTimeoutEnabled").checked;
+  const minutes = parseInt(document.getElementById("sessionTimeoutMinutes").value, 10);
+  if (enabled && (!minutes || minutes < 1)) { alert("Enter how many minutes."); return; }
+  const { error } = await supabaseClient.from("app_settings").update({ ts: Date.now(), data: { sessionTimeoutMinutes: enabled ? minutes : null } }).eq("id", "global");
+  if (error) { alert(error.message); return; }
+  const btn = document.getElementById("saveSessionSettingsBtn");
+  btn.textContent = "Saved ✓";
+  setTimeout(() => { btn.textContent = "Save"; }, 1200);
 });
 
 function productSummary(p){
