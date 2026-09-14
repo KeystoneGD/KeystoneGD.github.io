@@ -1,6 +1,6 @@
 {
-  "name": "Starlight Orders",
-  "short_name": "Orders",
+  "name": "NIPOS - Non Integrated POS (Orders)",
+  "short_name": "NIPOS Orders",
   "start_url": "./orders.html",
   "display": "standalone",
   "background_color": "#0c1826",

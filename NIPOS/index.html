@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Starlight Till</title>
-<meta name="description" content="Pocket point-of-sale for taking cash-register-style orders and logging card sales at Starlight Suite.">
+<title>NIPOS</title>
+<meta name="description" content="NIPOS - Non Integrated POS. Pocket point-of-sale for taking cash-register-style orders and logging card sales.">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0c1826">
 <meta name="mobile-web-app-capable" content="yes">
@@ -273,7 +273,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     <button class="icon-btn" id="hamburgerBtn" aria-label="Menu" title="Menu">☰</button>
     <div class="brand">
       <div>
-        <h1 id="brandTitle">Starlight Till</h1>
+        <h1 id="brandTitle">NIPOS - Non Integrated POS</h1>
         <div class="sub">Cash & card order pad</div>
       </div>
     </div>
@@ -417,7 +417,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
       <div class="admin-row" id="titleRow">
         <button class="admin-row-main" type="button">
           <span class="name">App name</span>
-          <span class="sub" id="titleRowSub">Starlight Till</span>
+          <span class="sub" id="titleRowSub">NIPOS - Non Integrated POS</span>
         </button>
         <span class="chevron">›</span>
       </div>
@@ -1924,7 +1924,7 @@ applyLoginState();
 
 /* ---------- admin ---------- */
 let adminView = "home", adminDetailCatId = null, adminDetailOrigin = "home";
-let appTitle = loadJSON(LS_TITLE, null) || "Starlight Till";
+let appTitle = loadJSON(LS_TITLE, null) || "NIPOS - Non Integrated POS";
 document.getElementById("brandTitle").textContent = appTitle;
 document.getElementById("titleRowSub").textContent = appTitle;
 
@@ -1951,7 +1951,7 @@ document.getElementById("endOfShiftBack").addEventListener("click", () => closeS
 document.getElementById("stoppedRow").querySelector(".admin-row-main").addEventListener("click", () => showStoppedCategories());
 document.getElementById("openOrdersRow").querySelector(".admin-row-main").addEventListener("click", () => showOpenOrders());
 document.getElementById("titleRow").querySelector(".admin-row-main").addEventListener("click", async () => {
-  const val = await askText({ title:"App name", message:"Shown at the top of the till screen.", placeholder:"Starlight Till", value: appTitle, inputType:"text", inputMode:"text" });
+  const val = await askText({ title:"App name", message:"Shown at the top of the till screen.", placeholder:"NIPOS - Non Integrated POS", value: appTitle, inputType:"text", inputMode:"text" });
   if (val === null) return;
   const trimmed = val.trim();
   if (!trimmed) { showToast("Enter a name"); return; }

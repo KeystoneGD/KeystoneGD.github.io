@@ -565,13 +565,16 @@ async function init(){
   applyLoginState();
 }
 
+// Unlike the till/orders screen, Backend never blocks on a venue picker — the sidebar's venue
+// switcher already covers changing venues, so just get into the app with whatever venue is
+// remembered (or the first one) and let people switch from there.
 async function resolveVenueSelection(){
   if (!myVenues.length) { currentVenue = null; applyLoginState(); return; }
   let venue = myVenues.find(v => v.id === currentVenueId);
-  if (!venue && myVenues.length === 1) { venue = myVenues[0]; setCurrentVenueId(venue.id); }
-  currentVenue = venue || null;
+  if (!venue) { venue = myVenues[0]; setCurrentVenueId(venue.id); }
+  currentVenue = venue;
   applyLoginState();
-  if (currentVenue) await loadVenueData();
+  await loadVenueData();
 }
 
 async function loadVenueData(){
@@ -608,18 +611,8 @@ async function loadVenueData(){
 }
 
 function applyLoginState(){
-  const venuePicker = document.getElementById("venuePickerScreen");
   const shell = document.getElementById("appShell");
   const hamburger = document.getElementById("hamburgerBtn");
-  if (currentUser && !currentVenue) {
-    document.getElementById("loginGate").hidden = true;
-    venuePicker.hidden = false;
-    shell.hidden = true; hamburger.hidden = true;
-    document.getElementById("venuePickerUserName").textContent = currentUser.name;
-    renderVenuePicker();
-    return;
-  }
-  venuePicker.hidden = true;
   if (currentUser && currentUser.perms.backendAccess) {
     document.getElementById("loginGate").hidden = true;
     shell.hidden = false; hamburger.hidden = false;
@@ -628,17 +621,6 @@ function applyLoginState(){
     document.getElementById("loginMessage").textContent = currentUser ? `Signed in as ${currentUser.name}, but no Backend Access.` : "Enter your PIN for Backend Access.";
     shell.hidden = true; hamburger.hidden = true;
   }
-}
-function renderVenuePicker(){
-  const wrap = document.getElementById("venuePickerList");
-  wrap.innerHTML = "";
-  myVenues.forEach(v => {
-    const btn = document.createElement("button");
-    btn.type = "button"; btn.className = "btn btn-accent btn-block"; btn.style.marginBottom = "8px";
-    btn.textContent = v.name;
-    btn.addEventListener("click", async () => { setCurrentVenueId(v.id); await resolveVenueSelection(); });
-    wrap.appendChild(btn);
-  });
 }
 function renderVenueSwitcher(){
   const wrap = document.getElementById("venueSwitcherWrap");

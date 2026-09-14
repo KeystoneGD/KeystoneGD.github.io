@@ -2,11 +2,11 @@ self.addEventListener("install", () => { self.skipWaiting(); });
 self.addEventListener("activate", (event) => { event.waitUntil(self.clients.claim()); });
 
 self.addEventListener("push", (event) => {
-  let data = { title: "Starlight Till", body: "" };
+  let data = { title: "NIPOS", body: "" };
   try { if (event.data) data = event.data.json(); } catch (e) {
     if (event.data) data.body = event.data.text();
   }
-  const title = data.title || "Starlight Till";
+  const title = data.title || "NIPOS";
   const options = {
     body: data.body || "",
     tag: data.urgent ? "urgent-" + Date.now() : "notice",

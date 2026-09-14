@@ -1,6 +1,6 @@
 {
-  "name": "Starlight Till",
-  "short_name": "Till",
+  "name": "NIPOS - Non Integrated POS",
+  "short_name": "NIPOS",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0c1826",
