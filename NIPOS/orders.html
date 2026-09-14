@@ -141,7 +141,6 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 <div class="toolbar-row" id="toolbarRow">
   <button class="btn btn-ghost" id="stockBtn" type="button" hidden>🛑 Products on Stop</button>
   <button class="btn btn-accent" id="serviceBtn" type="button">🔔 Service</button>
-  <button class="btn btn-ghost" id="notifyPrefsBtn" type="button">🔔 Notifications</button>
 </div>
 <div class="sound-row" id="alertsRow">
   <div id="alertsStatus" style="font-size:12.5px;color:var(--text-muted);">🔕 Tap to get a sound + alert when a new order comes in</div>
@@ -178,21 +177,6 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
   </div>
 </div>
 
-<div class="modal-overlay" id="notifyPrefsModal" hidden>
-  <div class="modal-card">
-    <h3>Notifications</h3>
-    <p>Sound</p>
-    <select id="notifySoundSelect" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;margin-bottom:8px;"></select>
-    <button type="button" class="btn btn-ghost" id="notifySoundPreviewBtn" style="margin-bottom:16px;">▶ Preview</button>
-    <p>Venues</p>
-    <p class="note" style="margin-top:-6px;">Get a Service alert for these venues even when you're signed in somewhere else.</p>
-    <div class="modal-item-list" id="notifyPrefsList"></div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" id="notifyPrefsCancel">Cancel</button>
-      <button class="btn btn-accent" id="notifyPrefsSave">Save</button>
-    </div>
-  </div>
-</div>
 <div class="toast" id="toast"></div>
 
 <div class="modal-overlay" id="flagModal" hidden>
@@ -625,13 +609,11 @@ async function markDelivered(id){
   render();
 }
 async function markReady(id){
-  const o = openOrders.find(x => x.id === id);
-  if (o) o.ready = true;
-  if (o) await ordersStore.save(o);
+  const fresh = await mergeOpenOrder(id, { ready: true });
+  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
   render();
 }
 async function resolveFlag(id, outcome){
-  const o = openOrders.find(x => x.id === id);
   if (outcome === "refunded") {
     openOrders = openOrders.filter(x => x.id !== id);
     await ordersStore.remove(id);
@@ -639,14 +621,15 @@ async function resolveFlag(id, outcome){
     render();
     return;
   }
-  if (o) {
-    if (outcome === "accepted" && o.flagIntent === "substitute" && o.flagSubstitute) {
-      o.items.push({ name: o.flagSubstitute, qty: 1, pence: 0, substituted: true, subFor: o.flagItem });
-    }
-    o.flagged = false;
-    o.flagOutcome = outcome;
-    await ordersStore.save(o);
+  const patch = { flagged: false, flagOutcome: outcome };
+  const cached = openOrders.find(x => x.id === id);
+  if (outcome === "accepted" && cached && cached.flagIntent === "substitute" && cached.flagSubstitute) {
+    const { data } = await supabaseClient.from("open_orders").select("data").eq("id", id).maybeSingle();
+    const items = (data && data.data.items) || cached.items || [];
+    patch.items = [...items, { name: cached.flagSubstitute, qty: 1, pence: 0, substituted: true, subFor: cached.flagItem }];
   }
+  const fresh = await mergeOpenOrder(id, patch);
+  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
   render();
 }
 
@@ -787,15 +770,23 @@ document.getElementById("flagCancel3").addEventListener("click", closeFlagModal)
 document.getElementById("flagConfirm").addEventListener("click", async () => {
   if (!flagIntent) { alert("Choose Offer Refund or Substitute."); return; }
   if (flagIntent === "substitute" && !flagSubstituteName) { alert("Pick a substitute item."); return; }
-  const o = openOrders.find(x => x.id === flagTargetId);
-  if (o) {
-    o.flagged = true;
-    o.flagItem = o.items[flagItemIdx].name;
-    o.flagReason = flagReason === "Other" ? document.getElementById("flagOtherInput").value.trim() : flagReason;
-    o.flagIntent = flagIntent;
-    o.flagSubstitute = flagIntent === "substitute" ? flagSubstituteName : null;
-    o.flagOutcome = null;
-    await ordersStore.save(o);
+  const cached = openOrders.find(x => x.id === flagTargetId);
+  if (cached) {
+    const flagItem = cached.items[flagItemIdx].name;
+    const flagReasonText = flagReason === "Other" ? document.getElementById("flagOtherInput").value.trim() : flagReason;
+    const fresh = await mergeOpenOrder(flagTargetId, {
+      flagged: true,
+      flagItem,
+      flagReason: flagReasonText,
+      flagIntent,
+      flagSubstitute: flagIntent === "substitute" ? flagSubstituteName : null,
+      flagOutcome: null
+    });
+    if (fresh) {
+      const idx = openOrders.findIndex(x => x.id === flagTargetId);
+      if (idx !== -1) openOrders[idx] = fresh;
+      if (fresh.placedById) await pushNotification(fresh.placedById, `Table ${fresh.table || "?"}: ${fresh.flagItem} flagged - ${fresh.flagReason}`, true);
+    }
   }
   closeFlagModal();
   render();
@@ -893,43 +884,6 @@ document.getElementById("serviceBtn").addEventListener("click", async () => {
   serviceRefreshTimer = setInterval(refreshServiceModal, 1000);
 });
 document.getElementById("serviceCloseBtn").addEventListener("click", closeServiceModal);
-
-document.getElementById("notifyPrefsBtn").addEventListener("click", async () => {
-  if (!allVenuesCache.length) allVenuesCache = await fetchAllVenues();
-  const mine = new Set(currentUser.notifyVenueIds || []);
-  const wrap = document.getElementById("notifyPrefsList");
-  wrap.innerHTML = allVenuesCache.map(v => `
-    <label class="row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);">
-      <span>${v.name}</span>
-      <span class="switch"><input type="checkbox" data-notify-venue="${v.id}" ${mine.has(v.id) ? "checked" : ""}><span class="slider"></span></span>
-    </label>`).join("");
-
-  const uploaded = await fetchNotificationSounds();
-  const soundSel = document.getElementById("notifySoundSelect");
-  soundSel.innerHTML =
-    Object.entries(CHIME_PRESETS).map(([id, label]) => `<option value="${id}">${label}</option>`).join("") +
-    (uploaded.length ? uploaded.map(s => `<option value="${s.path}">${s.label}</option>`).join("") : "");
-  soundSel.value = currentUser.notificationSound || "classic";
-
-  document.getElementById("notifyPrefsModal").hidden = false;
-});
-document.getElementById("notifySoundPreviewBtn").addEventListener("click", () => {
-  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
-  playNotificationSound(audioCtx, document.getElementById("notifySoundSelect").value);
-});
-document.getElementById("notifyPrefsCancel").addEventListener("click", () => { document.getElementById("notifyPrefsModal").hidden = true; });
-document.getElementById("notifyPrefsSave").addEventListener("click", async () => {
-  const venueIds = [...document.querySelectorAll("#notifyPrefsList [data-notify-venue]:checked")].map(inp => inp.dataset.notifyVenue);
-  const res = await setMyNotifyVenues(venueIds);
-  if (res.error) { alert(res.error); return; }
-  currentUser.notifyVenueIds = venueIds;
-  const sound = document.getElementById("notifySoundSelect").value;
-  const soundRes = await setMyNotificationSound(sound);
-  if (soundRes.error) { alert(soundRes.error); return; }
-  currentUser.notificationSound = sound;
-  document.getElementById("notifyPrefsModal").hidden = true;
-  showToast("Notification settings saved");
-});
 
 document.getElementById("stockBtn").addEventListener("click", () => {
   document.getElementById("stockSearch").value = "";

@@ -164,6 +164,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 .pill-cash{background:rgba(73,201,141,.16);color:var(--success);}
 .pill-card{background:var(--accent-soft);color:var(--accent);}
 .pill-abandoned{background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border);}
+.pill-refund{background:rgba(255,122,104,.16);color:var(--danger);}
 
 .switch{position:relative;display:inline-block;width:50px;height:32px;flex:0 0 auto;}
 .switch input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;padding:0;border:0;cursor:pointer;-webkit-appearance:none;appearance:none;}
@@ -428,6 +429,13 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
         </button>
         <span class="chevron">›</span>
       </div>
+      <div class="admin-row" id="notifyVenuesRow">
+        <button class="admin-row-main" type="button">
+          <span class="name">Notifications</span>
+          <span class="sub" id="notifyVenuesRowSub">Off</span>
+        </button>
+        <span class="chevron">›</span>
+      </div>
       <div class="admin-row" id="xReadRow">
         <button class="admin-row-main" type="button">
           <span class="name">Takings Summary Report</span>
@@ -565,6 +573,18 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     <div class="modal-actions">
       <button class="btn btn-ghost btn-block" id="modalCancel">Cancel</button>
       <button class="btn btn-accent btn-block" id="modalConfirm">OK</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="notifyPrefsModal" hidden>
+  <div class="modal-card">
+    <h3>Notifications</h3>
+    <p class="modal-message">Get a Service alert for these venues even when you're signed in somewhere else.</p>
+    <div id="notifyPrefsList"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-block" id="notifyPrefsCancel" type="button">Cancel</button>
+      <button class="btn btn-accent btn-block" id="notifyPrefsSave" type="button">Save</button>
     </div>
   </div>
 </div>
@@ -882,6 +902,7 @@ let currentUser = null;
 let currentUserId = null;
 let myVenues = [];
 let currentVenue = null;
+let allVenuesCache = [];
 let notifications = loadJSON(LS_NOTIFICATIONS, []);
 function loadJSON(key, fallback){ try{ const v = JSON.parse(localStorage.getItem(key)); return v || fallback; }catch(e){ return fallback; } }
 let dbNs = null; // Supabase-backed doc() shim, or null if unavailable. Every db call is best-effort on top of localStorage
@@ -1788,6 +1809,19 @@ async function logOrderToDiscord(sale){
     timestamp: new Date(sale.ts).toISOString()
   });
 }
+async function logRefundToDiscord(refundRow, sale){
+  postDiscordEmbed(currentVenue && currentVenue.discordWebhooks && currentVenue.discordWebhooks.order, {
+    title: `REFUND - TABLE ${(sale && sale.table) || "N/A"}`,
+    color: 0xff7a68,
+    fields: [
+      { name: "Item", value: `${refundRow.qty}x ${refundRow.itemName}`, inline: true },
+      { name: "Amount", value: fmt(refundRow.pence), inline: true },
+      { name: "Method", value: refundRow.method === "cash" ? "Cash" : "Card", inline: true },
+      { name: "By", value: currentUser ? currentUser.name : "Unknown", inline: true }
+    ],
+    timestamp: new Date(refundRow.ts).toISOString()
+  });
+}
 async function logStopToDiscord(name, on){
   postDiscordEmbed(currentVenue && currentVenue.discordWebhooks && currentVenue.discordWebhooks.stop, {
     title: on ? "🛑 Product Stopped" : "✅ Product Back In Stock",
@@ -1860,8 +1894,10 @@ function applyLoginState(){
   document.getElementById("accountName").textContent = currentUser.name + (currentVenue ? " · " + currentVenue.name : "");
   document.getElementById("switchVenueBtn").hidden = myVenues.length < 2;
   document.getElementById("soundRowSub").textContent = CHIME_PRESETS[currentUser.notificationSound] || (currentUser.notificationSound ? "Uploaded sound" : "Classic (triple beep)");
+  const notifyCount = (currentUser.notifyVenueIds || []).length;
+  document.getElementById("notifyVenuesRowSub").textContent = notifyCount ? `On for ${notifyCount} venue${notifyCount === 1 ? "" : "s"}` : "Off";
   document.getElementById("stoppedRow").hidden = !currentUser.perms.productsOnStop;
-  document.getElementById("openOrdersRow").hidden = !currentUser.perms.orderScreen;
+  document.getElementById("openOrdersRow").hidden = !currentUser.perms.viewOpenOrders;
   document.getElementById("xReadRow").hidden = !currentUser.perms.xzRead;
   document.getElementById("adminEndOfShiftRow").hidden = !currentUser.perms.endOfDay;
   document.getElementById("histClear").hidden = !currentUser.perms.clearHistory;
@@ -1971,6 +2007,27 @@ document.getElementById("soundRow").querySelector(".admin-row-main").addEventLis
   if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
   playNotificationSound(audioCtx, chosen);
 });
+document.getElementById("notifyVenuesRow").querySelector(".admin-row-main").addEventListener("click", async () => {
+  if (!allVenuesCache.length) allVenuesCache = await fetchAllVenues();
+  const mine = new Set(currentUser.notifyVenueIds || []);
+  document.getElementById("notifyPrefsList").innerHTML = allVenuesCache.map(v => `
+    <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);">
+      <span>${v.name}</span>
+      <span class="switch"><input type="checkbox" data-notify-venue="${v.id}" ${mine.has(v.id) ? "checked" : ""}><span class="slider"></span></span>
+    </label>`).join("");
+  document.getElementById("notifyPrefsModal").hidden = false;
+});
+document.getElementById("notifyPrefsCancel").addEventListener("click", () => { document.getElementById("notifyPrefsModal").hidden = true; });
+document.getElementById("notifyPrefsSave").addEventListener("click", async () => {
+  const venueIds = [...document.querySelectorAll("#notifyPrefsList [data-notify-venue]:checked")].map(inp => inp.dataset.notifyVenue);
+  const res = await setMyNotifyVenues(venueIds);
+  if (res.error) { showToast(res.error); return; }
+  currentUser.notifyVenueIds = venueIds;
+  document.getElementById("notifyPrefsModal").hidden = true;
+  const notifyCount = venueIds.length;
+  document.getElementById("notifyVenuesRowSub").textContent = notifyCount ? `On for ${notifyCount} venue${notifyCount === 1 ? "" : "s"}` : "Off";
+  showToast("Notification settings saved");
+});
 
 function showAdminHome(){
   adminView = "home";
@@ -2051,28 +2108,28 @@ async function markOrderDelivered(id){
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
 async function markOrderReady(id){
-  const o = openOrders.find(x => x.id === id);
-  if (o) o.ready = true;
-  if (o) await ordersStore.save(o);
+  const fresh = await mergeOpenOrder(id, { ready: true });
+  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
 async function resolveOrderFlag(id, outcome){
-  const o = openOrders.find(x => x.id === id);
   if (outcome === "refunded") {
+    const o = openOrders.find(x => x.id === id);
     openOrders = openOrders.filter(x => x.id !== id);
     await ordersStore.remove(id);
     renderOpenOrdersList(); renderOpenOrdersBadge();
     if (o && o.saleTs) goToPastOrderForRefund(o.saleTs);
     return;
   }
-  if (o) {
-    if (outcome === "accepted" && o.flagIntent === "substitute" && o.flagSubstitute) {
-      o.items.push({ name: o.flagSubstitute, qty: 1, pence: 0, substituted: true, subFor: o.flagItem });
-    }
-    o.flagged = false;
-    o.flagOutcome = outcome;
-    await ordersStore.save(o);
+  const patch = { flagged: false, flagOutcome: outcome };
+  const cached = openOrders.find(x => x.id === id);
+  if (outcome === "accepted" && cached && cached.flagIntent === "substitute" && cached.flagSubstitute) {
+    const { data } = await supabaseClient.from("open_orders").select("data").eq("id", id).maybeSingle();
+    const items = (data && data.data.items) || cached.items || [];
+    patch.items = [...items, { name: cached.flagSubstitute, qty: 1, pence: 0, substituted: true, subFor: cached.flagItem }];
   }
+  const fresh = await mergeOpenOrder(id, patch);
+  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
 function goToPastOrderForRefund(saleTs){
@@ -2175,11 +2232,33 @@ document.getElementById("historyBack").addEventListener("click", () => closeShee
 function renderHistory(){
   const list = document.getElementById("histList");
   const empty = document.getElementById("histEmpty");
-  const canRefund = !!(currentUser && currentUser.perms.xzRead);
+  const canRefund = !!(currentUser && currentUser.perms.processRefunds);
   list.innerHTML = "";
-  empty.style.display = history.length ? "none" : "";
+  empty.style.display = (history.length || refunds.length) ? "none" : "";
   let grand = 0, cashTotal = 0, cardTotal = 0;
-  history.forEach(sale => {
+  const entries = history.map(sale => ({ ts: sale.ts, sale }))
+    .concat(refunds.map(r => ({ ts: r.ts, refund: r })))
+    .sort((a, b) => b.ts - a.ts);
+  entries.forEach(entry => {
+    if (entry.refund) {
+      const r = entry.refund;
+      const refundMethod = r.method || "card";
+      grand -= r.pence;
+      if (refundMethod === "cash") cashTotal -= r.pence; else cardTotal -= r.pence;
+      const card = document.createElement("div");
+      card.className = "hist-item";
+      card.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;">
+          <div style="flex:1;">
+            <div class="htime">${formatTime(r.ts)}</div>
+            <div class="hcount">${r.qty} × ${r.itemName} <span class="pill pill-refund">Refund</span></div>
+          </div>
+          <div class="htotal tabular" style="color:var(--danger);">−${fmt(r.pence)}</div>
+        </div>`;
+      list.appendChild(card);
+      return;
+    }
+    const sale = entry.sale;
     const method = sale.method || "card";
     grand += sale.total;
     if (method === "cash") cashTotal += sale.total; else cardTotal += sale.total;
@@ -2195,7 +2274,7 @@ function renderHistory(){
         <div class="htotal tabular">${fmt(sale.total)}</div>
       </summary>
       <div class="hdetail">
-        ${sale.items.map((i, idx) => `<div class="row"><span>${i.qty} × ${i.name}</span><span class="tabular" style="display:flex;align-items:center;gap:8px;">${fmt(i.pence*i.qty)}${canRefund && !i.refunded ? `<button type="button" class="btn-danger refund-btn" data-sale-ts="${sale.ts}" data-item-idx="${idx}" style="width:auto;margin:0;padding:4px 9px;font-size:11.5px;">Refund</button>` : ""}${i.refunded ? `<span class="pill" style="color:var(--danger);background:rgba(255,122,104,.14);">Refunded</span>` : ""}</span></div>`).join("")}
+        ${sale.items.map((i, idx) => `<div class="row"><span>${i.qty} × ${i.name}</span><span class="tabular" style="display:flex;align-items:center;gap:8px;">${fmt(i.pence*i.qty)}${canRefund && !i.refunded ? `<button type="button" class="btn-danger refund-btn" data-sale-ts="${sale.ts}" data-item-idx="${idx}" style="width:auto;margin:0;padding:4px 9px;font-size:11.5px;">Refund</button>` : ""}${i.refunded ? `<span class="pill pill-refund">Refunded</span>` : ""}</span></div>`).join("")}
         ${sale.discountAmount ? `<div class="row"><span>Subtotal</span><span class="tabular">${fmt(sale.base)}</span></div><div class="row"><span>${sale.discountLabel}</span><span class="tabular">−${fmt(sale.discountAmount)}</span></div>` : ""}
         ${sale.happyHour ? `<div class="row"><span>Happy Hour applied</span><span></span></div>` : ""}
         ${sale.method === "cash" && sale.cashGiven != null ? `<div class="row"><span>Cash given</span><span class="tabular">${fmt(sale.cashGiven)}</span></div><div class="row"><span>Change given</span><span class="tabular">${fmt(sale.change||0)}</span></div>` : ""}
@@ -2246,13 +2325,19 @@ async function refundItem(saleTs, itemIdx){
   const discountNote = ratio < 1 ? ` (today's discount already taken off, full price would be ${fmt(listedPence)})` : "";
   const ok = await askConfirm({ title:"Refund this item?", message:`Refund ${item.qty} × ${item.name} for ${fmt(refundPence)}${discountNote}.`, confirmLabel:"Refund", danger:true });
   if (!ok) return;
+  // Mutate a freshly-fetched copy of the sale so refunding two items on the same order from two
+  // devices around the same time can't have one refund's "refunded" flag clobber the other's.
+  const freshSale = await salesStore.mutate(sale.id, s => { if (s.items[itemIdx] && !s.items[itemIdx].refunded) s.items[itemIdx].refunded = true; });
+  if (!freshSale) { showToast("Couldn't refund, try again"); return; }
   item.refunded = true;
+  const histIdx = history.findIndex(s => s.ts === saleTs);
+  if (histIdx !== -1) history[histIdx] = freshSale;
   const refundRow = { id: "r"+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), saleTs: sale.ts, itemName: item.name, qty: item.qty, pence: refundPence, method: sale.method || "card" };
   refunds.unshift(refundRow);
   saveLocalHistory();
-  salesStore.save(sale);
   saveLocal(LS_REFUNDS, refunds);
   refundsStore.save(refundRow);
+  logRefundToDiscord(refundRow, sale);
   renderHistory();
   showToast(`Refunded ${fmt(refundPence)}`);
 }
@@ -2346,8 +2431,11 @@ function buildReceiptHTML(title, subtitle, rows, transactions){
         ${transactions.slice().reverse().map(sale => {
           const time = new Date(sale.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
           const itemsText = sale.items.map(i => `${i.qty}× ${i.name}`).join(", ");
-          const discountText = sale.discountAmount ? `${sale.discountLabel} −${fmt(sale.discountAmount)}` : "-";
           const method = sale.method === "cash" ? "Cash" : "Card";
+          if (sale.isRefund) {
+            return `<tr style="color:#c53c2c;"><td>${time}</td><td>-</td><td>${itemsText} <strong>REFUND</strong></td><td>-</td><td>${method}</td><td>−${fmt(sale.total)}</td></tr>`;
+          }
+          const discountText = sale.discountAmount ? `${sale.discountLabel} −${fmt(sale.discountAmount)}` : "-";
           return `<tr><td>${time}</td><td>${sale.table || "-"}</td><td>${itemsText}</td><td>${discountText}</td><td>${method}</td><td>${fmt(sale.total)}</td></tr>`;
         }).join("")}
       </tbody>
@@ -2365,6 +2453,10 @@ function buildReceiptHTML(title, subtitle, rows, transactions){
     table.txns tr:nth-child(even){background:#f7f7f7;}
     @media print{ table.txns tr{page-break-inside:avoid;} }
   </style></head><body><h1>${title}</h1><p class="sub">${subtitle}</p><table>${rowsHtml}</table>${txnHtml}</body></html>`;
+}
+function mergeRefundsIntoTransactions(transactions, refundRows){
+  const refundEntries = (refundRows || []).map(r => ({ ts: r.ts, isRefund: true, items: [{ qty: r.qty, name: r.itemName }], method: r.method, total: r.pence }));
+  return transactions.concat(refundEntries).sort((a, b) => b.ts - a.ts);
 }
 function openReportTab(title, subtitle, rows, transactions){
   const win = window.open("", "_blank");
@@ -2409,7 +2501,7 @@ document.getElementById("zReadBtn").addEventListener("click", async () => {
   gratuities = await gratuitiesStore.fetchAll() || gratuities;
   refunds = await refundsStore.fetchAll() || refunds;
   const s = shiftSnapshot();
-  const closedTransactions = history;
+  const closedTransactions = mergeRefundsIntoTransactions(history, refunds);
   const zId = "z"+Date.now();
   const zClosedAt = Date.now();
   const zRows = [
@@ -2419,7 +2511,7 @@ document.getElementById("zReadBtn").addEventListener("click", async () => {
     ["Abandoned (not counted)", fmt(s.abandonedTotal)], ["Transactions", String(s.txCount)]
   ];
   const reportHtml = buildReceiptHTML("Z Report - Closed", new Date(zClosedAt).toLocaleString(), zRows, closedTransactions);
-  zReports.unshift({ id:zId, closedAt: zClosedAt, ...s, transactions: history, abandonedOrders: abandoned, gratuities, refunds });
+  zReports.unshift({ id:zId, closedAt: zClosedAt, ...s, transactions: closedTransactions, abandonedOrders: abandoned, gratuities, refunds });
   saveJSON(LS_Z, zReports);
   logZReadToDiscord(s, reportHtml); // Discord backup
   storeZReportRemote(zId, zClosedAt, s, reportHtml); // durable copy, pull it later even if Past Z Reports is cleared locally
@@ -2475,6 +2567,13 @@ function renderReport(){
       itemStats[i.name].qty += i.qty;
       itemStats[i.name].revenue += i.pence * i.qty;
     });
+  });
+  refunds.forEach(r => {
+    const h = new Date(r.ts).getHours();
+    hourly[h] = (hourly[h] || 0) - r.pence;
+    if (!itemStats[r.itemName]) itemStats[r.itemName] = { qty:0, revenue:0 };
+    itemStats[r.itemName].qty -= r.qty;
+    itemStats[r.itemName].revenue -= r.pence;
   });
   const rangeEl = document.getElementById("reportRange");
   if (!history.length) {

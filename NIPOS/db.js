@@ -19,7 +19,9 @@ const PERM_LABELS = {
   xzRead: "X and Z Read",
   endOfDay: "Access End of Day",
   backendAccess: "Backend Access",
-  orderScreen: "Order Screen"
+  orderScreen: "Order Screen",
+  viewOpenOrders: "View Open Orders",
+  processRefunds: "Process Refunds"
 };
 
 let supabaseClient = null;
@@ -169,7 +171,7 @@ function computeSalesSummary(sales, refunds) {
   return { cashTotal, cardTotal, grandTotal, discountTotal, refundTotal: refundCash + refundCard, txCount, avgOrderPence: txCount ? Math.round(grandTotal / txCount) : 0 };
 }
 
-function computeBestSellers(sales, limit) {
+function computeBestSellers(sales, limit, refunds) {
   const itemStats = {};
   sales.forEach(sale => {
     (sale.items || []).forEach(i => {
@@ -178,16 +180,26 @@ function computeBestSellers(sales, limit) {
       itemStats[i.name].revenue += i.pence * i.qty;
     });
   });
+  (refunds || []).forEach(r => {
+    if (!itemStats[r.itemName]) itemStats[r.itemName] = { name: r.itemName, qty: 0, revenue: 0 };
+    itemStats[r.itemName].qty -= r.qty;
+    itemStats[r.itemName].revenue -= r.pence;
+  });
   return Object.values(itemStats).sort((a, b) => b.qty - a.qty).slice(0, limit || 15);
 }
 
 // bucket: "hour" (0-23, for a single-day range) or "day" (YYYY-MM-DD, for anything longer)
-function computeSalesTrend(sales, bucket) {
+function computeSalesTrend(sales, bucket, refunds) {
   const buckets = {};
   sales.forEach(sale => {
     const d = new Date(sale.ts);
     const key = bucket === "hour" ? String(d.getHours()).padStart(2, "0") + ":00" : d.toISOString().slice(0, 10);
     buckets[key] = (buckets[key] || 0) + sale.total;
+  });
+  (refunds || []).forEach(r => {
+    const d = new Date(r.ts);
+    const key = bucket === "hour" ? String(d.getHours()).padStart(2, "0") + ":00" : d.toISOString().slice(0, 10);
+    buckets[key] = (buckets[key] || 0) - r.pence;
   });
   return Object.entries(buckets).sort((a, b) => a[0] < b[0] ? -1 : 1).map(([label, totalPence]) => ({ label, totalPence }));
 }
@@ -204,6 +216,19 @@ function computeVenueBreakdown(sales, venues) {
     .sort((a, b) => b.total - a.total);
 }
 
+// Atomically merges `patch` into an open_orders row's data at the database level (Postgres jsonb `||`
+// inside one UPDATE), so two devices toggling different fields on the same order (e.g. one marks it
+// ready while another flags it) at the exact same moment can never have one clobber the other - unlike
+// a client-side fetch-then-write, which only narrows that race, this closes it completely.
+async function mergeOpenOrder(id, patch) {
+  if (!supabaseClient) return null;
+  try {
+    const { data, error } = await supabaseClient.rpc("merge_open_order", { p_id: id, p_patch: patch });
+    if (error) return null;
+    return data;
+  } catch (e) { return null; }
+}
+
 // Every shared log is a table of independent rows, one per event, addressed by its own id. A device
 // only ever writes its own row, so two devices can never clobber each other. Rows are also scoped to
 // the currently selected venue so one venue's data is never mixed with another's.
@@ -217,6 +242,19 @@ function rowStore(table, limit) {
     async remove(id) {
       if (!supabaseClient) return;
       try { await supabaseClient.from(table).delete().eq("id", id); } catch (e) {}
+    },
+    // Fetches the row fresh right before applying `mutator` and saving it, so a field another device
+    // set in the meantime (e.g. someone else flagging this same order) isn't clobbered by a stale copy.
+    async mutate(id, mutator) {
+      if (!supabaseClient) return null;
+      try {
+        const { data, error } = await supabaseClient.from(table).select("data").eq("id", id).maybeSingle();
+        if (error || !data) return null;
+        const fresh = data.data;
+        mutator(fresh);
+        await this.save(fresh);
+        return fresh;
+      } catch (e) { return null; }
     },
     async fetchAll() {
       if (!supabaseClient || !currentVenueId) return null;
@@ -310,6 +348,11 @@ async function fetchNotifySubscribers(venueId) {
 }
 async function setMyNotifyVenues(venueIds) {
   return await callManageStaff("setNotifyVenues", { venueIds });
+}
+// Global Admin only. Wipes every row scoped to this venue (sales, orders, catalogue, z reports, ...)
+// across every table, then the venue itself - irreversible, so the caller must confirm first.
+async function deleteVenue(venueId) {
+  return await callManageStaff("deleteVenue", { venueId });
 }
 // Plain fields like this don't touch auth, so they're a direct self-update rather than a trip through
 // the Edge Function - the same RLS rule that lets you edit your own venues/groups covers this too.

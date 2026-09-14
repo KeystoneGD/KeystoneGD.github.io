@@ -749,8 +749,8 @@ async function loadDashboard(){
   document.getElementById("kpiOrders").textContent = summary.txCount;
   document.getElementById("kpiAvg").textContent = fmt(summary.avgOrderPence);
 
-  const trend = computeSalesTrend(sales, bucket);
-  const best = computeBestSellers(sales, 10);
+  const trend = computeSalesTrend(sales, bucket, refunds);
+  const best = computeBestSellers(sales, 10, refunds);
 
   document.getElementById("venueBreakdownWrap").hidden = !isGlobalAdmin;
   if (isGlobalAdmin) {
@@ -1275,7 +1275,12 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
   } else {
     const u = editingUser;
     if (pin !== u.pin) { const res = await callManageStaff("changePin", { userId: u.id, newPin: pin }); if (res.error) { alert(res.error); return; } }
-    const { error } = await supabaseClient.from("staff_users").update({ data: { name, pin, perms, venueIds, groupIds } }).eq("id", u.id);
+    // Re-fetch right before writing and merge on top of it, so fields this form doesn't manage
+    // (notificationSound, notifyVenueIds, ...) - which the user may have changed themselves in the
+    // meantime - survive instead of being silently wiped by this write.
+    const { data: freshRow } = await supabaseClient.from("staff_users").select("data").eq("id", u.id).maybeSingle();
+    const merged = { ...(freshRow ? freshRow.data : u), name, pin, perms, venueIds, groupIds };
+    const { error } = await supabaseClient.from("staff_users").update({ data: merged }).eq("id", u.id);
     if (error) { alert(error.message); return; }
   }
   users = await fetchAllVisibleStaff();
@@ -1328,8 +1333,12 @@ function renderVenues(){
     row.className = "list-row";
     row.innerHTML = `
       <div class="info"><div class="name">${v.name}</div><div class="sub">${staffCount} staff assigned</div></div>
-      <div class="actions"><button type="button" class="btn btn-ghost btn-sm">Edit</button></div>`;
-    row.querySelector("button").addEventListener("click", () => openVenueModal("edit", v));
+      <div class="actions">
+        <button type="button" class="btn btn-ghost btn-sm" data-act="edit">Edit</button>
+        <button type="button" class="btn btn-danger btn-sm" data-act="delete">Delete</button>
+      </div>`;
+    row.querySelector('[data-act="edit"]').addEventListener("click", () => openVenueModal("edit", v));
+    row.querySelector('[data-act="delete"]').addEventListener("click", () => deleteVenueFlow(v));
     wrap.appendChild(row);
   });
 }
@@ -1356,7 +1365,9 @@ document.getElementById("venueModalSave").addEventListener("click", async () => 
   };
   let venueId = editingVenue ? editingVenue.id : ("venue_" + Date.now());
   if (editingVenue) {
-    const { error } = await supabaseClient.from("venues").update({ data: { ...editingVenue, name, discordWebhooks } }).eq("id", venueId);
+    // Re-fetch right before writing so fields this form doesn't manage aren't clobbered by a stale copy.
+    const { data: freshVenue } = await supabaseClient.from("venues").select("data").eq("id", venueId).maybeSingle();
+    const { error } = await supabaseClient.from("venues").update({ data: { ...(freshVenue ? freshVenue.data : editingVenue), name, discordWebhooks } }).eq("id", venueId);
     if (error) { alert(error.message); return; }
   } else {
     const { error } = await supabaseClient.from("venues").insert({ id: venueId, ts: Date.now(), data: { name, discordWebhooks, active: true } });
@@ -1368,8 +1379,10 @@ document.getElementById("venueModalSave").addEventListener("click", async () => 
     const has = (u.venueIds || []).includes(venueId);
     const shouldHave = checkedStaffIds.has(u.id);
     if (has === shouldHave) continue;
-    const venueIds = shouldHave ? [...(u.venueIds || []), venueId] : (u.venueIds || []).filter(id => id !== venueId);
-    await supabaseClient.from("staff_users").update({ data: { ...u, venueIds } }).eq("id", u.id);
+    const { data: freshUser } = await supabaseClient.from("staff_users").select("data").eq("id", u.id).maybeSingle();
+    const baseData = freshUser ? freshUser.data : u;
+    const venueIds = shouldHave ? [...(baseData.venueIds || []), venueId] : (baseData.venueIds || []).filter(id => id !== venueId);
+    await supabaseClient.from("staff_users").update({ data: { ...baseData, venueIds } }).eq("id", u.id);
     u.venueIds = venueIds;
   }
   venues = await fetchAllVisibleVenues();
@@ -1377,6 +1390,17 @@ document.getElementById("venueModalSave").addEventListener("click", async () => 
   document.getElementById("venueModal").hidden = true; editingVenue = null;
   renderVenues(); renderUserList(); renderVenueSwitcher();
 });
+async function deleteVenueFlow(venue) {
+  if (!currentUser.perms.globalAdmin) { alert("Only a Global Admin can delete a venue."); return; }
+  if (!confirm(`Delete "${venue.name}"? This permanently erases its sales history, orders, products and Z reports for everyone. This can't be undone.`)) return;
+  const typed = prompt(`Type the venue's name to confirm: ${venue.name}`);
+  if (typed !== venue.name) { if (typed !== null) alert("Name didn't match, nothing was deleted."); return; }
+  const res = await deleteVenue(venue.id);
+  if (res.error) { alert(res.error); return; }
+  myVenues = await fetchMyVenues(currentUser);
+  if (currentVenueId === venue.id) setCurrentVenueId(null);
+  await resolveVenueSelection();
+}
 
 /* ---------- Settings ---------- */
 async function loadAppSettings(){
@@ -1389,7 +1413,10 @@ async function loadAppSettings(){
   renderLockdownButtons();
 }
 async function saveAppSettings(patch){
-  appSettings = { ...appSettings, ...patch };
+  // Re-fetch right before writing so a second admin's concurrent toggle (e.g. Service Break while
+  // this one flips Suspend Orders) can't be silently dropped by a stale local copy.
+  const { data: fresh } = await supabaseClient.from("app_settings").select("data").eq("id", "global").maybeSingle();
+  appSettings = { ...(fresh ? fresh.data : appSettings), ...patch };
   const { error } = await supabaseClient.from("app_settings").update({ ts: Date.now(), data: appSettings }).eq("id", "global");
   return error ? { error: error.message } : { ok: true };
 }
