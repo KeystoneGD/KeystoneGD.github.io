@@ -819,6 +819,7 @@ document.getElementById("productCategoryFilter").addEventListener("change", rend
 
 function renderProductsList(){
   const wrap = document.getElementById("productsList");
+  if (!realCategories.length) { renderEmptyCatalogueBanner(wrap); return; }
   const q = document.getElementById("productSearch").value.trim().toLowerCase();
   const filterCat = document.getElementById("productCategoryFilter").value;
   wrap.innerHTML = "";
@@ -840,6 +841,56 @@ function renderProductsList(){
     wrap.appendChild(group);
   });
   if (!any) wrap.innerHTML = `<div class="empty">No matches.</div>`;
+}
+
+function renderEmptyCatalogueBanner(wrap){
+  const others = myVenues.filter(v => currentVenue && v.id !== currentVenue.id);
+  wrap.innerHTML = `
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:4px;">This venue has no catalogue yet</div>
+      <p class="note">Every venue's menu is independent, so a new venue starts empty. Copy another venue's full catalogue to get started, or add products one at a time below.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <select id="copyCatalogueSource">${others.map(v => `<option value="${v.id}">${v.name}</option>`).join("") || `<option value="">No other venues yet</option>`}</select>
+        <button type="button" class="btn btn-accent btn-sm" id="copyCatalogueBtn" ${others.length ? "" : "disabled"}>Copy catalogue</button>
+      </div>
+    </div>`;
+  const btn = document.getElementById("copyCatalogueBtn");
+  if (btn) btn.addEventListener("click", () => copyCatalogueFrom(document.getElementById("copyCatalogueSource").value));
+}
+async function copyCatalogueFrom(sourceVenueId){
+  if (!sourceVenueId || !currentVenue) return;
+  const btn = document.getElementById("copyCatalogueBtn");
+  btn.disabled = true; btn.textContent = "Copying…";
+  try {
+    const [{ data: srcCats, error: e1 }, { data: srcItems, error: e2 }] = await Promise.all([
+      supabaseClient.from("categories").select("data").eq("venue_id", sourceVenueId),
+      supabaseClient.from("catalogue_items").select("data").eq("venue_id", sourceVenueId)
+    ]);
+    if (e1 || e2 || !srcCats || !srcCats.length) { alert("Couldn't read that venue's catalogue."); btn.disabled = false; btn.textContent = "Copy catalogue"; return; }
+    const idMap = {};
+    const now = Date.now();
+    const newCatRows = srcCats.map((row, i) => {
+      const c = row.data;
+      const newId = "cat" + now + "_" + i;
+      idMap[c.id] = newId;
+      return { id: newId, ts: now - c.order, venue_id: currentVenue.id, data: { ...c, id: newId } };
+    });
+    const newItemRows = (srcItems || []).filter(row => idMap[row.data.categoryId]).map((row, i) => {
+      const it = row.data;
+      const newId = "p" + now + "_" + i;
+      return { id: newId, ts: now - i, venue_id: currentVenue.id, data: { ...it, id: newId, categoryId: idMap[it.categoryId] } };
+    });
+    const { error: e3 } = await supabaseClient.from("categories").upsert(newCatRows);
+    const { error: e4 } = await supabaseClient.from("catalogue_items").upsert(newItemRows);
+    if (e3 || e4) alert("Copy partially failed: " + ((e3 || e4).message));
+    realCategories = await categoriesStore.fetchAll() || [];
+    realItems = await catalogueItemsStore.fetchAll() || [];
+    renderCategoryFilterOptions(); renderNewProductCategoryOptions();
+    renderCategoriesList(); renderProductsList();
+  } catch(e) {
+    alert("Copy failed: " + e.message);
+    btn.disabled = false; btn.textContent = "Copy catalogue";
+  }
 }
 
 function renderProductRow(it, cat){
