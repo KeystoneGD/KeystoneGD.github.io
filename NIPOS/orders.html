@@ -793,10 +793,6 @@ document.getElementById("flagConfirm").addEventListener("click", async () => {
   render();
 });
 
-// Accounts meant for quiet admin/dev access — never shown in staff-facing pickers or presence.
-const HIDDEN_ACCOUNT_NAMES = new Set(["maintenance", "administrator", "developer"]);
-function isHiddenAccount(name){ return HIDDEN_ACCOUNT_NAMES.has((name || "").trim().toLowerCase()); }
-
 let serviceGroups = [];
 let onlineIds = new Set();
 function onlineDot(online){ return `<span style="width:8px;height:8px;border-radius:50%;background:${online ? "var(--success)" : "var(--border)"};flex:0 0 auto;"></span>`; }

@@ -146,6 +146,25 @@ table.data-table tr:last-child td{border-bottom:0;}
 .size-toggle-row .name{flex:1;font-size:13.5px;}
 .size-toggle-row input[type="number"]{width:100px;}
 
+/* ---------- modals ---------- */
+.modal-overlay{position:fixed;inset:0;background:rgba(8,14,22,.55);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px;}
+.modal-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px;width:100%;max-width:440px;max-height:86vh;overflow-y:auto;box-shadow:var(--shadow);}
+.modal-card h3{margin:0 0 2px;font-size:17px;}
+.modal-actions{display:flex;gap:10px;margin-top:18px;}
+.modal-actions .btn{flex:1;}
+.mini-menu{margin-top:14px;border-top:1px solid var(--border);padding-top:12px;}
+.mini-menu summary{cursor:pointer;font-size:12.5px;font-weight:700;color:var(--text-muted);list-style:none;}
+.mini-menu summary::-webkit-details-marker{display:none;}
+.mini-menu summary::before{content:"▸ ";}
+.mini-menu[open] summary::before{content:"▾ ";}
+.mini-menu-body{padding-top:10px;}
+.check-list{max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:4px 12px;}
+.list-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);}
+.list-row:last-child{border-bottom:0;}
+.list-row .info{flex:1;min-width:0;}
+.list-row .actions{display:flex;gap:8px;flex:0 0 auto;}
+.show-hidden-link{background:none;border:0;color:var(--text-muted);font-size:12px;text-decoration:underline;cursor:pointer;padding:8px 0 0;}
+
 @media (max-width:900px){
   .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:41;transform:translateX(-100%);transition:transform .18s ease;box-shadow:var(--shadow);}
   .sidebar.open{transform:translateX(0);}
@@ -343,52 +362,37 @@ table.data-table tr:last-child td{border-bottom:0;}
     </section>
 
     <section class="page" id="page-users">
-      <div class="page-header"><h1>Users</h1></div>
+      <div class="page-header">
+        <h1>Users</h1>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" id="manageGroupsBtn">Manage groups</button>
+          <button class="btn btn-accent btn-sm" id="openAddUserBtn">+ Add user</button>
+        </div>
+      </div>
       <p class="note">Each user signs in with their PIN. Permissions control what they can do.</p>
       <div class="card" id="userList"><div class="empty">Loading…</div></div>
-      <div class="section-title">Add a User</div>
-      <div class="card">
-        <label class="field">Name</label>
-        <input type="text" id="newUserName" placeholder="e.g. Tom">
-        <label class="field">PIN (6+ digits)</label>
-        <input type="text" inputmode="numeric" id="newUserPin" placeholder="e.g. 710603">
-        <label class="field">Venues</label>
-        <div id="newUserVenues"></div>
-        <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Account Active</span></span><span class="switch"><input type="checkbox" id="permActive" checked><span class="slider"></span></span></label>
-        <label class="row" id="newUserGlobalAdminRow" style="border:0;padding:10px 0 0;" hidden><span class="info"><span class="name">Global Admin (all venues)</span></span><span class="switch"><input type="checkbox" id="permGlobalAdmin"><span class="slider"></span></span></label>
-        <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Place Orders</span></span><span class="switch"><input type="checkbox" id="permPlaceOrders" checked><span class="slider"></span></span></label>
-        <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Products on Stop</span></span><span class="switch"><input type="checkbox" id="permProductsOnStop"><span class="slider"></span></span></label>
-        <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Recovery Tool</span></span><span class="switch"><input type="checkbox" id="permRecoveryTool"><span class="slider"></span></span></label>
-        <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Call to Service</span></span><span class="switch"><input type="checkbox" id="permCallToService"><span class="slider"></span></span></label>
-        <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Clear History on Orders</span></span><span class="switch"><input type="checkbox" id="permClearHistory"><span class="slider"></span></span></label>
-        <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">X and Z Read</span></span><span class="switch"><input type="checkbox" id="permXzRead"><span class="slider"></span></span></label>
-        <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Access End of Day</span></span><span class="switch"><input type="checkbox" id="permEndOfDay"><span class="slider"></span></span></label>
-        <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Backend Access</span></span><span class="switch"><input type="checkbox" id="permBackendAccess"><span class="slider"></span></span></label>
-        <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Order Screen</span></span><span class="switch"><input type="checkbox" id="permOrderScreen"><span class="slider"></span></span></label>
-        <button class="btn btn-accent" id="addUserBtn" style="margin-top:12px;">Add user</button>
-      </div>
+      <button type="button" class="show-hidden-link" id="showHiddenUsersBtn" hidden>Show hidden accounts</button>
     </section>
 
     <section class="page" id="page-venues">
-      <div class="page-header"><h1>Venues</h1></div>
-      <p class="note">Global Admin only. Add a venue here, then assign staff to it from Users.</p>
-      <div class="card" id="venueList"><div class="empty">Loading…</div></div>
-      <div class="section-title">Add a Venue</div>
-      <div class="card">
-        <label class="field">Name</label>
-        <input type="text" id="newVenueName" placeholder="e.g. Riverside Bar">
-        <label class="field">Discord webhook — new orders (optional)</label>
-        <input type="text" id="newVenueWebhookOrder" placeholder="https://discord.com/api/webhooks/...">
-        <label class="field">Discord webhook — Z-reads (optional)</label>
-        <input type="text" id="newVenueWebhookZread" placeholder="https://discord.com/api/webhooks/...">
-        <label class="field">Discord webhook — stop list (optional)</label>
-        <input type="text" id="newVenueWebhookStop" placeholder="https://discord.com/api/webhooks/...">
-        <button class="btn btn-accent" id="addVenueBtn" style="margin-top:12px;">Add venue</button>
+      <div class="page-header">
+        <h1>Venues</h1>
+        <button class="btn btn-accent btn-sm" id="openAddVenueBtn">+ Add venue</button>
       </div>
+      <p class="note">Global Admin only.</p>
+      <div class="card" id="venueList"><div class="empty">Loading…</div></div>
     </section>
 
     <section class="page" id="page-settings">
       <div class="page-header"><h1>Settings</h1></div>
+      <div class="section-title">Lockdown</div>
+      <div class="card">
+        <p class="note">Blocks staff from placing new orders on the till until you turn it back off.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-danger" id="toggleSuspendBtn">Suspend All Orders</button>
+          <button class="btn btn-ghost" id="toggleServiceBreakBtn">Service Break</button>
+        </div>
+      </div>
       <div class="section-title">Session</div>
       <div class="card">
         <label class="row" style="border:0;padding:0 0 10px;">
@@ -401,6 +405,67 @@ table.data-table tr:last-child td{border-bottom:0;}
       </div>
     </section>
   </main>
+</div>
+
+<div class="modal-overlay" id="userModal" hidden>
+  <div class="modal-card">
+    <h3 id="userModalTitle">Add a user</h3>
+    <label class="field">Name</label>
+    <input type="text" id="umName" placeholder="e.g. Tom">
+    <label class="field">PIN (6+ digits)</label>
+    <input type="text" inputmode="numeric" id="umPin" placeholder="e.g. 710603">
+    <label class="field">Venues</label>
+    <div class="check-list" id="umVenues"></div>
+    <label class="field">Groups</label>
+    <div class="check-list" id="umGroups"></div>
+    <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Account Active</span></span><span class="switch"><input type="checkbox" id="umActive" checked><span class="slider"></span></span></label>
+    <label class="row" id="umGlobalAdminRow" style="border:0;padding:8px 0 0;" hidden><span class="info"><span class="name">Global Admin (all venues)</span></span><span class="switch"><input type="checkbox" id="umGlobalAdmin"><span class="slider"></span></span></label>
+    <details class="mini-menu">
+      <summary>Permissions</summary>
+      <div class="mini-menu-body" id="umPerms"></div>
+    </details>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="userModalCancel">Cancel</button>
+      <button class="btn btn-accent" id="userModalSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="groupsModal" hidden>
+  <div class="modal-card">
+    <h3>Manage groups</h3>
+    <p class="note">e.g. Bar Staff, Table Service, Team Leader, Manager — shown as a "Groups" option in the Order Screen's Service call.</p>
+    <div class="check-list" id="groupsList" style="margin-bottom:12px;"></div>
+    <label class="field">New group name</label>
+    <input type="text" id="newGroupName" placeholder="e.g. Bar Staff">
+    <button class="btn btn-accent btn-sm" id="addGroupBtn" style="margin-top:8px;">Add group</button>
+    <div class="modal-actions"><button class="btn btn-ghost" id="groupsModalClose">Close</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="venueModal" hidden>
+  <div class="modal-card">
+    <h3 id="venueModalTitle">Add a venue</h3>
+    <label class="field">Name</label>
+    <input type="text" id="vmName" placeholder="e.g. Riverside Bar">
+    <label class="field">Assigned staff</label>
+    <div class="check-list" id="vmStaff"></div>
+    <details class="mini-menu">
+      <summary>Discord webhooks</summary>
+      <div class="mini-menu-body">
+        <label class="field">New orders</label>
+        <input type="text" id="vmWebhookOrder" placeholder="https://discord.com/api/webhooks/...">
+        <label class="field">Z-reads</label>
+        <input type="text" id="vmWebhookZread" placeholder="https://discord.com/api/webhooks/...">
+        <label class="field">Stop list</label>
+        <input type="text" id="vmWebhookStop" placeholder="https://discord.com/api/webhooks/...">
+      </div>
+    </details>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="venueModalCancel">Cancel</button>
+      <button class="btn btn-accent" id="venueModalSave">Save</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -417,6 +482,12 @@ let myVenues = [];
 let currentVenue = null;
 let venues = [];
 let users = [];
+let allGroups = [];
+let appSettings = {};
+let showHiddenUsers = false;
+let userModalMode = "add";
+let editingUser = null;
+let editingVenue = null;
 let realCategories = [];
 let realItems = [];
 let customDiscounts = [];
@@ -507,7 +578,6 @@ async function loadVenueData(){
   const isGlobalAdmin = !!(currentUser && currentUser.perms.globalAdmin);
   document.getElementById("navVenues").hidden = !isGlobalAdmin;
   document.getElementById("navSettings").hidden = !isGlobalAdmin;
-  document.getElementById("newUserGlobalAdminRow").hidden = !isGlobalAdmin;
 
   hhOverride = await loadDoc(LS_HH_OVERRIDE, null);
   document.getElementById("hhMode").value = hhOverride === true ? "on" : hhOverride === false ? "off" : "auto";
@@ -516,6 +586,7 @@ async function loadVenueData(){
   mixerOverrides = new Set((mixerRows || []).map(r => r.name));
   customDiscounts = await customDiscountsStore.fetchAll() || [];
   users = await fetchAllVisibleStaff();
+  allGroups = await fetchAllGroups();
   realCategories = await categoriesStore.fetchAll() || [];
   realItems = await catalogueItemsStore.fetchAll() || [];
 
@@ -523,7 +594,6 @@ async function loadVenueData(){
   renderSidebarAccount();
   renderOfferList();
   renderUserList();
-  renderNewUserVenues();
   renderCategoryFilterOptions();
   renderNewProductCategoryOptions();
   renderProductsList();
@@ -532,7 +602,7 @@ async function loadVenueData(){
   if (isGlobalAdmin) {
     venues = await fetchAllVisibleVenues();
     renderVenues();
-    await loadSessionSettings();
+    await loadAppSettings();
   }
   await loadDashboard();
 }
@@ -1061,60 +1131,39 @@ document.getElementById("addOfferBtn").addEventListener("click", async () => {
 });
 
 /* ---------- Users ---------- */
-const PERM_KEYS_ORDERED = Object.keys(PERM_LABELS).filter(k => k !== "globalAdmin");
+const PERM_KEYS_ORDERED = Object.keys(PERM_LABELS).filter(k => k !== "globalAdmin" && k !== "active");
 function venueName(id){ const v = myVenues.find(x => x.id === id) || venues.find(x => x.id === id); return v ? v.name : id; }
+function groupName(id){ const g = allGroups.find(x => x.id === id); return g ? g.name : id; }
+function permCheckRow(key, label, checked){
+  return `<label class="row" style="border:0;padding:8px 0 0;"><span class="info"><span class="name">${label}</span></span><span class="switch"><input type="checkbox" data-perm="${key}" ${checked ? "checked" : ""}><span class="slider"></span></span></label>`;
+}
 function renderUserList(){
   const wrap = document.getElementById("userList");
   wrap.innerHTML = "";
-  if (!users.length) { wrap.innerHTML = `<div class="empty">None yet.</div>`; return; }
-  const canGrantGlobalAdmin = !!(currentUser && currentUser.perms.globalAdmin);
-  users.forEach(u => {
+  const visible = users.filter(u => showHiddenUsers || !isHiddenAccount(u.name));
+  const hiddenCount = users.length - users.filter(u => !isHiddenAccount(u.name)).length;
+  document.getElementById("showHiddenUsersBtn").hidden = hiddenCount === 0;
+  document.getElementById("showHiddenUsersBtn").textContent = showHiddenUsers ? "Hide hidden accounts" : `Show hidden accounts (${hiddenCount})`;
+  if (!visible.length) { wrap.innerHTML = `<div class="empty">None yet.</div>`; return; }
+  visible.forEach(u => {
     const permsList = Object.entries(u.perms).filter(([,v]) => v).map(([k]) => PERM_LABELS[k]).join(", ") || "No permissions";
     const row = document.createElement("div");
-    row.className = "row";
+    row.className = "list-row";
     row.innerHTML = `
       <div class="info">
-        <div class="name">${u.name} <span class="pill">${(u.venueIds || []).map(venueName).join(", ") || "No venues"}</span></div>
-        <div class="price">${permsList}</div>
+        <div class="name">${u.name} <span class="pill">${(u.venueIds || []).map(venueName).join(", ") || "No venues"}</span>${(u.groupIds||[]).length ? `<span class="pill">${u.groupIds.map(groupName).join(", ")}</span>` : ""}</div>
+        <div class="sub">${permsList}</div>
       </div>
-      <button class="btn btn-ghost btn-sm edit-user-btn" type="button">Edit</button>
-      <button class="btn btn-danger btn-sm del-user-btn" type="button">Delete</button>`;
-    const panel = document.createElement("div");
-    panel.hidden = true;
-    panel.style.cssText = "padding:6px 0 14px;border-bottom:1px solid var(--border);";
-    panel.innerHTML = `
-      <label class="field">Name</label><input type="text" class="edit-name">
-      <label class="field">PIN (6+ digits)</label><input type="text" inputmode="numeric" class="edit-pin">
-      <label class="field">Venues</label>
-      ` + myVenues.map(v => `
-      <label class="row" style="border:0;padding:6px 0 0;"><span class="info"><span class="name">${v.name}</span></span><span class="switch"><input type="checkbox" data-venue="${v.id}" ${(u.venueIds || []).includes(v.id) ? "checked" : ""}><span class="slider"></span></span></label>`).join("") +
-      (canGrantGlobalAdmin ? `<label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Global Admin (all venues)</span></span><span class="switch"><input type="checkbox" class="edit-global-admin" ${u.perms.globalAdmin ? "checked" : ""}><span class="slider"></span></span></label>` : "") +
-      PERM_KEYS_ORDERED.map(key => `<label class="row" style="border:0;padding:8px 0 0;"><span class="info"><span class="name">${PERM_LABELS[key]}</span></span><span class="switch"><input type="checkbox" data-perm="${key}" ${u.perms[key] ? "checked" : ""}><span class="slider"></span></span></label>`).join("") +
-      `<button class="btn btn-accent btn-sm save-user-btn" type="button" style="margin-top:8px;">Save</button>`;
-    panel.querySelector(".edit-name").value = u.name;
-    panel.querySelector(".edit-pin").value = u.pin || "";
-    row.querySelector(".edit-user-btn").addEventListener("click", () => { panel.hidden = !panel.hidden; });
+      <div class="actions">
+        <button class="btn btn-ghost btn-sm edit-user-btn" type="button">Edit</button>
+        <button class="btn btn-danger btn-sm del-user-btn" type="button">Delete</button>
+      </div>`;
+    row.querySelector(".edit-user-btn").addEventListener("click", () => openUserModal("edit", u));
     row.querySelector(".del-user-btn").addEventListener("click", () => deleteUser(u.id));
-    panel.querySelector(".save-user-btn").addEventListener("click", async (e) => {
-      const name = panel.querySelector(".edit-name").value.trim();
-      const pin = panel.querySelector(".edit-pin").value.trim();
-      if (!name) { alert("Enter a name."); return; }
-      if (!/^[0-9]{6,}$/.test(pin)) { alert("PIN must be 6+ digits."); return; }
-      const perms = {};
-      panel.querySelectorAll("[data-perm]").forEach(inp => { perms[inp.dataset.perm] = inp.checked; });
-      const gaBox = panel.querySelector(".edit-global-admin");
-      perms.globalAdmin = gaBox ? gaBox.checked : !!u.perms.globalAdmin;
-      const venueIds = [...panel.querySelectorAll("[data-venue]:checked")].map(inp => inp.dataset.venue);
-      if (pin !== u.pin) { const res = await callManageStaff("changePin", { userId: u.id, newPin: pin }); if (res.error) { alert(res.error); return; } }
-      const { error } = await supabaseClient.from("staff_users").update({ data: { name, pin, perms, venueIds } }).eq("id", u.id);
-      if (error) { alert(error.message); return; }
-      u.name = name; u.pin = pin; u.perms = perms; u.venueIds = venueIds;
-      renderUserList();
-      e.target.textContent = "Saved ✓"; setTimeout(() => { e.target.textContent = "Save"; }, 1200);
-    });
-    wrap.appendChild(row); wrap.appendChild(panel);
+    wrap.appendChild(row);
   });
 }
+document.getElementById("showHiddenUsersBtn").addEventListener("click", () => { showHiddenUsers = !showHiddenUsers; renderUserList(); });
 async function deleteUser(id){
   if (!confirm("Delete this user?")) return;
   const res = await callManageStaff("delete", { userId: id });
@@ -1122,40 +1171,85 @@ async function deleteUser(id){
   users = users.filter(u => u.id !== id);
   renderUserList();
 }
-function renderNewUserVenues(){
-  document.getElementById("newUserVenues").innerHTML = myVenues.map(v => `
-    <label class="row" style="border:0;padding:6px 0 0;"><span class="info"><span class="name">${v.name}</span></span><span class="switch"><input type="checkbox" data-venue="${v.id}" ${myVenues.length === 1 ? "checked" : ""}><span class="slider"></span></span></label>`).join("");
+
+function openUserModal(mode, user){
+  userModalMode = mode; editingUser = user || null;
+  const canGrantGlobalAdmin = !!(currentUser && currentUser.perms.globalAdmin);
+  document.getElementById("userModalTitle").textContent = mode === "edit" ? "Edit user" : "Add a user";
+  document.getElementById("umName").value = user ? user.name : "";
+  document.getElementById("umPin").value = user ? (user.pin || "") : "";
+  document.getElementById("umVenues").innerHTML = myVenues.map(v => `
+    <label class="row" style="border:0;padding:8px 0;"><span class="info"><span class="name">${v.name}</span></span><span class="switch"><input type="checkbox" data-venue="${v.id}" ${(user ? (user.venueIds||[]).includes(v.id) : myVenues.length===1) ? "checked" : ""}><span class="slider"></span></span></label>`).join("");
+  document.getElementById("umGroups").innerHTML = allGroups.length ? allGroups.map(g => `
+    <label class="row" style="border:0;padding:8px 0;"><span class="info"><span class="name">${g.name}</span></span><span class="switch"><input type="checkbox" data-group="${g.id}" ${(user && (user.groupIds||[]).includes(g.id)) ? "checked" : ""}><span class="slider"></span></span></label>`).join("") : `<div class="empty">No groups yet — add one from "Manage groups".</div>`;
+  document.getElementById("umActive").checked = user ? user.perms.active !== false : true;
+  document.getElementById("umGlobalAdminRow").hidden = !canGrantGlobalAdmin;
+  document.getElementById("umGlobalAdmin").checked = user ? !!user.perms.globalAdmin : false;
+  document.getElementById("umPerms").innerHTML = PERM_KEYS_ORDERED.map(key => permCheckRow(key, PERM_LABELS[key], user ? !!user.perms[key] : (key === "placeOrders"))).join("");
+  document.getElementById("userModal").hidden = false;
 }
-document.getElementById("addUserBtn").addEventListener("click", async () => {
-  const name = document.getElementById("newUserName").value.trim();
-  const pin = document.getElementById("newUserPin").value.trim();
+function closeUserModal(){ document.getElementById("userModal").hidden = true; editingUser = null; }
+document.getElementById("openAddUserBtn").addEventListener("click", () => openUserModal("add", null));
+document.getElementById("userModalCancel").addEventListener("click", closeUserModal);
+document.getElementById("userModalSave").addEventListener("click", async () => {
+  const name = document.getElementById("umName").value.trim();
+  const pin = document.getElementById("umPin").value.trim();
   if (!name) { alert("Enter a name."); return; }
   if (!/^[0-9]{6,}$/.test(pin)) { alert("PIN must be 6+ digits."); return; }
-  const venueIds = [...document.querySelectorAll("#newUserVenues [data-venue]:checked")].map(inp => inp.dataset.venue);
+  const venueIds = [...document.querySelectorAll("#umVenues [data-venue]:checked")].map(inp => inp.dataset.venue);
   if (!venueIds.length) { alert("Pick at least one venue."); return; }
-  const gaEl = document.getElementById("permGlobalAdmin");
-  const perms = {
-    active: document.getElementById("permActive").checked,
-    globalAdmin: (gaEl && !document.getElementById("newUserGlobalAdminRow").hidden) ? gaEl.checked : false,
-    placeOrders: document.getElementById("permPlaceOrders").checked,
-    productsOnStop: document.getElementById("permProductsOnStop").checked,
-    recoveryTool: document.getElementById("permRecoveryTool").checked,
-    callToService: document.getElementById("permCallToService").checked,
-    clearHistory: document.getElementById("permClearHistory").checked,
-    xzRead: document.getElementById("permXzRead").checked,
-    endOfDay: document.getElementById("permEndOfDay").checked,
-    backendAccess: document.getElementById("permBackendAccess").checked,
-    orderScreen: document.getElementById("permOrderScreen").checked
-  };
-  const res = await callManageStaff("create", { pin, name, perms, venueIds });
-  if (res.error) { alert(res.error); return; }
-  document.getElementById("newUserName").value = ""; document.getElementById("newUserPin").value = "";
-  document.getElementById("permActive").checked = true;
-  if (gaEl) gaEl.checked = false;
-  document.getElementById("permPlaceOrders").checked = true;
-  ["permProductsOnStop","permRecoveryTool","permCallToService","permClearHistory","permXzRead","permEndOfDay","permBackendAccess","permOrderScreen"].forEach(id => { document.getElementById(id).checked = false; });
+  const groupIds = [...document.querySelectorAll("#umGroups [data-group]:checked")].map(inp => inp.dataset.group);
+  const perms = { active: document.getElementById("umActive").checked };
+  const canGrantGlobalAdmin = !document.getElementById("umGlobalAdminRow").hidden;
+  perms.globalAdmin = canGrantGlobalAdmin ? document.getElementById("umGlobalAdmin").checked : (editingUser ? !!editingUser.perms.globalAdmin : false);
+  PERM_KEYS_ORDERED.forEach(key => { perms[key] = document.querySelector(`#umPerms [data-perm="${key}"]`).checked; });
+
+  if (userModalMode === "add") {
+    const res = await callManageStaff("create", { pin, name, perms, venueIds, groupIds });
+    if (res.error) { alert(res.error); return; }
+  } else {
+    const u = editingUser;
+    if (pin !== u.pin) { const res = await callManageStaff("changePin", { userId: u.id, newPin: pin }); if (res.error) { alert(res.error); return; } }
+    const { error } = await supabaseClient.from("staff_users").update({ data: { name, pin, perms, venueIds, groupIds } }).eq("id", u.id);
+    if (error) { alert(error.message); return; }
+  }
   users = await fetchAllVisibleStaff();
   renderUserList();
+  closeUserModal();
+});
+
+/* ---------- Groups ---------- */
+function renderGroupsList(){
+  const wrap = document.getElementById("groupsList");
+  if (!allGroups.length) { wrap.innerHTML = `<div class="empty">None yet.</div>`; return; }
+  wrap.innerHTML = "";
+  allGroups.forEach(g => {
+    const row = document.createElement("div");
+    row.className = "list-row";
+    row.innerHTML = `<div class="info"><div class="name">${g.name}</div></div><div class="actions"><button type="button" class="btn btn-danger btn-sm">Delete</button></div>`;
+    row.querySelector("button").addEventListener("click", async () => {
+      if (!confirm(`Delete group "${g.name}"? Staff keep their other groups.`)) return;
+      await removeGroup(g.id);
+      allGroups = allGroups.filter(x => x.id !== g.id);
+      renderGroupsList();
+    });
+    wrap.appendChild(row);
+  });
+}
+document.getElementById("manageGroupsBtn").addEventListener("click", () => { renderGroupsList(); document.getElementById("groupsModal").hidden = false; });
+document.getElementById("groupsModalClose").addEventListener("click", async () => {
+  document.getElementById("groupsModal").hidden = true;
+  renderUserList(); // group names may have changed
+});
+document.getElementById("addGroupBtn").addEventListener("click", async () => {
+  const name = document.getElementById("newGroupName").value.trim();
+  if (!name) { alert("Enter a name."); return; }
+  const id = "grp" + Date.now();
+  const res = await saveGroup(id, name);
+  if (res.error) { alert(res.error); return; }
+  allGroups.push({ id, name });
+  document.getElementById("newGroupName").value = "";
+  renderGroupsList();
 });
 
 /* ---------- Venues ---------- */
@@ -1164,66 +1258,105 @@ function renderVenues(){
   wrap.innerHTML = "";
   if (!venues.length) { wrap.innerHTML = `<div class="empty">None yet.</div>`; return; }
   venues.forEach(v => {
+    const staffCount = users.filter(u => (u.venueIds||[]).includes(v.id)).length;
     const row = document.createElement("div");
-    row.className = "row";
-    row.style.cssText = "flex-direction:column;align-items:stretch;gap:8px;";
+    row.className = "list-row";
     row.innerHTML = `
-      <label class="field">Name</label><input type="text" class="v-name" value="${v.name.replace(/"/g,"&quot;")}">
-      <label class="field">Discord webhook — new orders</label><input type="text" class="v-webhook-order" value="${(v.discordWebhooks && v.discordWebhooks.order || "").replace(/"/g,"&quot;")}" placeholder="https://discord.com/api/webhooks/...">
-      <label class="field">Discord webhook — Z-reads</label><input type="text" class="v-webhook-zread" value="${(v.discordWebhooks && v.discordWebhooks.zread || "").replace(/"/g,"&quot;")}" placeholder="https://discord.com/api/webhooks/...">
-      <label class="field">Discord webhook — stop list</label><input type="text" class="v-webhook-stop" value="${(v.discordWebhooks && v.discordWebhooks.stop || "").replace(/"/g,"&quot;")}" placeholder="https://discord.com/api/webhooks/...">
-      <button type="button" class="btn btn-accent btn-sm v-save-btn" style="margin-top:4px;">Save</button>`;
-    row.querySelector(".v-save-btn").addEventListener("click", async (e) => {
-      const name = row.querySelector(".v-name").value.trim();
-      if (!name) { alert("Enter a name."); return; }
-      const discordWebhooks = {
-        order: row.querySelector(".v-webhook-order").value.trim() || null,
-        zread: row.querySelector(".v-webhook-zread").value.trim() || null,
-        stop: row.querySelector(".v-webhook-stop").value.trim() || null
-      };
-      const { error } = await supabaseClient.from("venues").update({ data: { ...v, name, discordWebhooks } }).eq("id", v.id);
-      if (error) { alert(error.message); return; }
-      v.name = name; v.discordWebhooks = discordWebhooks;
-      e.target.textContent = "Saved ✓"; setTimeout(() => { e.target.textContent = "Save"; }, 1200);
-    });
+      <div class="info"><div class="name">${v.name}</div><div class="sub">${staffCount} staff assigned</div></div>
+      <div class="actions"><button type="button" class="btn btn-ghost btn-sm">Edit</button></div>`;
+    row.querySelector("button").addEventListener("click", () => openVenueModal("edit", v));
     wrap.appendChild(row);
   });
 }
-document.getElementById("addVenueBtn").addEventListener("click", async () => {
-  const name = document.getElementById("newVenueName").value.trim();
+function openVenueModal(mode, venue){
+  editingVenue = venue || null;
+  document.getElementById("venueModalTitle").textContent = mode === "edit" ? "Edit venue" : "Add a venue";
+  document.getElementById("vmName").value = venue ? venue.name : "";
+  document.getElementById("vmWebhookOrder").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.order || "") : "";
+  document.getElementById("vmWebhookZread").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.zread || "") : "";
+  document.getElementById("vmWebhookStop").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.stop || "") : "";
+  document.getElementById("vmStaff").innerHTML = users.map(u => `
+    <label class="row" style="border:0;padding:8px 0;"><span class="info"><span class="name">${u.name}</span></span><span class="switch"><input type="checkbox" data-staff="${u.id}" ${venue && (u.venueIds||[]).includes(venue.id) ? "checked" : ""}><span class="slider"></span></span></label>`).join("") || `<div class="empty">No staff yet — add some from Users first.</div>`;
+  document.getElementById("venueModal").hidden = false;
+}
+document.getElementById("openAddVenueBtn").addEventListener("click", () => openVenueModal("add", null));
+document.getElementById("venueModalCancel").addEventListener("click", () => { document.getElementById("venueModal").hidden = true; editingVenue = null; });
+document.getElementById("venueModalSave").addEventListener("click", async () => {
+  const name = document.getElementById("vmName").value.trim();
   if (!name) { alert("Enter a name."); return; }
-  const id = "venue_" + Date.now();
-  const data = { name, discordWebhooks: {
-    order: document.getElementById("newVenueWebhookOrder").value.trim() || null,
-    zread: document.getElementById("newVenueWebhookZread").value.trim() || null,
-    stop: document.getElementById("newVenueWebhookStop").value.trim() || null
-  }, active: true };
-  const { error } = await supabaseClient.from("venues").insert({ id, ts: Date.now(), data });
-  if (error) { alert(error.message); return; }
-  document.getElementById("newVenueName").value = "";
-  document.getElementById("newVenueWebhookOrder").value = ""; document.getElementById("newVenueWebhookZread").value = ""; document.getElementById("newVenueWebhookStop").value = "";
+  const discordWebhooks = {
+    order: document.getElementById("vmWebhookOrder").value.trim() || null,
+    zread: document.getElementById("vmWebhookZread").value.trim() || null,
+    stop: document.getElementById("vmWebhookStop").value.trim() || null
+  };
+  let venueId = editingVenue ? editingVenue.id : ("venue_" + Date.now());
+  if (editingVenue) {
+    const { error } = await supabaseClient.from("venues").update({ data: { ...editingVenue, name, discordWebhooks } }).eq("id", venueId);
+    if (error) { alert(error.message); return; }
+  } else {
+    const { error } = await supabaseClient.from("venues").insert({ id: venueId, ts: Date.now(), data: { name, discordWebhooks, active: true } });
+    if (error) { alert(error.message); return; }
+  }
+  // Reconcile assigned-staff checkboxes against each user's own venueIds.
+  const checkedStaffIds = new Set([...document.querySelectorAll("#vmStaff [data-staff]:checked")].map(inp => inp.dataset.staff));
+  for (const u of users) {
+    const has = (u.venueIds || []).includes(venueId);
+    const shouldHave = checkedStaffIds.has(u.id);
+    if (has === shouldHave) continue;
+    const venueIds = shouldHave ? [...(u.venueIds || []), venueId] : (u.venueIds || []).filter(id => id !== venueId);
+    await supabaseClient.from("staff_users").update({ data: { ...u, venueIds } }).eq("id", u.id);
+    u.venueIds = venueIds;
+  }
   venues = await fetchAllVisibleVenues();
   myVenues = await fetchMyVenues(currentUser);
-  renderVenues(); renderNewUserVenues(); renderVenueSwitcher();
+  document.getElementById("venueModal").hidden = true; editingVenue = null;
+  renderVenues(); renderUserList(); renderVenueSwitcher();
 });
 
 /* ---------- Settings ---------- */
-async function loadSessionSettings(){
+async function loadAppSettings(){
   try {
     const { data } = await supabaseClient.from("app_settings").select("data").eq("id", "global").maybeSingle();
-    const minutes = data && data.data ? data.data.sessionTimeoutMinutes : null;
-    document.getElementById("sessionTimeoutEnabled").checked = minutes != null;
-    document.getElementById("sessionTimeoutMinutes").value = minutes || "";
-  } catch(e){}
+    appSettings = (data && data.data) || {};
+  } catch(e){ appSettings = {}; }
+  document.getElementById("sessionTimeoutEnabled").checked = appSettings.sessionTimeoutMinutes != null;
+  document.getElementById("sessionTimeoutMinutes").value = appSettings.sessionTimeoutMinutes || "";
+  renderLockdownButtons();
+}
+async function saveAppSettings(patch){
+  appSettings = { ...appSettings, ...patch };
+  const { error } = await supabaseClient.from("app_settings").update({ ts: Date.now(), data: appSettings }).eq("id", "global");
+  return error ? { error: error.message } : { ok: true };
 }
 document.getElementById("saveSessionSettingsBtn").addEventListener("click", async () => {
   const enabled = document.getElementById("sessionTimeoutEnabled").checked;
   const minutes = parseInt(document.getElementById("sessionTimeoutMinutes").value, 10);
   if (enabled && (!minutes || minutes < 1)) { alert("Enter how many minutes."); return; }
-  const { error } = await supabaseClient.from("app_settings").update({ ts: Date.now(), data: { sessionTimeoutMinutes: enabled ? minutes : null } }).eq("id", "global");
-  if (error) { alert(error.message); return; }
+  const res = await saveAppSettings({ sessionTimeoutMinutes: enabled ? minutes : null });
+  if (res.error) { alert(res.error); return; }
   const btn = document.getElementById("saveSessionSettingsBtn");
   btn.textContent = "Saved ✓"; setTimeout(() => { btn.textContent = "Save"; }, 1200);
+});
+function renderLockdownButtons(){
+  const suspendBtn = document.getElementById("toggleSuspendBtn");
+  const breakBtn = document.getElementById("toggleServiceBreakBtn");
+  suspendBtn.textContent = appSettings.ordersSuspended ? "Resume Orders" : "Suspend All Orders";
+  suspendBtn.className = appSettings.ordersSuspended ? "btn btn-accent" : "btn btn-danger";
+  breakBtn.textContent = appSettings.serviceBreak ? "End Service Break" : "Service Break";
+  breakBtn.className = appSettings.serviceBreak ? "btn btn-accent" : "btn btn-ghost";
+}
+document.getElementById("toggleSuspendBtn").addEventListener("click", async () => {
+  const next = !appSettings.ordersSuspended;
+  if (next && !confirm("Suspend order-taking on the till for every venue? Staff will see a lock screen until you resume.")) return;
+  const res = await saveAppSettings({ ordersSuspended: next });
+  if (res.error) { alert(res.error); return; }
+  renderLockdownButtons();
+});
+document.getElementById("toggleServiceBreakBtn").addEventListener("click", async () => {
+  const next = !appSettings.serviceBreak;
+  const res = await saveAppSettings({ serviceBreak: next });
+  if (res.error) { alert(res.error); return; }
+  renderLockdownButtons();
 });
 
 /* ---------- live refresh ---------- */

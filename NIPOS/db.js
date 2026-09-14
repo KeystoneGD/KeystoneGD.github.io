@@ -224,3 +224,48 @@ function rowStore(table, limit) {
     }
   };
 }
+
+// --- Staff groups (Bar Staff, Table Service, ...) — global, not venue-scoped, so not a rowStore table ---
+async function fetchAllGroups() {
+  if (!supabaseClient) return [];
+  try {
+    const { data, error } = await supabaseClient.from("staff_groups").select("id,data").order("ts", { ascending: true });
+    if (error || !data) return [];
+    return data.map(r => ({ id: r.id, ...r.data }));
+  } catch (e) { return []; }
+}
+async function saveGroup(id, name) {
+  if (!supabaseClient) return { error: "Not connected" };
+  try {
+    const { error } = await supabaseClient.from("staff_groups").upsert({ id, ts: Date.now(), data: { name } });
+    return error ? { error: error.message } : { ok: true };
+  } catch (e) { return { error: "Network error" }; }
+}
+async function removeGroup(id) {
+  if (!supabaseClient) return;
+  try { await supabaseClient.from("staff_groups").delete().eq("id", id); } catch (e) {}
+}
+
+// --- Online presence: a heartbeat row per signed-in staff member ---
+const PRESENCE_ONLINE_WINDOW_MS = 90 * 1000;
+async function sendHeartbeat(userId, name) {
+  if (!supabaseClient || !currentVenueId || !userId) return;
+  try { await supabaseClient.from("presence").upsert({ id: userId, ts: Date.now(), venue_id: currentVenueId, data: { name } }); } catch (e) {}
+}
+async function clearHeartbeat(userId) {
+  if (!supabaseClient || !userId) return;
+  try { await supabaseClient.from("presence").delete().eq("id", userId); } catch (e) {}
+}
+// Accounts meant for quiet admin/dev access — never shown in staff-facing pickers, lists, or presence.
+const HIDDEN_ACCOUNT_NAMES = new Set(["maintenance", "administrator", "developer"]);
+function isHiddenAccount(name) { return HIDDEN_ACCOUNT_NAMES.has((name || "").trim().toLowerCase()); }
+
+async function fetchOnlineUserIds() {
+  if (!supabaseClient || !currentVenueId) return new Set();
+  try {
+    const cutoff = Date.now() - PRESENCE_ONLINE_WINDOW_MS;
+    const { data, error } = await supabaseClient.from("presence").select("id").eq("venue_id", currentVenueId).gte("ts", cutoff);
+    if (error || !data) return new Set();
+    return new Set(data.map(r => r.id));
+  } catch (e) { return new Set(); }
+}

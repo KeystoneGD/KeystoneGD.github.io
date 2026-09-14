@@ -587,6 +587,12 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     <button class="btn btn-ghost btn-block" id="lockedLogoutBtn">Sign out</button>
   </div>
 </div>
+<div class="login-gate" id="lockdownScreen" hidden>
+  <div class="login-card">
+    <h2 id="lockdownTitle">Orders Suspended</h2>
+    <p id="lockdownMessage">A manager has paused order-taking. Hang tight — this will lift automatically once they turn it back on.</p>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="db.js"></script>
@@ -938,6 +944,29 @@ async function connectDb(){
   setInterval(() => { if (currentVenue) { pullState(PERSISTED_KEYS.filter(i => i.live)); pullRowStores(); } }, 1000);
   setInterval(() => { if (currentVenue) loadCatalogueFromDb(); }, 15000); // the catalogue rarely changes — no need to poll it every second
   setInterval(() => { if (currentVenue && currentUser) sendHeartbeat(currentUserId, currentUser.name); }, 45000);
+  setInterval(() => { if (currentVenue) checkLockdown(); }, 15000);
+}
+
+// A Global Admin can pause order-taking (Suspend All Orders / Service Break) from Backend's Settings
+// page — this is the till-side enforcement, a full-screen lock until they turn it back off.
+async function checkLockdown(){
+  if (!supabaseClient) return;
+  try {
+    const { data } = await supabaseClient.from("app_settings").select("data").eq("id", "global").maybeSingle();
+    const s = (data && data.data) || {};
+    const screen = document.getElementById("lockdownScreen");
+    if (s.ordersSuspended) {
+      document.getElementById("lockdownTitle").textContent = "Orders Suspended";
+      document.getElementById("lockdownMessage").textContent = "A manager has paused order-taking. Hang tight — this will lift automatically once they turn it back on.";
+      screen.hidden = false;
+    } else if (s.serviceBreak) {
+      document.getElementById("lockdownTitle").textContent = "On a Service Break";
+      document.getElementById("lockdownMessage").textContent = "The till is paused for a service break. Hang tight — this will lift automatically once it ends.";
+      screen.hidden = false;
+    } else {
+      screen.hidden = true;
+    }
+  } catch(e){}
 }
 
 // Restores a real Supabase Auth session on page load (if any), loads the signed-in staff member's
@@ -968,6 +997,7 @@ async function resolveVenueSelection(){
   await pullRowStores();
   await loadCatalogueFromDb();
   sendHeartbeat(currentUserId, currentUser.name);
+  checkLockdown();
 }
 
 let cart = loadJSON(LS_CART, {});
