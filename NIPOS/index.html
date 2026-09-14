@@ -421,6 +421,13 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
         </button>
         <span class="chevron">›</span>
       </div>
+      <div class="admin-row" id="soundRow">
+        <button class="admin-row-main" type="button">
+          <span class="name">Notification sound</span>
+          <span class="sub" id="soundRowSub">Classic (triple beep)</span>
+        </button>
+        <span class="chevron">›</span>
+      </div>
       <div class="admin-row" id="xReadRow">
         <button class="admin-row-main" type="button">
           <span class="name">Takings Summary Report</span>
@@ -1685,21 +1692,7 @@ function showToast(msg){
 
 let audioCtx = null;
 function playChime(){
-  if (!audioCtx) return;
-  try {
-    for (let i = 0; i < 3; i++) {
-      const t0 = audioCtx.currentTime + i * 0.18;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = "square"; osc.frequency.value = 1500;
-      gain.gain.setValueAtTime(0.0001, t0);
-      gain.gain.exponentialRampToValueAtTime(0.8, t0 + 0.008);
-      gain.gain.setValueAtTime(0.8, t0 + 0.1);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.14);
-      osc.connect(gain); gain.connect(audioCtx.destination);
-      osc.start(t0); osc.stop(t0 + 0.15);
-    }
-  } catch(e){}
+  playNotificationSound(audioCtx, currentUser && currentUser.notificationSound);
 }
 function alertUser(title, body, urgent){
   showToast(`${title}${body ? ": " + body : ""}`);
@@ -1866,6 +1859,7 @@ function applyLoginState(){
   document.getElementById("lockedUserName").textContent = currentUser.name;
   document.getElementById("accountName").textContent = currentUser.name + (currentVenue ? " · " + currentVenue.name : "");
   document.getElementById("switchVenueBtn").hidden = myVenues.length < 2;
+  document.getElementById("soundRowSub").textContent = CHIME_PRESETS[currentUser.notificationSound] || (currentUser.notificationSound ? "Uploaded sound" : "Classic (triple beep)");
   document.getElementById("stoppedRow").hidden = !currentUser.perms.productsOnStop;
   document.getElementById("openOrdersRow").hidden = !currentUser.perms.orderScreen;
   document.getElementById("xReadRow").hidden = !currentUser.perms.xzRead;
@@ -1960,6 +1954,22 @@ document.getElementById("titleRow").querySelector(".admin-row-main").addEventLis
   document.getElementById("brandTitle").textContent = appTitle;
   document.getElementById("titleRowSub").textContent = appTitle;
   showToast("App name updated");
+});
+document.getElementById("soundRow").querySelector(".admin-row-main").addEventListener("click", async () => {
+  const uploaded = await fetchNotificationSounds();
+  const choices = [
+    ...Object.entries(CHIME_PRESETS).map(([id, label]) => ({ value: id, label })),
+    ...uploaded.map(s => ({ value: s.path, label: s.label, sub: "Uploaded" }))
+  ];
+  const chosen = await askChoice({ title: "Notification sound", message: "Plays when you're signed in and someone pages you.", choices });
+  if (!chosen) return;
+  const res = await setMyNotificationSound(chosen);
+  if (res.error) { showToast(res.error); return; }
+  currentUser.notificationSound = chosen;
+  document.getElementById("soundRowSub").textContent = choices.find(c => c.value === chosen).label;
+  showToast("Notification sound updated");
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
+  playNotificationSound(audioCtx, chosen);
 });
 
 function showAdminHome(){

@@ -141,7 +141,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 <div class="toolbar-row" id="toolbarRow">
   <button class="btn btn-ghost" id="stockBtn" type="button" hidden>🛑 Products on Stop</button>
   <button class="btn btn-accent" id="serviceBtn" type="button">🔔 Service</button>
-  <button class="btn btn-ghost" id="notifyPrefsBtn" type="button">🔔 Notify me for</button>
+  <button class="btn btn-ghost" id="notifyPrefsBtn" type="button">🔔 Notifications</button>
 </div>
 <div class="sound-row" id="alertsRow">
   <div id="alertsStatus" style="font-size:12.5px;color:var(--text-muted);">🔕 Tap to get a sound + alert when a new order comes in</div>
@@ -180,8 +180,12 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 
 <div class="modal-overlay" id="notifyPrefsModal" hidden>
   <div class="modal-card">
-    <h3>Notify me for</h3>
-    <p>Get a Service alert for these venues even when you're signed in somewhere else.</p>
+    <h3>Notifications</h3>
+    <p>Sound</p>
+    <select id="notifySoundSelect" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;margin-bottom:8px;"></select>
+    <button type="button" class="btn btn-ghost" id="notifySoundPreviewBtn" style="margin-bottom:16px;">▶ Preview</button>
+    <p>Venues</p>
+    <p class="note" style="margin-top:-6px;">Get a Service alert for these venues even when you're signed in somewhere else.</p>
     <div class="modal-item-list" id="notifyPrefsList"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="notifyPrefsCancel">Cancel</button>
@@ -394,21 +398,7 @@ function showToast(msg){
 
 let audioCtx = null;
 function playChime(){
-  if (!audioCtx) return;
-  try {
-    for (let i = 0; i < 3; i++) {
-      const t0 = audioCtx.currentTime + i * 0.18;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = "square"; osc.frequency.value = 1500;
-      gain.gain.setValueAtTime(0.0001, t0);
-      gain.gain.exponentialRampToValueAtTime(0.8, t0 + 0.008);
-      gain.gain.setValueAtTime(0.8, t0 + 0.1);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.14);
-      osc.connect(gain); gain.connect(audioCtx.destination);
-      osc.start(t0); osc.stop(t0 + 0.15);
-    }
-  } catch(e){}
+  playNotificationSound(audioCtx, currentUser && currentUser.notificationSound);
 }
 const SEND_PUSH_URL = "https://djegigghjeisoyecxeyo.supabase.co/functions/v1/send-push";
 const VAPID_PUBLIC_KEY = "BIsWuuC6kXfpzLch6fyertHwGCXxMy3GToZK05uJjilcHIg-DkrQaIZxzbhYsKLkFqw5z0qTzmKsts433AnOxvY";
@@ -913,7 +903,19 @@ document.getElementById("notifyPrefsBtn").addEventListener("click", async () => 
       <span>${v.name}</span>
       <span class="switch"><input type="checkbox" data-notify-venue="${v.id}" ${mine.has(v.id) ? "checked" : ""}><span class="slider"></span></span>
     </label>`).join("");
+
+  const uploaded = await fetchNotificationSounds();
+  const soundSel = document.getElementById("notifySoundSelect");
+  soundSel.innerHTML =
+    Object.entries(CHIME_PRESETS).map(([id, label]) => `<option value="${id}">${label}</option>`).join("") +
+    (uploaded.length ? uploaded.map(s => `<option value="${s.path}">${s.label}</option>`).join("") : "");
+  soundSel.value = currentUser.notificationSound || "classic";
+
   document.getElementById("notifyPrefsModal").hidden = false;
+});
+document.getElementById("notifySoundPreviewBtn").addEventListener("click", () => {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
+  playNotificationSound(audioCtx, document.getElementById("notifySoundSelect").value);
 });
 document.getElementById("notifyPrefsCancel").addEventListener("click", () => { document.getElementById("notifyPrefsModal").hidden = true; });
 document.getElementById("notifyPrefsSave").addEventListener("click", async () => {
@@ -921,8 +923,12 @@ document.getElementById("notifyPrefsSave").addEventListener("click", async () =>
   const res = await setMyNotifyVenues(venueIds);
   if (res.error) { alert(res.error); return; }
   currentUser.notifyVenueIds = venueIds;
+  const sound = document.getElementById("notifySoundSelect").value;
+  const soundRes = await setMyNotificationSound(sound);
+  if (soundRes.error) { alert(soundRes.error); return; }
+  currentUser.notificationSound = sound;
   document.getElementById("notifyPrefsModal").hidden = true;
-  showToast("Notification venues saved");
+  showToast("Notification settings saved");
 });
 
 document.getElementById("stockBtn").addEventListener("click", () => {

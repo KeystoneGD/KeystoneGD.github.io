@@ -311,3 +311,79 @@ async function fetchNotifySubscribers(venueId) {
 async function setMyNotifyVenues(venueIds) {
   return await callManageStaff("setNotifyVenues", { venueIds });
 }
+// Plain fields like this don't touch auth, so they're a direct self-update rather than a trip through
+// the Edge Function - the same RLS rule that lets you edit your own venues/groups covers this too.
+async function setMyNotificationSound(sound) {
+  const session = await getSession();
+  if (!session) return { error: "Not signed in" };
+  try {
+    const { data } = await supabaseClient.from("staff_users").select("data").eq("id", session.user.id).maybeSingle();
+    if (!data) return { error: "Account not found" };
+    const { error } = await supabaseClient.from("staff_users").update({ data: { ...data.data, notificationSound: sound } }).eq("id", session.user.id);
+    return error ? { error: error.message } : { ok: true };
+  } catch (e) { return { error: "Network error" }; }
+}
+
+// --- Notification sounds ---
+// A handful of built-in synthesized tones, always available with zero setup, plus whatever real
+// audio files a Global Admin has uploaded in Backend (Settings > Notification Sounds). A "sound
+// choice" string is either a preset id below or a Storage path like "1699999999-doorbell.mp3".
+const CHIME_PRESETS = {
+  classic: "Classic (triple beep)",
+  soft: "Soft bell",
+  double: "Two-tone ding",
+  urgent: "Urgent buzz",
+  chirp: "Chirp"
+};
+function playChimePreset(audioCtx, preset) {
+  if (!audioCtx) return;
+  try {
+    const tone = (freq, start, dur, type, peak) => {
+      const t0 = audioCtx.currentTime + start;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.008);
+      gain.gain.setValueAtTime(peak, t0 + dur * 0.6);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(t0); osc.stop(t0 + dur + 0.02);
+    };
+    if (preset === "soft") { tone(660, 0, 0.35, "sine", 0.5); }
+    else if (preset === "double") { tone(880, 0, 0.16, "sine", 0.6); tone(1320, 0.16, 0.22, "sine", 0.6); }
+    else if (preset === "urgent") { tone(700, 0, 0.09, "sawtooth", 0.7); tone(700, 0.12, 0.09, "sawtooth", 0.7); tone(700, 0.24, 0.09, "sawtooth", 0.7); }
+    else if (preset === "chirp") { tone(1200, 0, 0.06, "sine", 0.6); tone(1800, 0.07, 0.08, "sine", 0.6); }
+    else { for (let i = 0; i < 3; i++) tone(1500, i * 0.18, 0.14, "square", 0.8); } // classic, and the fallback for anything unrecognized
+  } catch (e) {}
+}
+const NOTIFICATION_SOUNDS_BUCKET = "notification-sounds";
+function notificationSoundUrl(path) {
+  return supabaseClient.storage.from(NOTIFICATION_SOUNDS_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+async function fetchNotificationSounds() {
+  if (!supabaseClient) return [];
+  try {
+    const { data, error } = await supabaseClient.storage.from(NOTIFICATION_SOUNDS_BUCKET).list("", { sortBy: { column: "name", order: "asc" } });
+    if (error || !data) return [];
+    return data.filter(f => f.id).map(f => ({ path: f.name, label: f.name.replace(/^\d+-/, "").replace(/\.[a-z0-9]+$/i, "") }));
+  } catch (e) { return []; }
+}
+async function uploadNotificationSound(file) {
+  if (!supabaseClient) return { error: "Not connected" };
+  const path = Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+  try {
+    const { error } = await supabaseClient.storage.from(NOTIFICATION_SOUNDS_BUCKET).upload(path, file, { contentType: file.type || "audio/mpeg" });
+    return error ? { error: error.message } : { ok: true, path };
+  } catch (e) { return { error: "Upload failed" }; }
+}
+async function deleteNotificationSound(path) {
+  if (!supabaseClient) return;
+  try { await supabaseClient.storage.from(NOTIFICATION_SOUNDS_BUCKET).remove([path]); } catch (e) {}
+}
+// Plays whichever kind of sound choice this is: a built-in preset (synthesized, needs the page's
+// audioCtx) or an uploaded file (played through a plain <audio> element instead).
+function playNotificationSound(audioCtx, soundChoice) {
+  if (!soundChoice || CHIME_PRESETS[soundChoice]) { playChimePreset(audioCtx, soundChoice || "classic"); return; }
+  try { new Audio(notificationSoundUrl(soundChoice)).play().catch(() => {}); } catch (e) {}
+}

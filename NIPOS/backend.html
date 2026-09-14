@@ -407,6 +407,13 @@ table.data-table tr:last-child td{border-bottom:0;}
         <input type="number" id="sessionTimeoutMinutes" min="1" step="1" placeholder="e.g. 30">
         <button class="btn btn-accent" id="saveSessionSettingsBtn" style="margin-top:10px;">Save</button>
       </div>
+      <div class="section-title">Notification Sounds</div>
+      <p class="note">Staff pick their own sound from this list (Order Screen &gt; Notifications). The built-in tones always work with no setup; upload a file here to add more options.</p>
+      <div class="card" id="soundsList"><div class="empty">Loading…</div></div>
+      <div class="card">
+        <label class="field">Upload a sound (MP3/WAV/OGG/M4A, under 2MB)</label>
+        <input type="file" id="soundUploadInput" accept="audio/*">
+      </div>
     </section>
   </main>
 </div>
@@ -616,6 +623,7 @@ async function loadVenueData(){
     venues = await fetchAllVisibleVenues();
     renderVenues();
     await loadAppSettings();
+    await renderSoundsList();
   }
   await loadDashboard();
 }
@@ -1414,6 +1422,42 @@ document.getElementById("toggleServiceBreakBtn").addEventListener("click", async
   const res = await saveAppSettings({ serviceBreak: next });
   if (res.error) { alert(res.error); return; }
   renderLockdownButtons();
+});
+
+async function renderSoundsList(){
+  const wrap = document.getElementById("soundsList");
+  wrap.innerHTML = `<div class="empty">Loading…</div>`;
+  const uploaded = await fetchNotificationSounds();
+  const previewCtx = new (window.AudioContext || window.webkitAudioContext)();
+  wrap.innerHTML = "";
+  Object.entries(CHIME_PRESETS).forEach(([id, label]) => {
+    const row = document.createElement("div");
+    row.className = "list-row";
+    row.innerHTML = `<div class="info"><div class="name">${label}</div><div class="sub">Built-in, always available</div></div><div class="actions"><button type="button" class="btn btn-ghost btn-sm">Preview</button></div>`;
+    row.querySelector("button").addEventListener("click", () => playChimePreset(previewCtx, id));
+    wrap.appendChild(row);
+  });
+  if (!uploaded.length) { wrap.insertAdjacentHTML("beforeend", `<div class="empty">No uploaded sounds yet.</div>`); return; }
+  uploaded.forEach(s => {
+    const row = document.createElement("div");
+    row.className = "list-row";
+    row.innerHTML = `<div class="info"><div class="name">${s.label}</div><div class="sub">Uploaded</div></div><div class="actions"><button type="button" class="btn btn-ghost btn-sm preview-btn">Preview</button><button type="button" class="btn btn-danger btn-sm">Delete</button></div>`;
+    row.querySelector(".preview-btn").addEventListener("click", () => { new Audio(notificationSoundUrl(s.path)).play().catch(() => {}); });
+    row.querySelector(".btn-danger").addEventListener("click", async () => {
+      if (!confirm(`Delete "${s.label}"?`)) return;
+      await deleteNotificationSound(s.path);
+      renderSoundsList();
+    });
+    wrap.appendChild(row);
+  });
+}
+document.getElementById("soundUploadInput").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const res = await uploadNotificationSound(file);
+  e.target.value = "";
+  if (res.error) { alert(res.error); return; }
+  renderSoundsList();
 });
 
 /* ---------- live refresh ---------- */
