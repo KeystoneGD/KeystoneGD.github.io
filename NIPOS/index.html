@@ -6,7 +6,7 @@
 <title>Starlight Till</title>
 <meta name="description" content="Pocket point-of-sale for taking cash-register-style orders and logging card sales at Starlight Suite.">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0c1719">
+<meta name="theme-color" content="#0c1826">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,20 +15,28 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap">
 <style>
 :root{
-  --bg:#0c1719; --surface:#132427; --surface-2:#1b3236; --border:#2a474b;
-  --text:#eef7f7; --text-muted:#93b3b5;
-  --accent:#3cc0c8; --accent-ink:#052226; --accent-soft:rgba(60,192,200,.16);
-  --gold:#fecf46; --gold-soft:rgba(254,207,70,.14);
-  --success:#49c98d; --success-ink:#052018;
+  --bg:#0c1826; --surface:#13212f; --surface-2:#1a2e3f; --border:#253d52;
+  --text:#eef4f8; --text-muted:#8fa5b8;
+  --accent:#f0a13a; --accent-ink:#2b1a02; --accent-soft:rgba(240,161,58,.16);
+  --success:#49c98d; --success-ink:#052018; --success-soft:rgba(73,201,141,.16);
   --danger:#ff7a68; --danger-soft:rgba(255,122,104,.14);
   --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 24px -12px rgba(0,0,0,.55);
 }
+:root[data-theme="light"]{
+  --bg:#f5f7fa; --surface:#ffffff; --surface-2:#eef2f6; --border:#dbe3ea;
+  --text:#16232f; --text-muted:#5b6e7f;
+  --accent:#c9791e; --accent-ink:#2b1a02; --accent-soft:rgba(201,121,30,.12);
+  --success:#1f8f5f; --success-ink:#eafff5; --success-soft:rgba(31,143,95,.12);
+  --danger:#c53c2c; --danger-soft:rgba(197,60,44,.1);
+  --shadow: 0 1px 2px rgba(16,30,45,.06), 0 8px 24px -12px rgba(16,30,45,.18);
+}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+[hidden]{display:none !important;}
 body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;margin:0;padding-bottom:84px;min-height:100vh;}
-h1,h2,h3,.display{font-family:'Manrope',system-ui,sans-serif;text-wrap:balance;}
+h1,h2,h3,.display{font-family:'Plus Jakarta Sans',system-ui,sans-serif;text-wrap:balance;}
 button{font-family:inherit;}
 input{font-family:inherit;}
 .tabular{font-variant-numeric:tabular-nums;}
@@ -99,8 +107,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 .line .unit{font-size:12px;color:var(--text-muted);}
 .line .linetotal{font-weight:700;font-size:14.5px;min-width:60px;text-align:right;}
 
-.hh-status{display:flex;flex-direction:column;gap:2px;background:var(--gold-soft);border:1px solid rgba(254,207,70,.35);border-radius:10px;padding:10px 12px;margin-bottom:12px;}
-.hh-status .hh-label{font-size:13px;font-weight:700;color:var(--gold);}
+.hh-status{display:flex;flex-direction:column;gap:2px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:10px 12px;margin-bottom:12px;}
+.hh-status .hh-label{font-size:13px;font-weight:700;color:var(--accent);}
 .hh-status .hh-sub{font-size:11.5px;color:var(--text-muted);}
 
 .totalsbreak .row{display:flex;justify-content:space-between;font-size:13.5px;color:var(--text-muted);padding:4px 0;}
@@ -119,7 +127,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 .quickcash .nearest-row{grid-column:1 / -1;display:flex;justify-content:center;}
 .cashchip{padding:13px 16px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-weight:700;font-size:15px;cursor:pointer;width:100%;}
 .cashchip:active{transform:scale(.96);}
-.cashchip.nearest{border-color:var(--gold);color:var(--gold);width:auto;padding:13px 22px;}
+.cashchip.nearest{border-color:var(--accent);color:var(--accent);width:auto;padding:13px 22px;}
 .customcash{margin-bottom:14px;}
 .customcash .clabel{display:block;font-size:12px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;text-align:center;}
 .customcash input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:17px;text-align:center;font-weight:700;}
@@ -176,8 +184,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 .order-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow);}
 .order-card.flagged{border-color:var(--danger);background:var(--danger-soft);}
-.order-card.ready{border-color:var(--gold);background:var(--gold-soft);}
-.order-card.substituted{border-color:var(--accent);background:rgba(60,192,200,.14);}
+.order-card.ready{border-color:var(--success);background:var(--success-soft);}
+.order-card.substituted{border-color:var(--accent);background:var(--accent-soft);}
 .order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
 .order-table{font-weight:800;font-size:15px;font-family:'Manrope',sans-serif;}
 .order-items{font-size:13.5px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;}
@@ -375,6 +383,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
           <div class="sub">Signed in</div>
         </div>
         <button class="btn btn-ghost" id="switchVenueBtn" hidden>Switch venue</button>
+        <button class="btn btn-ghost" id="themeToggleBtn" title="Toggle theme">🌙</button>
         <button class="btn btn-ghost" id="accountSignOutBtn">Sign out</button>
       </div>
       <div class="sound-row" id="alertsRow">
@@ -580,6 +589,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="db.js"></script>
 <script>
+initTheme();
 const PRODUCTS = [
 ["Cocktails - Hand-Crafted Classic Cocktails", "Happy Hour: Buy 2 Cocktails, pay for 1.5 — 3–6pm & 9.30pm onwards.", [
   ["Indulgent Biscoff Espresso Martini",12.95],["Zombie",12.95],["Zombie Sharer",18.95],
@@ -1870,6 +1880,9 @@ document.getElementById("loginSubmitBtn").addEventListener("click", () => signIn
 document.getElementById("loginPinInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginSubmitBtn").click(); });
 document.getElementById("lockedLogoutBtn").addEventListener("click", signOut);
 document.getElementById("accountSignOutBtn").addEventListener("click", signOut);
+function updateThemeBtn(){ document.getElementById("themeToggleBtn").textContent = getTheme() === "light" ? "☀️" : "🌙"; }
+document.getElementById("themeToggleBtn").addEventListener("click", () => { setTheme(getTheme() === "light" ? "dark" : "light"); updateThemeBtn(); });
+updateThemeBtn();
 document.getElementById("venuePickerLogoutBtn").addEventListener("click", signOut);
 document.getElementById("switchVenueBtn").addEventListener("click", () => { currentVenue = null; applyLoginState(); });
 applyLoginState();

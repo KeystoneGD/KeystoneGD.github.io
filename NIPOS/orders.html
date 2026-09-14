@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Starlight Till — Orders</title>
 <link rel="manifest" href="manifest-orders.json">
-<meta name="theme-color" content="#0c1719">
+<meta name="theme-color" content="#0c1826">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,19 +14,28 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap">
 <style>
 :root{
-  --bg:#0c1719; --surface:#132427; --surface-2:#1b3236; --border:#2a474b;
-  --text:#eef7f7; --text-muted:#93b3b5;
-  --accent:#3cc0c8; --accent-ink:#052226;
-  --gold:#fecf46;
-  --success:#49c98d; --success-ink:#052018;
+  --bg:#0c1826; --surface:#13212f; --surface-2:#1a2e3f; --border:#253d52;
+  --text:#eef4f8; --text-muted:#8fa5b8;
+  --accent:#f0a13a; --accent-ink:#2b1a02; --accent-soft:rgba(240,161,58,.16);
+  --success:#49c98d; --success-ink:#052018; --success-soft:rgba(73,201,141,.16);
   --danger:#ff7a68; --danger-soft:rgba(255,122,104,.14);
   --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 24px -12px rgba(0,0,0,.55);
 }
+:root[data-theme="light"]{
+  --bg:#f5f7fa; --surface:#ffffff; --surface-2:#eef2f6; --border:#dbe3ea;
+  --text:#16232f; --text-muted:#5b6e7f;
+  --accent:#c9791e; --accent-ink:#2b1a02; --accent-soft:rgba(201,121,30,.12);
+  --success:#1f8f5f; --success-ink:#eafff5; --success-soft:rgba(31,143,95,.12);
+  --danger:#c53c2c; --danger-soft:rgba(197,60,44,.1);
+  --shadow: 0 1px 2px rgba(16,30,45,.06), 0 8px 24px -12px rgba(16,30,45,.18);
+}
 *{box-sizing:border-box;}
-body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;margin:0;padding:16px;padding-bottom:40px;}
-h1{font-size:19px;margin:0;}
+[hidden]{display:none !important;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;margin:0;padding:16px;padding-bottom:40px;}
+h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;}
 .status{font-size:12px;color:var(--text-muted);margin-bottom:16px;}
 .status.ok{color:var(--success);}
@@ -34,15 +43,15 @@ h1{font-size:19px;margin:0;}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:16px;}
 .order-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow);}
 .order-card.flagged{border-color:var(--danger);background:var(--danger-soft);}
-.order-card.ready{border-color:var(--gold);background:rgba(254,207,70,.14);}
-.order-card.substituted{border-color:var(--accent);background:rgba(60,192,200,.14);}
+.order-card.ready{border-color:var(--success);background:var(--success-soft);}
+.order-card.substituted{border-color:var(--accent);background:var(--accent-soft);}
 .order-sub-note{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:10px;}
 .order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;}
 .order-table{font-weight:800;font-size:16px;font-family:inherit;}
 .order-time{font-size:11px;color:var(--text-muted);}
 .pill{display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:2px 7px;border-radius:999px;flex:0 0 auto;}
-.pill-cash{background:rgba(73,201,141,.16);color:var(--success);}
-.pill-card{background:rgba(60,192,200,.16);color:var(--accent);}
+.pill-cash{background:var(--success-soft);color:var(--success);}
+.pill-card{background:var(--accent-soft);color:var(--accent);}
 .order-items{font-size:13.5px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;}
 .order-flag{font-size:13px;font-weight:700;color:var(--danger);margin-bottom:10px;}
 .order-actions{display:flex;gap:8px;}
@@ -87,7 +96,7 @@ h1{font-size:19px;margin:0;}
 .toolbar-row .btn{width:auto;flex:none;padding:8px 14px;font-size:13px;}
 .toolbar-row[hidden]{display:none;}
 .placed-by{font-size:11.5px;color:var(--text-muted);margin-bottom:6px;}
-.order-notes{font-size:13px;font-weight:700;color:var(--gold);margin-bottom:10px;}
+.order-notes{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:10px;}
 .stock-cat{font-size:12px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin:16px 0 4px;}
 .stock-cat:first-child{margin-top:0;}
 .stock-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:14px;}
@@ -123,6 +132,7 @@ h1{font-size:19px;margin:0;}
 <div class="account-row">
   <div id="accountName" style="font-weight:700;font-size:13.5px;"></div>
   <button class="btn btn-ghost" id="switchVenueBtn" hidden>Switch venue</button>
+  <button class="btn btn-ghost" id="themeToggleBtn" title="Toggle theme">🌙</button>
   <button class="btn btn-ghost" id="accountSignOutBtn">Sign out</button>
 </div>
 <div class="toolbar-row" id="toolbarRow">
@@ -210,6 +220,7 @@ h1{font-size:19px;margin:0;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="db.js"></script>
 <script>
+initTheme();
 const LS_ORDERS = "starlightTill.openOrders.v1";
 const LS_STOPS = "starlightTill.stops.v1";
 const LS_NOTIFICATIONS = "starlightTill.notifications.v1";
@@ -307,6 +318,9 @@ async function signOutOrders(){
   applyLoginState();
 }
 document.getElementById("accountSignOutBtn").addEventListener("click", signOutOrders);
+function updateThemeBtn(){ document.getElementById("themeToggleBtn").textContent = getTheme() === "light" ? "☀️" : "🌙"; }
+document.getElementById("themeToggleBtn").addEventListener("click", () => { setTheme(getTheme() === "light" ? "dark" : "light"); updateThemeBtn(); });
+updateThemeBtn();
 document.getElementById("venuePickerLogoutBtn").addEventListener("click", signOutOrders);
 document.getElementById("switchVenueBtn").addEventListener("click", () => { currentVenue = null; applyLoginState(); });
 
