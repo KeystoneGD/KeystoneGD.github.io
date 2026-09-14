@@ -382,9 +382,11 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
           <div class="name" id="accountName"></div>
           <div class="sub">Signed in</div>
         </div>
-        <button class="btn btn-ghost" id="switchVenueBtn" hidden>Switch venue</button>
-        <button class="btn btn-ghost" id="themeToggleBtn" title="Toggle theme">🌙</button>
-        <button class="btn btn-ghost" id="accountSignOutBtn">Sign out</button>
+        <div style="display:flex;gap:8px;flex:0 0 auto;">
+          <button class="btn btn-ghost" id="switchVenueBtn" hidden>Switch venue</button>
+          <button class="btn btn-ghost" id="themeToggleBtn" title="Toggle theme">🌙</button>
+          <button class="btn btn-ghost" id="accountSignOutBtn">Sign out</button>
+        </div>
       </div>
       <div class="sound-row" id="alertsRow">
         <div style="font-size:12.5px;color:var(--text-muted);">🔕 Tap to get a sound + alert for Service calls and delivery notices</div>
@@ -935,6 +937,7 @@ async function connectDb(){
   await restoreSession();
   setInterval(() => { if (currentVenue) { pullState(PERSISTED_KEYS.filter(i => i.live)); pullRowStores(); } }, 1000);
   setInterval(() => { if (currentVenue) loadCatalogueFromDb(); }, 15000); // the catalogue rarely changes — no need to poll it every second
+  setInterval(() => { if (currentVenue && currentUser) sendHeartbeat(currentUserId, currentUser.name); }, 45000);
 }
 
 // Restores a real Supabase Auth session on page load (if any), loads the signed-in staff member's
@@ -964,6 +967,7 @@ async function resolveVenueSelection(){
   await pullState(PERSISTED_KEYS);
   await pullRowStores();
   await loadCatalogueFromDb();
+  sendHeartbeat(currentUserId, currentUser.name);
 }
 
 let cart = loadJSON(LS_CART, {});
@@ -1871,6 +1875,7 @@ async function signIn(pin){
   }
 }
 async function signOut(){
+  if (currentUserId) clearHeartbeat(currentUserId);
   await signOutAuth();
   currentUser = null; currentUserId = null; currentVenue = null; myVenues = [];
   showAdminHome(); closeSheet("adminSheet");

@@ -49,7 +49,8 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;}
 .order-table{font-weight:800;font-size:16px;font-family:inherit;}
 .order-time{font-size:11px;color:var(--text-muted);}
-.pill{display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:2px 7px;border-radius:999px;flex:0 0 auto;}
+.pill{display:inline-block;background:var(--surface-2);border:1px solid var(--border);color:var(--text-muted);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:2px 7px;border-radius:999px;flex:0 0 auto;}
+.btn-sm{flex:0 0 auto;padding:7px 12px;font-size:12.5px;}
 .pill-cash{background:var(--success-soft);color:var(--success);}
 .pill-card{background:var(--accent-soft);color:var(--accent);}
 .order-items{font-size:13.5px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;}
@@ -131,9 +132,11 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 </div>
 <div class="account-row">
   <div id="accountName" style="font-weight:700;font-size:13.5px;"></div>
-  <button class="btn btn-ghost" id="switchVenueBtn" hidden>Switch venue</button>
-  <button class="btn btn-ghost" id="themeToggleBtn" title="Toggle theme">🌙</button>
-  <button class="btn btn-ghost" id="accountSignOutBtn">Sign out</button>
+  <div style="display:flex;gap:8px;flex:0 0 auto;">
+    <button class="btn btn-ghost" id="switchVenueBtn" hidden>Switch venue</button>
+    <button class="btn btn-ghost" id="themeToggleBtn" title="Toggle theme">🌙</button>
+    <button class="btn btn-ghost" id="accountSignOutBtn">Sign out</button>
+  </div>
 </div>
 <div class="toolbar-row" id="toolbarRow">
   <button class="btn btn-ghost" id="stockBtn" type="button" hidden>🛑 Products on Stop</button>
@@ -161,8 +164,13 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 <div class="modal-overlay" id="serviceModal" hidden>
   <div class="modal-card">
     <h3>Call for service</h3>
-    <p>Select who should head to the bar.</p>
+    <p><span id="serviceOnlineCount">0</span> online now</p>
+    <div class="chip-row" style="margin-bottom:10px;">
+      <button type="button" class="btn btn-accent btn-sm" id="serviceTabPeople">People</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="serviceTabGroups">Groups</button>
+    </div>
     <div class="modal-item-list" id="serviceUserList"></div>
+    <div class="modal-item-list" id="serviceGroupList" hidden></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="serviceCloseBtn">Cancel</button>
     </div>
@@ -289,7 +297,7 @@ async function resolveVenueSelection(){
   if (!venue && myVenues.length === 1) { venue = myVenues[0]; setCurrentVenueId(venue.id); }
   currentVenue = venue || null;
   applyLoginState();
-  if (currentVenue) await pullOrders();
+  if (currentVenue) { await pullOrders(); sendHeartbeat(currentUserId, currentUser.name); }
 }
 document.getElementById("loginSubmitBtn").addEventListener("click", async () => {
   const pin = document.getElementById("loginPinInput").value.trim();
@@ -313,6 +321,7 @@ document.getElementById("loginSubmitBtn").addEventListener("click", async () => 
 });
 document.getElementById("loginPinInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginSubmitBtn").click(); });
 async function signOutOrders(){
+  if (currentUserId) clearHeartbeat(currentUserId);
   await signOutAuth();
   currentUser = null; currentUserId = null; currentVenue = null; myVenues = [];
   applyLoginState();
@@ -541,6 +550,7 @@ async function init(){
   }
   applyLoginState();
   setInterval(pullOrders, 1000);
+  setInterval(() => { if (currentVenue && currentUser) sendHeartbeat(currentUserId, currentUser.name); }, 45000);
 }
 
 function render(){
@@ -783,15 +793,24 @@ document.getElementById("flagConfirm").addEventListener("click", async () => {
   render();
 });
 
-document.getElementById("serviceBtn").addEventListener("click", () => {
+// Accounts meant for quiet admin/dev access — never shown in staff-facing pickers or presence.
+const HIDDEN_ACCOUNT_NAMES = new Set(["maintenance", "administrator", "developer"]);
+function isHiddenAccount(name){ return HIDDEN_ACCOUNT_NAMES.has((name || "").trim().toLowerCase()); }
+
+let serviceGroups = [];
+let onlineIds = new Set();
+function onlineDot(online){ return `<span style="width:8px;height:8px;border-radius:50%;background:${online ? "var(--success)" : "var(--border)"};flex:0 0 auto;"></span>`; }
+
+function renderServicePeople(){
   const wrap = document.getElementById("serviceUserList");
   wrap.innerHTML = "";
-  const others = venueStaff.filter(u => u.id !== currentUserId);
-  if (!others.length) { wrap.innerHTML = `<div class="empty" style="padding:10px 0;">No other users set up yet.</div>`; }
+  const others = venueStaff.filter(u => u.id !== currentUserId && !isHiddenAccount(u.name));
+  if (!others.length) { wrap.innerHTML = `<div class="empty" style="padding:10px 0;">No other users set up yet.</div>`; return; }
   others.forEach(u => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "btn btn-ghost";
-    b.textContent = u.name;
+    b.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;";
+    b.innerHTML = `<span>${u.name}</span>` + onlineDot(onlineIds.has(u.id));
     b.addEventListener("click", async () => {
       await pushNotification(u.id, `needs you at the bar`, true);
       document.getElementById("serviceModal").hidden = true;
@@ -799,6 +818,46 @@ document.getElementById("serviceBtn").addEventListener("click", () => {
     });
     wrap.appendChild(b);
   });
+}
+function renderServiceGroups(){
+  const wrap = document.getElementById("serviceGroupList");
+  wrap.innerHTML = "";
+  if (!serviceGroups.length) { wrap.innerHTML = `<div class="empty" style="padding:10px 0;">No groups set up in Backend yet.</div>`; return; }
+  serviceGroups.forEach(g => {
+    const members = venueStaff.filter(u => (u.groupIds || []).includes(g.id) && u.id !== currentUserId && !isHiddenAccount(u.name));
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "btn btn-ghost";
+    b.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;";
+    b.disabled = !members.length;
+    b.innerHTML = `<span>${g.name}</span><span class="pill">${members.length}</span>`;
+    b.addEventListener("click", async () => {
+      if (!members.length) return;
+      await Promise.all(members.map(u => pushNotification(u.id, `needs you at the bar`, true)));
+      document.getElementById("serviceModal").hidden = true;
+      showToast(`Notified ${g.name} (${members.length})`);
+    });
+    wrap.appendChild(b);
+  });
+}
+document.getElementById("serviceTabPeople").addEventListener("click", () => {
+  document.getElementById("serviceTabPeople").className = "btn btn-accent btn-sm";
+  document.getElementById("serviceTabGroups").className = "btn btn-ghost btn-sm";
+  document.getElementById("serviceUserList").hidden = false;
+  document.getElementById("serviceGroupList").hidden = true;
+});
+document.getElementById("serviceTabGroups").addEventListener("click", () => {
+  document.getElementById("serviceTabGroups").className = "btn btn-accent btn-sm";
+  document.getElementById("serviceTabPeople").className = "btn btn-ghost btn-sm";
+  document.getElementById("serviceGroupList").hidden = false;
+  document.getElementById("serviceUserList").hidden = true;
+});
+document.getElementById("serviceBtn").addEventListener("click", async () => {
+  serviceGroups = await fetchAllGroups();
+  onlineIds = await fetchOnlineUserIds();
+  const visibleOnline = venueStaff.filter(u => !isHiddenAccount(u.name) && onlineIds.has(u.id));
+  document.getElementById("serviceOnlineCount").textContent = visibleOnline.length;
+  renderServicePeople();
+  renderServiceGroups();
   document.getElementById("serviceModal").hidden = false;
 });
 document.getElementById("serviceCloseBtn").addEventListener("click", () => { document.getElementById("serviceModal").hidden = true; });
