@@ -992,6 +992,7 @@ async function resolveVenueSelection(){
   currentVenue = venue || null;
   applyLoginState();
   if (!currentVenue) return; // venue picker is showing
+  knownNotificationIds = null; // rebaseline silently for the new venue instead of alerting on its whole history
   await pullState(PERSISTED_KEYS);
   await pullRowStores();
   await loadCatalogueFromDb();

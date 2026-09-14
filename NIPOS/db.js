@@ -277,3 +277,37 @@ async function fetchOnlineUserIds() {
     return new Set(data.map(r => r.id));
   } catch (e) { return new Set(); }
 }
+// Which venue (if any) each of the given user ids is currently active in, regardless of venue. Used
+// to show someone who's signed up for another venue's notifications but is actually logged in
+// elsewhere right now.
+async function fetchPresenceMap(userIds) {
+  if (!supabaseClient || !userIds.length) return new Map();
+  try {
+    const cutoff = Date.now() - PRESENCE_ONLINE_WINDOW_MS;
+    const { data, error } = await supabaseClient.from("presence").select("id,venue_id").in("id", userIds).gte("ts", cutoff);
+    if (error || !data) return new Map();
+    return new Map(data.map(r => [r.id, r.venue_id]));
+  } catch (e) { return new Map(); }
+}
+
+// Every venue, for pickers like "notify me about these venues" where seeing the full list matters
+// more than membership.
+async function fetchAllVenues() {
+  if (!supabaseClient) return [];
+  try {
+    const { data, error } = await supabaseClient.from("venues").select("id,data").order("ts", { ascending: true });
+    if (error || !data) return [];
+    return data.map(r => ({ id: r.id, ...r.data }));
+  } catch (e) { return []; }
+}
+// Staff subscribed to a venue's service notifications without necessarily being assigned to it. Goes
+// through the Edge Function (not a direct query) because RLS on staff_users only lets you see people
+// who share a venue with you, and these subscribers might not - the function returns just id/name,
+// never pin/perms, regardless of who's asking.
+async function fetchNotifySubscribers(venueId) {
+  const res = await callManageStaff("listNotifySubscribers", { venueId });
+  return res.subscribers || [];
+}
+async function setMyNotifyVenues(venueIds) {
+  return await callManageStaff("setNotifyVenues", { venueIds });
+}

@@ -141,6 +141,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 <div class="toolbar-row" id="toolbarRow">
   <button class="btn btn-ghost" id="stockBtn" type="button" hidden>🛑 Products on Stop</button>
   <button class="btn btn-accent" id="serviceBtn" type="button">🔔 Service</button>
+  <button class="btn btn-ghost" id="notifyPrefsBtn" type="button">🔔 Notify me for</button>
 </div>
 <div class="sound-row" id="alertsRow">
   <div id="alertsStatus" style="font-size:12.5px;color:var(--text-muted);">🔕 Tap to get a sound + alert when a new order comes in</div>
@@ -173,6 +174,18 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
     <div class="modal-item-list" id="serviceGroupList" hidden></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="serviceCloseBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="notifyPrefsModal" hidden>
+  <div class="modal-card">
+    <h3>Notify me for</h3>
+    <p>Get a Service alert for these venues even when you're signed in somewhere else.</p>
+    <div class="modal-item-list" id="notifyPrefsList"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="notifyPrefsCancel">Cancel</button>
+      <button class="btn btn-accent" id="notifyPrefsSave">Save</button>
     </div>
   </div>
 </div>
@@ -297,7 +310,12 @@ async function resolveVenueSelection(){
   if (!venue && myVenues.length === 1) { venue = myVenues[0]; setCurrentVenueId(venue.id); }
   currentVenue = venue || null;
   applyLoginState();
-  if (currentVenue) { await pullOrders(); sendHeartbeat(currentUserId, currentUser.name); }
+  if (currentVenue) {
+    // rebaseline silently for the new venue instead of alerting on its whole existing history
+    knownOrderStates = null; knownStops = null; knownNotificationIds = null;
+    await pullOrders();
+    sendHeartbeat(currentUserId, currentUser.name);
+  }
 }
 document.getElementById("loginSubmitBtn").addEventListener("click", async () => {
   const pin = document.getElementById("loginPinInput").value.trim();
@@ -795,25 +813,34 @@ document.getElementById("flagConfirm").addEventListener("click", async () => {
 
 let serviceGroups = [];
 let onlineIds = new Set();
+let presenceMap = new Map(); // userId -> the venue_id they're currently signed into
+let notifySubscribers = []; // people subscribed to this venue's notifications who aren't on its roster
+let allVenuesCache = [];
 let serviceRefreshTimer = null;
 function closeServiceModal(){
   document.getElementById("serviceModal").hidden = true;
   clearInterval(serviceRefreshTimer);
 }
+function venueNameFor(venueId){ const v = allVenuesCache.find(x => x.id === venueId); return v ? v.name : "another venue"; }
 
 function renderServicePeople(){
   const wrap = document.getElementById("serviceUserList");
   wrap.innerHTML = "";
-  const others = venueStaff.filter(u => u.id !== currentUserId && !isHiddenAccount(u.name))
-    .sort((a, b) => (onlineIds.has(b.id) ? 1 : 0) - (onlineIds.has(a.id) ? 1 : 0));
-  if (!others.length) { wrap.innerHTML = `<div class="empty" style="padding:10px 0;">No other users set up yet.</div>`; return; }
+  const rosterIds = new Set(venueStaff.map(u => u.id));
+  const roster = venueStaff.filter(u => u.id !== currentUserId && !isHiddenAccount(u.name) && onlineIds.has(u.id))
+    .map(u => ({ id: u.id, name: u.name, onRoster: true }));
+  const subscribers = notifySubscribers.filter(s => s.id !== currentUserId && !rosterIds.has(s.id) && !isHiddenAccount(s.name) && onlineIds.has(s.id))
+    .map(s => ({ id: s.id, name: s.name, onRoster: false }));
+  const others = [...roster, ...subscribers]; // only ever online people, offline staff are hidden entirely
+  if (!others.length) { wrap.innerHTML = `<div class="empty" style="padding:10px 0;">Nobody's online right now.</div>`; return; }
   others.forEach(u => {
-    const online = onlineIds.has(u.id);
+    const dotColor = u.onRoster ? "var(--success)" : "#f0a13a";
+    const label = u.onRoster ? "Online" : venueNameFor(presenceMap.get(u.id));
     const b = document.createElement("button");
     b.type = "button"; b.className = "btn btn-ghost";
-    b.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;" + (online ? "" : "opacity:.55;");
-    b.innerHTML = `<span>${u.name}</span><span style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:${online ? "var(--success)" : "var(--text-muted)"};">
-      <span style="width:8px;height:8px;border-radius:50%;background:${online ? "var(--success)" : "var(--text-muted)"};flex:0 0 auto;"></span>${online ? "Online" : "Offline"}
+    b.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;";
+    b.innerHTML = `<span>${u.name}</span><span style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:${dotColor};">
+      <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex:0 0 auto;"></span>${label}
     </span>`;
     b.addEventListener("click", async () => {
       await pushNotification(u.id, `needs you at the bar`, true);
@@ -856,20 +883,47 @@ document.getElementById("serviceTabGroups").addEventListener("click", () => {
   document.getElementById("serviceUserList").hidden = true;
 });
 async function refreshServiceModal(){
-  onlineIds = await fetchOnlineUserIds();
-  const visibleOnline = venueStaff.filter(u => !isHiddenAccount(u.name) && onlineIds.has(u.id));
+  notifySubscribers = await fetchNotifySubscribers(currentVenueId);
+  const rosterIds = new Set(venueStaff.map(u => u.id));
+  const candidateIds = [...rosterIds, ...notifySubscribers.map(s => s.id)].filter((id, i, arr) => arr.indexOf(id) === i);
+  presenceMap = await fetchPresenceMap(candidateIds);
+  onlineIds = new Set(presenceMap.keys());
+  const namesById = new Map([...venueStaff.map(u => [u.id, u.name]), ...notifySubscribers.map(s => [s.id, s.name])]);
+  const visibleOnline = candidateIds.filter(id => onlineIds.has(id) && !isHiddenAccount(namesById.get(id)));
   document.getElementById("serviceOnlineCount").textContent = visibleOnline.length;
   renderServicePeople();
   renderServiceGroups();
 }
 document.getElementById("serviceBtn").addEventListener("click", async () => {
   serviceGroups = await fetchAllGroups();
+  if (!allVenuesCache.length) allVenuesCache = await fetchAllVenues();
   await refreshServiceModal();
   document.getElementById("serviceModal").hidden = false;
   clearInterval(serviceRefreshTimer);
   serviceRefreshTimer = setInterval(refreshServiceModal, 1000);
 });
 document.getElementById("serviceCloseBtn").addEventListener("click", closeServiceModal);
+
+document.getElementById("notifyPrefsBtn").addEventListener("click", async () => {
+  if (!allVenuesCache.length) allVenuesCache = await fetchAllVenues();
+  const mine = new Set(currentUser.notifyVenueIds || []);
+  const wrap = document.getElementById("notifyPrefsList");
+  wrap.innerHTML = allVenuesCache.map(v => `
+    <label class="row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);">
+      <span>${v.name}</span>
+      <span class="switch"><input type="checkbox" data-notify-venue="${v.id}" ${mine.has(v.id) ? "checked" : ""}><span class="slider"></span></span>
+    </label>`).join("");
+  document.getElementById("notifyPrefsModal").hidden = false;
+});
+document.getElementById("notifyPrefsCancel").addEventListener("click", () => { document.getElementById("notifyPrefsModal").hidden = true; });
+document.getElementById("notifyPrefsSave").addEventListener("click", async () => {
+  const venueIds = [...document.querySelectorAll("#notifyPrefsList [data-notify-venue]:checked")].map(inp => inp.dataset.notifyVenue);
+  const res = await setMyNotifyVenues(venueIds);
+  if (res.error) { alert(res.error); return; }
+  currentUser.notifyVenueIds = venueIds;
+  document.getElementById("notifyPrefsModal").hidden = true;
+  showToast("Notification venues saved");
+});
 
 document.getElementById("stockBtn").addEventListener("click", () => {
   document.getElementById("stockSearch").value = "";
