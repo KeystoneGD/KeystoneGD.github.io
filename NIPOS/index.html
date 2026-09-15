@@ -491,8 +491,6 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     <p class="admin-note" style="margin-top:-6px;">Logged with Cancel order. Shown for reference only, not counted in takings.</p>
     <div id="abandonedList"></div>
     <div class="empty-state" id="abandonedEmpty" style="display:none;padding:16px 10px;">No abandoned orders.</div>
-
-    <button class="btn btn-ghost btn-block" id="exportAllBtn" style="margin-top:8px;">Export all sales (every shift)</button>
   </div>
 </div>
 
@@ -507,11 +505,6 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     </div>
     <div class="hist-actions">
       <button class="btn btn-accent btn-block" id="reportBtn">Shift Report</button>
-    </div>
-
-    <div id="pastZSection" hidden>
-      <div class="section-title">Past Z Reports</div>
-      <div id="pastZList"></div>
     </div>
   </div>
 </div>
@@ -866,7 +859,6 @@ const LS_HIST = "starlightTill.history.v1";
 const LS_ABANDONED = "starlightTill.abandoned.v1";
 const LS_GRAT = "starlightTill.gratuities.v1";
 const LS_STOPS = "starlightTill.stops.v1";
-const LS_Z = "starlightTill.zreports.v1";
 const LS_MODE = "starlightTill.mode.v1";
 const LS_CUSTOM = "starlightTill.customProducts.v1";
 const LS_MIXER_OVERRIDES = "starlightTill.mixerOverrides.v1";
@@ -905,6 +897,11 @@ function saveJSON(key, val){
 function saveLocal(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
 function saveLocalHistory(){ saveLocal(LS_HIST, history); }
 
+// The till used to cache its own "Past Z Reports" list locally (starlightTill.zreports.v1) - that
+// feature's gone (Z reads are Backend-only now), but a device that ran it before this update still has
+// the old cache sitting in its localStorage, doing nothing. Clear it out so it doesn't linger.
+try { localStorage.removeItem("starlightTill.zreports.v1"); } catch (e) {}
+
 // rowStore()/makeSupabaseDb() now live in db.js, shared with orders.html/backend.html, and are venue-aware.
 const salesStore = rowStore("sales", 5000);
 const abandonedStore = rowStore("abandoned", 5000);
@@ -929,7 +926,6 @@ async function pullRowStores(){
 
 const PERSISTED_KEYS = [
   { key: LS_CART, set: v => { cart = v; renderQtys(); renderCartBar(); } },
-  { key: LS_Z, set: v => { zReports = v; } },
   { key: LS_CUSTOM, set: v => { customProducts = v; customProducts.forEach(p => { BY_ID[p.id] = hydrateCustomProduct(p); }); renderCustomCategories(); }, live: true },
   { key: LS_HH_OVERRIDE, set: v => { hhOverride = v; }, live: true },
   { key: LS_MODE, set: v => { menuMode = v; applyVisibility(); } }
@@ -1022,7 +1018,6 @@ let abandoned = loadJSON(LS_ABANDONED, []);
 let refunds = loadJSON(LS_REFUNDS, []);
 let gratuities = loadJSON(LS_GRAT, []);
 let stops = new Set(loadJSON(LS_STOPS, []));
-let zReports = loadJSON(LS_Z, []);
 let shiftStart = 0; // ts of the last Z Read for the current venue; sales/refunds/gratuities before this belong to an already-closed shift
 let pendingMethod = "card";
 let discount = null; // { id, pct, offerPence, display }
@@ -1942,7 +1937,7 @@ document.getElementById("adminHistoryRow").querySelector(".admin-row-main").addE
   renderHistory(); openSheet("historySheet");
 });
 document.getElementById("adminEndOfShiftRow").querySelector(".admin-row-main").addEventListener("click", () => {
-  renderPastZ(); openSheet("endOfShiftSheet");
+  openSheet("endOfShiftSheet");
 });
 document.getElementById("endOfShiftBack").addEventListener("click", () => closeSheet("endOfShiftSheet"));
 document.getElementById("stoppedRow").querySelector(".admin-row-main").addEventListener("click", () => showStoppedCategories());
@@ -2351,16 +2346,6 @@ async function copyCurrentShift(){
 document.getElementById("histCopy").addEventListener("click", copyCurrentShift);
 document.getElementById("reportCopyBtn").addEventListener("click", copyCurrentShift);
 
-document.getElementById("exportAllBtn").addEventListener("click", async () => {
-  if (!history.length && !abandoned.length && !gratuities.length && !zReports.length) { showToast("Nothing to export yet"); return; }
-  let lines = salesLinesFor(history, abandoned, gratuities, "Current shift (open)");
-  zReports.forEach(z => {
-    lines.push("");
-    lines = lines.concat(salesLinesFor(z.transactions, z.abandonedOrders, z.gratuities, `Closed ${formatTime(z.closedAt)}`));
-  });
-  await copyLines(lines, "Copied every shift, paste into Notes or a spreadsheet");
-});
-
 document.getElementById("histClear").addEventListener("click", async () => {
   if (!history.length) return;
   // Only ever clears the current, still-open shift - sales are never auto-deleted any more (Z Read
@@ -2410,43 +2395,15 @@ document.getElementById("zReadBtn").addEventListener("click", async () => {
   const result = await performZRead(currentVenue, currentUser ? currentUser.name : null);
   if (result.error) { showToast("Z Read failed: " + result.error); return; }
   const zRows = zReportRows(result.summary);
-  zReports.unshift({ id: result.zId, closedAt: result.closedAt, ...result.summary, transactions: result.transactions, abandonedOrders: result.abandoned, gratuities: result.gratuities, refunds: result.refunds });
-  saveJSON(LS_Z, zReports);
   shiftStart = result.closedAt;
   history = []; abandoned = []; gratuities = []; refunds = [];
   saveLocalHistory(); saveLocal(LS_ABANDONED, abandoned); saveLocal(LS_GRAT, gratuities); saveLocal(LS_REFUNDS, refunds);
   renderHistory();
+  // This is the one exception to the till not keeping past Z reads around - the report tab for the
+  // Z read that was *just* performed, right here, still opens so whoever closed the till can print or
+  // save it. Nothing about it is persisted locally or pulled back later; past Z reads live in Backend only.
   openReportTab(zReportTitle(currentVenue.name, result.closedAt, result.summary.closedBy), new Date(result.closedAt).toLocaleString(), zRows, result.transactions);
 });
-
-function renderPastZ(){
-  const section = document.getElementById("pastZSection");
-  const wrap = document.getElementById("pastZList");
-  section.hidden = zReports.length === 0;
-  wrap.innerHTML = "";
-  zReports.forEach(z => {
-    const card = document.createElement("div");
-    card.className = "zcard";
-    card.innerHTML = `
-      <div class="ztime">${formatTime(z.closedAt)} · ${z.txCount} sale${z.txCount===1?"":"s"}</div>
-      <div class="zgrid">
-        <div><span class="label">Cash</span><span class="amount tabular">${fmt(z.cashTotal)}</span></div>
-        <div><span class="label">Card</span><span class="amount tabular">${fmt(z.cardTotal)}</span></div>
-        <div><span class="label">Tips</span><span class="amount tabular">${fmt(z.gratuityTotal)}</span></div>
-        <div><span class="label">Total</span><span class="amount tabular" style="color:var(--accent)">${fmt(z.grandTotal)}</span></div>
-      </div>
-      <button class="btn btn-ghost btn-block" data-act="viewz" style="margin-top:10px;">View full report</button>`;
-    card.querySelector('[data-act="viewz"]').addEventListener("click", () => {
-      openReportTab(zReportTitle(currentVenue.name, z.closedAt, z.closedBy), new Date(z.closedAt).toLocaleString(), [
-        ["Cash", fmt(z.cashTotal)], ["Card", fmt(z.cardTotal)], ["Takings", fmt(z.grandTotal)],
-        ["Tips", fmt(z.gratuityTotal)], ["Discounts given", fmt(z.discountTotal)],
-        ["Refunds given", fmt(z.refundTotal || 0)],
-        ["Abandoned (not counted)", fmt(z.abandonedTotal)], ["Transactions", String(z.txCount)]
-      ], z.transactions);
-    });
-    wrap.appendChild(card);
-  });
-}
 
 /* ---------- shift report ---------- */
 document.getElementById("reportBtn").addEventListener("click", () => { renderReport(); openSheet("reportSheet"); });
