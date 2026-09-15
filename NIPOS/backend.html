@@ -485,6 +485,10 @@ table.data-table tr:last-child td{border-bottom:0;}
     <h3 id="venueModalTitle">Add a venue</h3>
     <label class="field">Name</label>
     <input type="text" id="vmName" placeholder="e.g. Riverside Bar">
+    <label class="row" style="border:0;padding:8px 0;">
+      <span class="info"><span class="name">Venue Open</span><span class="sub">Off keeps assigned staff from signing in here or subscribing to its notifications.</span></span>
+      <span class="switch"><input type="checkbox" id="vmActive" checked><span class="slider"></span></span>
+    </label>
     <label class="field">Assigned staff</label>
     <div class="check-list" id="vmStaff"></div>
     <details class="mini-menu">
@@ -598,7 +602,7 @@ async function init(){
     currentUser = await fetchMyStaffRow();
     currentUserId = currentUser ? currentUser.id : null;
     if (currentUser && currentUser.perms.active !== false) {
-      myVenues = await fetchMyVenues(currentUser);
+      myVenues = await fetchMyVenues(currentUser, true);
       await resolveVenueSelection();
     } else {
       await signOutAuth();
@@ -673,7 +677,7 @@ function renderVenueSwitcher(){
   const sel = document.getElementById("venueSwitchSelect");
   if (myVenues.length < 2) { wrap.hidden = true; return; }
   wrap.hidden = false;
-  sel.innerHTML = myVenues.map(v => `<option value="${v.id}" ${v.id === currentVenueId ? "selected" : ""}>${v.name}</option>`).join("");
+  sel.innerHTML = myVenues.map(v => `<option value="${v.id}" ${v.id === currentVenueId ? "selected" : ""}>${v.name}${v.active === false ? " (Closed)" : ""}</option>`).join("");
 }
 document.getElementById("venueSwitchSelect").addEventListener("change", async e => {
   setCurrentVenueId(e.target.value);
@@ -696,7 +700,7 @@ document.getElementById("loginSubmitBtn").addEventListener("click", async () => 
     applyLoginState();
     return;
   }
-  myVenues = await fetchMyVenues(currentUser);
+  myVenues = await fetchMyVenues(currentUser, true);
   await resolveVenueSelection();
 });
 document.getElementById("loginPinInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginSubmitBtn").click(); });
@@ -1357,10 +1361,11 @@ function renderVenues(){
   if (!venues.length) { wrap.innerHTML = `<div class="empty">None yet.</div>`; return; }
   venues.forEach(v => {
     const staffCount = users.filter(u => (u.venueIds||[]).includes(v.id)).length;
+    const closed = v.active === false;
     const row = document.createElement("div");
     row.className = "list-row";
     row.innerHTML = `
-      <div class="info"><div class="name">${v.name}</div><div class="sub">${staffCount} staff assigned</div></div>
+      <div class="info"><div class="name">${v.name}${closed ? ` <span class="pill" style="color:var(--danger);border-color:var(--danger);">Closed</span>` : ""}</div><div class="sub">${staffCount} staff assigned</div></div>
       <div class="actions">
         <button type="button" class="btn btn-ghost btn-sm" data-act="edit">Edit</button>
         <button type="button" class="btn btn-danger btn-sm" data-act="delete">Delete</button>
@@ -1374,6 +1379,7 @@ function openVenueModal(mode, venue){
   editingVenue = venue || null;
   document.getElementById("venueModalTitle").textContent = mode === "edit" ? "Edit venue" : "Add a venue";
   document.getElementById("vmName").value = venue ? venue.name : "";
+  document.getElementById("vmActive").checked = venue ? venue.active !== false : true;
   document.getElementById("vmWebhookOrder").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.order || "") : "";
   document.getElementById("vmWebhookZread").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.zread || "") : "";
   document.getElementById("vmWebhookStop").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.stop || "") : "";
@@ -1386,6 +1392,7 @@ document.getElementById("venueModalCancel").addEventListener("click", () => { do
 document.getElementById("venueModalSave").addEventListener("click", async () => {
   const name = document.getElementById("vmName").value.trim();
   if (!name) { alert("Enter a name."); return; }
+  const active = document.getElementById("vmActive").checked;
   const discordWebhooks = {
     order: document.getElementById("vmWebhookOrder").value.trim() || null,
     zread: document.getElementById("vmWebhookZread").value.trim() || null,
@@ -1395,10 +1402,10 @@ document.getElementById("venueModalSave").addEventListener("click", async () => 
   if (editingVenue) {
     // Re-fetch right before writing so fields this form doesn't manage aren't clobbered by a stale copy.
     const { data: freshVenue } = await supabaseClient.from("venues").select("data").eq("id", venueId).maybeSingle();
-    const { error } = await supabaseClient.from("venues").update({ data: { ...(freshVenue ? freshVenue.data : editingVenue), name, discordWebhooks } }).eq("id", venueId);
+    const { error } = await supabaseClient.from("venues").update({ data: { ...(freshVenue ? freshVenue.data : editingVenue), name, active, discordWebhooks } }).eq("id", venueId);
     if (error) { alert(error.message); return; }
   } else {
-    const { error } = await supabaseClient.from("venues").insert({ id: venueId, ts: Date.now(), data: { name, discordWebhooks, active: true } });
+    const { error } = await supabaseClient.from("venues").insert({ id: venueId, ts: Date.now(), data: { name, discordWebhooks, active } });
     if (error) { alert(error.message); return; }
   }
   // Reconcile assigned-staff checkboxes against each user's own venueIds.
@@ -1414,7 +1421,7 @@ document.getElementById("venueModalSave").addEventListener("click", async () => 
     u.venueIds = venueIds;
   }
   venues = await fetchAllVisibleVenues();
-  myVenues = await fetchMyVenues(currentUser);
+  myVenues = await fetchMyVenues(currentUser, true);
   document.getElementById("venueModal").hidden = true; editingVenue = null;
   renderVenues(); renderUserList(); renderVenueSwitcher();
 });
@@ -1425,7 +1432,7 @@ async function deleteVenueFlow(venue) {
   if (typed !== venue.name) { if (typed !== null) alert("Name didn't match, nothing was deleted."); return; }
   const res = await deleteVenue(venue.id);
   if (res.error) { alert(res.error); return; }
-  myVenues = await fetchMyVenues(currentUser);
+  myVenues = await fetchMyVenues(currentUser, true);
   if (currentVenueId === venue.id) setCurrentVenueId(null);
   await resolveVenueSelection();
 }

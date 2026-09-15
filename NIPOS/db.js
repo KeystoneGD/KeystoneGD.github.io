@@ -83,17 +83,24 @@ async function fetchMyStaffRow() {
 }
 
 // Venues a staff member can operate in: every venue for a Global Admin, otherwise just their venueIds.
-async function fetchMyVenues(staffRow) {
+// Closed venues (Backend > Venues > "Venue Open" off) are excluded by default so staff can't
+// accidentally sign in or subscribe to notifications for a venue that isn't running right now -
+// pass includeClosed=true for Backend's own venue management, which still needs to see everything.
+async function fetchMyVenues(staffRow, includeClosed) {
   if (!staffRow) return [];
   try {
+    let rows;
     if (staffRow.perms && staffRow.perms.globalAdmin) {
       const { data } = await supabaseClient.from("venues").select("id,data").order("ts", { ascending: true });
-      return (data || []).map(r => ({ id: r.id, ...r.data }));
+      rows = data || [];
+    } else {
+      const ids = staffRow.venueIds || [];
+      if (!ids.length) return [];
+      const { data } = await supabaseClient.from("venues").select("id,data").in("id", ids);
+      rows = data || [];
     }
-    const ids = staffRow.venueIds || [];
-    if (!ids.length) return [];
-    const { data } = await supabaseClient.from("venues").select("id,data").in("id", ids);
-    return (data || []).map(r => ({ id: r.id, ...r.data }));
+    const venues = rows.map(r => ({ id: r.id, ...r.data }));
+    return includeClosed ? venues : venues.filter(v => v.active !== false);
   } catch (e) { return []; }
 }
 
@@ -504,12 +511,13 @@ async function fetchPresenceMap(userIds) {
 
 // Every venue, for pickers like "notify me about these venues" where seeing the full list matters
 // more than membership.
+// Used for the "notify me for these venues" picker - closed venues aren't worth subscribing to.
 async function fetchAllVenues() {
   if (!supabaseClient) return [];
   try {
     const { data, error } = await supabaseClient.from("venues").select("id,data").order("ts", { ascending: true });
     if (error || !data) return [];
-    return data.map(r => ({ id: r.id, ...r.data }));
+    return data.map(r => ({ id: r.id, ...r.data })).filter(v => v.active !== false);
   } catch (e) { return []; }
 }
 // Staff subscribed to a venue's service notifications without necessarily being assigned to it. Goes
