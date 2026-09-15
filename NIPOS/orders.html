@@ -321,9 +321,10 @@ document.getElementById("loginSubmitBtn").addEventListener("click", async () => 
   }
   myVenues = await fetchMyVenues(currentUser);
   await resolveVenueSelection();
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.getRegistration().then(reg => reg && reg.pushManager.getSubscription()).then(sub => sub && savePushSubscription(sub)).catch(() => {});
-  }
+  // Notification permission was already granted on this device from a previous login (it's a
+  // browser-level grant, not tied to this account) - re-confirm the push subscription now that we
+  // know who's signed in, rather than waiting on a tap that already happened weeks ago.
+  if ("Notification" in window && Notification.permission === "granted") enablePush();
 });
 document.getElementById("loginPinInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginSubmitBtn").click(); });
 async function signOutOrders(){
@@ -383,6 +384,15 @@ let audioCtx = null;
 function playChime(){
   playNotificationSound(audioCtx, currentUser && currentUser.notificationSound);
 }
+// Browsers only allow audio to start from a user gesture - rather than making that gesture a dedicated
+// "Enable alerts" tap every single time the app is opened, piggyback on the first tap/key anywhere on
+// the page (typing the PIN to log in already counts), so the chime just works on reload without anyone
+// having to remember a separate step.
+function ensureAudioCtx(){
+  if (audioCtx) return;
+  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+}
+["pointerdown", "keydown"].forEach(evt => document.addEventListener(evt, ensureAudioCtx, { once: true, passive: true }));
 const SEND_PUSH_URL = "https://djegigghjeisoyecxeyo.supabase.co/functions/v1/send-push";
 const VAPID_PUBLIC_KEY = "BIsWuuC6kXfpzLch6fyertHwGCXxMy3GToZK05uJjilcHIg-DkrQaIZxzbhYsKLkFqw5z0qTzmKsts433AnOxvY";
 function urlBase64ToUint8Array(base64String){
@@ -417,12 +427,26 @@ async function sendPushNotification(toUserId, fromUserId, fromName, message, urg
     });
   } catch(e){}
 }
+// The banner only needs the explicit tap the very first time - once Notification permission is
+// granted, that's a browser-level, per-device grant that persists on its own (it survives reloads,
+// force-closes, reinstalls of the PWA, all of it), so there's nothing left to "remember": every later
+// load just checks the browser's own permission state and skips straight past the banner.
+function refreshAlertsRow(){
+  const granted = ("Notification" in window) && Notification.permission === "granted";
+  const denied = ("Notification" in window) && Notification.permission === "denied";
+  document.getElementById("alertsRow").hidden = granted;
+  document.getElementById("alertsStatus").textContent = denied
+    ? "🔕 Notifications are blocked for this app - enable them in your browser's site settings to get sound + alerts"
+    : "🔕 Tap to get a sound + alert when a new order comes in";
+  if (granted) enablePush(); // re-confirm the push subscription's still registered, no prompt shown
+}
 document.getElementById("enableAlertsBtn").addEventListener("click", async () => {
-  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); playChime(); } catch(e){}
+  ensureAudioCtx(); playChime();
   if ("Notification" in window) { try { await Notification.requestPermission(); } catch(e){} }
   await enablePush();
-  document.getElementById("alertsRow").hidden = true;
+  refreshAlertsRow();
 });
+refreshAlertsRow();
 
 function alertUser(title, body, urgent){
   showToast(`${title}${body ? ": " + body : ""}`);
