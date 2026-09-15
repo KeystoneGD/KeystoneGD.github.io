@@ -32,6 +32,18 @@ function connectAuthClient() {
   supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: { persistSession: true, autoRefreshToken: true }
   });
+  // The SDK's own auto-refresh timer only runs while the tab is visible - most mobile/tablet browsers
+  // (and desktop ones after a while) freeze JS timers in a backgrounded tab, so a till left on another
+  // tab for a shift can come back with a token that's sat expired for hours. Explicitly pausing/resuming
+  // the SDK's refresh loop on visibility change (Supabase's own recommended pattern) is what actually
+  // keeps that in sync, rather than each page's own poll loops each guessing at when to refresh.
+  try {
+    document.addEventListener("visibilitychange", () => {
+      if (!supabaseClient) return;
+      if (document.visibilityState === "visible") supabaseClient.auth.startAutoRefresh();
+      else supabaseClient.auth.stopAutoRefresh();
+    });
+  } catch (e) {}
   return supabaseClient;
 }
 
@@ -45,15 +57,32 @@ function clearCurrentVenueId() {
 }
 
 // Reads the current session and proactively refreshes it if the access token is expired or about to
-// be (within 60s). A background tab can miss the SDK's own timer-based auto-refresh (mobile browsers
-// suspend JS timers while backgrounded), leaving a stale token cached that the server then rejects.
+// be (within 60s). Several call sites (the till's poll loop, the service modal's 1s refresh, Backend's
+// dashboard) can all notice the same expiring token within the same second - without de-duping, each
+// would fire its own refreshSession() call using the same still-valid refresh token, and Supabase's
+// token rotation only lets the first of those succeed: every other concurrent call gets back "Refresh
+// Token Not Used"/"Already Used" and, having no token left to retry with, is stuck permanently - which
+// is what eventually surfaces elsewhere as "Invalid session". Routing every caller through the one
+// in-flight refresh (rather than each starting its own) closes that race.
+let refreshInFlight = null;
 async function getSession() {
   try {
     const { data } = await supabaseClient.auth.getSession();
     let session = data.session || null;
     if (session && session.expires_at && session.expires_at * 1000 < Date.now() + 60000) {
-      const { data: refreshed, error } = await supabaseClient.auth.refreshSession();
+      if (!refreshInFlight) {
+        refreshInFlight = supabaseClient.auth.refreshSession().finally(() => { refreshInFlight = null; });
+      }
+      const { data: refreshed, error } = await refreshInFlight;
       session = (!error && refreshed.session) ? refreshed.session : null;
+      // A refresh token that's actually been rotated/revoked out from under this tab (by another
+      // device signed into the same account, or a previous refresh this tab already lost the race on)
+      // will never succeed on retry - every future call would just keep hitting the same dead token
+      // and failing. Drop it locally (no point calling the revoke endpoint for a token that's already
+      // invalid) so the app cleanly falls back to "signed out" instead of quietly failing forever.
+      if (error && /refresh_token/i.test(error.code || error.message || "")) {
+        try { await supabaseClient.auth.signOut({ scope: "local" }); } catch (e) {}
+      }
     }
     return session;
   } catch (e) { return null; }
@@ -450,6 +479,27 @@ function rowStore(table, limit) {
       try { await supabaseClient.from(table).delete().eq("venue_id", currentVenueId).eq("data->>isTest", "true"); } catch (e) {}
     }
   };
+}
+
+// --- Personal notifications ("needs you at the bar", order flagged, ...): addressed to a *user*, not
+// scoped to a venue. Unlike every other rowStore table, the point of these is that the recipient can be
+// signed into a completely different venue than the sender (that's the whole "notify me for other
+// venues" feature) - so, unlike rowStore.fetchAll(), this can't filter by currentVenueId, or the
+// recipient's own poll loop would never see rows written under the sender's venue. venue_id is still
+// stored (useful context, and every row needs one), it's just no longer part of who can see the row -
+// RLS on this table grants access by to_user_id/from_user_id instead of venue membership.
+async function saveNotification(row) {
+  if (!supabaseClient || !currentVenueId) return;
+  try { await supabaseClient.from("notifications").upsert({ id: row.id, ts: row.ts, venue_id: currentVenueId, data: row }); } catch (e) {}
+}
+async function fetchMyNotifications(userId, limit) {
+  if (!supabaseClient || !userId) return null;
+  try {
+    const { data, error } = await supabaseClient.from("notifications").select("data")
+      .in("to_user_id", [userId, "all"]).order("ts", { ascending: false }).limit(limit || 200);
+    if (error) return null;
+    return data.map(r => r.data);
+  } catch (e) { return null; }
 }
 
 // --- Staff groups (Bar Staff, Table Service, ...): global, not venue-scoped, so not a rowStore table ---

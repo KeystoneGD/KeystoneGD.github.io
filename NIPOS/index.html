@@ -910,7 +910,6 @@ const salesStore = rowStore("sales", 5000);
 const abandonedStore = rowStore("abandoned", 5000);
 const gratuitiesStore = rowStore("gratuities", 5000);
 const refundsStore = rowStore("refunds", 5000);
-const notificationsStore = rowStore("notifications", 200);
 const ordersStore = rowStore("open_orders", 2000);
 const stopsStore = rowStore("stops", 1000);
 const mixerOverridesStore = rowStore("mixer_overrides", 1000);
@@ -918,7 +917,7 @@ const customDiscountsStore = rowStore("custom_discounts", 500);
 async function pullRowStores(){
   const orders = await ordersStore.fetchAll();
   if (orders) { openOrders = orders; renderOpenOrdersBadge(); if (adminView === "openOrders") renderOpenOrdersList(); }
-  const notifs = await notificationsStore.fetchAll();
+  const notifs = await fetchMyNotifications(currentUserId);
   if (notifs) { checkPersonalNotifications(notifs); notifications = notifs; }
   const stopRows = await stopsStore.fetchAll();
   if (stopRows) { stops = new Set(stopRows.map(r => r.name)); applyVisibility(); }
@@ -1815,7 +1814,7 @@ async function pushNotification(toUserId, message, urgent){
   notifications.unshift(notif);
   notifications = notifications.slice(0, 50);
   saveLocal(LS_NOTIFICATIONS, notifications);
-  notificationsStore.save(notif);
+  saveNotification(notif);
   knownNotificationIds = new Set(notifications.map(n => n.id));
   sendPushNotification(toUserId, currentUserId, me ? me.name : "Someone", message, urgent);
 }

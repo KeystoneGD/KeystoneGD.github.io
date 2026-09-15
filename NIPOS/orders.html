@@ -359,7 +359,6 @@ async function saveDoc(key, val){
 // rowStore()/makeSupabaseDb() now live in db.js, shared with index.html/backend.html, and are venue-aware.
 const ordersStore = rowStore("open_orders", 2000);
 const stopsStore = rowStore("stops", 1000);
-const notificationsStore = rowStore("notifications", 200);
 
 // staff_users isn't venue-scoped by a column (RLS decides visibility from data.venueIds instead), so
 // it doesn't go through rowStore. Fetch what's visible, then keep only this venue's members.
@@ -491,7 +490,7 @@ async function pushNotification(toUserId, message, urgent){
   const notif = { id: "n" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), toUserId, fromUserId: currentUserId, fromName: me ? me.name : "Someone", message, urgent: !!urgent };
   notifications.unshift(notif);
   notifications = notifications.slice(0, 50);
-  await notificationsStore.save(notif);
+  await saveNotification(notif);
   knownNotificationIds = new Set(notifications.map(n => n.id));
   sendPushNotification(toUserId, currentUserId, me ? me.name : "Someone", message, urgent);
 }
@@ -503,7 +502,7 @@ async function pullOrders(){
   venueStaff = await fetchVenueStaff();
   const stopRows = await stopsStore.fetchAll();
   const pulledStops = stopRows ? stopRows.map(r => r.name) : [...stops];
-  const pulledNotifications = await notificationsStore.fetchAll() || notifications;
+  const pulledNotifications = await fetchMyNotifications(currentUserId) || notifications;
   applyLoginState();
   checkOrderChanges();
   checkStopChanges(new Set(pulledStops));
