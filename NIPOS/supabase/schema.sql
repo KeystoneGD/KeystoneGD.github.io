@@ -204,6 +204,17 @@ $$;
 
 
 -- -----------------------------------------------------------------------------------------------------
+-- Table privileges. Older Supabase projects grant these automatically; newer ones may not expose new
+-- tables to the Data API by default, so grant explicitly to match the live project. RLS below is what
+-- actually restricts access.
+-- -----------------------------------------------------------------------------------------------------
+
+grant usage on schema public to anon, authenticated, service_role;
+grant all on all tables in schema public to anon, authenticated, service_role;
+grant execute on function public.merge_open_order(text, jsonb) to anon, authenticated, service_role;
+
+
+-- -----------------------------------------------------------------------------------------------------
 -- Row-level security
 -- -----------------------------------------------------------------------------------------------------
 
