@@ -565,30 +565,51 @@ function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-// --- Open order cards, shared by the order screen and the till's Open Orders list. Order of the
-// list is "who needs you first": problems, then orders ready to take out, then everything else
-// oldest first - the longest-waiting table is never buried under newer ones.
+// --- Open order cards, shared by the order screen and the till's Open Orders list.
+// Lifecycle: New order -> In progress (accepted on the order screen, yellow) -> Ready to take out
+// (green) -> Delivered. The list is "who needs you first": problems, then orders ready to take out,
+// then new orders waiting to be accepted, then orders in progress - each group oldest first, so the
+// longest-waiting table is never buried under newer ones.
+function orderStage(o) {
+  if (needsRefund(o)) return "refund";
+  if (o.flagged) return "problem";
+  if (o.ready) return "ready";
+  return o.accepted ? "progress" : "new";
+}
 function sortOrdersByPriority(list) {
-  const rank = o => o.flagged ? 0 : o.ready ? 1 : 2;
+  const rank = o => ({ refund: 0, problem: 0, ready: 1, new: 2, progress: 3 })[orderStage(o)];
   return list.slice().sort((a, b) => (rank(a) - rank(b)) || (a.ts - b.ts));
 }
 function orderLabel(o) { return o.table ? "Table " + o.table : "No table"; }
-// opts: { isNext, canRefund, refundPence (number | null while loading | undefined if no sale), onReady, onDeliver, onFlag,
-// onAccept, onRefund, onClose }
+function poundsText(pence) { return "£" + (pence / 100).toFixed(2); }
+// A flagged order needs a refund if whoever reported it chose "Refund it", or someone later said the
+// customer wants their money back. Only staff with Process Refunds can then close it - by refunding.
+function needsRefund(o) { return !!(o && o.flagged && (o.flagIntent === "refund" || o.refundRequested)); }
+async function requestRefundForOrder(o, byName) {
+  return await mergeOpenOrder(o.id, { refundRequested: true, refundRequestedBy: byName || null, refundRequestedAt: Date.now() });
+}
+// opts: { isNext, canRefund, refundPence (number | null while loading | undefined if no sale), onAcceptOrder,
+// onReady, onDeliver, onFlag, onAccept (customer took the substitute), onRequestRefund, onRefund }
 function buildOrderCard(o, opts) {
   const subItem = o.items.find(i => i.substituted);
-  const state = o.flagged ? "problem" : o.ready ? "ready" : "waiting";
+  const state = orderStage(o), refund = state === "refund";
+  const known = typeof opts.refundPence === "number";
   const card = document.createElement("article");
   card.className = "oc oc-state-" + state + (opts.isNext ? " oc-next" : "");
-  card.setAttribute("aria-label", `${orderLabel(o)}, ${state === "problem" ? "problem" : state === "ready" ? "ready to take out" : "waiting"}`);
-  const badge = state === "problem" ? `<span class="state-badge problem">${icon("alert")}Problem</span>`
+  card.setAttribute("aria-label", `${orderLabel(o)}, ${{ refund: "refund in progress", problem: "problem", ready: "ready to take out", progress: "in progress", new: "new order" }[state]}`);
+  const badge = state === "refund" ? `<span class="state-badge progress">${icon("clock")}Refund in progress</span>`
+    : state === "problem" ? `<span class="state-badge problem">${icon("alert")}Problem</span>`
     : state === "ready" ? `<span class="state-badge ready">${icon("check")}Ready to take out</span>`
-    : `<span class="state-badge">${icon("clock")}Waiting</span>`;
+    : state === "progress" ? `<span class="state-badge progress">${icon("clock")}In progress</span>`
+    : `<span class="state-badge">${icon("bell")}New order</span>`;
   const items = o.items.map(i => i.substituted
     ? `${i.qty}× ${esc(i.name)} <span class="oc-muted">(free, instead of ${esc(i.subFor)})</span>`
     : `${i.qty}× ${esc(i.name)}`).join("<br>");
-  const flagText = o.flagged
-    ? `<div class="oc-problem">${icon("alert")}<span><strong>${esc(o.flagItem)}: ${esc((o.flagReason || "").toLowerCase())}.</strong>${o.flagIntent === "substitute" && o.flagSubstitute ? ` Offer ${esc(o.flagSubstitute)} instead, free.` : o.flagIntent === "refund" ? " Refund it." : ""}</span></div>` : "";
+  const what = `<strong>${esc(o.flagItem)}: ${esc((o.flagReason || "").toLowerCase())}.</strong>`;
+  const flagText = !o.flagged ? ""
+    : refund
+      ? `<div class="oc-progress">${icon("clock")}<span><strong>Refund in progress</strong> · ${esc(o.flagItem)}${known ? ", " + poundsText(opts.refundPence) : ""}</span></div>`
+      : `<div class="oc-problem">${icon("alert")}<span>${what}${o.flagIntent === "substitute" && o.flagSubstitute ? ` Offer ${esc(o.flagSubstitute)} instead, free.` : ""}</span></div>`;
   card.innerHTML = `
     <div class="oc-top">${opts.isNext ? `<span class="state-badge next">Next</span>` : ""}${badge}<span class="oc-time">${fmtTime(o.ts)} · ${minutesAgo(o.ts)}</span></div>
     <div class="oc-head"><h3 class="oc-table">${esc(orderLabel(o))}</h3><span class="tag">${o.method === "cash" ? "Cash" : "Card"}</span></div>
@@ -596,7 +617,7 @@ function buildOrderCard(o, opts) {
     ${o.notes ? `<div class="note-box">${icon("note")}<span>${esc(o.notes)}</span></div>` : ""}
     ${flagText}
     ${!o.flagged && subItem ? `<div class="oc-muted oc-line">${icon("check")} Customer took ${esc(subItem.name)} instead of ${esc(subItem.subFor)}</div>` : ""}
-    ${o.placedBy ? `<div class="oc-muted oc-line">Taken by ${esc(o.placedBy)}</div>` : ""}
+    ${o.placedBy ? `<div class="oc-muted oc-line">Taken by ${esc(o.placedBy)}${o.accepted && o.acceptedBy ? ` · accepted by ${esc(o.acceptedBy)}` : ""}</div>` : ""}
     <div class="oc-actions"></div>`;
   const actions = card.querySelector(".oc-actions");
   const primary = opts.isNext ? "btn btn-accent" : "btn btn-solid";
@@ -607,23 +628,83 @@ function buildOrderCard(o, opts) {
     actions.appendChild(b);
     return b;
   };
-  if (o.flagged) {
+  // refundPence: number = ready; null = still looking the sale up; undefined = sale not found here
+  const refundButton = () => {
+    if (opts.refundPence === undefined) add("btn btn-danger-solid", "Refund from Past Orders", opts.onRefund);
+    else add("btn btn-danger-solid", known ? `Refund ${poundsText(opts.refundPence)}` : "Working out refund…", known ? opts.onRefund : null, !known);
+  };
+  if (refund) {
+    // Nothing here closes or removes the order: it only goes once the refund has actually been given.
+    if (opts.canRefund) refundButton();
+  } else if (o.flagged) {
     if (o.flagIntent === "substitute" && o.flagSubstitute) add("btn btn-solid", `Customer took ${o.flagSubstitute}`, opts.onAccept);
-    else if (o.flagIntent !== "refund") add("btn btn-solid", "Customer is happy, carry on", opts.onAccept);
-    if (opts.canRefund) {
-      // refundPence: number = ready; null = still looking the sale up; undefined = sale not found here
-      const known = typeof opts.refundPence === "number", missing = opts.refundPence === undefined;
-      if (missing) add("btn btn-danger-solid", "Refund from Past Orders", opts.onRefund);
-      else add("btn btn-danger-solid", known ? `Refund £${(opts.refundPence / 100).toFixed(2)}` : "Working out refund…", known ? opts.onRefund : null, !known);
-    } else {
-      add("btn btn-ghost", "Close order, a manager refunds at the till", opts.onClose);
-    }
+    else add("btn btn-solid", "Customer is happy, carry on", opts.onAccept);
+    if (opts.canRefund) refundButton();
+    else add("btn btn-danger", "Customer wants a refund", opts.onRequestRefund);
   } else {
     if (opts.onFlag) add("btn btn-ghost", "Report a problem", opts.onFlag);
     if (o.ready) add(primary, o.table ? `Delivered to table ${o.table}` : "Delivered", opts.onDeliver);
+    else if (!o.accepted && opts.onAcceptOrder) add(primary, "Accept order", opts.onAcceptOrder);
     else add(primary, "Ready to take out", opts.onReady);
   }
   return card;
+}
+
+// --- Refund screen: full-screen, laid out like the till's payment screen, so the customer can see
+// what's coming back to them. Resolves true once the refund is logged, false if they go back.
+// opts: { order, sale, item, pence, onConfirm: async () => ({ error } | { refundRow }) }
+function openRefundScreen(opts) {
+  let el = document.getElementById("refundScreen");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "refundScreen"; el.className = "rf"; el.hidden = true;
+    el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "rfTitle");
+    el.innerHTML = `
+      <div class="rf-head">
+        <button class="icon-btn" type="button" id="rfBack" aria-label="Back, don't refund">${icon("back")}</button>
+        <h2 id="rfTitle"></h2>
+      </div>
+      <div class="rf-body">
+        <div class="rf-label">Refund to customer</div>
+        <div class="rf-amount tabular" id="rfAmount"></div>
+        <div class="rf-lines" id="rfLines"></div>
+        <div class="rf-howto" id="rfHowto"></div>
+        <div class="rf-error" id="rfError" role="alert" hidden></div>
+      </div>
+      <div class="rf-foot">
+        <button class="btn btn-ghost" type="button" id="rfCancel">Back</button>
+        <button class="btn btn-danger-solid" type="button" id="rfConfirm"></button>
+      </div>`;
+    document.body.appendChild(el);
+  }
+  const { order, sale, item, pence } = opts;
+  const amount = poundsText(pence), cash = (sale.method || "card") === "cash";
+  el.querySelector("#rfTitle").textContent = `Refund · ${orderLabel(order)}`;
+  el.querySelector("#rfAmount").textContent = amount;
+  el.querySelector("#rfLines").innerHTML = `<div>${item.qty} × ${esc(item.name)}</div><div class="oc-muted">${esc(order.flagReason || "")}${order.flagReason ? " · " : ""}paid by ${cash ? "cash" : "card"}${pence < item.pence * item.qty ? ` · discount on the order taken off (full price ${poundsText(item.pence * item.qty)})` : ""}</div>`;
+  el.querySelector("#rfHowto").innerHTML = cash
+    ? `Give the customer <strong>${amount}</strong> back in cash from the till, then log the refund.`
+    : `On the card machine choose <strong>Refund</strong>, key in <strong>${amount}</strong> and have the customer tap the same card. Once it's approved, log the refund.`;
+  const err = el.querySelector("#rfError"); err.hidden = true;
+  const confirm = el.querySelector("#rfConfirm");
+  confirm.textContent = cash ? `Cash given back, log ${amount} refund` : `Refund approved, log ${amount} refund`;
+  confirm.disabled = false;
+  el.hidden = false;
+  el.querySelector("#rfCancel").focus();
+  return new Promise(resolve => {
+    const close = v => { el.hidden = true; el.querySelector("#rfBack").onclick = el.querySelector("#rfCancel").onclick = confirm.onclick = null; resolve(v); };
+    el.querySelector("#rfBack").onclick = el.querySelector("#rfCancel").onclick = () => close(false);
+    confirm.onclick = async () => {
+      confirm.disabled = true; confirm.textContent = "Logging refund…";
+      const res = await opts.onConfirm();
+      if (res && res.error) {
+        err.textContent = res.error; err.hidden = false;
+        confirm.disabled = false; confirm.textContent = cash ? `Cash given back, log ${amount} refund` : `Refund approved, log ${amount} refund`;
+        return;
+      }
+      close(true);
+    };
+  });
 }
 
 // Every shared log is a table of independent rows, one per event, addressed by its own id. A device
@@ -692,6 +773,14 @@ function rowStore(table, limit) {
 async function saveNotification(row) {
   if (!supabaseClient || !currentVenueId) return;
   try { await supabaseClient.from("notifications").upsert({ id: row.id, ts: row.ts, venue_id: currentVenueId, data: row }); } catch (e) {}
+}
+// A "quiet" notice is a message bar only on the recipient's screen - no sound, no system notification,
+// no push. Used for low-stakes updates like "your order is in progress".
+async function sendQuietNotice(toUserId, fromUserId, fromName, message) {
+  if (!toUserId) return null;
+  const notif = { id: "n" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), toUserId, fromUserId, fromName: fromName || "Someone", message, quiet: true };
+  await saveNotification(notif);
+  return notif;
 }
 async function fetchMyNotifications(userId, limit) {
   if (!supabaseClient || !userId) return null;
