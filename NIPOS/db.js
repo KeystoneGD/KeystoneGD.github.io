@@ -571,13 +571,13 @@ function esc(s) {
 // then new orders waiting to be accepted, then orders in progress - each group oldest first, so the
 // longest-waiting table is never buried under newer ones.
 function orderStage(o) {
-  if (needsRefund(o)) return "refund";
+  if (needsRefund(o)) return o.refundInProgress ? "refunding" : "refund";
   if (o.flagged) return "problem";
   if (o.ready) return "ready";
   return o.accepted ? "progress" : "new";
 }
 function sortOrdersByPriority(list) {
-  const rank = o => ({ refund: 0, problem: 0, ready: 1, new: 2, progress: 3 })[orderStage(o)];
+  const rank = o => ({ refund: 0, refunding: 0, problem: 0, ready: 1, new: 2, progress: 3 })[orderStage(o)];
   return list.slice().sort((a, b) => (rank(a) - rank(b)) || (a.ts - b.ts));
 }
 function orderLabel(o) { return o.table ? "Table " + o.table : "No table"; }
@@ -588,16 +588,24 @@ function needsRefund(o) { return !!(o && o.flagged && (o.flagIntent === "refund"
 async function requestRefundForOrder(o, byName) {
   return await mergeOpenOrder(o.id, { refundRequested: true, refundRequestedBy: byName || null, refundRequestedAt: Date.now() });
 }
+// "Needs refund" (red) until someone with refund access opens the refund screen; then "Refund in
+// progress" (yellow) for everyone else. Going Back off that screen puts it back to "Needs refund".
+async function setRefundInProgress(o, on, byName) {
+  return await mergeOpenOrder(o.id, on
+    ? { refundRequested: true, refundInProgress: true, refundInProgressBy: byName || null }
+    : { refundInProgress: false, refundInProgressBy: null });
+}
 // opts: { isNext, canRefund, refundPence (number | null while loading | undefined if no sale), onAcceptOrder,
 // onReady, onDeliver, onFlag, onAccept (customer took the substitute), onRequestRefund, onRefund }
 function buildOrderCard(o, opts) {
   const subItem = o.items.find(i => i.substituted);
-  const state = orderStage(o), refund = state === "refund";
+  const state = orderStage(o), refund = state === "refund" || state === "refunding";
   const known = typeof opts.refundPence === "number";
   const card = document.createElement("article");
-  card.className = "oc oc-state-" + state + (opts.isNext ? " oc-next" : "");
-  card.setAttribute("aria-label", `${orderLabel(o)}, ${{ refund: "refund in progress", problem: "problem", ready: "ready to take out", progress: "in progress", new: "new order" }[state]}`);
-  const badge = state === "refund" ? `<span class="state-badge progress">${icon("clock")}Refund in progress</span>`
+  card.className = "oc oc-state-" + (state === "refund" ? "problem" : state === "refunding" ? "refund" : state) + (opts.isNext ? " oc-next" : "");
+  card.setAttribute("aria-label", `${orderLabel(o)}, ${{ refund: "needs refund", refunding: "refund in progress", problem: "problem", ready: "ready to take out", progress: "in progress", new: "new order" }[state]}`);
+  const badge = state === "refund" ? `<span class="state-badge problem">${icon("alert")}Needs refund</span>`
+    : state === "refunding" ? `<span class="state-badge progress">${icon("clock")}Refund in progress</span>`
     : state === "problem" ? `<span class="state-badge problem">${icon("alert")}Problem</span>`
     : state === "ready" ? `<span class="state-badge ready">${icon("check")}Ready to take out</span>`
     : state === "progress" ? `<span class="state-badge progress">${icon("clock")}In progress</span>`
@@ -608,7 +616,9 @@ function buildOrderCard(o, opts) {
   const what = `<strong>${esc(o.flagItem)}: ${esc((o.flagReason || "").toLowerCase())}.</strong>`;
   const flagText = !o.flagged ? ""
     : refund
-      ? `<div class="oc-progress">${icon("clock")}<span><strong>Refund in progress</strong> · ${esc(o.flagItem)}${known ? ", " + poundsText(opts.refundPence) : ""}</span></div>`
+      ? (state === "refunding"
+        ? `<div class="oc-progress">${icon("clock")}<span><strong>Refund in progress</strong> · ${esc(o.flagItem)}${known ? ", " + poundsText(opts.refundPence) : ""}</span></div>`
+        : `<div class="oc-problem">${icon("alert")}<span><strong>Needs refund</strong> · ${esc(o.flagItem)}${known ? ", " + poundsText(opts.refundPence) : ""}</span></div>`)
       : `<div class="oc-problem">${icon("alert")}<span>${what}${o.flagIntent === "substitute" && o.flagSubstitute ? ` Offer ${esc(o.flagSubstitute)} instead, free.` : ""}</span></div>`;
   card.innerHTML = `
     <div class="oc-top">${opts.isNext ? `<span class="state-badge next">Next</span>` : ""}${badge}<span class="oc-time">${fmtTime(o.ts)} · ${minutesAgo(o.ts)}</span></div>

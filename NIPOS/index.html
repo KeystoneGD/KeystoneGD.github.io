@@ -2205,10 +2205,8 @@ async function startOrderRefund(id){
   const r = flaggedSaleCache.get(id);
   if (!o || !r) return;
   if (r.missing) { if (o.saleTs) goToPastOrderForRefund(o.saleTs); return; }
-  if (!o.refundRequested) {
-    const fresh = await requestRefundForOrder(o, currentUser ? currentUser.name : null);
-    if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
-  }
+  const fresh = await setRefundInProgress(o, true, currentUser ? currentUser.name : null);
+  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
   const item = r.sale.items[r.itemIdx];
   const done = await openRefundScreen({ order: o, sale: r.sale, item, pence: r.pence, onConfirm: async () => {
     const res = await refundSaleLine(r.sale.id, r.itemIdx);
@@ -2222,6 +2220,10 @@ async function startOrderRefund(id){
     await ordersStore.remove(id);
     return res;
   } });
+  if (!done) {
+    const back = await setRefundInProgress(o, false);
+    if (back) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = back; }
+  }
   if (done) showToast(`Refunded ${fmt(r.pence)}, ${orderLabel(o)} closed`);
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
