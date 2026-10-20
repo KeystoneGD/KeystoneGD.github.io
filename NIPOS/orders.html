@@ -162,16 +162,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
   <div class="grid" id="grid"></div>
 </main>
 
-<div class="modal-overlay" id="confirmModal" hidden>
-  <div class="modal-card" role="alertdialog" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
-    <h3 id="confirmTitle"></h3>
-    <p id="confirmMessage"></p>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" id="confirmCancel" type="button">Cancel</button>
-      <button class="btn btn-danger-solid" id="confirmOk" type="button"></button>
-    </div>
-  </div>
-</div>
+
 
 <div class="modal-overlay" id="stockModal" hidden>
   <div class="modal-card" style="max-width:480px;">
@@ -376,19 +367,6 @@ document.getElementById("switchVenueBtn").addEventListener("click", () => { curr
 function fmt(pence){ return "£" + (pence/100).toFixed(2); }
 function formatTime(ts){ return fmtTime(ts); }
 
-// Small confirm dialog for anything that moves money.
-function askConfirm({ title, message, confirmLabel }){
-  return new Promise(resolve => {
-    const m = document.getElementById("confirmModal");
-    document.getElementById("confirmTitle").textContent = title;
-    document.getElementById("confirmMessage").textContent = message;
-    const ok = document.getElementById("confirmOk"), cancel = document.getElementById("confirmCancel");
-    ok.textContent = confirmLabel;
-    const done = v => { m.hidden = true; ok.onclick = cancel.onclick = null; resolve(v); };
-    ok.onclick = () => done(true); cancel.onclick = () => done(false);
-    m.hidden = false; cancel.focus();
-  });
-}
 
 async function loadDoc(key, fallback){
   try {
@@ -506,8 +484,9 @@ function alertUser(title, body, urgent){
 }
 
 let knownOrderStates = null;
+function orderAlertState(o){ return { flagged: !!o.flagged, ready: !!o.ready, refund: needsRefund(o) }; }
 function checkOrderChanges(){
-  const stateNow = new Map(openOrders.map(o => [o.id, { flagged: !!o.flagged, ready: !!o.ready }]));
+  const stateNow = new Map(openOrders.map(o => [o.id, orderAlertState(o)]));
   if (knownOrderStates === null) { knownOrderStates = stateNow; return; }
   openOrders.forEach(o => {
     const label = o.table ? `Table ${o.table}` : "Order";
@@ -516,7 +495,8 @@ function checkOrderChanges(){
       if (!o.delivered) alertUser("New order", `${label}: ${o.items.map(i => `${i.qty}× ${i.name}`).join(", ")}`);
       return;
     }
-    if (!prev.flagged && o.flagged) alertUser("Problem reported", `${label}: ${o.flagItem}, ${o.flagReason}`);
+    if (!prev.refund && needsRefund(o)) alertUser("Refund needed", `${label}: ${o.flagItem}`);
+    else if (!prev.flagged && o.flagged) alertUser("Problem reported", `${label}: ${o.flagItem}, ${o.flagReason}`);
     if (!prev.ready && o.ready) alertUser("Ready to take out", label);
   });
   knownOrderStates = stateNow;
@@ -534,7 +514,7 @@ function checkPersonalNotifications(list){
   const ids = new Set(list.map(n => n.id));
   if (knownNotificationIds === null) { knownNotificationIds = ids; return; }
   list.filter(n => !knownNotificationIds.has(n.id) && (n.toUserId === "all" || n.toUserId === currentUserId) && n.fromUserId !== currentUserId)
-    .forEach(n => alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent));
+    .forEach(n => n.quiet ? showToast(n.message) : alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent));
   knownNotificationIds = ids;
 }
 async function logStopToDiscord(name, on){
@@ -634,9 +614,10 @@ function render(){
   const wrap = document.getElementById("grid");
   wrap.innerHTML = "";
   const list = sortOrdersByPriority(openOrders.filter(o => !o.delivered));
-  const problems = list.filter(o => o.flagged).length, ready = list.filter(o => o.ready && !o.flagged).length;
+  const count = st => list.filter(o => orderStage(o) === st).length;
+  const problems = count("problem") + count("refund"), fresh = count("new"), ready = count("ready");
   document.getElementById("orderCount").textContent = list.length
-    ? [`${list.length} open`, problems ? `${problems} problem${problems === 1 ? "" : "s"}` : "", ready ? `${ready} ready` : ""].filter(Boolean).join(" · ")
+    ? [`${list.length} open`, fresh ? `${fresh} new` : "", problems ? `${problems} problem${problems === 1 ? "" : "s"}` : "", ready ? `${ready} ready` : ""].filter(Boolean).join(" · ")
     : "";
   if (!list.length) { wrap.innerHTML = `<div class="empty">Nothing open right now.</div>`; return; }
   const canRefund = !!(currentUser && currentUser.perms.processRefunds);
@@ -647,12 +628,13 @@ function render(){
       isNext: i === 0,
       canRefund,
       refundPence: r ? (r.missing ? undefined : r.pence) : null,
+      onAcceptOrder: () => acceptOrder(o.id),
       onReady: () => markReady(o.id),
       onDeliver: () => markDelivered(o.id),
       onFlag: () => openFlagModal(o.id),
       onAccept: () => resolveFlag(o.id, "accepted"),
-      onRefund: () => resolveFlag(o.id, "refunded"),
-      onClose: () => resolveFlag(o.id, "closed")
+      onRequestRefund: () => requestRefund(o.id),
+      onRefund: () => startRefund(o.id)
     }));
   });
 }
@@ -664,45 +646,56 @@ async function markDelivered(id){
   await ordersStore.remove(id);
   render();
 }
+// Accepting tells the bar this order is being made, and quietly lets whoever took it know.
+async function acceptOrder(id){
+  const o = openOrders.find(x => x.id === id);
+  const fresh = await mergeOpenOrder(id, { accepted: true, acceptedBy: currentUser ? currentUser.name : null, acceptedAt: Date.now() });
+  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
+  if (o && o.placedById && o.placedById !== currentUserId) {
+    const n = await sendQuietNotice(o.placedById, currentUserId, currentUser && currentUser.name, `${orderLabel(o)}: order accepted, in progress`);
+    if (n) { notifications.unshift(n); knownNotificationIds = new Set(notifications.map(x => x.id)); }
+  }
+  render();
+}
 async function markReady(id){
   const fresh = await mergeOpenOrder(id, { ready: true });
   if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
   render();
 }
-async function resolveFlag(id, outcome){
+// Anyone can say the customer wants their money back; that turns the order into "Refund in progress"
+// on every screen. Only someone with Process Refunds can then finish it, on the refund screen.
+async function requestRefund(id){
   const o = openOrders.find(x => x.id === id);
-  if (outcome === "refunded") {
-    const r = flaggedSaleCache.get(id);
-    if (!o || !r) return;
-    if (r.missing) {
-      // The sale isn't in this shift's records (e.g. logged on a device that was offline) - fall back
-      // to the old route rather than guessing an amount.
-      openOrders = openOrders.filter(x => x.id !== id);
-      await ordersStore.remove(id);
-      showToast("Order closed. Find the sale in the till's Past Orders to refund it.");
-      render();
-      return;
-    }
-    const item = r.sale.items[r.itemIdx];
-    const ok = await askConfirm({ title: `Refund £${(r.pence / 100).toFixed(2)}?`, message: `${item.qty} × ${item.name}, ${orderLabel(o)}, paid by ${r.sale.method === "cash" ? "cash" : "card"}. Give the customer £${(r.pence / 100).toFixed(2)} back, then confirm.`, confirmLabel: `Refund £${(r.pence / 100).toFixed(2)}` });
-    if (!ok) return;
+  if (!o) return;
+  const fresh = await requestRefundForOrder(o, currentUser ? currentUser.name : null);
+  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
+  knownOrderStates = new Map(openOrders.map(x => [x.id, orderAlertState(x)]));
+  render();
+}
+async function startRefund(id){
+  const o = openOrders.find(x => x.id === id);
+  const r = flaggedSaleCache.get(id);
+  if (!o || !r) return;
+  if (r.missing) { showToast("This sale isn't in today's records on this device. Refund it from the till's Past Orders."); return; }
+  if (!o.refundRequested) {
+    const fresh = await requestRefundForOrder(o, currentUser ? currentUser.name : null);
+    if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
+    knownOrderStates = new Map(openOrders.map(x => [x.id, orderAlertState(x)]));
+  }
+  const item = r.sale.items[r.itemIdx];
+  const done = await openRefundScreen({ order: o, sale: r.sale, item, pence: r.pence, onConfirm: async () => {
     const res = await refundSaleLine(r.sale.id, r.itemIdx);
-    if (res.error) { showToast(res.error); return; }
+    if (res.error) return res;
     logRefundToDiscordFor(currentVenue, currentUser ? currentUser.name : null, res.refundRow, res.sale);
     flaggedSaleCache.delete(id);
     openOrders = openOrders.filter(x => x.id !== id);
     await ordersStore.remove(id);
-    showToast(`Refunded £${(res.refundRow.pence / 100).toFixed(2)}, ${orderLabel(o)} closed`);
-    render();
-    return;
-  }
-  if (outcome === "closed") {
-    openOrders = openOrders.filter(x => x.id !== id);
-    await ordersStore.remove(id);
-    showToast("Order closed. Ask a manager to refund it from the till's Past Orders.");
-    render();
-    return;
-  }
+    return res;
+  } });
+  if (done) showToast(`Refunded ${poundsText(r.pence)}, ${orderLabel(o)} closed`);
+  render();
+}
+async function resolveFlag(id, outcome){
   const patch = { flagged: false, flagOutcome: outcome };
   const cached = openOrders.find(x => x.id === id);
   if (outcome === "accepted" && cached && cached.flagIntent === "substitute" && cached.flagSubstitute) {
@@ -776,7 +769,8 @@ function renderSubResults(query){
   const wrap = document.getElementById("flagSubResults");
   const q = query.trim().toLowerCase();
   if (!q) { wrap.hidden = true; wrap.innerHTML = ""; return; }
-  const matches = flatCatalogue.filter(p => (!flagTargetMode || p.mode === flagTargetMode) && p.name.toLowerCase().includes(q)).slice(0, 8);
+  const foodOff = !!(currentVenue && currentVenue.foodEnabled === false);
+  const matches = flatCatalogue.filter(p => (!flagTargetMode || p.mode === flagTargetMode) && !(foodOff && p.mode === "food") && p.name.toLowerCase().includes(q)).slice(0, 8);
   wrap.innerHTML = "";
   matches.forEach(p => {
     const b = document.createElement("button");

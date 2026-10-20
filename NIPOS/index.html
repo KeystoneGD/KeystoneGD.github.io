@@ -330,7 +330,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     <h2>Categories</h2>
     <button class="icon-btn" id="drawerClose" aria-label="Close categories" type="button"><span data-icon="close"></span></button>
   </div>
-  <div class="mode-switch">
+  <div class="mode-switch" id="modeSwitch">
     <button class="mode-btn" id="modeDrinkBtn" type="button" aria-pressed="false">Drinks</button>
     <button class="mode-btn" id="modeFoodBtn" type="button" aria-pressed="false">Food</button>
   </div>
@@ -995,7 +995,7 @@ async function connectDb(){
   if (!dbNs) return;
   await restoreSession();
   setInterval(() => { if (currentVenue) { pullState(PERSISTED_KEYS.filter(i => i.live)); pullRowStores(); checkLockdown(); } }, 1000);
-  setInterval(() => { if (currentVenue) loadCatalogueFromDb(); }, 15000); // the catalogue rarely changes, no need to poll it every second
+  setInterval(() => { if (currentVenue) { loadCatalogueFromDb(); refreshCurrentVenue(); } }, 15000); // the catalogue rarely changes, no need to poll it every second
   setInterval(() => { if (currentVenue && currentUser) sendHeartbeat(currentUserId, currentUser.name); }, 45000);
 }
 
@@ -1051,6 +1051,7 @@ async function resolveVenueSelection(){
   await pullState(PERSISTED_KEYS);
   await pullRowStores();
   await loadCatalogueFromDb();
+  applyFoodSetting();
   sendHeartbeat(currentUserId, currentUser.name);
   checkLockdown();
 }
@@ -1487,7 +1488,29 @@ function renderQtys(){
   });
 }
 
+// Backend > Venues > "Selling food": when a venue isn't serving food, the till only shows drinks.
+function foodOnSale(){ return !(currentVenue && currentVenue.foodEnabled === false); }
+function applyFoodSetting(){
+  const food = foodOnSale();
+  document.getElementById("modeSwitch").hidden = !food;
+  if (!food && menuMode === "food") setMode("drink"); else applyVisibility();
+}
+// Picks up venue changes made in Backend (food on/off, colour, name) without a reload.
+async function refreshCurrentVenue(){
+  if (!supabaseClient || !currentVenue) return;
+  try {
+    const { data } = await supabaseClient.from("venues").select("id,data").eq("id", currentVenue.id).maybeSingle();
+    if (!data) return;
+    const next = { id: data.id, ...data.data };
+    if (JSON.stringify(next) === JSON.stringify(currentVenue)) return;
+    currentVenue = next;
+    const i = myVenues.findIndex(v => v.id === next.id); if (i !== -1) myVenues[i] = next;
+    applyFoodSetting();
+    applyVenueIdentity(currentVenue, currentUser && currentUser.name);
+  } catch (e) {}
+}
 function setMode(mode){
+  if (mode === "food" && !foodOnSale()) mode = "drink";
   menuMode = mode;
   saveJSON(LS_MODE, menuMode);
   document.getElementById("modeDrinkBtn").setAttribute("aria-pressed", String(mode === "drink"));
@@ -1863,7 +1886,7 @@ function checkPersonalNotifications(list){
   const ids = new Set(list.map(n => n.id));
   if (knownNotificationIds === null) { knownNotificationIds = ids; return; }
   list.filter(n => !knownNotificationIds.has(n.id) && (n.toUserId === "all" || n.toUserId === currentUserId) && n.fromUserId !== currentUserId)
-    .forEach(n => alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent));
+    .forEach(n => n.quiet ? showToast(n.message) : alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent));
   knownNotificationIds = ids;
 }
 async function logOrderToDiscord(sale){
@@ -2140,11 +2163,12 @@ function renderOpenOrdersList(){
       isNext: i === 0,
       canRefund,
       refundPence: r ? (r.missing ? undefined : r.pence) : null,
+      onAcceptOrder: () => acceptOpenOrder(o.id),
       onReady: () => markOrderReady(o.id),
       onDeliver: () => markOrderDelivered(o.id),
       onAccept: () => resolveOrderFlag(o.id, "accepted"),
-      onRefund: () => resolveOrderFlag(o.id, "refunded"),
-      onClose: () => resolveOrderFlag(o.id, "closed")
+      onRequestRefund: () => requestOrderRefund(o.id),
+      onRefund: () => startOrderRefund(o.id)
     });
     card.style.marginBottom = "10px";
     wrap.appendChild(card);
@@ -2157,22 +2181,38 @@ async function markOrderDelivered(id){
   await ordersStore.remove(id);
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
+async function acceptOpenOrder(id){
+  const o = openOrders.find(x => x.id === id);
+  const fresh = await mergeOpenOrder(id, { accepted: true, acceptedBy: currentUser ? currentUser.name : null, acceptedAt: Date.now() });
+  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
+  if (o && o.placedById && o.placedById !== currentUserId) sendQuietNotice(o.placedById, currentUserId, currentUser && currentUser.name, `${orderLabel(o)}: order accepted, in progress`);
+  renderOpenOrdersList(); renderOpenOrdersBadge();
+}
 async function markOrderReady(id){
   const fresh = await mergeOpenOrder(id, { ready: true });
   if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
-async function resolveOrderFlag(id, outcome){
+async function requestOrderRefund(id){
   const o = openOrders.find(x => x.id === id);
-  if (outcome === "refunded") {
-    const r = flaggedSaleCache.get(id);
-    if (!o || !r) return;
-    if (r.missing) { if (o.saleTs) goToPastOrderForRefund(o.saleTs); return; }
-    const item = r.sale.items[r.itemIdx];
-    const ok = await askConfirm({ title: `Refund ${fmt(r.pence)}?`, message: `${item.qty} × ${item.name}, ${orderLabel(o)}, paid by ${r.sale.method === "cash" ? "cash" : "card"}. Give the customer ${fmt(r.pence)} back, then confirm.`, confirmLabel: `Refund ${fmt(r.pence)}`, danger: true });
-    if (!ok) return;
+  if (!o) return;
+  const fresh = await requestRefundForOrder(o, currentUser ? currentUser.name : null);
+  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
+  renderOpenOrdersList(); renderOpenOrdersBadge();
+}
+async function startOrderRefund(id){
+  const o = openOrders.find(x => x.id === id);
+  const r = flaggedSaleCache.get(id);
+  if (!o || !r) return;
+  if (r.missing) { if (o.saleTs) goToPastOrderForRefund(o.saleTs); return; }
+  if (!o.refundRequested) {
+    const fresh = await requestRefundForOrder(o, currentUser ? currentUser.name : null);
+    if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
+  }
+  const item = r.sale.items[r.itemIdx];
+  const done = await openRefundScreen({ order: o, sale: r.sale, item, pence: r.pence, onConfirm: async () => {
     const res = await refundSaleLine(r.sale.id, r.itemIdx);
-    if (res.error) { showToast(res.error); return; }
+    if (res.error) return res;
     const hIdx = history.findIndex(sl => sl.ts === res.sale.ts);
     if (hIdx !== -1) { history[hIdx] = res.sale; saveLocalHistory(); }
     if (!res.refundRow.isTest) { refunds.unshift(res.refundRow); saveLocal(LS_REFUNDS, refunds); }
@@ -2180,17 +2220,12 @@ async function resolveOrderFlag(id, outcome){
     flaggedSaleCache.delete(id);
     openOrders = openOrders.filter(x => x.id !== id);
     await ordersStore.remove(id);
-    renderOpenOrdersList(); renderOpenOrdersBadge();
-    showToast(`Refunded ${fmt(res.refundRow.pence)}, ${orderLabel(o)} closed`);
-    return;
-  }
-  if (outcome === "closed") {
-    openOrders = openOrders.filter(x => x.id !== id);
-    await ordersStore.remove(id);
-    renderOpenOrdersList(); renderOpenOrdersBadge();
-    showToast("Order closed. Ask a manager to refund it from Past Orders.");
-    return;
-  }
+    return res;
+  } });
+  if (done) showToast(`Refunded ${fmt(r.pence)}, ${orderLabel(o)} closed`);
+  renderOpenOrdersList(); renderOpenOrdersBadge();
+}
+async function resolveOrderFlag(id, outcome){
   const patch = { flagged: false, flagOutcome: outcome };
   const cached = openOrders.find(x => x.id === id);
   if (outcome === "accepted" && cached && cached.flagIntent === "substitute" && cached.flagSubstitute) {
@@ -2389,24 +2424,29 @@ async function refundItem(saleTs, itemIdx){
   if (!sale) return;
   const item = sale.items[itemIdx];
   if (!item || item.refunded) return;
-  const listedPence = item.pence * item.qty;
   const refundPence = refundAmountFor(sale, item);
-  const discountNote = refundPence < listedPence ? ` (today's discount already taken off, full price would be ${fmt(listedPence)})` : "";
-  const ok = await askConfirm({ title:`Refund ${fmt(refundPence)}?`, message:`${item.qty} × ${item.name}, paid by ${sale.method === "cash" ? "cash" : "card"}${discountNote}. Give the customer ${fmt(refundPence)} back, then confirm.`, confirmLabel:`Refund ${fmt(refundPence)}`, danger:true });
-  if (!ok) return;
-  // Mutate a freshly-fetched copy of the sale so refunding two items on the same order from two
-  // devices around the same time can't have one refund's "refunded" flag clobber the other's.
-  const freshSale = await salesStore.mutate(sale.id, s => { if (s.items[itemIdx] && !s.items[itemIdx].refunded) s.items[itemIdx].refunded = true; });
-  if (!freshSale) { showToast("Couldn't refund, try again"); return; }
-  item.refunded = true;
-  const histIdx = history.findIndex(s => s.ts === saleTs);
-  if (histIdx !== -1) history[histIdx] = freshSale;
-  const refundRow = { id: "r"+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), saleTs: sale.ts, itemName: item.name, qty: item.qty, pence: refundPence, method: sale.method || "card" };
-  refunds.unshift(refundRow);
-  saveLocalHistory();
-  saveLocal(LS_REFUNDS, refunds);
-  refundsStore.save(refundRow);
-  logRefundToDiscord(refundRow, sale);
+  let refundRow = null;
+  const done = await openRefundScreen({ order: { table: sale.table, flagReason: "" }, sale, item, pence: refundPence, onConfirm: async () => {
+    // Mutate a freshly-fetched copy of the sale so refunding two items on the same order from two
+    // devices around the same time can't have one refund's "refunded" flag clobber the other's.
+    const freshSale = await salesStore.mutate(sale.id, s => { if (s.items[itemIdx] && !s.items[itemIdx].refunded) s.items[itemIdx].refunded = true; });
+    if (!freshSale) return { error: "Couldn't reach the database, nothing was refunded. Try again." };
+    item.refunded = true;
+    const histIdx = history.findIndex(s => s.ts === saleTs);
+    if (histIdx !== -1) history[histIdx] = freshSale;
+    refundRow = { id: "r"+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), saleTs: sale.ts, itemName: item.name, qty: item.qty, pence: refundPence, method: sale.method || "card" };
+    refunds.unshift(refundRow);
+    saveLocalHistory();
+    saveLocal(LS_REFUNDS, refunds);
+    refundsStore.save(refundRow);
+    logRefundToDiscord(refundRow, sale);
+    // A refund done from here also clears an open order that was waiting on it.
+    const waiting = openOrders.filter(x => x.saleTs === sale.ts && needsRefund(x) && x.flagItem === item.name);
+    for (const x of waiting) { await ordersStore.remove(x.id); }
+    if (waiting.length) { openOrders = openOrders.filter(x => !waiting.includes(x)); renderOpenOrdersBadge(); }
+    return { refundRow };
+  } });
+  if (!done) return;
   renderHistory();
   showToast(`Refunded ${fmt(refundPence)}`);
 }

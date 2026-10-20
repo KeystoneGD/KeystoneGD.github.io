@@ -187,6 +187,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 .list-row:last-child{border-bottom:0;}
 .list-row .info{flex:1;min-width:0;}
 .list-row .actions{display:flex;gap:8px;flex:0 0 auto;}
+.food-toggle{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;min-height:44px;margin-right:6px;cursor:pointer;}
 .show-hidden-link{background:none;border:0;color:var(--text-muted);font-size:12px;text-decoration:underline;cursor:pointer;padding:8px 0 0;}
 
 @media (max-width:900px){
@@ -519,6 +520,10 @@ table.data-table tr:last-child td{border-bottom:0;}
     <label class="field" for="vmAccent">Screen colour</label>
     <select id="vmAccent"></select>
     <p class="note" style="margin-top:6px;">Shown across the top of the till, order screen and Backend, so staff can see which venue a screen is on.</p>
+    <label class="row" style="border:0;padding:8px 0;">
+      <span class="info"><span class="name">Selling food</span><span class="sub">Off hides the Food menu on this venue's tills.</span></span>
+      <span class="switch"><input type="checkbox" id="vmFood" checked><span class="slider"></span></span>
+    </label>
     <label class="row" style="border:0;padding:8px 0;">
       <span class="info"><span class="name">Venue Open</span><span class="sub">Off keeps assigned staff from signing in here or subscribing to its notifications.</span></span>
       <span class="switch"><input type="checkbox" id="vmActive" checked><span class="slider"></span></span>
@@ -1517,12 +1522,25 @@ function renderVenues(){
     const row = document.createElement("div");
     row.className = "list-row";
     row.innerHTML = `
-      <div class="info"><div class="name"><span class="venue-swatch" style="display:inline-block;vertical-align:-4px;margin-right:8px;background:${VENUE_ACCENTS[venueAccentKey(v)].color}"></span>${esc(v.name)}${closed ? ` <span class="pill" style="color:var(--danger);border-color:var(--danger);">Closed</span>` : ""}</div><div class="sub">${staffCount} staff assigned · ${VENUE_ACCENTS[venueAccentKey(v)].label}</div></div>
+      <div class="info"><div class="name"><span class="venue-swatch" style="display:inline-block;vertical-align:-4px;margin-right:8px;background:${VENUE_ACCENTS[venueAccentKey(v)].color}"></span>${esc(v.name)}${closed ? ` <span class="pill" style="color:var(--danger);border-color:var(--danger);">Closed</span>` : ""}</div><div class="sub">${staffCount} staff assigned · ${VENUE_ACCENTS[venueAccentKey(v)].label} · ${v.foodEnabled !== false ? "Food on" : "Drinks only"}</div></div>
       <div class="actions">
+        <label class="food-toggle"><span>Selling food</span><span class="switch"><input type="checkbox" data-act="food" aria-label="${esc(v.name)} selling food" ${v.foodEnabled !== false ? "checked" : ""}><span class="slider"></span></span></label>
         <button type="button" class="btn btn-ghost btn-sm" data-act="edit">Edit</button>
         <button type="button" class="btn btn-danger btn-sm" data-act="delete">Delete</button>
       </div>`;
     row.querySelector('[data-act="edit"]').addEventListener("click", () => openVenueModal("edit", v));
+    row.querySelector('[data-act="food"]').addEventListener("change", async e => {
+      const on = e.target.checked;
+      e.target.disabled = true;
+      // Re-read first so this never overwrites another field someone just changed.
+      const { data: fresh } = await supabaseClient.from("venues").select("data").eq("id", v.id).maybeSingle();
+      const { error } = await supabaseClient.from("venues").update({ data: { ...(fresh ? fresh.data : v), foodEnabled: on } }).eq("id", v.id);
+      e.target.disabled = false;
+      if (error) { e.target.checked = !on; alert("Couldn't save: " + error.message); return; }
+      v.foodEnabled = on;
+      const mine = myVenues.find(x => x.id === v.id); if (mine) mine.foodEnabled = on;
+      renderVenues();
+    });
     row.querySelector('[data-act="delete"]').addEventListener("click", () => deleteVenueFlow(v));
     wrap.appendChild(row);
   });
@@ -1532,6 +1550,7 @@ function openVenueModal(mode, venue){
   document.getElementById("venueModalTitle").textContent = mode === "edit" ? "Edit venue" : "Add a venue";
   document.getElementById("vmName").value = venue ? venue.name : "";
   document.getElementById("vmActive").checked = venue ? venue.active !== false : true;
+  document.getElementById("vmFood").checked = venue ? venue.foodEnabled !== false : true;
   const autoKey = venue ? venueAccentKey({ ...venue, accent: null }) : VENUE_ACCENT_KEYS[(venueCreationOrder || []).length % VENUE_ACCENT_KEYS.length];
   document.getElementById("vmAccent").innerHTML = `<option value="">Automatic (${VENUE_ACCENTS[autoKey].label})</option>` +
     VENUE_ACCENT_KEYS.map(k => `<option value="${k}">${VENUE_ACCENTS[k].label}</option>`).join("");
@@ -1550,6 +1569,7 @@ document.getElementById("venueModalSave").addEventListener("click", async () => 
   if (!name) { alert("Enter a name."); return; }
   const active = document.getElementById("vmActive").checked;
   const accent = document.getElementById("vmAccent").value || null;
+  const foodEnabled = document.getElementById("vmFood").checked;
   const discordWebhooks = {
     order: document.getElementById("vmWebhookOrder").value.trim() || null,
     zread: document.getElementById("vmWebhookZread").value.trim() || null,
@@ -1562,10 +1582,10 @@ document.getElementById("venueModalSave").addEventListener("click", async () => 
   if (editingVenue) {
     // Re-fetch right before writing so fields this form doesn't manage aren't clobbered by a stale copy.
     const { data: freshVenue } = await supabaseClient.from("venues").select("data").eq("id", venueId).maybeSingle();
-    const { error } = await supabaseClient.from("venues").update({ data: { ...(freshVenue ? freshVenue.data : editingVenue), name, active, discordWebhooks, accent } }).eq("id", venueId);
+    const { error } = await supabaseClient.from("venues").update({ data: { ...(freshVenue ? freshVenue.data : editingVenue), name, active, discordWebhooks, accent, foodEnabled } }).eq("id", venueId);
     if (error) { alert(error.message); return; }
   } else {
-    const { error } = await supabaseClient.from("venues").insert({ id: venueId, ts: Date.now(), data: { name, discordWebhooks, active, accent } });
+    const { error } = await supabaseClient.from("venues").insert({ id: venueId, ts: Date.now(), data: { name, discordWebhooks, active, accent, foodEnabled } });
     if (error) { alert(error.message); return; }
   }
   // Reconcile assigned-staff checkboxes against each user's own venueIds.
