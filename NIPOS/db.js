@@ -571,7 +571,7 @@ function esc(s) {
 // then new orders waiting to be accepted, then orders in progress - each group oldest first, so the
 // longest-waiting table is never buried under newer ones.
 function orderStage(o) {
-  if (needsRefund(o)) return o.refundInProgress ? "refunding" : "refund";
+  if (needsRefund(o)) return refundUnderway(o) ? "refunding" : "refund";
   if (o.flagged) return "problem";
   if (o.ready) return "ready";
   return o.accepted ? "progress" : "new";
@@ -590,12 +590,28 @@ async function requestRefundForOrder(o, byName) {
 }
 // "Needs refund" (red) until someone with refund access opens the refund screen; then "Refund in
 // progress" (yellow) for everyone else. Going Back off that screen puts it back to "Needs refund".
-async function setRefundInProgress(o, on, byName) {
+// While one person has the refund screen open, nobody else can start a second refund on the same
+// order. If their device dies mid-refund the lock lapses after 10 minutes so the order can't get stuck.
+const REFUND_LOCK_MS = 10 * 60 * 1000;
+function refundUnderway(o) { return !!(o && o.refundInProgress && Date.now() - (o.refundInProgressAt || 0) < REFUND_LOCK_MS); }
+function refundLockedByOther(o, myId) { return refundUnderway(o) && !!o.refundInProgressById && o.refundInProgressById !== myId; }
+async function setRefundInProgress(o, on, byName, byId) {
   return await mergeOpenOrder(o.id, on
-    ? { refundRequested: true, refundInProgress: true, refundInProgressBy: byName || null }
-    : { refundInProgress: false, refundInProgressBy: null });
+    ? { refundRequested: true, refundInProgress: true, refundInProgressBy: byName || null, refundInProgressById: byId || null, refundInProgressAt: Date.now() }
+    : { refundInProgress: false, refundInProgressBy: null, refundInProgressById: null, refundInProgressAt: null });
 }
-// opts: { isNext, canRefund, refundPence (number | null while loading | undefined if no sale), onAcceptOrder,
+// Re-reads the order straight from the database (not this screen's last poll) and, if nobody else is
+// refunding it, claims it. Returns { order } or { error }.
+async function claimRefund(o, byName, byId) {
+  try {
+    const { data } = await supabaseClient.from("open_orders").select("data").eq("id", o.id).maybeSingle();
+    if (!data) return { error: "This order has already been closed." };
+    if (refundLockedByOther(data.data, byId)) return { error: `${data.data.refundInProgressBy || "Someone"} is already refunding this.` };
+  } catch (e) { return { error: "Couldn't reach the database. Try again." }; }
+  const fresh = await setRefundInProgress(o, true, byName, byId);
+  return fresh ? { order: fresh } : { error: "Couldn't reach the database. Try again." };
+}
+// opts: { isNext, myId, canRefund, refundPence (number | null while loading | undefined if no sale), onAcceptOrder,
 // onReady, onDeliver, onFlag, onAccept (customer took the substitute), onRequestRefund, onRefund }
 function buildOrderCard(o, opts) {
   const subItem = o.items.find(i => i.substituted);
@@ -617,7 +633,7 @@ function buildOrderCard(o, opts) {
   const flagText = !o.flagged ? ""
     : refund
       ? (state === "refunding"
-        ? `<div class="oc-progress">${icon("clock")}<span><strong>Refund in progress</strong> · ${esc(o.flagItem)}${known ? ", " + poundsText(opts.refundPence) : ""}</span></div>`
+        ? `<div class="oc-progress">${icon("clock")}<span><strong>Refund in progress</strong> · ${esc(o.flagItem)}${known ? ", " + poundsText(opts.refundPence) : ""}${o.refundInProgressBy ? ` · by ${esc(o.refundInProgressBy)}` : ""}</span></div>`
         : `<div class="oc-problem">${icon("alert")}<span><strong>Needs refund</strong> · ${esc(o.flagItem)}${known ? ", " + poundsText(opts.refundPence) : ""}</span></div>`)
       : `<div class="oc-problem">${icon("alert")}<span>${what}${o.flagIntent === "substitute" && o.flagSubstitute ? ` Offer ${esc(o.flagSubstitute)} instead, free.` : ""}</span></div>`;
   card.innerHTML = `
@@ -645,7 +661,8 @@ function buildOrderCard(o, opts) {
   };
   if (refund) {
     // Nothing here closes or removes the order: it only goes once the refund has actually been given.
-    if (opts.canRefund) refundButton();
+    // And while someone else is mid-refund, nobody else gets a Refund button.
+    if (opts.canRefund && !refundLockedByOther(o, opts.myId)) refundButton();
   } else if (o.flagged) {
     if (o.flagIntent === "substitute" && o.flagSubstitute) add("btn btn-solid", `Customer took ${o.flagSubstitute}`, opts.onAccept);
     else add("btn btn-solid", "Customer is happy, carry on", opts.onAccept);

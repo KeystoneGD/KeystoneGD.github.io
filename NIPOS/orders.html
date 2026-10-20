@@ -626,6 +626,7 @@ function render(){
     const r = flaggedSaleCache.get(o.id);
     wrap.appendChild(buildOrderCard(o, {
       isNext: i === 0,
+      myId: currentUserId,
       canRefund,
       refundPence: r ? (r.missing ? undefined : r.pence) : null,
       onAcceptOrder: () => acceptOrder(o.id),
@@ -677,8 +678,9 @@ async function startRefund(id){
   const r = flaggedSaleCache.get(id);
   if (!o || !r) return;
   if (r.missing) { showToast("This sale isn't in today's records on this device. Refund it from the till's Past Orders."); return; }
-  const fresh = await setRefundInProgress(o, true, currentUser ? currentUser.name : null);
-  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
+  const claim = await claimRefund(o, currentUser ? currentUser.name : null, currentUserId);
+  if (claim.error) { showToast(claim.error); render(); return; }
+  { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = claim.order; }
   knownOrderStates = new Map(openOrders.map(x => [x.id, orderAlertState(x)]));
   const item = r.sale.items[r.itemIdx];
   const done = await openRefundScreen({ order: o, sale: r.sale, item, pence: r.pence, onConfirm: async () => {
