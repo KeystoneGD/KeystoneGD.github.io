@@ -677,11 +677,9 @@ async function startRefund(id){
   const r = flaggedSaleCache.get(id);
   if (!o || !r) return;
   if (r.missing) { showToast("This sale isn't in today's records on this device. Refund it from the till's Past Orders."); return; }
-  if (!o.refundRequested) {
-    const fresh = await requestRefundForOrder(o, currentUser ? currentUser.name : null);
-    if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
-    knownOrderStates = new Map(openOrders.map(x => [x.id, orderAlertState(x)]));
-  }
+  const fresh = await setRefundInProgress(o, true, currentUser ? currentUser.name : null);
+  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
+  knownOrderStates = new Map(openOrders.map(x => [x.id, orderAlertState(x)]));
   const item = r.sale.items[r.itemIdx];
   const done = await openRefundScreen({ order: o, sale: r.sale, item, pence: r.pence, onConfirm: async () => {
     const res = await refundSaleLine(r.sale.id, r.itemIdx);
@@ -692,6 +690,10 @@ async function startRefund(id){
     await ordersStore.remove(id);
     return res;
   } });
+  if (!done) {
+    const back = await setRefundInProgress(o, false);
+    if (back) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = back; }
+  }
   if (done) showToast(`Refunded ${poundsText(r.pence)}, ${orderLabel(o)} closed`);
   render();
 }
