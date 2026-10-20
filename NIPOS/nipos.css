@@ -1,0 +1,87 @@
+/* Shared by index.html, orders.html and backend.html, loaded after each page's own <style>.
+   Colour roles - one colour, one meaning:
+     amber (--accent)   the single main action on a screen
+     green (--success)  ready / done
+     red   (--danger)   a problem, or money going out
+     venue (--venue)    which venue this screen is signed in to (set per venue by db.js)
+   Everything else (payment type, notes, selected filters, counts) is neutral. */
+:root{
+  --venue:#7a5af0; --venue-ink:#ffffff;
+  --sel-bg:#eef4f8; --sel-ink:#0c1826;
+  --focus:#9cc8ff;
+  --tap:44px;
+}
+:root[data-theme="light"]{
+  --success:#17784f; --success-ink:#ffffff; --success-soft:rgba(23,120,79,.1);
+  --sel-bg:#16232f; --sel-ink:#ffffff;
+  --focus:#2f6fe0;
+}
+
+.ic{width:20px;height:20px;flex:0 0 auto;display:inline-block;vertical-align:middle;}
+
+/* Every interactive control is at least 44x44 (WCAG 2.5.5 / Apple HIG). */
+button,.btn,select,input[type="text"],input[type="search"],input[type="password"],input[type="number"],input[type="date"]{min-height:var(--tap);}
+.icon-btn{min-width:var(--tap);min-height:var(--tap);width:var(--tap);height:var(--tap);display:inline-flex;align-items:center;justify-content:center;padding:0;}
+:focus-visible{outline:3px solid var(--focus) !important;outline-offset:2px !important;}
+
+/* Selected filters/toggles: neutral inverse fill plus a tick, never amber, so state isn't colour-only. */
+.is-selected,[aria-pressed="true"]{background:var(--sel-bg) !important;color:var(--sel-ink) !important;border-color:var(--sel-bg) !important;}
+.is-selected::before,[aria-pressed="true"]::before{content:"";display:inline-block;width:.55em;height:.3em;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg) translateY(-.15em);margin-right:.45em;}
+
+/* Venue identity: a solid venue-colour band with the venue and the signed-in person, at the top of
+   every screen. */
+.venue-band{display:flex;align-items:center;gap:10px;background:var(--venue);color:var(--venue-ink);padding:8px 14px;min-height:44px;}
+.venue-band .venue-name{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-weight:800;font-size:16px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.venue-band .staff-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.venue-band .sep{opacity:.7;}
+.venue-band .grow{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.venue-band .band-btn{background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.35);color:inherit;border-radius:10px;min-width:var(--tap);min-height:var(--tap);display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 10px;font:inherit;font-weight:700;font-size:13.5px;cursor:pointer;}
+
+/* Order state: a text badge as well as the card colour, so it never relies on colour alone. */
+.state-badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;letter-spacing:.02em;padding:4px 9px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);white-space:nowrap;}
+.state-badge .ic{width:15px;height:15px;}
+.state-badge.problem{background:var(--danger);border-color:var(--danger);color:#2a0703;}
+:root[data-theme="light"] .state-badge.problem{background:#b3261e;border-color:#b3261e;color:#fff;}
+.state-badge.ready{background:var(--success);border-color:var(--success);color:var(--success-ink);}
+.state-badge.next{background:var(--text);border-color:var(--text);color:var(--bg);}
+
+/* Neutral information chips (payment type etc.). */
+.tag{display:inline-flex;align-items:center;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);white-space:nowrap;}
+
+/* Notes: outlined, neutral, readable - not amber. */
+.note-box{display:flex;gap:8px;align-items:flex-start;border:1px dashed var(--text-muted);border-radius:10px;padding:8px 10px;font-size:14px;font-weight:600;color:var(--text);line-height:1.4;}
+.note-box .ic{width:18px;height:18px;margin-top:1px;color:var(--text-muted);}
+
+/* Secondary solid button: clearly a button, but quieter than the one amber main action. */
+.btn-solid{background:var(--surface-2);color:var(--text);border:2px solid var(--text-muted);}
+
+/* Toasts are information, not success - neutral inverse. */
+.toast{background:var(--sel-bg) !important;color:var(--sel-ink) !important;}
+
+@media (prefers-reduced-motion: reduce){ *{transition:none !important;animation:none !important;scroll-behavior:auto !important;} }
+
+/* Open order cards (built by buildOrderCard in db.js). State shows as a coloured left edge AND a
+   text badge; the card body stays neutral so the text keeps full contrast. */
+.oc{display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--border);border-left:8px solid var(--border);border-radius:14px;padding:14px 14px 14px 16px;box-shadow:var(--shadow);}
+.oc.oc-state-problem{border-left-color:var(--danger);}
+.oc.oc-state-ready{border-left-color:var(--success);}
+.oc.oc-next{box-shadow:0 0 0 2px var(--text),var(--shadow);}
+.oc-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.oc-time{margin-left:auto;font-size:13px;color:var(--text-muted);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.oc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.oc-table{margin:0;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:22px;font-weight:800;line-height:1.15;}
+.oc-items{font-size:16px;font-weight:600;line-height:1.45;color:var(--text);}
+.oc-muted{color:var(--text-muted);font-size:13.5px;font-weight:500;}
+.oc-line{display:flex;align-items:center;gap:6px;}
+.oc-line .ic{width:16px;height:16px;}
+.oc-problem{display:flex;gap:8px;align-items:flex-start;background:var(--danger-soft);border:1px solid var(--danger);border-radius:10px;padding:9px 10px;font-size:14.5px;line-height:1.4;color:var(--text);}
+.oc-problem .ic{color:var(--danger);margin-top:1px;}
+.oc-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.oc-actions .btn{flex:1 1 140px;min-height:48px;font-size:15px;}
+.btn-danger-solid{background:var(--danger);color:#2a0703;border:0;}
+:root[data-theme="light"] .btn-danger-solid{background:#b3261e;color:#fff;}
+.btn-danger-solid:disabled,.btn:disabled{opacity:.6;cursor:default;}
+
+/* Venue picker: each venue shows its colour, so people learn it. */
+.venue-choice{display:flex !important;align-items:center;justify-content:flex-start !important;gap:12px;text-align:left;font-size:16px;min-height:52px;}
+.venue-swatch{width:22px;height:22px;border-radius:6px;flex:0 0 auto;border:2px solid rgba(255,255,255,.5);}
