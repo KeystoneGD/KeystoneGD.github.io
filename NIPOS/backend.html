@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en-GB">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -51,15 +51,15 @@ a{color:var(--accent);}
 .btn-accent{background:var(--accent);color:var(--accent-ink);}
 .btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border);}
 .btn-danger{background:var(--danger-soft);color:var(--danger);}
-.btn-sm{padding:6px 10px;font-size:12.5px;border-radius:8px;}
+.btn-sm{padding:0 12px;font-size:13.5px;border-radius:10px;}
 .field{display:block;font-size:12px;font-weight:600;color:var(--text-muted);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.02em;}
 input[type="text"],input[type="password"],input[type="number"],select{width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;}
 .switch{position:relative;display:inline-block;width:44px;height:26px;flex:0 0 auto;}
 .switch input{opacity:0;width:0;height:0;}
 .switch .slider{position:absolute;inset:0;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;cursor:pointer;transition:.15s;}
 .switch .slider::before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:var(--text-muted);border-radius:50%;transition:.15s;}
-.switch input:checked + .slider{background:var(--accent-soft);border-color:var(--accent);}
-.switch input:checked + .slider::before{transform:translateX(18px);background:var(--accent);}
+.switch input:checked + .slider{background:var(--text);border-color:var(--text);}
+.switch input:checked + .slider::before{transform:translateX(18px);background:var(--bg);}
 .row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
 .row:last-child{border-bottom:0;}
 .info{flex:1;min-width:0;}
@@ -78,21 +78,22 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .brand-name{font-weight:800;font-size:17px;letter-spacing:.01em;}
 .sidebar-nav{flex:1;overflow-y:auto;padding:6px 10px;}
 .nav-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:0;color:var(--text-muted);font-size:13.5px;font-weight:600;padding:10px 12px;border-radius:10px;cursor:pointer;margin-bottom:2px;}
-.nav-item .ic{width:18px;text-align:center;}
-.nav-item:hover{background:var(--surface-2);color:var(--text);}
-.nav-item.active{background:var(--accent-soft);color:var(--accent);}
+.nav-item{min-height:44px;font-size:14.5px;color:var(--text);}
+.nav-item:hover{background:var(--surface-2);}
+.nav-item.active{background:var(--sel-bg);color:var(--sel-ink);}
+.nav-item.active::before{content:"";width:4px;align-self:stretch;border-radius:2px;background:currentColor;margin:-4px 2px -4px -4px;}
+.sidebar .venue-band{border-radius:0;}
+.sidebar .venue-band .grow{flex-direction:column;align-items:flex-start;gap:0;}
+.venue-band.mobile-band{display:none;}
 .sidebar-footer{border-top:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:8px;}
 .venue-switcher select{font-size:13px;padding:8px 10px;}
 .footer-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .footer-row .account-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.icon-btn{background:var(--surface-2);border:1px solid var(--border);color:var(--text);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:14px;flex:0 0 auto;}
-.hamburger-btn{display:none;position:fixed;top:14px;left:14px;z-index:40;width:38px;height:38px;border-radius:10px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:16px;cursor:pointer;}
+.icon-btn{background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:10px;cursor:pointer;font-size:14px;flex:0 0 auto;}
 .sidebar-backdrop{display:none;}
 
 .main-content{flex:1;min-width:0;padding:28px 32px 60px;max-width:1240px;}
-.status{font-size:12px;color:var(--text-muted);margin-bottom:16px;}
-.status.ok::before{content:"● ";color:var(--success);}
-.status.bad::before{content:"● ";color:var(--danger);}
+.status{font-size:14px;font-weight:700;margin-bottom:16px;padding:10px 12px;border-radius:10px;color:var(--text);background:var(--danger-soft);border:1px solid var(--danger);}
 
 .page{display:none;}
 .page.active{display:block;}
@@ -103,20 +104,37 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 
 /* ---------- dashboard ---------- */
 .range-picker{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
-.range-btn{background:var(--surface-2);border:1px solid var(--border);color:var(--text-muted);font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:999px;cursor:pointer;}
-.range-btn.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.range-btn{background:var(--surface-2);border:1px solid var(--border);color:var(--text);font-size:14px;font-weight:700;padding:0 16px;min-height:44px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;}
+.range-btn.active{background:var(--sel-bg);color:var(--sel-ink);border-color:var(--sel-bg);}
+.range-btn.active::before{content:"";display:inline-block;width:.55em;height:.3em;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg) translateY(-.15em);margin-right:.45em;}
 .range-custom{display:none;gap:6px;align-items:center;}
 .range-custom.show{display:flex;}
 .range-custom input{width:140px;padding:7px 9px;font-size:12.5px;}
 .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:20px;}
 .kpi-tile{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;}
-.kpi-tile .label{font-size:12px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
-.kpi-value{font-size:26px;font-weight:800;margin-top:6px;}
+.kpi-tile .label{font-size:14px;color:var(--text-muted);font-weight:700;}
+.kpi-value{font-size:28px;font-weight:800;margin-top:4px;}
+.kpi-compare{font-size:13.5px;color:var(--text-muted);margin-top:4px;line-height:1.4;}
+.kpi-compare strong{color:var(--text);}
 .charts-row{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:20px;}
-.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;}
-.chart-card h3{margin:0 0 12px;font-size:13.5px;}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;min-width:0;}
+.chart-card h3{margin:0 0 4px;font-size:16px;}
+.chart-card .chart-sub{margin:0 0 12px;font-size:13px;color:var(--text-muted);}
 .chart-card.wide{grid-column:1 / -1;}
-.chart-card canvas{max-height:220px;}
+.chart-box{position:relative;width:100%;height:280px;}
+.chart-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;font-weight:600;margin-bottom:8px;}
+.chart-legend span{display:inline-flex;align-items:center;gap:6px;}
+.chart-legend i{display:inline-block;width:14px;height:14px;border-radius:3px;}
+.chart-empty{color:var(--text-muted);font-size:14px;padding:24px 0;text-align:center;}
+.split-figures{display:grid;gap:12px;}
+.split-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;border-bottom:1px solid var(--border);padding-bottom:10px;}
+.split-row:last-of-type{border-bottom:0;}
+.split-row .k{font-size:15px;font-weight:700;}
+.split-row .v{font-size:24px;font-weight:800;font-family:var(--font-display);font-variant-numeric:tabular-nums;}
+.split-row .pct{font-size:13.5px;color:var(--text-muted);font-weight:600;margin-left:8px;}
+.split-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;border:1px solid var(--border);}
+.split-bar .cash{background:var(--text);}
+.split-bar .card{background:var(--text-muted);opacity:.45;}
 table.data-table{width:100%;border-collapse:collapse;font-size:13.5px;}
 table.data-table th{text-align:left;color:var(--text-muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;padding:8px 10px;border-bottom:1px solid var(--border);}
 table.data-table td{padding:9px 10px;border-bottom:1px solid var(--border);}
@@ -125,7 +143,8 @@ table.data-table tr:last-child td{border-bottom:0;}
 /* ---------- products ---------- */
 .tab-row{display:flex;gap:6px;}
 .tab-btn{background:var(--surface-2);border:1px solid var(--border);color:var(--text-muted);font-size:13px;font-weight:600;padding:8px 16px;border-radius:10px 10px 0 0;cursor:pointer;}
-.tab-btn.active{background:var(--surface);color:var(--accent);border-bottom-color:var(--surface);}
+.tab-btn{min-height:44px;}
+.tab-btn.active{background:var(--surface);color:var(--text);border-bottom-color:var(--surface);box-shadow:inset 0 3px 0 var(--text);}
 .tab-panel{display:none;}
 .tab-panel.active{display:block;}
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
@@ -155,8 +174,9 @@ table.data-table tr:last-child td{border-bottom:0;}
 .mini-menu{margin-top:14px;border-top:1px solid var(--border);padding-top:12px;}
 .mini-menu summary{cursor:pointer;font-size:12.5px;font-weight:700;color:var(--text-muted);list-style:none;}
 .mini-menu summary::-webkit-details-marker{display:none;}
-.mini-menu summary::before{content:"▸ ";}
-.mini-menu[open] summary::before{content:"▾ ";}
+.mini-menu summary{min-height:44px;display:flex;align-items:center;}
+.mini-menu summary::before{content:"+";display:inline-flex;width:20px;font-weight:800;}
+.mini-menu[open] summary::before{content:"–";}
 .mini-menu-body{padding-top:10px;}
 .dropdown-field{margin-top:6px;border-top:0;padding-top:0;}
 .dropdown-field summary{border:1px solid var(--border);background:var(--surface-2);border-radius:9px;padding:10px 12px;font-size:14px;font-weight:500;color:var(--text);}
@@ -174,12 +194,13 @@ table.data-table tr:last-child td{border-bottom:0;}
   .sidebar.open{transform:translateX(0);}
   .sidebar-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:39;opacity:0;pointer-events:none;transition:opacity .18s ease;}
   .sidebar-backdrop.show{opacity:1;pointer-events:auto;}
-  .hamburger-btn{display:block;}
-  .main-content{padding:70px 18px 60px;}
+  .venue-band.mobile-band{display:flex;position:sticky;top:0;z-index:38;}
+  .main-content{padding:18px 18px 60px;}
   .charts-row{grid-template-columns:1fr;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
+<link rel="stylesheet" href="nipos.css">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -200,38 +221,42 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
-<button class="hamburger-btn" id="hamburgerBtn" hidden>☰</button>
+<header class="venue-band mobile-band" id="hamburgerBtn" hidden>
+  <button class="band-btn" id="sidebarOpenBtn" type="button" aria-label="Open menu"><span data-icon="menu"></span></button>
+  <div class="grow"><span class="venue-name" data-venue-name></span><span class="staff-name" data-staff-name></span></div>
+</header>
 
 <div class="app-shell" id="appShell" hidden>
   <aside class="sidebar" id="sidebar">
-    <div class="sidebar-brand">
-      <img src="icon-192.png" alt="">
-      <span class="brand-name">NIPOS</span>
+    <div class="venue-band">
+      <div class="grow"><span class="venue-name" data-venue-name></span><span class="staff-name" data-staff-name></span></div>
     </div>
+    <div class="sidebar-brand"><span class="brand-name">Backend</span></div>
     <nav class="sidebar-nav">
-      <button class="nav-item active" data-page="dashboard"><span class="ic">◆</span> Dashboard</button>
-      <button class="nav-item" data-page="products"><span class="ic">▤</span> Products</button>
-      <button class="nav-item" data-page="discounts"><span class="ic">%</span> Discounts</button>
-      <button class="nav-item" data-page="users"><span class="ic">◍</span> Users</button>
-      <button class="nav-item" data-page="venues" id="navVenues" hidden><span class="ic">⌂</span> Venues</button>
-      <button class="nav-item" data-page="zreads" id="navZReads" hidden><span class="ic">🧾</span> Z Reads</button>
-      <button class="nav-item" data-page="testdata" id="navTestData" hidden><span class="ic">🧪</span> Test Data</button>
-      <button class="nav-item" data-page="settings" id="navSettings" hidden><span class="ic">⚙</span> Settings</button>
+      <button class="nav-item active" data-page="dashboard" aria-current="page">Dashboard</button>
+      <button class="nav-item" data-page="products">Products</button>
+      <button class="nav-item" data-page="discounts">Discounts</button>
+      <button class="nav-item" data-page="users">Users</button>
+      <button class="nav-item" data-page="venues" id="navVenues" hidden>Venues</button>
+      <button class="nav-item" data-page="zreads" id="navZReads" hidden>Z Reads</button>
+      <button class="nav-item" data-page="testdata" id="navTestData" hidden>Test Data</button>
+      <button class="nav-item" data-page="settings" id="navSettings" hidden>Settings</button>
     </nav>
     <div class="sidebar-footer">
       <div class="venue-switcher" id="venueSwitcherWrap" hidden>
         <select id="venueSwitchSelect"></select>
       </div>
       <div class="footer-row">
-        <div class="account-name" id="accountName"></div>
-        <button class="icon-btn" id="themeToggleBtn" title="Toggle theme">🌙</button>
+        <div class="account-name" id="accountName" hidden></div>
+        <span class="account-name">Theme</span>
+        <button class="icon-btn" id="themeToggleBtn" type="button" aria-label="Switch to light theme"></button>
       </div>
-      <button class="btn btn-ghost btn-block btn-sm" id="accountSignOutBtn">Sign out</button>
+      <button class="btn btn-ghost btn-block" id="accountSignOutBtn">Sign out</button>
     </div>
   </aside>
 
   <main class="main-content">
-    <div class="status" id="dbStatus">Connecting…</div>
+    <div class="status" id="dbStatus" role="status" hidden></div>
 
     <section class="page active" id="page-dashboard">
       <div class="page-header">
@@ -243,19 +268,25 @@ table.data-table tr:last-child td{border-bottom:0;}
           <button class="range-btn" data-range="custom">Custom</button>
           <span class="range-custom" id="rangeCustomInputs">
             <input type="date" id="rangeCustomFrom"> <span style="color:var(--text-muted);">to</span> <input type="date" id="rangeCustomTo">
-            <button class="btn btn-accent btn-sm" id="rangeCustomApply">Apply</button>
+            <button class="btn btn-solid btn-sm" id="rangeCustomApply">Show</button>
           </span>
         </div>
       </div>
       <div class="kpi-row">
-        <div class="kpi-tile"><div class="label">Revenue</div><div class="kpi-value tabular" id="kpiRevenue">£0.00</div></div>
-        <div class="kpi-tile"><div class="label">Orders</div><div class="kpi-value tabular" id="kpiOrders">0</div></div>
-        <div class="kpi-tile"><div class="label">Average Order</div><div class="kpi-value tabular" id="kpiAvg">£0.00</div></div>
+        <div class="kpi-tile"><div class="label">Takings</div><div class="kpi-value tabular" id="kpiRevenue">£0.00</div><div class="kpi-compare" id="kpiRevenueCmp"></div></div>
+        <div class="kpi-tile"><div class="label">Orders</div><div class="kpi-value tabular" id="kpiOrders">0</div><div class="kpi-compare" id="kpiOrdersCmp"></div></div>
+        <div class="kpi-tile"><div class="label">Average order</div><div class="kpi-value tabular" id="kpiAvg">£0.00</div><div class="kpi-compare" id="kpiAvgCmp"></div></div>
       </div>
       <div class="charts-row">
-        <div class="chart-card wide"><h3>Sales over time</h3><canvas id="chartTrend"></canvas></div>
-        <div class="chart-card"><h3>Top products</h3><canvas id="chartTop"></canvas></div>
-        <div class="chart-card"><h3>Cash vs Card</h3><canvas id="chartSplit"></canvas></div>
+        <div class="chart-card wide">
+          <h3 id="trendTitle">Takings by hour</h3>
+          <p class="chart-sub" id="trendSub"></p>
+          <div class="chart-legend" id="trendLegend"></div>
+          <div class="chart-box" id="trendBox"><canvas id="chartTrend" role="img" aria-label="Takings chart"></canvas></div>
+          <div class="chart-empty" id="trendEmpty" hidden>No sales in this period yet.</div>
+        </div>
+        <div class="chart-card"><h3>Top sellers</h3><p class="chart-sub">Number sold, and takings from each</p><div class="chart-box" id="topBox"><canvas id="chartTop" role="img" aria-label="Top sellers chart"></canvas></div><div class="chart-empty" id="topEmpty" hidden>No sales in this period yet.</div></div>
+        <div class="chart-card"><h3>Cash and card</h3><p class="chart-sub">After refunds</p><div class="split-figures" id="splitFigures"></div></div>
       </div>
       <div id="venueBreakdownWrap" hidden>
         <div class="section-title">By venue</div>
@@ -485,6 +516,9 @@ table.data-table tr:last-child td{border-bottom:0;}
     <h3 id="venueModalTitle">Add a venue</h3>
     <label class="field">Name</label>
     <input type="text" id="vmName" placeholder="e.g. Riverside Bar">
+    <label class="field" for="vmAccent">Screen colour</label>
+    <select id="vmAccent"></select>
+    <p class="note" style="margin-top:6px;">Shown across the top of the till, order screen and Backend, so staff can see which venue a screen is on.</p>
     <label class="row" style="border:0;padding:8px 0;">
       <span class="info"><span class="name">Venue Open</span><span class="sub">Off keeps assigned staff from signing in here or subscribing to its notifications.</span></span>
       <span class="switch"><input type="checkbox" id="vmActive" checked><span class="slider"></span></span>
@@ -514,6 +548,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
+hydrateIcons();
 
 /* ---------- state ---------- */
 let dbNs = null;
@@ -590,12 +625,11 @@ async function init(){
     dbNs = makeSupabaseDb(supabaseClient);
   } catch(e) { dbNs = null; supabaseClient = null; }
   if (!dbNs) {
-    statusEl.textContent = "No database connection.";
-    statusEl.className = "status bad";
+    statusEl.textContent = "Can't reach the database. Changes won't be saved.";
+    statusEl.hidden = false;
     return;
   }
-  statusEl.textContent = "Connected, changes save automatically.";
-  statusEl.className = "status ok";
+  statusEl.hidden = true;
 
   const session = await getSession();
   if (session) {
@@ -685,6 +719,8 @@ document.getElementById("venueSwitchSelect").addEventListener("change", async e 
 });
 function renderSidebarAccount(){
   document.getElementById("accountName").textContent = currentUser.name + (currentVenue ? " · " + currentVenue.name : "");
+  applyVenueIdentity(currentVenue, currentUser.name);
+  if (currentVenue) document.title = currentVenue.name + " · Backend";
 }
 document.getElementById("loginSubmitBtn").addEventListener("click", async () => {
   const pin = document.getElementById("loginPinInput").value.trim();
@@ -717,17 +753,24 @@ function showPage(page){
   currentPage = page;
   document.querySelectorAll(".page").forEach(el => el.classList.remove("active"));
   document.getElementById("page-" + page).classList.add("active");
-  document.querySelectorAll(".nav-item").forEach(el => el.classList.toggle("active", el.dataset.page === page));
+  document.querySelectorAll(".nav-item").forEach(el => {
+    el.classList.toggle("active", el.dataset.page === page);
+    if (el.dataset.page === page) el.setAttribute("aria-current", "page"); else el.removeAttribute("aria-current");
+  });
   closeSidebar();
 }
 document.querySelectorAll(".nav-item").forEach(el => el.addEventListener("click", () => showPage(el.dataset.page)));
 
 function openSidebar(){ document.getElementById("sidebar").classList.add("open"); document.getElementById("sidebarBackdrop").classList.add("show"); }
 function closeSidebar(){ document.getElementById("sidebar").classList.remove("open"); document.getElementById("sidebarBackdrop").classList.remove("show"); }
-document.getElementById("hamburgerBtn").addEventListener("click", openSidebar);
+document.getElementById("sidebarOpenBtn").addEventListener("click", openSidebar);
 document.getElementById("sidebarBackdrop").addEventListener("click", closeSidebar);
 
-function updateThemeBtn(){ document.getElementById("themeToggleBtn").textContent = getTheme() === "light" ? "☀️" : "🌙"; }
+function updateThemeBtn(){
+  const toLight = getTheme() !== "light", btn = document.getElementById("themeToggleBtn");
+  btn.innerHTML = icon(toLight ? "sun" : "moon");
+  btn.setAttribute("aria-label", toLight ? "Switch to light theme" : "Switch to dark theme");
+}
 document.getElementById("themeToggleBtn").addEventListener("click", () => {
   setTheme(getTheme() === "light" ? "dark" : "light");
   updateThemeBtn();
@@ -767,65 +810,174 @@ document.querySelectorAll(".range-btn").forEach(btn => btn.addEventListener("cli
 }));
 document.getElementById("rangeCustomApply").addEventListener("click", loadDashboard);
 
+// What each range is compared against. "Today" is compared with the same weekday last week, up to
+// the same time of day, so a half-finished shift is never set against a whole one.
+const WEEK_MS = 7 * 24 * 3600 * 1000;
+function comparisonFor(range, startMs, endMs){
+  if (range === "today") {
+    const d = new Date(startMs - WEEK_MS);
+    return { startMs: startMs - WEEK_MS, endMs: endMs - WEEK_MS, label: `${d.toLocaleDateString("en-GB", { weekday: "long" })} last week, up to ${fmtTime(endMs)}`, short: "Same day last week" };
+  }
+  const len = endMs - startMs;
+  if (len <= 36 * 3600 * 1000) {
+    const d = new Date(startMs - WEEK_MS);
+    return { startMs: startMs - WEEK_MS, endMs: endMs - WEEK_MS, label: `${d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}, a week earlier`, short: "Same day last week" };
+  }
+  const days = Math.round(len / (24 * 3600 * 1000));
+  return { startMs: startMs - len - 1, endMs: startMs - 1, label: `the ${days} days before`, short: `Previous ${days} days` };
+}
+function localDayKey(ts){ const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+function bucketTotals(sales, refunds, bucket, shiftMs){
+  const out = {};
+  const key = ts => bucket === "hour" ? new Date(ts + shiftMs).getHours() : localDayKey(ts + shiftMs);
+  sales.forEach(x => { const k = key(x.ts); out[k] = (out[k] || 0) + x.total; });
+  (refunds || []).forEach(r => { const k = key(r.ts); out[k] = (out[k] || 0) - r.pence; });
+  return out;
+}
+// Every hour/day in the range gets a bar (zero if nothing sold), so gaps show as gaps instead of
+// being squeezed out of the axis.
+function bucketAxis(startMs, endMs, bucket, cur, prev){
+  if (bucket === "hour") {
+    const hours = Object.keys(cur).concat(Object.keys(prev)).map(Number);
+    if (!hours.length) return [];
+    const lo = Math.min(...hours), hi = Math.max(...hours, ...(Object.keys(cur).length && endMs >= Date.now() - 60000 ? [new Date(endMs).getHours()] : []));
+    return Array.from({ length: hi - lo + 1 }, (_, i) => lo + i).map(h => ({ key: h, label: String(h).padStart(2, "0") + ":00" }));
+  }
+  const out = [];
+  for (let t = new Date(startMs).setHours(12, 0, 0, 0); t <= endMs; t += 24 * 3600 * 1000) {
+    const d = new Date(t);
+    out.push({ key: localDayKey(t), label: d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" }) });
+  }
+  return out;
+}
+function poundsShort(p){ const v = p / 100; return Math.abs(v) >= 1000 ? "£" + (v / 1000).toFixed(1) + "k" : "£" + Math.round(v); }
+function compareText(cur, prev, kind){
+  if (!prev) return cur ? "Nothing to compare with" : "";
+  const diff = cur - prev, pct = Math.round(Math.abs(diff) / Math.abs(prev) * 100);
+  const val = kind === "count" ? String(prev) : fmt(prev);
+  const dir = diff === 0 ? "the same as" : diff > 0 ? `up ${pct}% on` : `down ${pct}% on`;
+  return `<strong>${dir}</strong> ${val}`;
+}
+
+let lastDash = null;
 async function loadDashboard(){
   if (!currentVenue) return;
   const { startMs, endMs, bucket } = rangeToMs(currentRange);
+  const cmp = comparisonFor(currentRange, startMs, endMs);
   const isGlobalAdmin = !!(currentUser && currentUser.perms.globalAdmin);
   const venueIds = isGlobalAdmin ? myVenues.map(v => v.id) : [currentVenue.id];
-  const [sales, refunds] = await Promise.all([
+  const [sales, refunds, prevSales, prevRefunds] = await Promise.all([
     fetchSalesInRange(startMs, endMs, venueIds),
-    fetchRefundsInRange(startMs, endMs, venueIds)
+    fetchRefundsInRange(startMs, endMs, venueIds),
+    fetchSalesInRange(cmp.startMs, cmp.endMs, venueIds),
+    fetchRefundsInRange(cmp.startMs, cmp.endMs, venueIds)
   ]);
   const summary = computeSalesSummary(sales, refunds);
+  const prev = computeSalesSummary(prevSales, prevRefunds);
   document.getElementById("kpiRevenue").textContent = fmt(summary.grandTotal);
   document.getElementById("kpiOrders").textContent = summary.txCount;
   document.getElementById("kpiAvg").textContent = fmt(summary.avgOrderPence);
-
-  const trend = computeSalesTrend(sales, bucket, refunds);
-  const best = computeBestSellers(sales, 10, refunds);
+  document.getElementById("kpiRevenueCmp").innerHTML = compareText(summary.grandTotal, prev.grandTotal) + (prev.grandTotal ? `<br>${esc(cmp.label)}` : "");
+  document.getElementById("kpiOrdersCmp").innerHTML = compareText(summary.txCount, prev.txCount, "count");
+  document.getElementById("kpiAvgCmp").innerHTML = compareText(summary.avgOrderPence, prev.avgOrderPence);
 
   document.getElementById("venueBreakdownWrap").hidden = !isGlobalAdmin;
   if (isGlobalAdmin) {
     const rows = computeVenueBreakdown(sales, venues.length ? venues : myVenues);
-    document.querySelector("#venueBreakdownTable tbody").innerHTML = rows.map(r => `<tr><td>${r.name}</td><td>${fmt(r.total)}</td><td>${r.txCount}</td></tr>`).join("") || `<tr><td colspan="3" style="color:var(--text-muted);">No sales in this range.</td></tr>`;
+    document.querySelector("#venueBreakdownTable tbody").innerHTML = rows.map(r => `<tr><td>${esc(r.name)}</td><td>${fmt(r.total)}</td><td>${r.txCount}</td></tr>`).join("") || `<tr><td colspan="3" style="color:var(--text-muted);">No sales in this range.</td></tr>`;
   }
 
-  renderCharts(trend, best, summary);
+  const cur = bucketTotals(sales, refunds, bucket, 0);
+  const before = bucketTotals(prevSales, prevRefunds, bucket, startMs - cmp.startMs);
+  lastDash = { bucket, axis: bucketAxis(startMs, endMs, bucket, cur, before), cur, before, cmp, best: computeBestSellers(sales, 8, refunds), summary };
+  renderCharts();
 }
 
 function chartColors(){
   const style = getComputedStyle(document.documentElement);
-  return {
-    text: style.getPropertyValue("--text-muted").trim(),
-    grid: style.getPropertyValue("--border").trim(),
-    accent: style.getPropertyValue("--accent").trim(),
-    success: style.getPropertyValue("--success").trim()
-  };
+  const v = n => style.getPropertyValue(n).trim();
+  return { text: v("--text"), muted: v("--text-muted"), grid: v("--border"), venue: v("--venue") || "#7a5af0" };
 }
-let lastTrend = [], lastBest = [], lastSummary = null;
-function renderCharts(trend, best, summary){
-  if (trend) lastTrend = trend; if (best) lastBest = best; if (summary) lastSummary = summary;
-  const c = chartColors();
-  Chart.defaults.color = c.text;
+// Writes each bar's value next to it - managers read numbers, not bar heights.
+const valueLabelsPlugin = {
+  id: "valueLabels",
+  afterDatasetsDraw(chart, args, opts){
+    if (!opts || !opts.format) return;
+    const { ctx } = chart, horizontal = chart.options.indexAxis === "y";
+    const meta = chart.getDatasetMeta(opts.dataset || 0);
+    ctx.save();
+    ctx.fillStyle = opts.color; ctx.font = `700 ${opts.size || 12}px Inter, system-ui, sans-serif`;
+    meta.data.forEach((el, i) => {
+      const txt = opts.format(i); if (!txt) return;
+      if (horizontal) { ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText(txt, el.x + 8, el.y); }
+      else { ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText(txt, el.x, el.y - 4); }
+    });
+    ctx.restore();
+  }
+};
+function renderCharts(){
+  if (!lastDash) return;
+  const c = chartColors(), d = lastDash;
+  Chart.defaults.color = c.muted;
   Chart.defaults.font.family = "Inter";
+  Chart.defaults.font.size = 13;
   Object.values(charts).forEach(ch => ch && ch.destroy());
+  charts = {};
 
-  charts.trend = new Chart(document.getElementById("chartTrend"), {
-    type: "line",
-    data: { labels: lastTrend.map(t => t.label), datasets: [{ data: lastTrend.map(t => t.totalPence/100), borderColor: c.accent, backgroundColor: c.accent + "33", fill: true, tension: 0.3 }] },
-    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { color: c.grid } }, y: { grid: { color: c.grid }, ticks: { callback: v => "£" + v.toFixed(2) } } } }
-  });
-  charts.top = new Chart(document.getElementById("chartTop"), {
-    type: "bar",
-    data: { labels: lastBest.map(b => b.name), datasets: [{ data: lastBest.map(b => b.qty), backgroundColor: c.accent }] },
-    options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { grid: { color: c.grid } }, y: { grid: { display: false } } } }
-  });
-  const cashCard = lastSummary || { cashTotal: 0, cardTotal: 0 };
-  charts.split = new Chart(document.getElementById("chartSplit"), {
-    type: "doughnut",
-    data: { labels: ["Cash", "Card"], datasets: [{ data: [cashCard.cashTotal/100, cashCard.cardTotal/100], backgroundColor: [c.success, c.accent] }] },
-    options: { plugins: { legend: { position: "bottom" } } }
-  });
+  // Takings by hour/day: this period vs the comparison, side by side, real values only.
+  document.getElementById("trendTitle").textContent = d.bucket === "hour" ? "Takings by hour" : "Takings by day";
+  document.getElementById("trendSub").textContent = `Compared with ${d.cmp.label}`;
+  document.getElementById("trendLegend").innerHTML = `<span><i style="background:${c.venue}"></i>${currentRange === "today" ? "Today" : "This period"}</span><span><i style="background:${c.muted};opacity:.45"></i>${esc(d.cmp.short)}</span>`;
+  const hasTrend = d.axis.length > 0;
+  document.getElementById("trendEmpty").hidden = hasTrend;
+  document.getElementById("trendBox").hidden = !hasTrend;
+  if (hasTrend) {
+    const curVals = d.axis.map(a => (d.cur[a.key] || 0) / 100), prevVals = d.axis.map(a => (d.before[a.key] || 0) / 100);
+    const fewBars = d.axis.length <= 16;
+    charts.trend = new Chart(document.getElementById("chartTrend"), {
+      type: "bar",
+      data: { labels: d.axis.map(a => a.label), datasets: [
+        { label: currentRange === "today" ? "Today" : "This period", data: curVals, backgroundColor: c.venue, borderRadius: 4, maxBarThickness: 46 },
+        { label: d.cmp.short, data: prevVals, backgroundColor: c.muted + "73", borderRadius: 4, maxBarThickness: 46 }
+      ] },
+      options: {
+        animation: false, maintainAspectRatio: false, layout: { padding: { top: 22 } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: £${ctx.parsed.y.toFixed(2)}` } },
+          valueLabels: { color: c.text, size: fewBars ? 12 : 10, format: i => curVals[i] ? poundsShort(curVals[i] * 100) : "" } },
+        scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: c.grid }, ticks: { callback: v => "£" + v } } }
+      },
+      plugins: [valueLabelsPlugin]
+    });
+  }
+
+  // Top sellers: bar length = number sold, label = number sold and takings.
+  const best = d.best.filter(b => b.qty > 0);
+  document.getElementById("topEmpty").hidden = best.length > 0;
+  document.getElementById("topBox").hidden = !best.length;
+  document.getElementById("topBox").style.height = (best.length * 46 + 40) + "px";
+  if (best.length) {
+    const maxQty = Math.max(...best.map(b => b.qty));
+    charts.top = new Chart(document.getElementById("chartTop"), {
+      type: "bar",
+      data: { labels: best.map(b => b.name), datasets: [{ data: best.map(b => b.qty), backgroundColor: c.venue, borderRadius: 4, maxBarThickness: 30 }] },
+      options: {
+        indexAxis: "y", animation: false, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${best[ctx.dataIndex].qty} sold, ${fmt(best[ctx.dataIndex].revenue)}` } },
+          valueLabels: { color: c.text, size: 12, format: i => `${best[i].qty} · ${fmt(best[i].revenue)}` } },
+        scales: { x: { beginAtZero: true, suggestedMax: maxQty * 1.6, grid: { color: c.grid }, ticks: { precision: 0 } }, y: { grid: { display: false }, ticks: { color: c.text } } }
+      },
+      plugins: [valueLabelsPlugin]
+    });
+  }
+
+  // Cash and card: two real figures and their share - no chart needed for two numbers.
+  const s2 = d.summary, all = s2.cashTotal + s2.cardTotal;
+  const pct = v => all > 0 ? Math.round(v / all * 100) + "%" : "–";
+  document.getElementById("splitFigures").innerHTML = `
+    <div class="split-row"><span class="k">Card</span><span><span class="v">${fmt(s2.cardTotal)}</span><span class="pct">${pct(s2.cardTotal)}</span></span></div>
+    <div class="split-row"><span class="k">Cash</span><span><span class="v">${fmt(s2.cashTotal)}</span><span class="pct">${pct(s2.cashTotal)}</span></span></div>
+    ${all > 0 ? `<div class="split-bar" aria-hidden="true"><div class="cash" style="width:${s2.cashTotal / all * 100}%"></div><div class="card" style="flex:1"></div></div>` : ""}
+    ${s2.refundTotal ? `<div class="oc-muted">${fmt(s2.refundTotal)} refunded in this period</div>` : ""}`;
 }
 
 /* ---------- Products: Catalogue ---------- */
@@ -986,7 +1138,7 @@ function renderProductRow(it, cat){
         it.pence = Math.round(parseFloat(panel.querySelector(".edit-flat").value)*100);
       }
       await catalogueItemsStore.save(it);
-      e.target.textContent = "Saved ✓";
+      e.target.textContent = "Saved";
       setTimeout(() => { renderProductsList(); }, 700);
     });
   });
@@ -1142,8 +1294,8 @@ function renderCategoriesList(){
         <div class="name"><input type="text" class="cat-name-input" value="${cat.name.replace(/"/g,"&quot;")}" style="width:auto;display:inline-block;padding:4px 8px;font-size:13.5px;font-weight:600;"></div>
         <div class="sub">${itemCount} item${itemCount===1?"":"s"} · ${cat.mode === "food" ? "Food" : "Drinks"}${cat.isSpirit ? " · Spirit" : ""}${cat.isBeer ? " · Draught" : ""}</div>
       </div>
-      <button type="button" class="btn btn-ghost btn-sm move-up-btn" ${idx===0?"disabled":""}>↑</button>
-      <button type="button" class="btn btn-ghost btn-sm move-down-btn" ${idx===cats.length-1?"disabled":""}>↓</button>
+      <button type="button" class="btn btn-ghost btn-sm move-up-btn" aria-label="Move ${esc(cat.name)} up" ${idx===0?"disabled":""}>${icon("up")}</button>
+      <button type="button" class="btn btn-ghost btn-sm move-down-btn" aria-label="Move ${esc(cat.name)} down" ${idx===cats.length-1?"disabled":""}>${icon("down")}</button>
       <button type="button" class="btn btn-danger btn-sm del-cat-btn">Delete</button>`;
     row.querySelector(".cat-name-input").addEventListener("change", async e => {
       cat.name = e.target.value.trim() || cat.name;
@@ -1365,7 +1517,7 @@ function renderVenues(){
     const row = document.createElement("div");
     row.className = "list-row";
     row.innerHTML = `
-      <div class="info"><div class="name">${v.name}${closed ? ` <span class="pill" style="color:var(--danger);border-color:var(--danger);">Closed</span>` : ""}</div><div class="sub">${staffCount} staff assigned</div></div>
+      <div class="info"><div class="name"><span class="venue-swatch" style="display:inline-block;vertical-align:-4px;margin-right:8px;background:${VENUE_ACCENTS[venueAccentKey(v)].color}"></span>${esc(v.name)}${closed ? ` <span class="pill" style="color:var(--danger);border-color:var(--danger);">Closed</span>` : ""}</div><div class="sub">${staffCount} staff assigned · ${VENUE_ACCENTS[venueAccentKey(v)].label}</div></div>
       <div class="actions">
         <button type="button" class="btn btn-ghost btn-sm" data-act="edit">Edit</button>
         <button type="button" class="btn btn-danger btn-sm" data-act="delete">Delete</button>
@@ -1380,6 +1532,10 @@ function openVenueModal(mode, venue){
   document.getElementById("venueModalTitle").textContent = mode === "edit" ? "Edit venue" : "Add a venue";
   document.getElementById("vmName").value = venue ? venue.name : "";
   document.getElementById("vmActive").checked = venue ? venue.active !== false : true;
+  const autoKey = venue ? venueAccentKey({ ...venue, accent: null }) : VENUE_ACCENT_KEYS[(venueCreationOrder || []).length % VENUE_ACCENT_KEYS.length];
+  document.getElementById("vmAccent").innerHTML = `<option value="">Automatic (${VENUE_ACCENTS[autoKey].label})</option>` +
+    VENUE_ACCENT_KEYS.map(k => `<option value="${k}">${VENUE_ACCENTS[k].label}</option>`).join("");
+  document.getElementById("vmAccent").value = venue && venue.accent && VENUE_ACCENTS[venue.accent] ? venue.accent : "";
   document.getElementById("vmWebhookOrder").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.order || "") : "";
   document.getElementById("vmWebhookZread").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.zread || "") : "";
   document.getElementById("vmWebhookStop").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.stop || "") : "";
@@ -1393,19 +1549,23 @@ document.getElementById("venueModalSave").addEventListener("click", async () => 
   const name = document.getElementById("vmName").value.trim();
   if (!name) { alert("Enter a name."); return; }
   const active = document.getElementById("vmActive").checked;
+  const accent = document.getElementById("vmAccent").value || null;
   const discordWebhooks = {
     order: document.getElementById("vmWebhookOrder").value.trim() || null,
     zread: document.getElementById("vmWebhookZread").value.trim() || null,
     stop: document.getElementById("vmWebhookStop").value.trim() || null
   };
   let venueId = editingVenue ? editingVenue.id : ("venue_" + Date.now());
+  venueCreationOrder = null; // a new venue changes the automatic colours
+  if (currentVenue && currentVenue.id === venueId) { currentVenue.accent = accent; currentVenue.name = name; }
+  const mine = myVenues.find(v => v.id === venueId); if (mine) { mine.accent = accent; mine.name = name; }
   if (editingVenue) {
     // Re-fetch right before writing so fields this form doesn't manage aren't clobbered by a stale copy.
     const { data: freshVenue } = await supabaseClient.from("venues").select("data").eq("id", venueId).maybeSingle();
-    const { error } = await supabaseClient.from("venues").update({ data: { ...(freshVenue ? freshVenue.data : editingVenue), name, active, discordWebhooks } }).eq("id", venueId);
+    const { error } = await supabaseClient.from("venues").update({ data: { ...(freshVenue ? freshVenue.data : editingVenue), name, active, discordWebhooks, accent } }).eq("id", venueId);
     if (error) { alert(error.message); return; }
   } else {
-    const { error } = await supabaseClient.from("venues").insert({ id: venueId, ts: Date.now(), data: { name, discordWebhooks, active } });
+    const { error } = await supabaseClient.from("venues").insert({ id: venueId, ts: Date.now(), data: { name, discordWebhooks, active, accent } });
     if (error) { alert(error.message); return; }
   }
   // Reconcile assigned-staff checkboxes against each user's own venueIds.
@@ -1516,7 +1676,7 @@ document.getElementById("saveSessionSettingsBtn").addEventListener("click", asyn
   const res = await saveAppSettings({ sessionTimeoutMinutes: enabled ? minutes : null });
   if (res.error) { alert(res.error); return; }
   const btn = document.getElementById("saveSessionSettingsBtn");
-  btn.textContent = "Saved ✓"; setTimeout(() => { btn.textContent = "Save"; }, 1200);
+  btn.textContent = "Saved"; setTimeout(() => { btn.textContent = "Save"; }, 1200);
 });
 function renderLockdownButtons(){
   const suspendBtn = document.getElementById("toggleSuspendBtn");

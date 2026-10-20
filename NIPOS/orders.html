@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en-GB">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -34,13 +34,21 @@
 }
 *{box-sizing:border-box;}
 [hidden]{display:none !important;}
-body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;margin:0;padding:16px;padding-bottom:40px;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;margin:0;padding:0 0 40px;}
+.orders-band{position:sticky;top:0;z-index:30;}
+.orders-wrap{padding:12px 16px;max-width:1400px;margin:0 auto;}
+.list-title{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:18px;margin:14px 0 0;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.list-title .count{font-family:'Inter',system-ui,sans-serif;font-size:14px;font-weight:600;color:var(--text-muted);}
+.alerts-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px 8px 8px 14px;margin-top:10px;}
+.alerts-banner .msg{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;}
+.alerts-banner .btn{flex:0 0 auto;}
+.stock-state{font-size:13px;font-weight:700;color:var(--text-muted);margin-left:auto;margin-right:10px;}
+.stock-row.on .stock-state{color:var(--danger);}
 h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;}
-.status{font-size:12px;color:var(--text-muted);margin-bottom:16px;}
-.status.ok{color:var(--success);}
-.status.bad{color:var(--danger);}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:16px;}
+.status{font-size:14px;font-weight:700;margin-top:10px;padding:10px 12px;border-radius:10px;}
+.status.bad{color:var(--text);background:var(--danger-soft);border:1px solid var(--danger);}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:12px;align-items:start;}
 .order-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow);}
 .order-card.flagged{border-color:var(--danger);background:var(--danger-soft);}
 .order-card.ready{border-color:var(--success);background:var(--success-soft);}
@@ -80,7 +88,9 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .modal-item-list .btn{flex:none;text-align:left;}
 .chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
 .chip{border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-weight:700;font-size:13px;padding:8px 14px;border-radius:999px;cursor:pointer;}
-.chip.active{background:var(--danger-soft);border-color:var(--danger);color:var(--danger);}
+.chip{min-height:44px;}
+.chip.active{background:var(--sel-bg);border-color:var(--sel-bg);color:var(--sel-ink);}
+.chip.active::before{content:"";display:inline-block;width:.55em;height:.3em;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg) translateY(-.15em);margin-right:.45em;}
 .sub-chosen{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-weight:700;}
 .sub-chosen[hidden]{display:none;}
 .sub-chosen .btn{width:auto;flex:none;padding:6px 12px;font-size:12.5px;}
@@ -93,12 +103,12 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .login-card input{width:100%;padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:22px;text-align:center;font-weight:700;letter-spacing:4px;margin-bottom:14px;}
 .account-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
 .account-row .btn{width:auto;flex:none;padding:9px 14px;font-size:13px;}
-.toolbar-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
-.toolbar-row .btn{width:auto;flex:none;padding:8px 14px;font-size:13px;}
+.toolbar-row{display:flex;gap:8px;flex-wrap:wrap;}
+.toolbar-row .btn{flex:1 1 160px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:15px;}
 .toolbar-row[hidden]{display:none;}
 .placed-by{font-size:11.5px;color:var(--text-muted);margin-bottom:6px;}
 .order-notes{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:10px;}
-.stock-cat{font-size:12px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin:16px 0 4px;}
+.stock-cat{font-size:15px;color:var(--text);font-weight:800;margin:16px 0 4px;}
 .stock-cat:first-child{margin-top:0;}
 .stock-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:14px;}
 .stock-row:last-child{border-bottom:0;}
@@ -106,9 +116,10 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;padding:0;border:0;cursor:pointer;-webkit-appearance:none;appearance:none;}
 .switch .slider{position:absolute;inset:0;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;transition:.15s;pointer-events:none;}
 .switch .slider::before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:var(--text);opacity:.85;border-radius:50%;transition:.15s;}
-.switch input:checked + .slider{background:var(--accent);border-color:var(--accent);}
-.switch input:checked + .slider::before{transform:translateX(18px);background:var(--accent-ink);opacity:1;}
+.switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
+.switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
+<link rel="stylesheet" href="nipos.css">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -127,27 +138,40 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
     <button class="btn btn-ghost" id="venuePickerLogoutBtn">Sign out</button>
   </div>
 </div>
-<div class="topbar">
-  <h1>Open Orders</h1>
-</div>
-<div class="account-row">
-  <div id="accountName" style="font-weight:700;font-size:13.5px;"></div>
-  <div style="display:flex;gap:8px;flex:0 0 auto;">
-    <button class="btn btn-ghost" id="switchVenueBtn" hidden>Switch venue</button>
-    <button class="btn btn-ghost" id="themeToggleBtn" title="Toggle theme">🌙</button>
-    <button class="btn btn-ghost" id="accountSignOutBtn">Sign out</button>
+<header class="venue-band orders-band">
+  <div class="grow">
+    <h1 class="venue-name" data-venue-name>Order screen</h1>
+    <span class="staff-name" data-staff-name></span>
+  </div>
+  <button class="band-btn" id="switchVenueBtn" type="button" hidden>Switch venue</button>
+  <button class="band-btn" id="themeToggleBtn" type="button" aria-label="Switch to light theme"></button>
+  <button class="band-btn" id="accountSignOutBtn" type="button">Sign out</button>
+</header>
+<div id="accountName" hidden></div>
+<main class="orders-wrap">
+  <div class="toolbar-row" id="toolbarRow">
+    <button class="btn btn-solid" id="stockBtn" type="button" hidden><span data-icon="stop"></span>Products on stop</button>
+    <button class="btn btn-solid" id="serviceBtn" type="button"><span data-icon="bell"></span>Call for service</button>
+  </div>
+  <div class="alerts-banner" id="alertsRow">
+    <div class="msg"><span data-icon="bell"></span><span id="alertsStatus">Turn on alerts to hear new orders</span></div>
+    <button class="btn btn-solid" id="enableAlertsBtn" type="button">Turn on alerts</button>
+  </div>
+  <div class="status" id="dbStatus" role="status" hidden></div>
+  <h2 class="list-title">Open orders <span class="count" id="orderCount"></span></h2>
+  <div class="grid" id="grid"></div>
+</main>
+
+<div class="modal-overlay" id="confirmModal" hidden>
+  <div class="modal-card" role="alertdialog" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
+    <h3 id="confirmTitle"></h3>
+    <p id="confirmMessage"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="confirmCancel" type="button">Cancel</button>
+      <button class="btn btn-danger-solid" id="confirmOk" type="button"></button>
+    </div>
   </div>
 </div>
-<div class="toolbar-row" id="toolbarRow">
-  <button class="btn btn-ghost" id="stockBtn" type="button" hidden>🛑 Products on Stop</button>
-  <button class="btn btn-accent" id="serviceBtn" type="button">🔔 Service</button>
-</div>
-<div class="sound-row" id="alertsRow">
-  <div id="alertsStatus" style="font-size:12.5px;color:var(--text-muted);">🔕 Tap to get a sound + alert when a new order comes in</div>
-  <button class="btn btn-accent" id="enableAlertsBtn">Enable alerts</button>
-</div>
-<div class="status" id="dbStatus">Connecting…</div>
-<div class="grid" id="grid"></div>
 
 <div class="modal-overlay" id="stockModal" hidden>
   <div class="modal-card" style="max-width:480px;">
@@ -166,8 +190,8 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
     <h3>Call for service</h3>
     <p><span id="serviceOnlineCount">0</span> online now</p>
     <div class="chip-row" style="margin-bottom:10px;">
-      <button type="button" class="btn btn-accent btn-sm" id="serviceTabPeople">People</button>
-      <button type="button" class="btn btn-ghost btn-sm" id="serviceTabGroups">Groups</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="serviceTabPeople" aria-pressed="true">People</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="serviceTabGroups" aria-pressed="false">Groups</button>
     </div>
     <div class="modal-item-list" id="serviceUserList"></div>
     <div class="modal-item-list" id="serviceGroupList" hidden></div>
@@ -203,8 +227,8 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
       <h3>How should this be handled?</h3>
       <p>Offer a refund, or swap in a substitute at no extra charge.</p>
       <div class="chip-row" id="flagIntentChips">
-        <button type="button" class="chip" data-intent="refund">Offer Refund</button>
-        <button type="button" class="chip" data-intent="substitute">Substitute</button>
+        <button type="button" class="chip" data-intent="refund">Refund it</button>
+        <button type="button" class="chip" data-intent="substitute">Offer something else, free</button>
       </div>
       <div id="flagSubPickerWrap" hidden>
         <input type="text" id="flagSubSearch" placeholder="Search for a substitute…">
@@ -220,7 +244,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
       </div>
       <div class="modal-actions">
         <button class="btn btn-ghost" id="flagCancel3">Cancel</button>
-        <button class="btn btn-danger" id="flagConfirm">Flag item</button>
+        <button class="btn btn-danger-solid" id="flagConfirm">Report problem</button>
       </div>
     </div>
   </div>
@@ -230,6 +254,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 <script src="db.js"></script>
 <script>
 initTheme();
+hydrateIcons();
 const LS_ORDERS = "starlightTill.openOrders.v1";
 const LS_STOPS = "starlightTill.stops.v1";
 const LS_NOTIFICATIONS = "starlightTill.notifications.v1";
@@ -273,7 +298,10 @@ function applyLoginState(){
   if (u && u.perms.orderScreen) {
     document.getElementById("loginGate").hidden = true;
     document.getElementById("accountName").textContent = "Signed in as " + u.name + (currentVenue ? " · " + currentVenue.name : "");
+    applyVenueIdentity(currentVenue, u.name);
+    if (currentVenue) document.title = currentVenue.name + " · Orders";
   } else {
+    applyVenueIdentity(null);
     document.getElementById("loginGate").hidden = false;
     document.getElementById("loginMessage").textContent = u ? `Signed in as ${u.name}, but no Order Screen access.` : "Enter your PIN for Order Screen access.";
   }
@@ -282,12 +310,13 @@ function applyLoginState(){
   document.getElementById("serviceBtn").hidden = !(u && u.perms.callToService);
 }
 function renderVenuePicker(){
+  if (!venueCreationOrder) { loadVenueCreationOrder().then(renderVenuePicker); }
   const wrap = document.getElementById("venuePickerList");
   wrap.innerHTML = "";
   myVenues.forEach(v => {
     const btn = document.createElement("button");
-    btn.type = "button"; btn.className = "btn btn-accent"; btn.style.marginBottom = "8px";
-    btn.textContent = v.name;
+    btn.type = "button"; btn.className = "btn btn-solid venue-choice"; btn.style.marginBottom = "8px"; btn.style.width = "100%";
+    btn.innerHTML = `<span class="venue-swatch" style="background:${VENUE_ACCENTS[venueAccentKey(v)].color}"></span>${esc(v.name)}`;
     btn.addEventListener("click", async () => { setCurrentVenueId(v.id); await resolveVenueSelection(); });
     wrap.appendChild(btn);
   });
@@ -334,16 +363,31 @@ async function signOutOrders(){
   applyLoginState();
 }
 document.getElementById("accountSignOutBtn").addEventListener("click", signOutOrders);
-function updateThemeBtn(){ document.getElementById("themeToggleBtn").textContent = getTheme() === "light" ? "☀️" : "🌙"; }
+function updateThemeBtn(){
+  const toLight = getTheme() !== "light", btn = document.getElementById("themeToggleBtn");
+  btn.innerHTML = icon(toLight ? "sun" : "moon");
+  btn.setAttribute("aria-label", toLight ? "Switch to light theme" : "Switch to dark theme");
+}
 document.getElementById("themeToggleBtn").addEventListener("click", () => { setTheme(getTheme() === "light" ? "dark" : "light"); updateThemeBtn(); });
 updateThemeBtn();
 document.getElementById("venuePickerLogoutBtn").addEventListener("click", signOutOrders);
 document.getElementById("switchVenueBtn").addEventListener("click", () => { currentVenue = null; applyLoginState(); });
 
 function fmt(pence){ return "£" + (pence/100).toFixed(2); }
-function formatTime(ts){
-  const d = new Date(ts);
-  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+function formatTime(ts){ return fmtTime(ts); }
+
+// Small confirm dialog for anything that moves money.
+function askConfirm({ title, message, confirmLabel }){
+  return new Promise(resolve => {
+    const m = document.getElementById("confirmModal");
+    document.getElementById("confirmTitle").textContent = title;
+    document.getElementById("confirmMessage").textContent = message;
+    const ok = document.getElementById("confirmOk"), cancel = document.getElementById("confirmCancel");
+    ok.textContent = confirmLabel;
+    const done = v => { m.hidden = true; ok.onclick = cancel.onclick = null; resolve(v); };
+    ok.onclick = () => done(true); cancel.onclick = () => done(false);
+    m.hidden = false; cancel.focus();
+  });
 }
 
 async function loadDoc(key, fallback){
@@ -436,8 +480,8 @@ function refreshAlertsRow(){
   const denied = ("Notification" in window) && Notification.permission === "denied";
   document.getElementById("alertsRow").hidden = granted;
   document.getElementById("alertsStatus").textContent = denied
-    ? "🔕 Notifications are blocked for this app - enable them in your browser's site settings to get sound + alerts"
-    : "🔕 Tap to get a sound + alert when a new order comes in";
+    ? "Alerts are blocked. Turn them on in your browser's site settings."
+    : "Turn on alerts to hear new orders";
   if (granted) enablePush(); // re-confirm the push subscription's still registered, no prompt shown
 }
 document.getElementById("enableAlertsBtn").addEventListener("click", async () => {
@@ -469,11 +513,11 @@ function checkOrderChanges(){
     const label = o.table ? `Table ${o.table}` : "Order";
     const prev = knownOrderStates.get(o.id);
     if (!prev) {
-      if (!o.delivered) alertUser("🔔 New order", `${label}: ${o.items.map(i => `${i.qty}× ${i.name}`).join(", ")}`);
+      if (!o.delivered) alertUser("New order", `${label}: ${o.items.map(i => `${i.qty}× ${i.name}`).join(", ")}`);
       return;
     }
-    if (!prev.flagged && o.flagged) alertUser("⚠ Order flagged", `${label}: ${o.flagItem}, ${o.flagReason}`);
-    if (!prev.ready && o.ready) alertUser("✅ Ready for delivery", label);
+    if (!prev.flagged && o.flagged) alertUser("Problem reported", `${label}: ${o.flagItem}, ${o.flagReason}`);
+    if (!prev.ready && o.ready) alertUser("Ready to take out", label);
   });
   knownOrderStates = stateNow;
 }
@@ -481,7 +525,7 @@ function checkOrderChanges(){
 let knownStops = null;
 function checkStopChanges(newStops){
   if (knownStops === null) { knownStops = newStops; return; }
-  [...newStops].filter(name => !knownStops.has(name)).forEach(name => alertUser("🛑 Now on stop", name));
+  [...newStops].filter(name => !knownStops.has(name)).forEach(name => alertUser("Now on stop", name));
   knownStops = newStops;
 }
 
@@ -523,6 +567,7 @@ async function pullOrders(){
   if (!dbNs || !currentVenueId) return;
   const fetchedOrders = await ordersStore.fetchAll();
   if (fetchedOrders) openOrders = fetchedOrders;
+  setConnectionProblem(fetchedOrders === null && !!currentUser);
   venueStaff = await fetchVenueStaff();
   const stopRows = await stopsStore.fetchAll();
   const pulledStops = stopRows ? stopRows.map(r => r.name) : [...stops];
@@ -537,6 +582,14 @@ async function pullOrders(){
   if (!document.getElementById("stockModal").hidden) renderStockList();
 }
 
+let connectionFailures = 0;
+function setConnectionProblem(failed){
+  // One missed poll is normal on venue Wi-Fi; say something after a few in a row.
+  connectionFailures = failed ? connectionFailures + 1 : 0;
+  const el = document.getElementById("dbStatus");
+  el.hidden = connectionFailures < 3;
+  if (!el.hidden) { el.textContent = "Can't reach the database. These orders may be out of date."; el.className = "status bad"; }
+}
 async function init(){
   await loadCatalogue();
   const statusEl = document.getElementById("dbStatus");
@@ -545,12 +598,12 @@ async function init(){
     dbNs = makeSupabaseDb(supabaseClient);
   } catch(e) { dbNs = null; supabaseClient = null; }
   if (!dbNs) {
-    statusEl.textContent = "No database connection.";
+    statusEl.textContent = "Can't reach the database. Orders on this screen won't update.";
     statusEl.className = "status bad";
+    statusEl.hidden = false;
     return;
   }
-  statusEl.textContent = "Connected, updates automatically.";
-  statusEl.className = "status ok";
+  statusEl.hidden = true;
   const session = await getSession();
   if (session) {
     currentUser = await fetchMyStaffRow();
@@ -568,59 +621,39 @@ async function init(){
   setInterval(() => { if (currentVenue && currentUser) sendHeartbeat(currentUserId, currentUser.name); }, 45000);
 }
 
+const flaggedSaleCache = new Map(); // order id -> { sale, itemIdx, pence } | { missing: true }
+async function loadRefundFor(o){
+  if (flaggedSaleCache.has(o.id)) return;
+  flaggedSaleCache.set(o.id, null);
+  const sale = await fetchSaleForOrder(o);
+  const itemIdx = sale ? sale.items.findIndex(i => i.name === o.flagItem && !i.refunded) : -1;
+  flaggedSaleCache.set(o.id, itemIdx === -1 ? { missing: true } : { sale, itemIdx, pence: refundAmountFor(sale, sale.items[itemIdx]) });
+  render();
+}
 function render(){
   const wrap = document.getElementById("grid");
   wrap.innerHTML = "";
-  const list = openOrders.slice()
-    .sort((a,b) => (b.flagged - a.flagged) || ((b.ready?1:0) - (a.ready?1:0)) || (b.ts - a.ts));
+  const list = sortOrdersByPriority(openOrders.filter(o => !o.delivered));
+  const problems = list.filter(o => o.flagged).length, ready = list.filter(o => o.ready && !o.flagged).length;
+  document.getElementById("orderCount").textContent = list.length
+    ? [`${list.length} open`, problems ? `${problems} problem${problems === 1 ? "" : "s"}` : "", ready ? `${ready} ready` : ""].filter(Boolean).join(" · ")
+    : "";
   if (!list.length) { wrap.innerHTML = `<div class="empty">Nothing open right now.</div>`; return; }
-  list.forEach(o => {
-    const card = document.createElement("div");
-    const subItem = o.items.find(i => i.substituted);
-    card.className = "order-card" + (o.flagged ? " flagged" : (subItem ? " substituted" : (o.ready ? " ready" : "")));
-    const itemsText = o.items.map(i => i.substituted ? `${i.qty}× ${i.name} (£0.00, sub for ${i.subFor})` : `${i.qty}× ${i.name}`).join(", ");
-    card.innerHTML = `
-      <div class="order-head">
-        <span class="order-table">${o.table ? "Table " + o.table : "No table"}</span>
-        <span class="order-time">${formatTime(o.ts)}</span>
-        <span class="pill pill-${o.method}">${o.method === "cash" ? "Cash" : "Card"}</span>
-      </div>
-      ${o.placedBy ? `<div class="placed-by">Placed by ${o.placedBy}</div>` : ""}
-      <div class="order-items">${itemsText}</div>
-      ${o.notes ? `<div class="order-notes">📝 ${o.notes}</div>` : ""}
-      ${o.flagged ? `<div class="order-flag">⚠ ${o.flagItem}: ${o.flagReason}${o.flagIntent === "substitute" && o.flagSubstitute ? ", offer " + o.flagSubstitute + " instead" : (o.flagIntent === "refund" ? ", refund suggested" : "")}</div>` : ""}
-      ${!o.flagged && subItem ? `<div class="order-sub-note">✓ Substituted ${subItem.name} for ${subItem.subFor}, free</div>` : ""}
-      <div class="order-actions"></div>`;
-    const actions = card.querySelector(".order-actions");
-    if (o.flagged) {
-      if (o.flagIntent !== "refund") {
-        const acceptBtn = document.createElement("button");
-        acceptBtn.className = "btn btn-ghost"; acceptBtn.textContent = "Accepted";
-        acceptBtn.addEventListener("click", () => resolveFlag(o.id, "accepted"));
-        actions.appendChild(acceptBtn);
-      }
-      const refundBtn = document.createElement("button");
-      refundBtn.className = "btn btn-danger"; refundBtn.textContent = "Refunded";
-      refundBtn.addEventListener("click", () => resolveFlag(o.id, "refunded"));
-      actions.appendChild(refundBtn);
-    } else {
-      const flagBtn = document.createElement("button");
-      flagBtn.className = "btn btn-ghost"; flagBtn.textContent = "Flag issue";
-      flagBtn.addEventListener("click", () => openFlagModal(o.id));
-      actions.appendChild(flagBtn);
-      if (o.ready) {
-        const deliverBtn = document.createElement("button");
-        deliverBtn.className = "btn btn-success"; deliverBtn.textContent = "Mark Delivered";
-        deliverBtn.addEventListener("click", () => markDelivered(o.id));
-        actions.appendChild(deliverBtn);
-      } else {
-        const readyBtn = document.createElement("button");
-        readyBtn.className = "btn btn-accent"; readyBtn.textContent = "Ready for Delivery";
-        readyBtn.addEventListener("click", () => markReady(o.id));
-        actions.appendChild(readyBtn);
-      }
-    }
-    wrap.appendChild(card);
+  const canRefund = !!(currentUser && currentUser.perms.processRefunds);
+  list.forEach((o, i) => {
+    if (o.flagged && canRefund) loadRefundFor(o);
+    const r = flaggedSaleCache.get(o.id);
+    wrap.appendChild(buildOrderCard(o, {
+      isNext: i === 0,
+      canRefund,
+      refundPence: r ? (r.missing ? undefined : r.pence) : null,
+      onReady: () => markReady(o.id),
+      onDeliver: () => markDelivered(o.id),
+      onFlag: () => openFlagModal(o.id),
+      onAccept: () => resolveFlag(o.id, "accepted"),
+      onRefund: () => resolveFlag(o.id, "refunded"),
+      onClose: () => resolveFlag(o.id, "closed")
+    }));
   });
 }
 
@@ -637,10 +670,36 @@ async function markReady(id){
   render();
 }
 async function resolveFlag(id, outcome){
+  const o = openOrders.find(x => x.id === id);
   if (outcome === "refunded") {
+    const r = flaggedSaleCache.get(id);
+    if (!o || !r) return;
+    if (r.missing) {
+      // The sale isn't in this shift's records (e.g. logged on a device that was offline) - fall back
+      // to the old route rather than guessing an amount.
+      openOrders = openOrders.filter(x => x.id !== id);
+      await ordersStore.remove(id);
+      showToast("Order closed. Find the sale in the till's Past Orders to refund it.");
+      render();
+      return;
+    }
+    const item = r.sale.items[r.itemIdx];
+    const ok = await askConfirm({ title: `Refund £${(r.pence / 100).toFixed(2)}?`, message: `${item.qty} × ${item.name}, ${orderLabel(o)}, paid by ${r.sale.method === "cash" ? "cash" : "card"}. Give the customer £${(r.pence / 100).toFixed(2)} back, then confirm.`, confirmLabel: `Refund £${(r.pence / 100).toFixed(2)}` });
+    if (!ok) return;
+    const res = await refundSaleLine(r.sale.id, r.itemIdx);
+    if (res.error) { showToast(res.error); return; }
+    logRefundToDiscordFor(currentVenue, currentUser ? currentUser.name : null, res.refundRow, res.sale);
+    flaggedSaleCache.delete(id);
     openOrders = openOrders.filter(x => x.id !== id);
     await ordersStore.remove(id);
-    showToast("Removed, process the refund from the till's Past Orders");
+    showToast(`Refunded £${(res.refundRow.pence / 100).toFixed(2)}, ${orderLabel(o)} closed`);
+    render();
+    return;
+  }
+  if (outcome === "closed") {
+    openOrders = openOrders.filter(x => x.id !== id);
+    await ordersStore.remove(id);
+    showToast("Order closed. Ask a manager to refund it from the till's Past Orders.");
     render();
     return;
   }
@@ -875,14 +934,14 @@ function renderServiceGroups(){
   });
 }
 document.getElementById("serviceTabPeople").addEventListener("click", () => {
-  document.getElementById("serviceTabPeople").className = "btn btn-accent btn-sm";
-  document.getElementById("serviceTabGroups").className = "btn btn-ghost btn-sm";
+  document.getElementById("serviceTabPeople").setAttribute("aria-pressed", "true");
+  document.getElementById("serviceTabGroups").setAttribute("aria-pressed", "false");
   document.getElementById("serviceUserList").hidden = false;
   document.getElementById("serviceGroupList").hidden = true;
 });
 document.getElementById("serviceTabGroups").addEventListener("click", () => {
-  document.getElementById("serviceTabGroups").className = "btn btn-accent btn-sm";
-  document.getElementById("serviceTabPeople").className = "btn btn-ghost btn-sm";
+  document.getElementById("serviceTabGroups").setAttribute("aria-pressed", "true");
+  document.getElementById("serviceTabPeople").setAttribute("aria-pressed", "false");
   document.getElementById("serviceGroupList").hidden = false;
   document.getElementById("serviceUserList").hidden = true;
 });
@@ -927,9 +986,12 @@ function renderStockList(){
     wrap.appendChild(h);
     items.forEach(p => {
       const row = document.createElement("label");
-      row.className = "stock-row";
-      row.innerHTML = `<span>${p.name}</span><span class="switch"><input type="checkbox" ${stops.has(p.name) ? "checked" : ""}><span class="slider"></span></span>`;
+      const on = stops.has(p.name);
+      row.className = "stock-row" + (on ? " on" : "");
+      row.innerHTML = `<span>${esc(p.name)}</span><span class="stock-state">${on ? "On stop" : "Available"}</span><span class="switch"><input type="checkbox" aria-label="${esc(p.name)} on stop" ${on ? "checked" : ""}><span class="slider"></span></span>`;
       row.querySelector('input[type="checkbox"]').addEventListener("change", async e => {
+        row.classList.toggle("on", e.target.checked);
+        row.querySelector(".stock-state").textContent = e.target.checked ? "On stop" : "Available";
         if (e.target.checked) { stops.add(p.name); await stopsStore.save({ id: p.name, ts: Date.now(), name: p.name }); }
         else { stops.delete(p.name); await stopsStore.remove(p.name); }
         knownStops = new Set(stops);

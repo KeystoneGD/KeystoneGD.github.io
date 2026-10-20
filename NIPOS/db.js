@@ -28,6 +28,94 @@ let supabaseClient = null;
 let currentVenueId = null;
 try { currentVenueId = localStorage.getItem(LS_CURRENT_VENUE); } catch (e) {}
 
+// --- Venue accent: every screen is tinted with the signed-in venue's own colour, so a till left on
+// the wrong venue is obvious from across the room. Amber/green/red are kept out of this palette
+// because they already mean "main action", "ready" and "problem". A Global Admin can pick one per
+// venue in Backend > Venues (stored as venue.accent); until then venues take the palette in the
+// order they were created, so each venue still gets its own colour.
+const VENUE_ACCENTS = {
+  violet: { label: "Violet", color: "#7a5af0", ink: "#ffffff" },
+  teal:   { label: "Teal",   color: "#0f8394", ink: "#ffffff" },
+  pink:   { label: "Pink",   color: "#cf3a84", ink: "#ffffff" },
+  blue:   { label: "Blue",   color: "#2f6fe0", ink: "#ffffff" },
+  plum:   { label: "Plum",   color: "#9b3fb5", ink: "#ffffff" }
+};
+const VENUE_ACCENT_KEYS = Object.keys(VENUE_ACCENTS);
+let venueCreationOrder = null; // venue ids oldest-first, for the default accent
+async function loadVenueCreationOrder() {
+  if (venueCreationOrder || !supabaseClient) return venueCreationOrder || [];
+  try {
+    const { data } = await supabaseClient.from("venues").select("id,ts").order("ts", { ascending: true });
+    venueCreationOrder = (data || []).map(r => r.id);
+  } catch (e) { venueCreationOrder = []; }
+  return venueCreationOrder;
+}
+function venueAccentKey(venue) {
+  if (!venue) return null;
+  if (venue.accent && VENUE_ACCENTS[venue.accent]) return venue.accent;
+  const idx = (venueCreationOrder || []).indexOf(venue.id);
+  return VENUE_ACCENT_KEYS[(idx === -1 ? 0 : idx) % VENUE_ACCENT_KEYS.length];
+}
+// Sets --venue / --venue-ink for the page and fills any [data-venue-name] / [data-staff-name]
+// slots. Pass null to clear (signed out).
+async function applyVenueIdentity(venue, staffName) {
+  if (venue) await loadVenueCreationOrder();
+  const accent = venue ? VENUE_ACCENTS[venueAccentKey(venue)] : null;
+  const root = document.documentElement.style;
+  if (accent) { root.setProperty("--venue", accent.color); root.setProperty("--venue-ink", accent.ink); }
+  else { root.removeProperty("--venue"); root.removeProperty("--venue-ink"); }
+  document.querySelectorAll("[data-venue-name]").forEach(el => { el.textContent = venue ? venue.name : ""; });
+  document.querySelectorAll("[data-staff-name]").forEach(el => { el.textContent = staffName || ""; });
+  document.querySelectorAll("[data-venue-identity]").forEach(el => { el.hidden = !venue; });
+}
+
+// --- Icons: one line-icon set (24px grid, 2px stroke, round joins) used everywhere instead of emoji
+// or text glyphs, so buttons look the same on every device. Decorative only: every icon sits next to
+// a visible label or inside a button with an aria-label.
+const ICON_PATHS = {
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+  settings: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  minus: '<path d="M5 12h14"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  alert: '<path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.5v.01"/>',
+  bell: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2H4.5z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+  stop: '<circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
+  moon: '<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/>',
+  chevron: '<path d="M9 5l7 7-7 7"/>',
+  up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+  down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  note: '<path d="M5 4.5h14v15H5z"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4"/>'
+};
+function icon(name) {
+  return `<svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICON_PATHS[name] || ""}</svg>`;
+}
+// <span data-icon="search"></span> placeholders in static markup get their SVG filled in here.
+function hydrateIcons(root) {
+  (root || document).querySelectorAll("[data-icon]").forEach(el => {
+    if (el.dataset.iconDone) return;
+    el.insertAdjacentHTML("afterbegin", icon(el.dataset.icon));
+    el.dataset.iconDone = "1";
+  });
+}
+
+// --- Times: always 24-hour, UK format, whatever the device's own locale is set to.
+function fmtTime(ts) { return new Date(ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }); }
+function fmtDayTime(ts) {
+  const d = new Date(ts);
+  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) + " · " + fmtTime(ts);
+}
+function fmtDateTime(ts) { return new Date(ts).toLocaleString("en-GB", { hour12: false }); }
+function minutesAgo(ts) {
+  const m = Math.max(0, Math.floor((Date.now() - ts) / 60000));
+  return m < 1 ? "just now" : m === 1 ? "1 min ago" : m < 60 ? `${m} min ago` : `${Math.floor(m / 60)} h ${m % 60} min ago`;
+}
+
 function connectAuthClient() {
   supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: { persistSession: true, autoRefreshToken: true }
@@ -233,7 +321,7 @@ function buildReceiptHTML(title, subtitle, rows, transactions){
       <thead><tr><th>Time</th><th>Table</th><th>Items</th><th>Discount</th><th>Method</th><th>Total</th></tr></thead>
       <tbody>
         ${transactions.slice().reverse().map(sale => {
-          const time = new Date(sale.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+          const time = fmtTime(sale.ts);
           const itemsText = sale.items.map(i => `${i.qty}× ${i.name}`).join(", ");
           const method = sale.method === "cash" ? "Cash" : "Card";
           if (sale.isRefund) {
@@ -266,7 +354,7 @@ function openReportTab(title, subtitle, rows, transactions){
   setTimeout(() => { try { win.focus(); win.print(); } catch(e){} }, 350);
 }
 function zReportTitle(venueName, closedAt, closedByName){
-  const date = new Date(closedAt).toLocaleDateString();
+  const date = new Date(closedAt).toLocaleDateString("en-GB");
   return `Z-READ - ${venueName} - ${date} - By ${closedByName || "Unknown"}`;
 }
 function zReportRows(s){
@@ -336,7 +424,7 @@ async function performZRead(venue, closedByName) {
   await setShiftStart(venue.id, closedAt);
   const title = zReportTitle(venue.name, closedAt, closedBy);
   if (venue.discordWebhooks && venue.discordWebhooks.zread) {
-    const reportHtml = buildReceiptHTML(title, new Date(closedAt).toLocaleString(), zReportRows(fullSummary), transactions);
+    const reportHtml = buildReceiptHTML(title, fmtDateTime(closedAt), zReportRows(fullSummary), transactions);
     postDiscordEmbed(venue.discordWebhooks.zread, {
       title,
       color: 0xfecf46,
@@ -423,6 +511,119 @@ async function mergeOpenOrder(id, patch) {
     if (error) return null;
     return data;
   } catch (e) { return null; }
+}
+
+// --- Refunds, shared by the till's Past Orders and the order screen's flagged-order card. A refund
+// is always a whole line (e.g. 3× Peroni Pint) at what the customer actually paid for it, so any
+// discount on the sale is taken off proportionally.
+function refundAmountFor(sale, item) {
+  const ratio = sale.base > 0 ? Math.max(0, (sale.base - (sale.discountAmount || 0)) / sale.base) : 1;
+  return Math.round(item.pence * item.qty * ratio);
+}
+// The sale an open order came from (orders keep the sale's ts, not its id).
+async function fetchSaleForOrder(order) {
+  if (!supabaseClient || !order || !order.saleTs) return null;
+  try {
+    const { data } = await supabaseClient.from("sales").select("data").eq("venue_id", currentVenueId).eq("ts", order.saleTs).limit(1);
+    return data && data[0] ? data[0].data : null;
+  } catch (e) { return null; }
+}
+// Marks one line of a sale refunded and logs the refund row. Re-reads the sale first so two devices
+// refunding different lines of the same sale can't overwrite each other. Returns { refundRow, sale }
+// or { error }.
+async function refundSaleLine(saleId, itemIdx) {
+  const sales = rowStore("sales"), refundsTable = rowStore("refunds");
+  let already = false;
+  const fresh = await sales.mutate(saleId, s => {
+    const it = s.items[itemIdx];
+    if (!it || it.refunded) { already = true; return; }
+    it.refunded = true;
+  });
+  if (!fresh) return { error: "Couldn't reach the database, nothing was refunded. Try again." };
+  if (already) return { error: "That item has already been refunded." };
+  const item = fresh.items[itemIdx];
+  const refundRow = { id: "r" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), saleTs: fresh.ts, itemName: item.name, qty: item.qty, pence: refundAmountFor(fresh, item), method: fresh.method || "card" };
+  if (maintenanceMode) refundRow.isTest = true;
+  await refundsTable.save(refundRow);
+  return { refundRow, sale: fresh };
+}
+function logRefundToDiscordFor(venue, byName, refundRow, sale) {
+  postDiscordEmbed(venue && venue.discordWebhooks && venue.discordWebhooks.order, {
+    title: `REFUND - TABLE ${(sale && sale.table) || "N/A"}`,
+    color: 0xff7a68,
+    fields: [
+      { name: "Item", value: `${refundRow.qty}x ${refundRow.itemName}`, inline: true },
+      { name: "Amount", value: "£" + (refundRow.pence / 100).toFixed(2), inline: true },
+      { name: "Method", value: refundRow.method === "cash" ? "Cash" : "Card", inline: true },
+      { name: "By", value: byName || "Unknown", inline: true }
+    ],
+    timestamp: new Date(refundRow.ts).toISOString()
+  });
+}
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// --- Open order cards, shared by the order screen and the till's Open Orders list. Order of the
+// list is "who needs you first": problems, then orders ready to take out, then everything else
+// oldest first - the longest-waiting table is never buried under newer ones.
+function sortOrdersByPriority(list) {
+  const rank = o => o.flagged ? 0 : o.ready ? 1 : 2;
+  return list.slice().sort((a, b) => (rank(a) - rank(b)) || (a.ts - b.ts));
+}
+function orderLabel(o) { return o.table ? "Table " + o.table : "No table"; }
+// opts: { isNext, canRefund, refundPence (number | null while loading | undefined if no sale), onReady, onDeliver, onFlag,
+// onAccept, onRefund, onClose }
+function buildOrderCard(o, opts) {
+  const subItem = o.items.find(i => i.substituted);
+  const state = o.flagged ? "problem" : o.ready ? "ready" : "waiting";
+  const card = document.createElement("article");
+  card.className = "oc oc-state-" + state + (opts.isNext ? " oc-next" : "");
+  card.setAttribute("aria-label", `${orderLabel(o)}, ${state === "problem" ? "problem" : state === "ready" ? "ready to take out" : "waiting"}`);
+  const badge = state === "problem" ? `<span class="state-badge problem">${icon("alert")}Problem</span>`
+    : state === "ready" ? `<span class="state-badge ready">${icon("check")}Ready to take out</span>`
+    : `<span class="state-badge">${icon("clock")}Waiting</span>`;
+  const items = o.items.map(i => i.substituted
+    ? `${i.qty}× ${esc(i.name)} <span class="oc-muted">(free, instead of ${esc(i.subFor)})</span>`
+    : `${i.qty}× ${esc(i.name)}`).join("<br>");
+  const flagText = o.flagged
+    ? `<div class="oc-problem">${icon("alert")}<span><strong>${esc(o.flagItem)}: ${esc((o.flagReason || "").toLowerCase())}.</strong>${o.flagIntent === "substitute" && o.flagSubstitute ? ` Offer ${esc(o.flagSubstitute)} instead, free.` : o.flagIntent === "refund" ? " Refund it." : ""}</span></div>` : "";
+  card.innerHTML = `
+    <div class="oc-top">${opts.isNext ? `<span class="state-badge next">Next</span>` : ""}${badge}<span class="oc-time">${fmtTime(o.ts)} · ${minutesAgo(o.ts)}</span></div>
+    <div class="oc-head"><h3 class="oc-table">${esc(orderLabel(o))}</h3><span class="tag">${o.method === "cash" ? "Cash" : "Card"}</span></div>
+    <div class="oc-items">${items}</div>
+    ${o.notes ? `<div class="note-box">${icon("note")}<span>${esc(o.notes)}</span></div>` : ""}
+    ${flagText}
+    ${!o.flagged && subItem ? `<div class="oc-muted oc-line">${icon("check")} Customer took ${esc(subItem.name)} instead of ${esc(subItem.subFor)}</div>` : ""}
+    ${o.placedBy ? `<div class="oc-muted oc-line">Taken by ${esc(o.placedBy)}</div>` : ""}
+    <div class="oc-actions"></div>`;
+  const actions = card.querySelector(".oc-actions");
+  const primary = opts.isNext ? "btn btn-accent" : "btn btn-solid";
+  const add = (cls, label, fn, disabled) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = cls; b.textContent = label; b.disabled = !!disabled;
+    if (fn) b.addEventListener("click", fn);
+    actions.appendChild(b);
+    return b;
+  };
+  if (o.flagged) {
+    if (o.flagIntent === "substitute" && o.flagSubstitute) add("btn btn-solid", `Customer took ${o.flagSubstitute}`, opts.onAccept);
+    else if (o.flagIntent !== "refund") add("btn btn-solid", "Customer is happy, carry on", opts.onAccept);
+    if (opts.canRefund) {
+      // refundPence: number = ready; null = still looking the sale up; undefined = sale not found here
+      const known = typeof opts.refundPence === "number", missing = opts.refundPence === undefined;
+      if (missing) add("btn btn-danger-solid", "Refund from Past Orders", opts.onRefund);
+      else add("btn btn-danger-solid", known ? `Refund £${(opts.refundPence / 100).toFixed(2)}` : "Working out refund…", known ? opts.onRefund : null, !known);
+    } else {
+      add("btn btn-ghost", "Close order, a manager refunds at the till", opts.onClose);
+    }
+  } else {
+    if (opts.onFlag) add("btn btn-ghost", "Report a problem", opts.onFlag);
+    if (o.ready) add(primary, o.table ? `Delivered to table ${o.table}` : "Delivered", opts.onDeliver);
+    else add(primary, "Ready to take out", opts.onReady);
+  }
+  return card;
 }
 
 // Every shared log is a table of independent rows, one per event, addressed by its own id. A device
