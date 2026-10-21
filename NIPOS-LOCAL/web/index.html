@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022i">
-<link rel="stylesheet" href="layouts.css?v=20261022i">
+<link rel="stylesheet" href="nipos.css?v=20261022j">
+<link rel="stylesheet" href="layouts.css?v=20261022j">
 </head>
 <body>
 
@@ -752,7 +752,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022i"></script>
+<script src="db.js?v=20261022j"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -3173,7 +3173,8 @@ async function loadRefundFor(o){
 function renderOpenOrdersList(){
   const wrap = document.getElementById("adminOpenOrdersList");
   wrap.innerHTML = "";
-  const open = sortOrdersByPriority(openOrders.filter(o => !o.delivered));
+  // The till only delivers: orders ready to take out come first, then the rest in the usual order.
+  const open = sortOrdersByPriority(openOrders.filter(o => !o.delivered)).sort((a, b) => (orderStage(b) === "ready") - (orderStage(a) === "ready"));
   if (!open.length) { wrap.innerHTML = `<div class="empty-state">Nothing open right now.</div>`; return; }
   const canRefund = !!(currentUser && currentUser.perms.processRefunds);
   open.forEach((o, i) => {
@@ -3184,8 +3185,7 @@ function renderOpenOrdersList(){
       myId: currentUserId,
       canRefund,
       refundPence: r ? (r.missing ? undefined : r.pence) : null,
-      onAcceptOrder: () => acceptOpenOrder(o.id),
-      onReady: () => markOrderReady(o.id),
+      tillView: true, // accepting and making orders is for the order screens; the till delivers
       onDeliver: () => markOrderDelivered(o.id),
       partsNote: featureOn("kitchenScreen") ? stationsNote(o, orderStations(o, isFoodName)) : "",
       onAccept: () => resolveOrderFlag(o.id, "accepted"),
@@ -3198,25 +3198,11 @@ function renderOpenOrdersList(){
 }
 async function markOrderDelivered(id){
   const o = openOrders.find(x => x.id === id);
+  if (!o || !o.ready) { showToast("That order isn't ready to take out yet."); renderOpenOrdersList(); return; }
   if (o && o.placedById) pushNotification(o.placedById, `Table ${o.table || "?"}: order delivered`);
   if (o) logActivity("Order delivered", orderLabel(o));
   openOrders = openOrders.filter(x => x.id !== id);
   await ordersStore.remove(id);
-  renderOpenOrdersList(); renderOpenOrdersBadge();
-}
-async function acceptOpenOrder(id){
-  const o = openOrders.find(x => x.id === id);
-  const by = currentUser ? currentUser.name : null;
-  // From the till it's the whole order: the bar's and the kitchen's parts both.
-  const fresh = await mergeOpenOrder(id, { accepted: true, acceptedBy: by, acceptedAt: Date.now(), barAccepted: true, kitchenAccepted: true });
-  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
-  if (o && o.placedById && o.placedById !== currentUserId) sendQuietNotice(o.placedById, currentUserId, currentUser && currentUser.name, `${orderLabel(o)}: order accepted, in progress`);
-  if (o) logActivity("Order accepted", orderLabel(o));
-  renderOpenOrdersList(); renderOpenOrdersBadge();
-}
-async function markOrderReady(id){
-  const fresh = await mergeOpenOrder(id, { ready: true, barReady: true, kitchenReady: true });
-  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
 async function requestOrderRefund(id){

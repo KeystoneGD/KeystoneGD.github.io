@@ -875,7 +875,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261022i";
+const NIPOS_VERSION = "20261022j";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -1632,7 +1632,8 @@ async function claimRefund(o, byName, byId) {
 // opts: { isNext, myId, canRefund, refundPence (number | null while loading | undefined if no sale), onAcceptOrder,
 // onReady, onDeliver, onFlag, onAccept (customer took the substitute), onRequestRefund, onRefund,
 // partsNote (how the order's other parts are getting on), readyNote (text once this part is ready),
-// venueName / venueColor (a kitchen cooking for several venues) }
+// venueName / venueColor (a kitchen cooking for several venues),
+// tillView (the till's Open Orders: no Accept or Ready, only Delivered once it's ready) }
 function buildOrderCard(o, opts) {
   const subItem = o.items.find(i => i.substituted);
   const state = orderStage(o), refund = state === "refund" || state === "refunding";
@@ -1666,6 +1667,7 @@ function buildOrderCard(o, opts) {
     ${o.notes ? `<div class="note-box">${icon("note")}<span>${esc(o.notes)}</span></div>` : ""}
     ${flagText}
     ${opts.partsNote ? `<div class="oc-muted oc-line">${icon("clock")} ${esc(opts.partsNote)}</div>` : ""}
+    ${opts.tillView && !o.flagged && !o.ready ? `<div class="oc-muted oc-line">${icon("clock")} ${o.accepted ? "Being made. You can deliver it once it's ready." : "Waiting for the bar to accept it."}</div>` : ""}
     ${handedToTill ? `<div class="oc-ready">${icon("lock")}<span>${opts.readyNote ? esc(opts.readyNote) : "<strong>Waiting to be delivered.</strong> Only table service staff can mark it delivered"}</span></div>` : ""}
     ${!o.flagged && subItem ? `<div class="oc-muted oc-line">${icon("check")} Customer took ${esc(subItem.name)} instead of ${esc(subItem.subFor)}</div>` : ""}
     ${o.placedBy ? `<div class="oc-muted oc-line">Taken by ${esc(o.placedBy)}${o.accepted && o.acceptedBy ? ` · accepted by ${esc(o.acceptedBy)}` : ""}</div>` : ""}
@@ -1698,6 +1700,7 @@ function buildOrderCard(o, opts) {
   } else {
     if (opts.onFlag) add("btn btn-ghost", "Report a problem", opts.onFlag);
     if (o.ready) add(primary, o.table ? `Delivered to table ${o.table}` : "Delivered", opts.onDeliver);
+    else if (opts.tillView) { /* the till waits until the order screen marks it ready */ }
     else if (!o.accepted && opts.onAcceptOrder) add(primary, "Accept order", opts.onAcceptOrder);
     else add(primary, "Ready to take out", opts.onReady);
   }
