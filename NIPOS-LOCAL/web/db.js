@@ -967,7 +967,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261022x";
+const NIPOS_VERSION = "20261022y";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -2241,6 +2241,8 @@ function playNotificationSound(audioCtx, soundChoice) {
 // a screen that can't beep says so, rather than staying silent through a call for service.
 function unlockSound() {
   if (typeof audioCtx === "undefined") return; // this page has no sounds
+  // iPhone/iPad: play like a media app, so the silent switch doesn't mute the beeps (iOS 17+).
+  try { if (navigator.audioSession && navigator.audioSession.type !== "playback") navigator.audioSession.type = "playback"; } catch (e) {}
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state !== "running") audioCtx.resume().then(renderSoundNote, () => {});
