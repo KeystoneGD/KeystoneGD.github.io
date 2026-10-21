@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NIPOS - Kitchen</title>
+<link rel="manifest" href="manifest-kitchen.json">
+<meta name="theme-color" content="#0c1826">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kitchen">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>body{background:#0c1826;color:#fff;font-family:system-ui,sans-serif;margin:0;padding:40px 20px;}a{color:#fff;}</style>
+<script>
+// The kitchen's screen is the order screen showing only the food (Master settings > Kitchen screen).
+location.replace("orders.html?station=kitchen&from=" + encodeURIComponent(location.pathname) + location.hash);
+</script>
+</head>
+<body>
+<p>Opening the kitchen screen… <a href="orders.html?station=kitchen">Open it</a></p>
+</body>
+</html>

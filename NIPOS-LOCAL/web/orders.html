@@ -4,7 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>NIPOS - Orders</title>
-<link rel="manifest" href="manifest-orders.json">
+<link rel="manifest" href="manifest-orders.json" id="manifestLink">
+<script>
+// /kitchen (kitchen.html) opens this page as the kitchen's screen and puts its own address back.
+const KITCHEN_PAGE = new URLSearchParams(location.search).get("station") === "kitchen";
+if (KITCHEN_PAGE) {
+  document.getElementById("manifestLink").href = "manifest-kitchen.json";
+  const from = new URLSearchParams(location.search).get("from");
+  if (from && /^\/[\w\/.-]*$/.test(from)) try { history.replaceState(null, "", from + location.hash); } catch (e) {}
+}
+</script>
 <meta name="theme-color" content="#0c1826">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -47,6 +56,8 @@ body{background:var(--bg);color:var(--text);font-family:'Atkinson Hyperlegible N
 h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;}
 .status{font-size:14px;font-weight:700;margin-top:10px;padding:10px 12px;border-radius:10px;}
+.station-tag{align-self:center;font-weight:800;font-size:14px;padding:6px 12px;border-radius:999px;background:var(--surface-2);color:var(--text);border:1px solid var(--border);}
+.station-tag[hidden]{display:none;}
 .status.bad{color:var(--text);background:var(--danger-soft);border:1px solid var(--danger);}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:12px;align-items:start;}
 .order-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow);}
@@ -122,7 +133,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021o">
+<link rel="stylesheet" href="nipos.css?v=20261021p">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -146,6 +157,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
     <h1 class="venue-name" data-venue-name>Order screen</h1>
     <span class="staff-name" data-staff-name></span>
   </div>
+  <span class="station-tag" id="stationTag" hidden>Kitchen</span>
   <button class="band-btn" id="switchVenueBtn" type="button" hidden>Switch venue</button>
   <button class="band-btn" id="themeToggleBtn" type="button" aria-label="Switch to light theme"></button>
   <button class="band-btn" id="accountSignOutBtn" type="button">Sign out</button>
@@ -156,13 +168,13 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
     <button class="btn btn-solid" id="stockBtn" type="button" hidden><span data-icon="stop"></span>Products on stop</button>
     <button class="btn btn-solid" id="serviceBtn" type="button"><span data-icon="bell"></span>Call for service</button>
     <button class="btn btn-solid" id="notifyBtn" type="button" hidden><span data-icon="bell"></span>Notify</button>
-    <div class="view-switch" id="viewSwitch" role="group" aria-label="Show orders for" hidden><button type="button" class="btn btn-ghost" data-view="bar" aria-pressed="true">Bar</button><button type="button" class="btn btn-ghost" data-view="kitchen" aria-pressed="false">Kitchen</button></div>
   </div>
   <div class="alerts-banner" id="alertsRow">
     <div class="msg"><span data-icon="bell"></span><span id="alertsStatus">Turn on alerts to hear new orders</span></div>
     <button class="btn btn-solid" id="enableAlertsBtn" type="button">Turn on alerts</button>
   </div>
   <div class="status" id="dbStatus" role="status" hidden></div>
+  <div class="status bad" id="kitchenOff" role="status" hidden>The kitchen screen is switched off. Switch on Kitchen screen in Backend › Master settings › Screens and devices.</div>
   <h2 class="list-title">Open orders <span class="count" id="orderCount"></span></h2>
   <div class="grid" id="grid"></div>
 </main>
@@ -250,7 +262,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261021o"></script>
+<script src="db.js?v=20261021p"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -298,7 +310,7 @@ function applyLoginState(){
     document.getElementById("loginGate").hidden = true;
     document.getElementById("accountName").textContent = "Signed in as " + u.name + (currentVenue ? " · " + currentVenue.name : "");
     applyVenueIdentity(currentVenue, u.name);
-    if (currentVenue) document.title = currentVenue.name + " · Orders";
+    if (currentVenue) document.title = currentVenue.name + (KITCHEN_PAGE ? " · Kitchen" : " · Orders");
   } else {
     applyVenueIdentity(null);
     document.getElementById("loginGate").hidden = false;
@@ -321,11 +333,6 @@ document.addEventListener("nipos:settingschange", () => applyLoginState());
 onRemoteCommand("refresh", () => location.reload());
 onRemoteCommand("signout", () => { if (!currentUser) return false; if (!currentUser.system) signOutOrders(); });
 
-document.getElementById("viewSwitch").addEventListener("click", e => {
-  const b = e.target.closest("[data-view]"); if (!b) return;
-  try { localStorage.setItem("nipos.orderScreenView", b.dataset.view); } catch (err) {}
-  loadFoodNames().then(render);
-});
 document.addEventListener("nipos:settingschange", () => { if (featureOn("kitchenScreen") && !foodNames.size) loadFoodNames().then(render); else render(); });
 // Notify: everyone (banner or pop-up) or one person - the shared pop-up in db.js.
 document.getElementById("notifyBtn").addEventListener("click", () => {
@@ -537,12 +544,14 @@ function alertUser(title, body, urgent, event){
 
 let knownOrderStates = null;
 function orderAlertState(o){ return { flagged: !!o.flagged, ready: !!o.ready, refund: needsRefund(o) }; }
+function shownHere(o){ const v = screenView(); return v === "all" || (v !== "off" && !!forThisScreen(o)); }
 function checkOrderChanges(){
   const stateNow = new Map(openOrders.map(o => [o.id, orderAlertState(o)]));
   if (knownOrderStates === null) { knownOrderStates = stateNow; return; }
   openOrders.forEach(o => {
     const label = o.table ? `Table ${o.table}` : "Order";
     const prev = knownOrderStates.get(o.id);
+    if (!shownHere(o)) return;
     if (!prev) {
       if (!o.delivered) alertUser("New order", `${label}: ${o.items.map(i => `${i.qty}× ${i.name}`).join(", ")}`, false, "newOrder");
       return;
@@ -669,10 +678,10 @@ async function loadRefundFor(o){
   flaggedSaleCache.set(o.id, itemIdx === -1 ? { missing: true } : { sale, itemIdx, pence: refundAmountFor(sale, sale.items[itemIdx]) });
   render();
 }
-// Kitchen screen (feature "kitchenScreen"): this order screen can show the bar's view (drinks) or the
-// kitchen's (food only). Each device remembers its own choice.
+// Kitchen screen (feature "kitchenScreen"): this page is the bar's screen (drinks), or the kitchen's
+// (food only) when opened as /kitchen. Each one accepts and finishes its own part of an order (db.js).
 let foodNames = new Set();
-function screenView(){ if (!featureOn("kitchenScreen")) return "all"; try { return localStorage.getItem("nipos.orderScreenView") || "bar"; } catch (e) { return "bar"; } }
+function screenView(){ if (!featureOn("kitchenScreen")) return KITCHEN_PAGE ? "off" : "all"; return KITCHEN_PAGE ? "kitchen" : "bar"; }
 async function loadFoodNames(){
   if (!featureOn("kitchenScreen") || !supabaseClient || !currentVenueId) return;
   try {
@@ -683,23 +692,31 @@ async function loadFoodNames(){
   } catch (e) {}
 }
 function isFoodLine(name){ const base = String(name || "").replace(/ \+ .*$/, "").replace(/ \([^)]*\)$/, ""); return foodNames.has(base) || foodNames.has(name) || modeOf(base) === "food"; }
+function stationsOf(o){ return orderStations(o, isFoodLine); }
+// Which part of the order this screen looks after: the kitchen does the food; the bar does the drinks,
+// and also food-only orders when it's set to see food.
+function stationFor(o){ const view = screenView(); return view === "kitchen" ? "kitchen" : stationsOf(o).includes("bar") ? "bar" : "kitchen"; }
 function forThisScreen(o){
   const view = screenView();
   if (view === "all") return o;
-  const lines = (o.items || []).filter(i => view === "kitchen" ? isFoodLine(i.name) : (!featureConfig("kitchenScreen").barHidesFood || !isFoodLine(i.name)));
+  if (view === "off") return null;
+  const lines = (o.items || []).filter(i => view === "kitchen" ? lineIsFood(i, isFoodLine) : (!featureConfig("kitchenScreen").barHidesFood || !lineIsFood(i, isFoodLine)));
   return lines.length ? { ...o, items: lines } : null;
 }
-function renderViewSwitch(){
-  const el = document.getElementById("viewSwitch");
-  if (!el) return;
-  el.hidden = !featureOn("kitchenScreen");
-  el.querySelectorAll("[data-view]").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === screenView()));
+function renderStationTag(){
+  document.getElementById("stationTag").hidden = !KITCHEN_PAGE;
+  const off = screenView() === "off";
+  document.getElementById("kitchenOff").hidden = !off;
 }
 function render(){
   const wrap = document.getElementById("grid");
   wrap.innerHTML = "";
-  renderViewSwitch();
-  const list = sortOrdersByPriority(openOrders.filter(o => !o.delivered).map(forThisScreen).filter(Boolean));
+  renderStationTag();
+  if (screenView() === "off") { document.getElementById("orderCount").textContent = ""; return; }
+  const view = screenView();
+  // On the bar and the kitchen, each card shows this screen's own part of the order.
+  const list = sortOrdersByPriority(openOrders.filter(o => !o.delivered).map(forThisScreen).filter(Boolean)
+    .map(o => view === "all" ? o : { ...orderForStation(o, stationFor(o)), __full: openOrders.find(x => x.id === o.id) }));
   const count = st => list.filter(o => orderStage(o) === st).length;
   const problems = count("problem") + count("refund"), fresh = count("new"), ready = count("ready");
   document.getElementById("orderCount").textContent = list.length
@@ -719,6 +736,8 @@ function render(){
       refundPence: r ? (r.missing ? undefined : r.pence) : null,
       onAcceptOrder: () => acceptOrder(o.id),
       onReady: () => markReady(o.id),
+      partsNote: o.__full ? stationsNote(o.__full, stationsOf(o.__full), stationFor(o.__full)) : "",
+      readyNote: o.__full && !o.__full.ready ? `${STATION_NAMES[stationFor(o.__full)]} ready. Only table service staff can mark it delivered` : "",
       // No onDeliver: once it's ready, only the till can mark it delivered (see buildOrderCard).
       onFlag: () => openFlagModal(o.id),
       onAccept: () => resolveFlag(o.id, "accepted"),
@@ -731,18 +750,23 @@ function render(){
 // Accepting tells the bar this order is being made, and quietly lets whoever took it know.
 async function acceptOrder(id){
   const o = openOrders.find(x => x.id === id);
-  const fresh = await mergeOpenOrder(id, { accepted: true, acceptedBy: currentUser ? currentUser.name : null, acceptedAt: Date.now() });
+  const split = screenView() !== "all" && o, st = split ? stationFor(o) : null;
+  const fresh = split ? await markStation(o, st, "Accepted", stationsOf(o), currentUser ? currentUser.name : null)
+    : await mergeOpenOrder(id, { accepted: true, acceptedBy: currentUser ? currentUser.name : null, acceptedAt: Date.now() });
   if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
-  if (o) logActivity("Order accepted", orderLabel(o));
+  const part = split && stationsOf(o).length > 1 ? STATION_NAMES[st].toLowerCase() : "order";
+  if (o) logActivity("Order accepted", orderLabel(o) + (part !== "order" ? ` (${part})` : ""));
   if (o && o.placedById && o.placedById !== currentUserId) {
-    const n = await sendQuietNotice(o.placedById, currentUserId, currentUser && currentUser.name, `${orderLabel(o)}: order accepted, in progress`);
+    const n = await sendQuietNotice(o.placedById, currentUserId, currentUser && currentUser.name, `${orderLabel(o)}: ${part} accepted, in progress`);
     if (n) { notifications.unshift(n); knownNotificationIds = new Set(notifications.map(x => x.id)); }
   }
   render();
 }
 async function markReady(id){
-  const fresh = await mergeOpenOrder(id, { ready: true });
-  if (fresh) logActivity("Order ready to take out", orderLabel(fresh));
+  const o = openOrders.find(x => x.id === id);
+  const split = screenView() !== "all" && o, st = split ? stationFor(o) : null;
+  const fresh = split ? await markStation(o, st, "Ready", stationsOf(o)) : await mergeOpenOrder(id, { ready: true });
+  if (fresh) logActivity(split && stationsOf(o).length > 1 ? `${STATION_NAMES[st]} ready to take out` : "Order ready to take out", orderLabel(fresh));
   if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
   render();
 }

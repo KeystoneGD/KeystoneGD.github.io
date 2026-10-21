@@ -864,7 +864,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261021o";
+const NIPOS_VERSION = "20261021p";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -1482,6 +1482,44 @@ function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+// --- Kitchen screen (feature "kitchenScreen"): the bar (orders.html) and the kitchen (/kitchen) each
+// accept and finish their own part of an order: drinks at the bar, food in the kitchen. The order as a
+// whole is only "ready to take out" once every part it has is ready, so the bar finishing the drinks
+// never clears the food off the kitchen's screen (or the other way round). Each part keeps its own
+// barAccepted / barReady / kitchenAccepted / kitchenReady; the till's Open Orders can still finish the
+// whole order in one go.
+const STATION_NAMES = { bar: "Drinks", kitchen: "Food" };
+function lineIsFood(line, isFood) { return typeof line.food === "boolean" ? line.food : !!(isFood && isFood(line.name)); }
+function orderStations(o, isFood) {
+  const items = (o && o.items) || [], s = [];
+  if (items.some(i => !lineIsFood(i, isFood))) s.push("bar");
+  if (items.some(i => lineIsFood(i, isFood))) s.push("kitchen");
+  return s.length ? s : ["bar"];
+}
+// Orders accepted or finished before the bar and kitchen were split fall back to the whole order.
+function stationAccepted(o, st) { return !!o[st + "Accepted"] || !!o[st + "Ready"] || !!o.ready || (!o.stationsUsed && !!o.accepted); }
+function stationReady(o, st) { return !!o[st + "Ready"] || !!o.ready; }
+function stationStageText(o, st) { return stationReady(o, st) ? "ready" : stationAccepted(o, st) ? "in progress" : "not started"; }
+// The order as one part sees it, for orderStage() and buildOrderCard().
+function orderForStation(o, st) {
+  return { ...o, accepted: stationAccepted(o, st), ready: stationReady(o, st), acceptedBy: o[st + "AcceptedBy"] || (o.stationsUsed ? null : o.acceptedBy) };
+}
+// "Drinks: ready · Food: in progress", for the parts other than `except` (all of them on the till).
+function stationsNote(o, stations, except) {
+  if (stations.length < 2 || o.ready) return "";
+  return stations.filter(s => s !== except).map(s => `${STATION_NAMES[s]}: ${stationStageText(o, s)}`).join(" · ");
+}
+async function markStation(o, st, what, stations, byName) {
+  const now = Date.now(), patch = { stationsUsed: true, [st + what]: true };
+  if (!o.stationsUsed && o.accepted) stations.forEach(s => { patch[s + "Accepted"] = true; });
+  if (what === "Accepted") Object.assign(patch, { [st + "AcceptedBy"]: byName || null, [st + "AcceptedAt"]: now, accepted: true, acceptedBy: o.acceptedBy || byName || null, acceptedAt: o.acceptedAt || now });
+  else { patch[st + "Accepted"] = true; patch[st + "ReadyAt"] = now; }
+  let fresh = await mergeOpenOrder(o.id, patch);
+  // Both parts can finish at the same moment, so it's the merged row that decides.
+  if (fresh && what === "Ready" && !fresh.ready && stations.every(s => stationReady(fresh, s))) fresh = (await mergeOpenOrder(o.id, { ready: true })) || fresh;
+  return fresh;
+}
+
 // --- Open order cards, shared by the order screen and the till's Open Orders list.
 // Lifecycle: New order -> In progress (accepted on the order screen, yellow) -> Ready to take out
 // (green) -> Delivered. The list is "who needs you first": problems, then orders ready to take out,
@@ -1536,7 +1574,8 @@ async function claimRefund(o, byName, byId) {
   return fresh ? { order: fresh } : { error: "Couldn't reach the database. Try again." };
 }
 // opts: { isNext, myId, canRefund, refundPence (number | null while loading | undefined if no sale), onAcceptOrder,
-// onReady, onDeliver, onFlag, onAccept (customer took the substitute), onRequestRefund, onRefund }
+// onReady, onDeliver, onFlag, onAccept (customer took the substitute), onRequestRefund, onRefund,
+// partsNote (how the order's other parts are getting on), readyNote (text once this part is ready) }
 function buildOrderCard(o, opts) {
   const subItem = o.items.find(i => i.substituted);
   const state = orderStage(o), refund = state === "refund" || state === "refunding";
@@ -1569,7 +1608,8 @@ function buildOrderCard(o, opts) {
     <div class="oc-items">${items}</div>
     ${o.notes ? `<div class="note-box">${icon("note")}<span>${esc(o.notes)}</span></div>` : ""}
     ${flagText}
-    ${handedToTill ? `<div class="oc-ready">${icon("lock")}<span><strong>Waiting to be delivered.</strong> Only table service staff can mark it delivered</span></div>` : ""}
+    ${opts.partsNote ? `<div class="oc-muted oc-line">${icon("clock")} ${esc(opts.partsNote)}</div>` : ""}
+    ${handedToTill ? `<div class="oc-ready">${icon("lock")}<span>${opts.readyNote ? esc(opts.readyNote) : "<strong>Waiting to be delivered.</strong> Only table service staff can mark it delivered"}</span></div>` : ""}
     ${!o.flagged && subItem ? `<div class="oc-muted oc-line">${icon("check")} Customer took ${esc(subItem.name)} instead of ${esc(subItem.subFor)}</div>` : ""}
     ${o.placedBy ? `<div class="oc-muted oc-line">Taken by ${esc(o.placedBy)}${o.accepted && o.acceptedBy ? ` · accepted by ${esc(o.acceptedBy)}` : ""}</div>` : ""}
     <div class="oc-actions"></div>`;

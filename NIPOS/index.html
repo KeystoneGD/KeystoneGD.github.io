@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021o">
-<link rel="stylesheet" href="layouts.css?v=20261021o">
+<link rel="stylesheet" href="nipos.css?v=20261021p">
+<link rel="stylesheet" href="layouts.css?v=20261021p">
 </head>
 <body>
 
@@ -751,7 +751,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021o"></script>
+<script src="db.js?v=20261021p"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -2377,7 +2377,7 @@ function completeSale(payments){
   sales.forEach(sale => { if (!isTest) history.unshift(sale); salesStore.save(sale); });
   if (!isTest) saveLocalHistory();
   if (!tab) {
-    const newOrder = { id: "o"+now, ts: now, saleTs: first.ts, table: first.table, method: group ? "split" : first.method, items: items.map(i => ({ name: i.name, qty: i.qty })), notes: first.notes, delivered: false, ready: false, flagged: false, flagItem: null, flagReason: null, flagSubstitute: null, flagOutcome: null, placedBy: currentUser ? currentUser.name : null, placedById: currentUser ? currentUser.id : null };
+    const newOrder = { id: "o"+now, ts: now, saleTs: first.ts, table: first.table, method: group ? "split" : first.method, items: items.map(orderLine), notes: first.notes, delivered: false, ready: false, flagged: false, flagItem: null, flagReason: null, flagSubstitute: null, flagOutcome: null, placedBy: currentUser ? currentUser.name : null, placedById: currentUser ? currentUser.id : null };
     if (isTest) newOrder.isTest = true;
     if (!newOrder.isTest) openOrders.unshift(newOrder);
     ordersStore.save(newOrder);
@@ -2462,6 +2462,12 @@ document.getElementById("splitBtn").addEventListener("click", async () => {
 });
 
 // Tabs (feature "tabs"): put the order on a tab (it goes to the bar now), add more later, pay at the end.
+// Order lines say whether they're food, so the bar and the kitchen screens (db.js) each know their part.
+function isFoodName(name){
+  const base = String(name || "").replace(/ \+ .*$/, "").replace(/ \([^)]*\)$/, "");
+  return CAT.some(c => c.mode === "food" && (c.items || []).some(i => i.name === base || i.name === name));
+}
+function orderLine(i){ return { name: i.name, qty: i.qty, food: isFoodName(i.name) }; }
 function cartLines(c){ return Object.entries(c || {}).map(([key, qty]) => { const info = lineInfo(key); return { name: info.name, pence: info.pence, qty }; }); }
 function tabTotal(tab){ return (tab.lines || []).reduce((n, l) => n + l.pence * l.qty, 0); }
 function renderTabsBadge(){ const b = document.getElementById("tabsCountBadge"); if (b) b.textContent = openTabs.length; }
@@ -2484,7 +2490,7 @@ document.getElementById("tabBtn").addEventListener("click", async () => {
   await tabsStore.save(tab);
   if (!openTabs.some(t => t.id === tab.id)) openTabs.push(tab);
   renderTabsBadge();
-  const newOrder = { id: "o"+Date.now(), ts: Date.now(), table: tab.table || document.getElementById("tableInput").value.trim() || null, method: "tab", items: items.map(i => ({ name: i.name, qty: i.qty })), notes: [`Tab: ${tab.name}`, currentNotes.trim()].filter(Boolean).join(" · "), delivered: false, ready: false, flagged: false, placedBy: currentUser ? currentUser.name : null, placedById: currentUser ? currentUser.id : null };
+  const newOrder = { id: "o"+Date.now(), ts: Date.now(), table: tab.table || document.getElementById("tableInput").value.trim() || null, method: "tab", items: items.map(orderLine), notes: [`Tab: ${tab.name}`, currentNotes.trim()].filter(Boolean).join(" · "), delivered: false, ready: false, flagged: false, placedBy: currentUser ? currentUser.name : null, placedById: currentUser ? currentUser.id : null };
   if (maintenanceMode) newOrder.isTest = true;
   if (!newOrder.isTest) openOrders.unshift(newOrder);
   ordersStore.save(newOrder);
@@ -2517,7 +2523,7 @@ function renderPayingTab(){
 
 // Resend to the bar (feature "resendOrder"): send a past order to the order screen again.
 function resendSale(sale){
-  const o = { id: "o"+Date.now(), ts: Date.now(), saleTs: sale.ts, table: sale.table, method: sale.method, items: (sale.items || []).map(i => ({ name: i.name, qty: i.qty })), notes: ["Sent again", sale.notes].filter(Boolean).join(" · "), delivered: false, ready: false, flagged: false, placedBy: currentUser ? currentUser.name : null, placedById: currentUser ? currentUser.id : null, resent: true };
+  const o = { id: "o"+Date.now(), ts: Date.now(), saleTs: sale.ts, table: sale.table, method: sale.method, items: (sale.items || []).map(orderLine), notes: ["Sent again", sale.notes].filter(Boolean).join(" · "), delivered: false, ready: false, flagged: false, placedBy: currentUser ? currentUser.name : null, placedById: currentUser ? currentUser.id : null, resent: true };
   openOrders.unshift(o); ordersStore.save(o);
   logActivity("Sent an order to the bar again", `${sale.table ? "Table " + sale.table + ", " : ""}${itemCount(sale)} items from ${formatTime(sale.ts)}`);
   showToast("Sent to the bar again");
@@ -3138,6 +3144,7 @@ function renderOpenOrdersList(){
       onAcceptOrder: () => acceptOpenOrder(o.id),
       onReady: () => markOrderReady(o.id),
       onDeliver: () => markOrderDelivered(o.id),
+      partsNote: featureOn("kitchenScreen") ? stationsNote(o, orderStations(o, isFoodName)) : "",
       onAccept: () => resolveOrderFlag(o.id, "accepted"),
       onRequestRefund: () => requestOrderRefund(o.id),
       onRefund: () => startOrderRefund(o.id)
@@ -3156,14 +3163,16 @@ async function markOrderDelivered(id){
 }
 async function acceptOpenOrder(id){
   const o = openOrders.find(x => x.id === id);
-  const fresh = await mergeOpenOrder(id, { accepted: true, acceptedBy: currentUser ? currentUser.name : null, acceptedAt: Date.now() });
+  const by = currentUser ? currentUser.name : null;
+  // From the till it's the whole order: the bar's and the kitchen's parts both.
+  const fresh = await mergeOpenOrder(id, { accepted: true, acceptedBy: by, acceptedAt: Date.now(), barAccepted: true, kitchenAccepted: true });
   if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
   if (o && o.placedById && o.placedById !== currentUserId) sendQuietNotice(o.placedById, currentUserId, currentUser && currentUser.name, `${orderLabel(o)}: order accepted, in progress`);
   if (o) logActivity("Order accepted", orderLabel(o));
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
 async function markOrderReady(id){
-  const fresh = await mergeOpenOrder(id, { ready: true });
+  const fresh = await mergeOpenOrder(id, { ready: true, barReady: true, kitchenReady: true });
   if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
