@@ -364,18 +364,43 @@ function applyTheme() {
 }
 function initTheme() { applyTheme(); }
 
+// --- Till layout: also one setting for every till, chosen by $YSTEM next to the master theme. Each
+// layout has a phone and a tablet version; the till picks by screen width (see index.html).
+const POS_LAYOUTS = {
+  classic: { name: "Current layout", about: "The menu as one long list, categories down the side." },
+  tiles:   { name: "Big tiles", about: "Groups across the top, then big drink buttons. Tap a button to add it." },
+  colour:  { name: "Colour-coded tiles", about: "Big buttons in each group's own colour, groups down the left." },
+  list:    { name: "Restyled list", about: "Groups and categories down the left, drinks as rows with a + button." },
+  pubtill: { name: "Pub till (WRS-style)", about: "Receipt and big total on the left, colour buttons, function keys along the bottom." },
+  dock:    { name: "Dock", about: "Categories at the bottom within thumb reach, tonight's top 12, and last order again." }
+};
+const LS_POS_LAYOUT = "starlightTill.posLayout.v1";
+let posLayoutKey = "classic";
+try { const k = localStorage.getItem(LS_POS_LAYOUT); if (k && POS_LAYOUTS[k]) posLayoutKey = k; } catch (e) {}
+document.documentElement.dataset.layout = posLayoutKey;
+function getPosLayout() { return posLayoutKey; }
+function setPosLayoutLocal(key) {
+  if (!POS_LAYOUTS[key] || key === posLayoutKey) return;
+  posLayoutKey = key;
+  try { localStorage.setItem(LS_POS_LAYOUT, key); } catch (e) {}
+  document.documentElement.dataset.layout = key;
+  try { document.dispatchEvent(new CustomEvent("nipos:layoutchange")); } catch (e) {}
+}
+
 function setMasterThemeLocal(key) {
   if (!MASTER_THEMES[key] || key === masterThemeKey) return;
   masterThemeKey = key;
   try { localStorage.setItem(LS_MASTER_THEME, key); } catch (e) {}
   applyTheme();
 }
-// Every page follows the master theme: read on load, every minute, and whenever the tab comes back.
+// Every page follows the master theme and till layout: read on load, every minute, and whenever the
+// tab comes back.
 async function syncMasterTheme() {
   if (!supabaseClient) return;
   try {
-    const { data, error } = await supabaseClient.from("system_theme").select("theme").eq("id", "current").maybeSingle();
+    const { data, error } = await supabaseClient.from("system_theme").select("theme,layout").eq("id", "current").maybeSingle();
     if (!error && data && data.theme) setMasterThemeLocal(data.theme);
+    if (!error && data && data.layout) setPosLayoutLocal(data.layout);
   } catch (e) {}
 }
 let masterThemeTimer = null;

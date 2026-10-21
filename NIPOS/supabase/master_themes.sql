@@ -5,7 +5,8 @@
 --   system_theme    the one master theme every device follows (anyone may read it; nobody may write it
 --                   directly - only through nipos_set_master_theme below)
 --   system_secrets  the $YSTEM password hash. RLS on with no policies, so the browser can never read it.
---   is_system_user(), nipos_check_system_password(), nipos_set_master_theme()   called from Backend
+--   is_system_user(), nipos_check_system_password(), nipos_set_master_theme(),
+--   nipos_set_pos_layout()   called from Backend
 --   nipos_setup_system_account()   run by hand in the SQL Editor to create $YSTEM / change its
 --                                  password. Nobody can call it from the browser.
 -- =====================================================================================================
@@ -22,6 +23,8 @@ create policy "anyone reads the master theme" on public.system_theme for select 
 revoke insert, update, delete on public.system_theme from anon, authenticated;
 grant select on public.system_theme to anon, authenticated;
 insert into public.system_theme (id, theme, ts) values ('current', 'classic', 0) on conflict (id) do nothing;
+-- The till layout every till uses (Backend > Master themes > Till layout).
+alter table public.system_theme add column if not exists layout text not null default 'classic';
 
 create table if not exists public.system_secrets (
   id           text primary key,
@@ -75,7 +78,23 @@ begin
   return 'ok';
 end $$;
 
+-- Sets the till layout for every till. Checks the password again every time.
+create or replace function public.nipos_set_pos_layout(p_password text, p_layout text) returns text
+language plpgsql volatile security definer set search_path = public as $$
+declare r text;
+begin
+  r := public.nipos_check_system_password(p_password);
+  if r <> 'ok' then return r; end if;
+  if p_layout not in ('classic', 'tiles', 'colour', 'list', 'pubtill', 'dock') then return 'bad_layout'; end if;
+  insert into public.system_theme (id, theme, layout, ts, set_by)
+  values ('current', 'classic', p_layout, (extract(epoch from now()) * 1000)::bigint, auth.uid()::text)
+  on conflict (id) do update set layout = excluded.layout, ts = excluded.ts, set_by = excluded.set_by;
+  return 'ok';
+end $$;
+
 revoke all on function public.is_system_user() from public, anon;
+revoke all on function public.nipos_set_pos_layout(text, text) from public, anon;
+grant execute on function public.nipos_set_pos_layout(text, text) to authenticated, service_role;
 revoke all on function public.nipos_check_system_password(text) from public, anon;
 revoke all on function public.nipos_set_master_theme(text, text) from public, anon;
 grant execute on function public.is_system_user() to authenticated, service_role;
