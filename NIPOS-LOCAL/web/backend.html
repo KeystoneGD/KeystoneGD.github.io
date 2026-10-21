@@ -124,6 +124,19 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .feature-cat .fc-count{font-size:13px;font-weight:700;color:var(--text-muted);margin-top:4px;}
 .feature-cat .fc-count.some{color:var(--success);}
 .feature-cat-label{font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 4px;}
+.oo-summary{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px;}
+.oo-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;max-width:860px;}
+.oo-card.problem{border-left:6px solid var(--danger);}
+.oo-card.ready{border-left:6px solid var(--success);}
+.oo-card.progress{border-left:6px solid var(--progress, #d8a200);}
+.oo-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.oo-head h2{margin:0;font-size:17px;}
+.oo-head .oo-when{margin-left:auto;color:var(--text-muted);font-size:13px;}
+.oo-items{margin:8px 0 4px;font-size:14.5px;line-height:1.5;}
+.oo-meta{color:var(--text-muted);font-size:13px;line-height:1.5;}
+.oo-problem{margin-top:6px;font-size:13.5px;font-weight:700;color:var(--text);}
+.oo-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;}
+.oo-actions select{min-height:44px;width:auto;min-width:200px;flex:0 0 auto;}
 .kitchen-card label.check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;cursor:pointer;}
 .kitchen-venues{border:0;padding:0;margin:12px 0 0;display:flex;flex-direction:column;gap:4px;}
 .feature-list{display:flex;flex-direction:column;gap:12px;max-width:860px;}
@@ -310,7 +323,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022h">
+<link rel="stylesheet" href="nipos.css?v=20261022i">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -359,6 +372,7 @@ table.data-table tr:last-child td{border-bottom:0;}
       <button class="nav-item" data-page="users">Users</button>
       <button class="nav-item" data-page="venues" id="navVenues" hidden>Venues</button>
       <button class="nav-item" data-page="kitchens" id="navKitchens" hidden>Kitchens</button>
+      <button class="nav-item" data-page="openorders" id="navOpenOrders" hidden>Open orders</button>
       <button class="nav-item" data-page="zreads" id="navZReads" hidden>Z Reads</button>
       <button class="nav-item" data-page="testdata" id="navTestData" hidden>Test Data</button>
       <button class="nav-item" data-page="settings" id="navSettings" hidden>Settings</button>
@@ -557,6 +571,17 @@ table.data-table tr:last-child td{border-bottom:0;}
       </div>
       <p class="note">Global Admin only.</p>
       <div class="card" id="venueList"><div class="empty">Loading…</div></div>
+    </section>
+
+    <section class="page" id="page-openorders">
+      <div class="page-header">
+        <h1>Open orders</h1>
+        <label class="page-venue"><span>Venue</span><select id="ooVenue" aria-label="Venue for open orders"></select></label>
+      </div>
+      <p class="note">$YSTEM only. Every order that hasn't been delivered yet, at every venue, updating live. Change an order's status, clear a problem or a stuck refund, or close it. Every change goes in the activity log and reaches the tills and order screens within a few seconds.</p>
+      <p class="note" id="ooMsg" role="status"></p>
+      <div class="oo-summary" id="ooSummary"></div>
+      <div id="ooList"><div class="card"><div class="empty">Loading…</div></div></div>
     </section>
 
     <section class="page" id="page-kitchens">
@@ -798,7 +823,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022h"></script>
+<script src="db.js?v=20261022i"></script>
 <script src="vendor/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -968,6 +993,7 @@ function applyLoginState(){
   document.getElementById("systemGate").hidden = !needsPassword;
   document.getElementById("navThemes").hidden = !(currentUser && currentUser.system && systemPassword);
   document.getElementById("navActivity").hidden = !(canViewActivity(currentUser) && !(currentUser.system && !systemPassword));
+  document.getElementById("navOpenOrders").hidden = !(currentUser && currentUser.system && systemPassword);
   document.getElementById("navKitchens").hidden = !(currentUser && currentUser.perms.globalAdmin && featureOn("kitchenScreen") && !(currentUser.system && !systemPassword));
   document.getElementById("navHours").hidden = !(currentUser && featureOn("clockInOut") && (currentUser.system ? !!systemPassword : currentUser.perms.backendAccess));
   if (needsPassword) {
@@ -3574,6 +3600,92 @@ document.getElementById("addGroupBtn").addEventListener("click", async () => {
   allGroups.push({ id, name });
   document.getElementById("newGroupName").value = "";
   renderGroupsList();
+});
+
+/* ---------- $YSTEM: Open orders ----------
+   Every undelivered order at every venue, live. Status changes go through merge_open_order (the same
+   atomic merge the tills use) so they never clobber a till's change; Delivered/close deletes the row. */
+const OO_STATUS = { new: "New", progress: "In progress", ready: "Ready to take out" };
+let ooOrders = [], ooTimer = null, ooLoadFailed = false;
+function ooStatus(o){ return o.ready ? "ready" : o.accepted ? "progress" : "new"; }
+function ooState(o){ return needsRefund(o) ? (refundUnderway(o) ? "Refund in progress" : "Needs refund") : o.flagged ? "Problem" : OO_STATUS[ooStatus(o)]; }
+function ooPatch(status, o){
+  const parts = { barAccepted: status !== "new", kitchenAccepted: status !== "new", barReady: status === "ready", kitchenReady: status === "ready" };
+  if (status === "new") return { ...parts, accepted: false, ready: false, acceptedBy: null, acceptedAt: null };
+  if (status === "progress") return { ...parts, accepted: true, ready: false, acceptedBy: o.acceptedBy || "$YSTEM", acceptedAt: o.acceptedAt || Date.now() };
+  return { ...parts, accepted: true, ready: true, acceptedBy: o.acceptedBy || "$YSTEM", acceptedAt: o.acceptedAt || Date.now() };
+}
+async function loadOpenOrdersPage(){
+  const sel = document.getElementById("ooVenue");
+  if (!sel.options.length) {
+    sel.innerHTML = `<option value="">All venues</option>` + venues.filter(v => v.active !== false).map(v => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join("");
+    sel.addEventListener("change", renderOpenOrdersPage);
+  }
+  try {
+    const { data, error } = await supabaseClient.from("open_orders").select("id,venue_id,data").order("ts", { ascending: true }).limit(2000);
+    if (error) throw error;
+    ooOrders = (data || []).map(r => ({ ...r.data, id: r.id, __venue: r.venue_id })).filter(o => !o.delivered && !o.isTest);
+    if (ooLoadFailed) { document.getElementById("ooMsg").textContent = ""; ooLoadFailed = false; }
+  } catch (e) { ooLoadFailed = true; document.getElementById("ooMsg").textContent = "Couldn't load the open orders. Trying again…"; }
+  renderOpenOrdersPage();
+}
+function renderOpenOrdersPage(){
+  const wrap = document.getElementById("ooList");
+  if (wrap.contains(document.activeElement) && document.activeElement.tagName === "SELECT") return; // don't redraw under an open menu
+  const venueId = document.getElementById("ooVenue").value;
+  const list = ooOrders.filter(o => !venueId || o.__venue === venueId).sort((a, b) => (a.flagged === b.flagged ? a.ts - b.ts : a.flagged ? -1 : 1));
+  const count = st => list.filter(o => !o.flagged && ooStatus(o) === st).length;
+  document.getElementById("ooSummary").innerHTML = [["All open", list.length], ["Problems", list.filter(o => o.flagged).length], ["New", count("new")], ["In progress", count("progress")], ["Ready", count("ready")]]
+    .map(([l, n]) => `<span class="state-badge">${l}: ${n}</span>`).join("");
+  if (!list.length) { wrap.innerHTML = `<div class="card"><div class="empty">No open orders${venueId ? " here" : ""}.</div></div>`; return; }
+  wrap.innerHTML = list.map(o => {
+    const st = ooStatus(o), cls = o.flagged ? "problem" : st;
+    const parts = o.stationsUsed ? ["bar", "kitchen"].filter(p => o[p + "Accepted"] != null || o[p + "Ready"] != null).map(p => `${p === "bar" ? "Drinks" : "Food"}: ${stationStageText(o, p)}`).join(" · ") : "";
+    const problem = o.flagged ? `<div class="oo-problem">${esc(o.flagItem || "")}: ${esc(o.flagReason || "")}${o.flagIntent === "substitute" && o.flagSubstitute ? ` · offer ${esc(o.flagSubstitute)}` : ""}${needsRefund(o) ? " · refund wanted" : ""}${refundUnderway(o) ? ` · being refunded by ${esc(o.refundInProgressBy || "someone")}` : ""}</div>` : "";
+    return `<article class="oo-card ${cls}" data-oo="${esc(o.id)}" aria-label="${esc(orderLabel(o))}, ${esc(venueName(o.__venue))}, ${esc(ooState(o))}">
+      <div class="oo-head"><h2>${esc(orderLabel(o))}</h2><span class="tag">${esc(venueName(o.__venue))}</span><span class="state-badge${o.flagged ? " problem" : st === "ready" ? " ready" : st === "progress" ? " progress" : ""}">${esc(ooState(o))}</span><span class="oo-when">${fmtTime(o.ts)} · ${minutesAgo(o.ts)}</span></div>
+      <div class="oo-items">${(o.items || []).map(i => `${i.qty}× ${esc(i.name)}`).join("<br>")}</div>
+      ${o.notes ? `<div class="oo-meta">Note: ${esc(o.notes)}</div>` : ""}
+      <div class="oo-meta">${o.placedBy ? `Taken by ${esc(o.placedBy)}` : ""}${o.acceptedBy ? ` · accepted by ${esc(o.acceptedBy)}` : ""}${parts ? ` · ${esc(parts)}` : ""}</div>
+      ${problem}
+      <div class="oo-actions">
+        <select id="oos-${esc(o.id)}" data-oo-status aria-label="Status for ${esc(orderLabel(o))}">${Object.entries(OO_STATUS).map(([k, l]) => `<option value="${k}" ${k === st ? "selected" : ""}>${l}</option>`).join("")}</select>
+        <button type="button" class="btn btn-solid" data-oo-act="deliver">Delivered, close it</button>
+        ${o.flagged ? `<button type="button" class="btn btn-ghost" data-oo-act="clear">Clear the problem</button>` : ""}
+        ${refundUnderway(o) ? `<button type="button" class="btn btn-ghost" data-oo-act="unlock">Release the refund</button>` : ""}
+      </div>
+    </article>`;
+  }).join("");
+  wrap.querySelectorAll("[data-oo]").forEach(card => {
+    const o = ooOrders.find(x => x.id === card.dataset.oo);
+    card.querySelector("[data-oo-status]").addEventListener("change", e => ooChange(o, "status", e.target.value));
+    card.querySelectorAll("[data-oo-act]").forEach(b => b.addEventListener("click", () => ooChange(o, b.dataset.ooAct)));
+  });
+}
+async function ooChange(o, act, value){
+  const msg = document.getElementById("ooMsg"), label = `${orderLabel(o)} (${venueName(o.__venue)})`;
+  let ok = false, entry = "";
+  if (act === "deliver") {
+    if (!confirm(`Close ${label}? It comes off every till and order screen.`)) { renderOpenOrdersPage(); return; }
+    try { const { error } = await supabaseClient.from("open_orders").delete().eq("id", o.id); ok = !error; } catch (e) {}
+    entry = `${label}: ${ooState(o)} → closed (delivered)`;
+  } else {
+    const patch = act === "status" ? ooPatch(value, o)
+      : act === "clear" ? { flagged: false, flagItem: null, flagReason: null, flagIntent: null, flagSubstitute: null, flagOutcome: "cleared", refundRequested: false, refundInProgress: false, refundInProgressBy: null, refundInProgressById: null, refundInProgressAt: null }
+      : { refundInProgress: false, refundInProgressBy: null, refundInProgressById: null, refundInProgressAt: null };
+    const fresh = await mergeOpenOrder(o.id, patch);
+    ok = !!fresh;
+    entry = act === "status" ? `${label}: ${OO_STATUS[ooStatus(o)]} → ${OO_STATUS[value]}` : act === "clear" ? `${label}: problem cleared (${o.flagItem || ""})` : `${label}: refund released from ${o.refundInProgressBy || "someone"}`;
+  }
+  if (!ok) { msg.textContent = `Couldn't change ${label}. It may have been closed already. Try again.`; await loadOpenOrdersPage(); return; }
+  logActivity("Changed an order", entry, o.__venue);
+  msg.textContent = entry.replace(/^.*?: /, `${label}: `) + ".";
+  await loadOpenOrdersPage();
+}
+document.getElementById("navOpenOrders").addEventListener("click", () => {
+  loadOpenOrdersPage();
+  clearInterval(ooTimer);
+  ooTimer = setInterval(() => { if (currentPage === "openorders" && document.visibilityState === "visible") loadOpenOrdersPage(); }, 5000);
 });
 
 /* ---------- Kitchens (feature "kitchenScreen") ----------
