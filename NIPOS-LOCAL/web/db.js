@@ -955,7 +955,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261022r";
+const NIPOS_VERSION = "20261022s";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -1148,7 +1148,13 @@ function activityScreenName(page) {
 }
 // Entries are queued and sent together every few seconds (one request, not one per tap). Anything
 // that has to land before the person is signed out (signing out itself) passes now = true.
-let activityQueue = [], activityFlushing = null;
+// Entries waiting to send are kept on the device too, so a reload or a closed tab straight after a
+// sale doesn't lose its log entry; they're sent once someone's signed in again (the ids stop doubles).
+const LS_ACTIVITY = "nipos.activityQueue.v1";
+let activityQueue = [], activityFlushing = null, activityInFlight = [];
+try { activityQueue = JSON.parse(localStorage.getItem(LS_ACTIVITY) || "[]") || []; } catch (e) { activityQueue = []; }
+function saveActivityQueue() { try { localStorage.setItem(LS_ACTIVITY, JSON.stringify(activityInFlight.concat(activityQueue).slice(-2000))); } catch (e) {} }
+function queueActivity(row) { activityQueue.push(row); saveActivityQueue(); }
 // Backend works across the whole site, so its entries belong to "NIPOS Backend", not a venue; the venue
 // a Backend change was for (if just one) is kept alongside as data.venueId.
 function activityRow(action, detail, venueId, type) {
@@ -1165,8 +1171,9 @@ function activityRow(action, detail, venueId, type) {
 // screen says so instead of retrying them for ever.
 async function flushActivity() {
   if (activityFlushing) await activityFlushing;
-  if (!activityQueue.length || !supabaseClient) return;
+  if (!activityQueue.length || !supabaseClient || !signedInUserId) return;
   const batch = activityQueue.splice(0, 200);
+  activityInFlight = batch;
   let failed = false;
   activityFlushing = (async () => {
     let error = null;
@@ -1191,6 +1198,7 @@ async function flushActivity() {
     if (activityQueue.length < 2000) activityQueue.unshift(...keep);
   })();
   await activityFlushing; activityFlushing = null;
+  activityInFlight = []; saveActivityQueue();
   if (!failed && activityQueue.length) return flushActivity(); // after a failure the 3-second timer tries again
 }
 function showSessionMismatch() {
@@ -1201,10 +1209,10 @@ function showSessionMismatch() {
 }
 async function logActivity(action, detail, venueId, now) {
   if (!featureOn("activityLog") || !supabaseClient || !signedInUserId) return;
-  activityQueue.push(activityRow(action, detail, venueId));
+  queueActivity(activityRow(action, detail, venueId));
   if (now) await flushActivity();
 }
-setInterval(() => { if (activityQueue.length) flushActivity(); }, 3000);
+setInterval(() => { if (activityQueue.length && signedInUserId) flushActivity(); }, 3000);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushActivity(); });
 
 // Full logs (Activity log option "Every tap", on unless $YSTEM turns it off): every button, tile, tab,
@@ -1237,7 +1245,7 @@ function logTap(el, verb) {
   if (!fullActivityLogging() || !signedInUserId || tapIsPrivate(el)) return;
   const where = tapWhere(el), label = tapLabel(el);
   if (!label) return;
-  activityQueue.push(activityRow(verb || "Pressed", where && where !== label ? `${label} · ${where}` : label, undefined, "taps"));
+  queueActivity(activityRow(verb || "Pressed", where && where !== label ? `${label} · ${where}` : label, undefined, "taps"));
 }
 document.addEventListener("click", e => {
   const el = e.target.closest && e.target.closest("button,a[href],[role=button],[role=tab],[role=menuitem],summary,input[type=checkbox],input[type=radio],.pm-tile,.pm-rowi,.pm-dtile");
@@ -1252,7 +1260,7 @@ document.addEventListener("change", e => {
 // Notifications and pop-ups someone gets, logged against them.
 function logNotificationReceived(kind, text, from) {
   if (!fullActivityLogging() || !signedInUserId) return;
-  activityQueue.push(activityRow("Got a notification", `${kind}${from ? " from " + from : ""}: ${text || ""}`, undefined, "notifications"));
+  queueActivity(activityRow("Got a notification", `${kind}${from ? " from " + from : ""}: ${text || ""}`, undefined, "notifications"));
 }
 
 // Every page follows the master theme, till layout and Master settings: read on load, every 15

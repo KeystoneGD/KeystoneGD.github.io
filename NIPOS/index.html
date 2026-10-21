@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022r">
-<link rel="stylesheet" href="layouts.css?v=20261022r">
+<link rel="stylesheet" href="nipos.css?v=20261022s">
+<link rel="stylesheet" href="layouts.css?v=20261022s">
 </head>
 <body>
 
@@ -751,7 +751,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261022r"></script>
+<script src="db.js?v=20261022s"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -1618,7 +1618,12 @@ async function loadCatalogueFromDb(){
   renderQtys();
   renderDietFilter();
   applyVisibility();
+  // The tile layouts too: tiles drawn from the built-in menu before this loaded carry the built-in ids,
+  // and a tap on one would add something this menu doesn't have. Redrawn only when the menu changed.
+  const sig = JSON.stringify(ALL_ITEMS.map(p => [p.id, p.name, p.pence]));
+  if (sig !== loadedMenuSig) { loadedMenuSig = sig; renderPosMenu(); }
 }
+let loadedMenuSig = null;
 
 // Custom products (added on the Backend page) render into their own sections here, grouped by
 // what kind of item they are, so they show up as normal browsable/sellable items on the till.
@@ -2098,7 +2103,10 @@ posMenuEl.addEventListener("click", e => {
     if (search.value) { search.value = ""; applyVisibility(); } else renderPosMenu();
     return;
   }
-  if (b.dataset.pid) { addProductOnce(BY_ID[b.dataset.pid]); return; }
+  if (b.dataset.pid) {
+    if (!BY_ID[b.dataset.pid]) { renderPosMenu(); showToast("The menu just updated. Tap the item again."); return; } // a tile from before the menu loaded
+    addProductOnce(BY_ID[b.dataset.pid]); return;
+  }
   if (b.dataset.fkey) runLayoutKey(b.dataset.fkey);
 });
 document.addEventListener("nipos:layoutchange", () => {
