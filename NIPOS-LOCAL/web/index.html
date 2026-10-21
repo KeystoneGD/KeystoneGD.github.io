@@ -323,8 +323,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022y">
-<link rel="stylesheet" href="layouts.css?v=20261022y">
+<link rel="stylesheet" href="nipos.css?v=20261022z">
+<link rel="stylesheet" href="layouts.css?v=20261022z">
 </head>
 <body>
 
@@ -340,7 +340,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   <div class="header-tools">
     <div class="search">
       <span data-icon="search"></span>
-      <input id="search" type="search" placeholder="Search drinks" aria-label="Search the menu" autocomplete="off">
+      <input id="search" type="search" placeholder="Search the menu" aria-label="Search the menu" autocomplete="off">
     </div>
     <div class="diet-filter" id="dietFilter" role="group" aria-label="Show only items that are" hidden></div>
   </div>
@@ -760,7 +760,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022y"></script>
+<script src="db.js?v=20261022z"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -1894,6 +1894,23 @@ function layoutGroupFor(cat){
   return "other";
 }
 function layoutGroupColour(key){ const g = layoutGroups().find(x => x.key === key); return g ? g.colour : "#3d4a57"; }
+// Food is its own menu: on the drinks side the section row ends with "Food ›"; tapping it swaps the
+// row for a single "‹ Drinks" button (back to the drinks section last used) and the food categories.
+let lastDrinkGroupKey = null;
+const DRINKS_BACK_COLOUR = "#2a3a4a";
+function menuRowGroups(groups){
+  const food = groups.find(g => g.key === "food");
+  if (!food) return groups;
+  const drinks = groups.filter(g => g.key !== "food");
+  if (layoutGroupKey !== "food") {
+    if (drinks.some(g => g.key === layoutGroupKey)) lastDrinkGroupKey = layoutGroupKey;
+    return drinks.concat([{ ...food, name: "Food ›" }]);
+  }
+  const back = drinks.find(g => g.key === lastDrinkGroupKey) || drinks[0];
+  return back ? [{ key: back.key, name: "‹ Drinks", colour: DRINKS_BACK_COLOUR, back: true }] : [];
+}
+// On a phone a long category list is one sideways-scrolling strip, so the items keep the screen.
+function catsScroll(inGroup){ return !wideLayout.matches && inGroup.length > 6; }
 function layoutCategories(){
   const cats = CAT.map(c => ({ ...c }));
   const fav = favouritesCategory();
@@ -1984,12 +2001,13 @@ function pmDockTileHTML(p, colour, sub){
 }
 function pmGroupsHTML(groups, opts){
   const o = opts || {};
-  const list = (o.top ? [TOP_GROUP] : []).concat(groups);
-  return `<div class="pm-groups" role="group" aria-label="Menu sections" style="--gcount:${list.length}">${list.map(g => `<button type="button" data-group="${g.key}" aria-current="${g.key === layoutGroupKey}" ${o.coloured ? `class="pm-coloured" style="--gc:${g.colour}"` : `style="--gc:${g.colour}"`}>${o.dock ? "<i></i>" : ""}${esc(g.name)}</button>`).join("")}</div>`;
+  const list = (o.top ? [TOP_GROUP] : []).concat(menuRowGroups(groups));
+  const backOnly = list.length && list.every(g => g.back || g.key === "top") && list.some(g => g.back);
+  return `<div class="pm-groups${backOnly ? " pm-back-row" : ""}" role="group" aria-label="Menu sections" style="--gcount:${list.length}${backOnly ? `;grid-template-columns:repeat(${list.length},1fr)` : ""}">${list.map(g => `<button type="button" data-group="${g.key}" aria-current="${g.key === layoutGroupKey}" ${o.coloured ? `class="pm-coloured" style="--gc:${g.colour}"` : `style="--gc:${g.colour}"`}>${o.dock ? "<i></i>" : ""}${esc(g.name)}</button>`).join("")}</div>`;
 }
 function pmCatsHTML(inGroup, coloured){
   if (inGroup.length < 2) return "";
-  return `<div class="pm-cats" role="group" aria-label="Categories">${inGroup.map(c => `<button type="button" data-cat="${esc(c.id)}" aria-current="${c.id === layoutCatId}" ${coloured ? `class="pm-coloured" style="--gc:${layoutGroupColour(c.group)}"` : ""}>${esc(c.short)}</button>`).join("")}</div>`;
+  return `<div class="pm-cats${catsScroll(inGroup) ? " pm-cats-scroll" : ""}" role="group" aria-label="Categories">${inGroup.map(c => `<button type="button" data-cat="${esc(c.id)}" aria-current="${c.id === layoutCatId}" ${coloured ? `class="pm-coloured" style="--gc:${layoutGroupColour(c.group)}"` : ""}>${esc(c.short)}</button>`).join("")}</div>`;
 }
 function pmHeadHTML(title, note){ return `<div class="pm-head"><h2>${esc(title)}</h2>${note ? `<span>${esc(note)}</span>` : ""}</div>`; }
 function pmLcdLine(){
@@ -2028,7 +2046,7 @@ function renderPosMenu(){
     const coloured = layout === "colour";
     const grid = `<div class="pm-scroll">${query && title ? pmHeadHTML(title) : ""}${empty}<div class="pm-tiles">${items(x => pmTileHTML(x.p, coloured ? colourOf(x) : null))}</div></div>`;
     if (coloured && wide) {
-      const rail = `<div class="pm-rail" role="group" aria-label="Menu sections">${sel.groups.map(g => `<button type="button" data-group="${g.key}" aria-current="${g.key === layoutGroupKey}" style="--gc:${g.colour}">${esc(g.name)}</button>`).join("")}</div>`;
+      const rail = `<div class="pm-rail" role="group" aria-label="Menu sections">${menuRowGroups(sel.groups).map(g => `<button type="button" data-group="${g.key}"${g.back ? ` class="pm-back"` : ""} aria-current="${!g.back && g.key === layoutGroupKey}" style="--gc:${g.colour}">${esc(g.name)}</button>`).join("")}</div>`;
       html = `<div class="pm-row">${rail}<div class="pm-col">${pmCatsHTML(sel.inGroup, true)}${grid}</div></div>`;
     } else {
       html = pmGroupsHTML(sel.groups, { coloured }) + pmCatsHTML(sel.inGroup, coloured) + grid;
@@ -2038,8 +2056,8 @@ function renderPosMenu(){
   if (layout === "list") {
     const rows = `<div class="pm-scroll">${(wide || query) && title ? pmHeadHTML(title, note) : ""}${empty}<div class="pm-rows">${items(x => pmRowHTML(x.p))}</div></div>`;
     if (wide) {
-      const rail = `<div class="pm-lrail" role="group" aria-label="Menu sections">${sel.groups.map(g => `<button type="button" data-group="${g.key}" aria-current="${g.key === layoutGroupKey}">${esc(g.name)}</button>` +
-        (g.key === layoutGroupKey && sel.inGroup.length > 1 ? sel.inGroup.map(c => `<button type="button" class="sub" data-cat="${esc(c.id)}" aria-current="${c.id === layoutCatId}">${esc(c.short)}</button>`).join("") : "")).join("")}</div>`;
+      const rail = `<div class="pm-lrail" role="group" aria-label="Menu sections">${menuRowGroups(sel.groups).map(g => `<button type="button" data-group="${g.key}" aria-current="${!g.back && g.key === layoutGroupKey}">${esc(g.name)}</button>` +
+        ((g.back || g.key === layoutGroupKey) && sel.inGroup.length > 1 ? sel.inGroup.map(c => `<button type="button" class="sub" data-cat="${esc(c.id)}" aria-current="${c.id === layoutCatId}">${esc(c.short)}</button>`).join("") : "")).join("")}</div>`;
       html = `<div class="pm-row">${rail}<div class="pm-col">${rows}</div></div>`;
     } else {
       html = pmGroupsHTML(sel.groups) + pmCatsHTML(sel.inGroup) + rows;
@@ -2063,8 +2081,9 @@ function renderPosMenu(){
     } else {
       const [l1, l1p] = pmLcdLine();
       const lcd = `<button type="button" class="pt-lcd" data-fkey="order" aria-label="Current order: ${n} items, ${fmt(total)}. Open the order"><span><span class="l1"><span>${currentTable ? "Table " + esc(currentTable) : "No table yet"}</span></span><span style="font-size:13px;">${n} item${n === 1 ? "" : "s"}${l1 ? " · last: " + esc(l1) + " " + l1p : ""}</span></span><span class="l2">${fmt(total)}</span></button>`;
-      const groups = `<div class="pt-depts" role="group" aria-label="Menu sections" style="grid-template-columns:repeat(4,minmax(0,1fr))">${sel.groups.map(g => `<button type="button" data-group="${g.key}" aria-current="${!query && g.key === layoutGroupKey}" style="--gc:${g.colour}">${esc(g.name)}</button>`).join("")}</div>`;
-      const subs = sel.inGroup.length > 1 ? `<div class="pt-depts" role="group" aria-label="Categories" style="grid-template-columns:repeat(${sel.inGroup.length > 4 ? 3 : 2},minmax(0,1fr))">${sel.inGroup.map(c => `<button type="button" data-cat="${esc(c.id)}" aria-current="${!query && c.id === layoutCatId}" style="--gc:${layoutGroupColour(c.group)}">${esc(c.short)}</button>`).join("")}</div>` : "";
+      const rowGroups = menuRowGroups(sel.groups), backOnly = rowGroups.length === 1 && rowGroups[0].back;
+      const groups = `<div class="pt-depts${backOnly ? " pt-back-row" : ""}" role="group" aria-label="Menu sections" style="grid-template-columns:repeat(${backOnly ? 1 : 4},minmax(0,1fr))">${rowGroups.map(g => `<button type="button" data-group="${g.key}" aria-current="${!query && !g.back && g.key === layoutGroupKey}" style="--gc:${g.colour}">${esc(g.name)}</button>`).join("")}</div>`;
+      const subs = sel.inGroup.length > 1 ? `<div class="pt-depts${catsScroll(sel.inGroup) ? " pt-scroll" : ""}" role="group" aria-label="Categories" style="grid-template-columns:repeat(${sel.inGroup.length > 4 ? 3 : 2},minmax(0,1fr))">${sel.inGroup.map(c => `<button type="button" data-cat="${esc(c.id)}" aria-current="${!query && c.id === layoutCatId}" style="--gc:${layoutGroupColour(c.group)}">${esc(c.short)}</button>`).join("")}</div>` : "";
       html = lcd + groups + subs + plu + `<div class="pt-fkeys" style="grid-template-columns:1fr 1fr 1fr 1.4fr">
         <button type="button" data-fkey="search">Search</button><button type="button" data-fkey="order">Order</button>
         <button type="button" class="pt-cash" data-fkey="cash"${n ? "" : " disabled"}>Cash</button>
@@ -2090,6 +2109,12 @@ function renderPosMenu(){
   posMenuEl.dataset.view = view;
   const newScroll = posMenuEl.querySelector(".pm-scroll, .pt-plu");
   if (newScroll && keep) newScroll.scrollTop = keep;
+  // A sideways category strip keeps the chosen category in view.
+  posMenuEl.querySelectorAll(".pt-scroll, .pm-cats-scroll").forEach(strip => {
+    const cur = strip.querySelector('[aria-current="true"]'); if (!cur) return;
+    const sr = strip.getBoundingClientRect(), cr = cur.getBoundingClientRect();
+    if (cr.left < sr.left || cr.right > sr.right) strip.scrollLeft += cr.left - sr.left - (sr.width - cr.width) / 2;
+  });
   renderPubTillDisplay();
 }
 
