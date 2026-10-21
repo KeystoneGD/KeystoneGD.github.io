@@ -1904,6 +1904,7 @@ document.getElementById("cartMore").addEventListener("click", async () => {
 document.getElementById("cartClear").addEventListener("click", async () => {
   if (cartCount() === 0) return;
   if (!(await askConfirm({ title:"Clear order?", message:"This removes every item from the current order.", confirmLabel:"Clear order", danger:true }))) return;
+  logActivity("Cleared an order", `${cartCount()} items, ${fmt(computeTotals().total)}`);
   cart = {}; discount = null; currentTable = ""; document.getElementById("tableInput").value = ""; saveJSON(LS_CART, cart); renderQtys(); renderCartBar(); renderCartSheet();
 });
 
@@ -2114,6 +2115,7 @@ document.getElementById("chargeConfirm").addEventListener("click", async () => {
   if (!newOrder.isTest) openOrders.unshift(newOrder);
   ordersStore.save(newOrder);
   logOrderToDiscord(sale);
+  if (sale.discountAmount > 0) logActivity("Discount given", `${sale.discountLabel || "Discount"} −${fmt(sale.discountAmount)} on ${fmt(sale.base)}${sale.table ? ", table " + sale.table : ""}`);
   saveLocal(LS_LAST_ORDER, cart); // for the Dock layout's "Last order again"
   cart = {}; discount = null; currentNotes = ""; currentTable = ""; document.getElementById("notesInput").value = ""; document.getElementById("tableInput").value = ""; saveJSON(LS_CART, cart);
   renderQtys(); renderCartBar();
@@ -2131,6 +2133,7 @@ document.getElementById("cancelOrderBtn").addEventListener("click", async () => 
   if (maintenanceMode) abandonedOrder.isTest = true;
   if (!abandonedOrder.isTest) { abandoned.unshift(abandonedOrder); saveLocal(LS_ABANDONED, abandoned); }
   abandonedStore.save(abandonedOrder);
+  logActivity("Customer left without paying", `${fmt(abandonedOrder.total)}${abandonedOrder.table ? ", table " + abandonedOrder.table : ""}`);
   cart = {}; discount = null; currentNotes = ""; currentTable = ""; document.getElementById("notesInput").value = ""; document.getElementById("tableInput").value = ""; saveJSON(LS_CART, cart);
   renderQtys(); renderCartBar();
   closeSheet("cartSheet");
@@ -2370,6 +2373,7 @@ async function signIn(pin){
   }
   myVenues = await fetchMyVenues(currentUser);
   await resolveVenueSelection();
+  logActivity("Signed in", "Till");
   // Notification permission was already granted on this device from a previous login (it's a
   // browser-level grant, not tied to this account) - re-confirm the push subscription now that we
   // know who's signed in, rather than waiting on a tap that already happened weeks ago.
@@ -2650,6 +2654,7 @@ function renderAdminHome(){
 
 function toggleCategoryStop(catId, on){
   const cat = CAT.find(c => c.id === catId);
+  logActivity(on ? "Put on stop" : "Back on sale", `All of ${cat.name}`);
   cat.items.forEach(i => {
     if (on) { stops.add(i.name); removeProductFromCart(i.id); stopsStore.save({ id: stopRowId(i.name), ts: Date.now(), name: i.name }); }
     else { stops.delete(i.name); stopsStore.remove(stopRowId(i.name)); }
@@ -2663,6 +2668,7 @@ function toggleCategoryStop(catId, on){
 }
 
 function toggleStop(id, name, on){
+  logActivity(on ? "Put on stop" : "Back on sale", name);
   if (on) { stops.add(name); stopsStore.save({ id: stopRowId(name), ts: Date.now(), name }); }
   else { stops.delete(name); stopsStore.remove(stopRowId(name)); }
   try{ localStorage.setItem(LS_STOPS, JSON.stringify([...stops])); }catch(e){}

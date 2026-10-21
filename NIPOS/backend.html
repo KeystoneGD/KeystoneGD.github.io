@@ -137,6 +137,8 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .colour-chip{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:28px;padding:0 8px;font-weight:800;font-size:12.5px;border-radius:6px;}
 .feature-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
 .announce-card{max-width:620px;}
+.activity-table td{font-size:13.5px;}
+.activity-table td:first-child{white-space:nowrap;color:var(--text-muted);}
 .edit-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:6px 0;border-bottom:1px solid var(--border);}
 .edit-row label{display:inline-flex;align-items:center;gap:6px;font-size:14px;}
 .edit-row input[type="text"]{width:auto;min-width:160px;}
@@ -561,6 +563,7 @@ table.data-table tr:last-child td{border-bottom:0;}
         <div class="tab-row" role="tablist" aria-label="Master settings">
           <button class="tab-btn active" data-tab="ms-features" role="tab" aria-selected="true" aria-controls="tab-ms-features">Features</button>
           <button class="tab-btn" data-tab="ms-looks" role="tab" aria-selected="false" aria-controls="tab-ms-looks">Themes and layouts</button>
+          <button class="tab-btn" data-tab="ms-activity" role="tab" aria-selected="false" aria-controls="tab-ms-activity">Activity</button>
           <button class="tab-btn" data-tab="ms-wipe" role="tab" aria-selected="false" aria-controls="tab-ms-wipe">Remove sales</button>
         </div>
       </div>
@@ -580,6 +583,21 @@ table.data-table tr:last-child td{border-bottom:0;}
       <p class="note">How the menu looks on every till. Each layout has a phone and a tablet version, and each device picks the right one by itself. Taking payment, the order panel and every option picker stay the same in all of them.</p>
       <p class="note" id="layoutMsg" role="status"></p>
       <div class="theme-grid" id="layoutGrid"></div>
+      </div>
+      <div class="tab-panel" id="tab-ms-activity" role="tabpanel">
+      <h2 class="layout-title" style="margin-top:0;">Activity</h2>
+      <p class="note" id="actOffNote">The Activity log is switched off, so nothing new is being recorded. Switch it on in Features.</p>
+      <div class="card">
+        <div class="edit-row">
+          <label>Venue <select id="actVenue"></select></label>
+          <label>Person <select id="actPerson"></select></label>
+          <label>From <input type="date" id="actFrom"></label>
+          <label>To <input type="date" id="actTo"></label>
+          <label>Search <input type="text" id="actSearch" placeholder="e.g. refund, Zombie"></label>
+        </div>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" id="actLoad">Show activity</button><button type="button" class="btn btn-ghost" id="actCsv">Download as spreadsheet</button></div>
+      </div>
+      <div id="actList"></div>
       </div>
       <div class="tab-panel" id="tab-ms-wipe" role="tabpanel">
       <h2 class="layout-title" style="margin-top:0;">Remove sales</h2>
@@ -622,6 +640,11 @@ table.data-table tr:last-child td{border-bottom:0;}
     </details>
     <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name">Account Active</span></span><span class="switch"><input type="checkbox" id="umActive" checked><span class="slider"></span></span></label>
     <label class="row" id="umGlobalAdminRow" style="border:0;padding:8px 0 0;" hidden><span class="info"><span class="name">Global Admin (all venues)</span></span><span class="switch"><input type="checkbox" id="umGlobalAdmin"><span class="slider"></span></span></label>
+    <div id="umRoleWrap" hidden style="margin-top:10px;">
+      <label class="field" for="umRole">Start from a role</label>
+      <select id="umRole"></select>
+      <p class="note" id="umRoleNote" role="status"></p>
+    </div>
     <details class="mini-menu">
       <summary>Permissions</summary>
       <div class="mini-menu-body" id="umPerms"></div>
@@ -915,6 +938,7 @@ document.getElementById("loginSubmitBtn").addEventListener("click", async () => 
   if (currentUser.system) { applyLoginState(); document.getElementById("systemPasswordInput").focus(); return; }
   myVenues = await fetchMyVenues(currentUser, true);
   await resolveVenueSelection();
+  logActivity("Signed in", "Backend", null);
 });
 document.getElementById("loginPinInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginSubmitBtn").click(); });
 async function signOutBackend(){
@@ -969,6 +993,7 @@ document.getElementById("systemPasswordBtn").addEventListener("click", async () 
   myVenues = await fetchMyVenues(currentUser, true);
   await resolveVenueSelection();
   applyLoginState();
+  logActivity("Signed in", "Backend ($YSTEM)", null);
 });
 document.getElementById("systemPasswordInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("systemPasswordBtn").click(); });
 
@@ -1022,7 +1047,10 @@ const FEATURES = [
   { key: "cashButtons", name: "Cash and tip buttons", about: "The quick cash buttons on the payment screen, and preset tip amounts." },
   { key: "lateOrders", name: "Late-order warning", about: "On the order screen and the till's Open Orders, orders waiting longer than this get a Late badge and move up." },
   { key: "bigText", name: "Bigger text", about: "Makes the till and order screen bigger, everywhere or just for some venues or people." },
-  { key: "reportHeader", name: "Report header details", about: "Venue name, address and contact details on Z Reads and shift reports, plus a footer line." }
+  { key: "reportHeader", name: "Report header details", about: "Venue name, address and contact details on Z Reads and shift reports, plus a footer line." },
+  { key: "activityLog", name: "Activity log", about: "Records who did what and when: sign-ins, stops, product and price changes, refunds, discounts, cleared and walked-out orders, staff changes, Z Reads and Master settings changes. Read it in the Activity tab." },
+  { key: "exportData", name: "Export data", about: "Download sales, refunds and tips for any dates as spreadsheets, for one venue or all of them." },
+  { key: "roleTemplates", name: "Staff role templates", about: "Save permission sets like \"Bar staff\" or \"Table service\" and give them to someone in one tap when adding or editing staff." }
 ];
 /* Batch 2 editors. Each one opens filled in with what the till does today (the built-in values), so
    switching a feature on changes nothing until something is edited. render(cfg) draws it; read()
@@ -1162,6 +1190,118 @@ const FEATURE_EDITORS = {
     read(){ const venues = {}; F("[data-rh]").forEach(r => { const g = s => r.querySelector(s).value.trim(); venues[r.dataset.rh] = { name: g("[data-rh-name]"), address: g("[data-rh-address]"), phone: g("[data-rh-phone]"), email: g("[data-rh-email]"), footer: g("[data-rh-footer]") }; }); return { venues }; }
   }
 };
+/* Batch 3: activity log viewer, export data, staff role templates. */
+FEATURE_EDITORS.roleTemplates = {
+  render(cfg){
+    const templates = cfg.templates || [];
+    const keys = PERM_KEYS_ORDERED.filter(permVisible);
+    return `<p class="note">Saved permission sets. When adding or editing someone, "Start from a role" ticks the right boxes in one go (you can still change them after).</p>
+      ${templates.map((t, i) => `<div class="colour-row" data-role data-id="${esc(t.id)}">
+        <label class="field">Role name <input type="text" data-role-name value="${esc(t.name)}" maxlength="30"></label>
+        <div class="feature-people">${keys.map(k => `<label><input type="checkbox" data-role-perm="${k}" ${t.perms && t.perms[k] ? "checked" : ""}>${esc(PERM_LABELS[k])}</label>`).join("")}</div>
+        <div class="feature-actions"><button type="button" class="btn btn-ghost btn-sm" data-act="role-remove" data-i="${i}">Remove this role</button></div></div>`).join("") || `<p class="note">No roles yet.</p>`}
+      <div class="feature-actions"><button type="button" class="btn btn-ghost" data-act="role-add">Add a role</button><button type="button" class="btn btn-solid" data-act="save-editor" data-key="roleTemplates">Save roles</button></div>`;
+  },
+  read(){
+    return { templates: F("[data-role]").map(r => { const perms = {}; r.querySelectorAll("[data-role-perm]").forEach(x => { perms[x.dataset.rolePerm] = x.checked; }); return { id: r.dataset.id, name: r.querySelector("[data-role-name]").value.trim(), perms }; }).filter(t => t.name) };
+  }
+};
+FEATURE_EDITORS.exportData = {
+  render(){
+    const today = new Date().toISOString().slice(0, 10), weekAgo = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
+    return `<div class="edit-row"><label>From <input type="date" id="exFrom" value="${weekAgo}"></label><label>To <input type="date" id="exTo" value="${today}"></label>
+      <label>Venue <select id="exVenue">${venueOptions(true)}</select></label></div>
+      <div class="feature-people"><label><input type="checkbox" id="exSales" checked>Sales</label><label><input type="checkbox" id="exRefunds" checked>Refunds</label><label><input type="checkbox" id="exTips" checked>Tips</label></div>
+      <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="export-run">Download spreadsheets (CSV)</button></div>
+      <p class="note">Test sales made during Maintenance Mode are left out. Opens in Excel, Numbers or Google Sheets.</p>`;
+  },
+  read(){ return {}; }
+};
+function csvCell(v){ const t = v == null ? "" : String(v); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; }
+function downloadCsv(name, header, rows){
+  const csv = "﻿" + [header].concat(rows).map(r => r.map(csvCell).join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+async function runExport(){
+  const msg = document.getElementById("featureMsg");
+  if (!featureOn("exportData")) { msg.textContent = "Switch Export data on first."; return; }
+  const start = new Date(document.getElementById("exFrom").value + "T00:00:00").getTime();
+  const end = new Date(document.getElementById("exTo").value + "T23:59:59.999").getTime();
+  if (!isFinite(start) || !isFinite(end) || end < start) { msg.textContent = "Pick a From date before the To date."; return; }
+  const venueId = document.getElementById("exVenue").value, ids = venueId ? [venueId] : myVenues.map(v => v.id);
+  const tag = `${venueId ? venueName(venueId).replace(/[^a-z0-9]+/gi, "-") : "all-venues"}_${document.getElementById("exFrom").value}_to_${document.getElementById("exTo").value}`;
+  const d = ts => new Date(ts).toLocaleDateString("en-GB"), t = ts => fmtTime(ts), money = p => ((p || 0) / 100).toFixed(2);
+  let made = 0;
+  if (document.getElementById("exSales").checked) {
+    const sales = await fetchSalesInRange(start, end, ids);
+    downloadCsv(`sales_${tag}.csv`, ["Date", "Time", "Venue", "Table", "Items", "Paid by", "Subtotal £", "Discount", "Discount £", "Total £", "Cash given £", "Change £", "Happy Hour"],
+      sales.map(s => [d(s.ts), t(s.ts), venueName(s.venueId), s.table || "", (s.items || []).map(i => `${i.qty}x ${i.name}${i.refunded ? " (refunded)" : ""}`).join("; "), s.method === "cash" ? "Cash" : "Card", money(s.base), s.discountLabel || "", money(s.discountAmount), money(s.total), s.cashGiven != null ? money(s.cashGiven) : "", s.change != null ? money(s.change) : "", s.happyHour ? "Yes" : ""]));
+    made++;
+  }
+  if (document.getElementById("exRefunds").checked) {
+    const refunds = await fetchRefundsInRange(start, end, ids);
+    downloadCsv(`refunds_${tag}.csv`, ["Date", "Time", "Venue", "Item", "Qty", "Refunded £", "Paid by"], refunds.map(r => [d(r.ts), t(r.ts), venueName(r.venueId), r.itemName, r.qty, money(r.pence), r.method === "cash" ? "Cash" : "Card"]));
+    made++;
+  }
+  if (document.getElementById("exTips").checked) {
+    let tips = [];
+    try { const { data } = await supabaseClient.from("gratuities").select("data,venue_id").in("venue_id", ids).gte("ts", start).lte("ts", end).limit(50000); tips = (data || []).map(r => ({ ...r.data, venueId: r.venue_id })).filter(x => !x.isTest); } catch (e) {}
+    downloadCsv(`tips_${tag}.csv`, ["Date", "Time", "Venue", "Tip £"], tips.sort((a, b) => a.ts - b.ts).map(g => [d(g.ts), t(g.ts), venueName(g.venueId), money(g.amount)]));
+    made++;
+  }
+  msg.textContent = made ? `Downloaded ${made} spreadsheet${made === 1 ? "" : "s"}.` : "Tick at least one of Sales, Refunds or Tips.";
+  if (made) logActivity("Exported data", `${venueId ? venueName(venueId) : "Every venue"}, ${document.getElementById("exFrom").value} to ${document.getElementById("exTo").value}`, venueId || null);
+}
+
+// Activity tab: the log, newest first, with filters.
+let activityRows = [];
+function renderActivityFilters(){
+  const v = document.getElementById("actVenue"), p = document.getElementById("actPerson");
+  if (!v || !p) return;
+  const keepV = v.value, keepP = p.value;
+  v.innerHTML = venueOptions(true);
+  p.innerHTML = `<option value="">Everyone</option>` + users.slice().sort((a, b) => a.name.localeCompare(b.name)).map(u => `<option value="${esc(u.id)}">${esc(u.name)}</option>`).join("");
+  v.value = keepV; p.value = keepP;
+  document.getElementById("actOffNote").hidden = featureOn("activityLog");
+}
+async function loadActivity(){
+  const list = document.getElementById("actList"), q = document.getElementById("actSearch").value.trim().toLowerCase();
+  list.innerHTML = `<div class="empty">Loading…</div>`;
+  let query = supabaseClient.from("activity_log").select("ts,venue_id,user_id,data").order("ts", { ascending: false }).limit(500);
+  const venue = document.getElementById("actVenue").value, person = document.getElementById("actPerson").value;
+  const from = document.getElementById("actFrom").value, to = document.getElementById("actTo").value;
+  if (venue) query = query.eq("venue_id", venue);
+  if (person) query = query.eq("user_id", person);
+  if (from) query = query.gte("ts", new Date(from + "T00:00:00").getTime());
+  if (to) query = query.lte("ts", new Date(to + "T23:59:59.999").getTime());
+  let data = [];
+  try { const res = await query; data = res.data || []; } catch (e) {}
+  activityRows = data.filter(r => !q || `${r.data.action} ${r.data.detail} ${r.data.by}`.toLowerCase().includes(q));
+  list.innerHTML = activityRows.length ? `<table class="feature-table activity-table"><thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">Venue</th><th scope="col">What</th></tr></thead><tbody>${activityRows.map(r => `<tr><td>${fmtDayTime(r.ts)}</td><td>${esc(r.data.by || "")}</td><td>${r.venue_id ? esc(venueName(r.venue_id)) : "-"}</td><td><strong>${esc(r.data.action)}</strong>${r.data.detail ? " · " + esc(r.data.detail) : ""}</td></tr>`).join("")}</tbody></table>`
+    : `<div class="empty">Nothing logged${featureOn("activityLog") ? " for these filters" : " yet. Switch the Activity log on in Features"}.</div>`;
+}
+document.getElementById("actLoad").addEventListener("click", loadActivity);
+document.getElementById("actCsv").addEventListener("click", () => downloadCsv(`activity_${new Date().toISOString().slice(0, 10)}.csv`, ["Date", "Time", "Who", "Venue", "What", "Details", "Screen"],
+  activityRows.map(r => [new Date(r.ts).toLocaleDateString("en-GB"), fmtTime(r.ts), r.data.by, r.venue_id ? venueName(r.venue_id) : "", r.data.action, r.data.detail, r.data.page])));
+document.querySelector('#page-themes .tab-btn[data-tab="ms-activity"]').addEventListener("click", () => { renderActivityFilters(); loadActivity(); });
+
+// "Start from a role" in the staff editor (feature roleTemplates).
+function renderRolePicker(){
+  const wrap = document.getElementById("umRoleWrap");
+  const templates = featureOn("roleTemplates") ? (featureConfig("roleTemplates").templates || []) : [];
+  wrap.hidden = !templates.length;
+  document.getElementById("umRole").innerHTML = `<option value="">Pick a role…</option>` + templates.map(t => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join("");
+}
+document.getElementById("umRole").addEventListener("change", e => {
+  const t = (featureConfig("roleTemplates").templates || []).find(x => x.id === e.target.value);
+  if (!t) return;
+  document.querySelectorAll("#umPerms [data-perm]").forEach(inp => { inp.checked = !!(t.perms && t.perms[inp.dataset.perm]); });
+  document.getElementById("umRoleNote").textContent = `Permissions set to ${t.name}. Change any you need to.`;
+});
+
 // Add/remove rows in an editor without saving yet: re-render it from what's on screen.
 function editorRowChange(key, listField, mutate){
   const current = { ...featureView(key), ...FEATURE_EDITORS[key].read() };
@@ -1203,7 +1343,11 @@ async function saveFeature(key, value, okText){
   }
   if (result !== "ok") { msg.textContent = "Couldn't save that. Try again."; return false; }
   delete featureDrafts[key]; featureDirty.delete(key);
+  const f = FEATURES.find(x => x.key === key), wasOn = !!featureConfig(key).enabled, nowOn = !!(value && value.enabled);
+  const entry = `${f ? f.name : key}: ${nowOn ? "on" : "off"}${wasOn === nowOn ? ", setup changed" : ""}`;
+  if (wasOn && !nowOn) await logActivity("Master settings", entry, null); // log before the log itself switches off
   systemSettings = { ...systemSettings, [key]: value };
+  if (nowOn || wasOn === nowOn) logActivity("Master settings", entry, null);
   applyTheme(); renderMaintenanceWatermark();
   msg.textContent = okText || "Saved.";
   renderFeatures(); renderUserList();
@@ -1291,6 +1435,9 @@ function readColourRows(){
 async function runFeatureAction(act, btn){
   if (act === "save-editor") { const key = btn.dataset.key, name = FEATURES.find(f => f.key === key).name; return saveFeature(key, { ...featureView(key), ...FEATURE_EDITORS[key].read() }, `${name} saved.`); }
   const removeAt = i => list => list.filter((_, j) => j !== Number(i));
+  if (act === "export-run") return runExport();
+  if (act === "role-add") return editorRowChange("roleTemplates", "templates", l => l.concat([{ id: uid("role"), name: "New role", perms: { active: true, placeOrders: true } }]));
+  if (act === "role-remove") { const i = Number(btn.dataset.i); return editorRowChange("roleTemplates", "templates", l => l.filter((_, j) => j !== i)); }
   if (act === "hh-add") return editorRowChange("happyHour", "windows", l => l.concat([{ days: [], from: "17:00", to: "19:00" }]));
   if (act === "hh-remove") return editorRowChange("happyHour", "windows", removeAt(btn.dataset.i));
   if (act === "disc-add") return editorRowChange("discounts", "buttons", l => l.concat([{ id: uid("d"), label: "New discount", pct: 10 }]));
@@ -1442,6 +1589,7 @@ document.getElementById("wipeBtn").addEventListener("click", async () => {
   if (!data) { msg.textContent = "Couldn't remove them. Try again."; wipeReady(); return; }
   if (data.error) { msg.textContent = data.error === "not_confirmed" ? "Type DELETE to confirm." : (SYSTEM_PASSWORD_MESSAGES[data.error] || "Couldn't remove them."); wipeReady(); return; }
   wipeReset();
+  logActivity("Removed sales", `${venue ? venueName(venue) : "Every venue"}: ${WIPE_ROWS.map(([k, label]) => `${data[k] || 0} ${label.toLowerCase()}`).join(", ")}`, venue);
   msg.textContent = "Removed " + WIPE_ROWS.map(([k, label]) => `${data[k] || 0} ${label.toLowerCase()}`).join(", ") + ". Tills clear their own copies on their next refresh.";
   if (typeof loadDashboard === "function") loadDashboard();
 });
@@ -1477,6 +1625,7 @@ async function choosePosLayout(key){
   }
   if (result !== "ok") { msg.textContent = "Couldn't change the layout. Try again."; return; }
   setPosLayoutLocal(key);
+  logActivity("Till layout", l.name, null);
   renderLayouts();
   msg.textContent = `${l.name} is now the till layout. Tills switch within a minute.`;
 }
@@ -1497,6 +1646,7 @@ async function chooseMasterTheme(key){
   }
   if (result !== "ok") { msg.textContent = "Couldn't change the theme. Try again."; return; }
   setMasterThemeLocal(key);
+  logActivity("Master theme", t.name, null);
   renderThemes();
   msg.textContent = `${t.name} is now the theme. Other devices switch within a minute.`;
 }
@@ -1840,6 +1990,7 @@ async function setStopsForNames(names, on){
     else { stops.delete(name); await stopsStore.remove(stopRowId(name)); }
   }
   if (!changed.length) return;
+  logActivity(on ? "Put on stop" : "Back on sale", changed.join(", "));
   postDiscordEmbed(currentVenue && currentVenue.discordWebhooks && currentVenue.discordWebhooks.stop, {
     title: on ? "🛑 Product Stopped" : "✅ Product Back In Stock",
     color: on ? 0xff7a68 : 0x49c98d,
@@ -1874,6 +2025,7 @@ function renderProductRow(it, cat){
   row.querySelector(".delete-product-btn").addEventListener("click", async () => {
     if (!confirm(`Delete "${it.name}"?`)) return;
     await catalogueItemsStore.remove(it.id);
+    logActivity("Deleted a product", it.name);
     realItems = realItems.filter(x => x.id !== it.id);
     renderProductsList();
   });
@@ -1914,6 +2066,7 @@ function renderProductRow(it, cat){
         it.pence = Math.round(parseFloat(panel.querySelector(".edit-flat").value)*100);
       }
       await catalogueItemsStore.save(it);
+      logActivity("Changed a product", `${it.name}: ${it.sizes && it.sizes.length ? it.sizes.map(s => `${s.label} ${fmt(s.pence)}`).join(", ") : fmt(it.pence) + (it.doublePence != null ? " / double " + fmt(it.doublePence) : "")}`);
       e.target.textContent = "Saved";
       setTimeout(() => { renderProductsList(); }, 700);
     });
@@ -2013,6 +2166,7 @@ document.getElementById("addBtn").addEventListener("click", async () => {
   }
 
   await catalogueItemsStore.save(item);
+  logActivity("Added a product", `${item.name} (${fmt(item.pence)})`);
   realItems.push(item);
   if (isMixer) { mixerOverrides.add(name); await mixerOverridesStore.save({ id: name, ts: Date.now(), name }); }
 
@@ -2136,8 +2290,10 @@ function renderOfferList(){
 }
 async function deleteOffer(id){
   if (!confirm("Delete this offer?")) return;
+  const gone = customDiscounts.find(o => o.id === id);
   customDiscounts = customDiscounts.filter(o => o.id !== id);
   await customDiscountsStore.remove(id);
+  logActivity("Deleted an offer", gone ? gone.label : id);
   renderOfferList();
 }
 document.getElementById("addOfferBtn").addEventListener("click", async () => {
@@ -2148,6 +2304,7 @@ document.getElementById("addOfferBtn").addEventListener("click", async () => {
   const offer = { id: "custom" + Date.now(), ts: Date.now(), label, pct };
   customDiscounts.push(offer);
   await customDiscountsStore.save(offer);
+  logActivity("Added an offer", `${label} (${pct}%)`);
   document.getElementById("offerName").value = ""; document.getElementById("offerPct").value = "";
   renderOfferList();
 });
@@ -2195,6 +2352,8 @@ async function deleteUser(id){
   if (!confirm("Delete this user?")) return;
   const res = await callManageStaff("delete", { userId: id });
   if (res.error) { alert(res.error); return; }
+  const gone = users.find(u => u.id === id);
+  logActivity("Deleted a staff member", gone ? gone.name : id, null);
   users = users.filter(u => u.id !== id);
   renderUserList();
 }
@@ -2213,6 +2372,7 @@ function updateDropdownSummary(listId, summaryId, checkboxSelector, noun){
 }
 function openUserModal(mode, user){
   userModalMode = mode; editingUser = user || null;
+  renderRolePicker(); document.getElementById("umRoleNote").textContent = "";
   const canGrantGlobalAdmin = !!(currentUser && currentUser.perms.globalAdmin);
   document.getElementById("userModalTitle").textContent = mode === "edit" ? "Edit user" : "Add a user";
   document.getElementById("umName").value = user ? user.name : "";
@@ -2258,7 +2418,9 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
     const merged = { ...(freshRow ? freshRow.data : u), name, pin, perms, venueIds, groupIds };
     const { error } = await supabaseClient.from("staff_users").update({ data: merged }).eq("id", u.id);
     if (error) { alert(error.message); return; }
+    logActivity("Changed a staff member", `${name}${pin !== u.pin ? " (new PIN)" : ""}`, null);
   }
+  if (userModalMode === "add") logActivity("Added a staff member", name, null);
   users = await fetchAllVisibleStaff();
   renderUserList();
   closeUserModal();
@@ -2437,6 +2599,7 @@ document.getElementById("backendZReadBtn").addEventListener("click", async () =>
   if (!confirm(`Close out ${currentVenue.name}'s current shift and archive it as a Z Read? This can't be undone.`)) return;
   const result = await performZRead(currentVenue, currentUser.name);
   if (result.error) { alert("Z Read failed: " + result.error); return; }
+  logActivity("Z Read (from Backend)", currentVenue.name);
   await renderZReads();
   await loadDashboard();
   openReportTab(zReportTitle(currentVenue.name, result.closedAt, result.summary.closedBy), new Date(result.closedAt).toLocaleString(), zReportRows(result.summary), result.transactions);

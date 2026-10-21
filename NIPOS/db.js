@@ -424,7 +424,7 @@ function featureOn(key) { const f = systemSettings[key]; return !!(f && f.enable
 function featureConfig(key) { return systemSettings[key] || {}; }
 
 // Per-person layout and theme (feature "personal"): set when someone signs in on this device.
-let signedInUserId = null;
+let signedInUserId = null, signedInUserName = null;
 function personalSetting(field) {
   if (!signedInUserId || !featureOn("personal")) return null;
   const mine = (featureConfig("personal").users || {})[signedInUserId];
@@ -436,6 +436,7 @@ function effectiveThemeKey() {
 }
 // Pages call this whenever who's signed in changes (null when signed out).
 function setSignedInUser(user) {
+  signedInUserName = user ? user.name : null;
   const id = user ? user.id : null;
   if (id === signedInUserId) return;
   signedInUserId = id;
@@ -568,6 +569,18 @@ function runRemoteCommands(venueId) {
     done.push(c.id);
     try { sessionStorage.setItem("nipos.remoteDone", JSON.stringify(done.slice(-50))); } catch (e) {}
   });
+}
+
+// Activity log (feature "activityLog"): who did what, and when. Only $YSTEM can read it. Nothing is
+// written while the feature is off.
+async function logActivity(action, detail, venueId) {
+  if (!featureOn("activityLog") || !supabaseClient || !signedInUserId) return;
+  const ts = Date.now();
+  try {
+    await supabaseClient.from("activity_log").insert({ id: "a" + ts + Math.random().toString(36).slice(2, 6), ts,
+      venue_id: venueId === undefined ? (currentVenueId || null) : venueId, user_id: signedInUserId,
+      data: { action, detail: detail || "", by: signedInUserName || "", page: location.pathname.split("/").pop() || "index.html" } });
+  } catch (e) {}
 }
 
 // Every page follows the master theme, till layout and Master settings: read on load, every 15
@@ -912,6 +925,7 @@ async function refundSaleLine(saleId, itemIdx) {
   const refundRow = { id: "r" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), saleTs: fresh.ts, itemName: item.name, qty: item.qty, pence: refundAmountFor(fresh, item), method: fresh.method || "card" };
   if (maintenanceMode) refundRow.isTest = true;
   await refundsTable.save(refundRow);
+  logActivity("Refund", `${item.qty}× ${item.name}, ${poundsText(refundRow.pence)} by ${refundRow.method}${fresh.table ? ", table " + fresh.table : ""}`);
   return { refundRow, sale: fresh };
 }
 function logRefundToDiscordFor(venue, byName, refundRow, sale) {
