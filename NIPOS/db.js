@@ -21,7 +21,9 @@ const PERM_LABELS = {
   backendAccess: "Backend Access",
   orderScreen: "Order Screen",
   viewOpenOrders: "View Open Orders",
-  processRefunds: "Process Refunds"
+  processRefunds: "Process Refunds",
+  sendAnnouncements: "Send Announcements",
+  notifySpecificUsers: "Notify Specific Users"
 };
 
 let supabaseClient = null;
@@ -324,7 +326,7 @@ function setTheme(theme) {
 }
 // The device switch: Classic flips dark/light, any other theme flips normal/dark mode.
 function toggleTheme() {
-  if (masterThemeKey === "classic") setTheme(getTheme() === "light" ? "dark" : "light");
+  if (effectiveThemeKey() === "classic") setTheme(getTheme() === "light" ? "dark" : "light");
   else {
     try { localStorage.setItem(LS_THEME_MODE, getThemeMode() === "dark" ? "normal" : "dark"); } catch (e) {}
     applyTheme();
@@ -332,7 +334,7 @@ function toggleTheme() {
 }
 // What the switch would change to next, for its label: { icon, label }.
 function themeSwitchInfo() {
-  if (masterThemeKey === "classic") {
+  if (effectiveThemeKey() === "classic") {
     return getTheme() !== "light" ? { icon: "sun", label: "Light theme" } : { icon: "moon", label: "Dark theme" };
   }
   return getThemeMode() === "dark" ? { icon: "sun", label: "Normal colours" } : { icon: "moon", label: "Dark mode" };
@@ -341,9 +343,10 @@ function themeSwitchInfo() {
 let lastVenueIdentity = null; // re-applied when the theme changes, since venue colours come from the theme
 function applyTheme() {
   const html = document.documentElement;
-  const t = MASTER_THEMES[masterThemeKey];
+  const themeKey = effectiveThemeKey();
+  const t = MASTER_THEMES[themeKey];
   let styleEl = document.getElementById("masterThemeVars");
-  if (masterThemeKey === "classic" || !t) {
+  if (themeKey === "classic" || !t) {
     html.dataset.theme = getTheme();
     delete html.dataset.master;
     if (styleEl) styleEl.remove();
@@ -351,7 +354,7 @@ function applyTheme() {
   } else {
     const v = t[getThemeMode()];
     html.dataset.theme = v.scheme; // keeps each page's light/dark-only rules (status shades etc.) in step
-    html.dataset.master = masterThemeKey;
+    html.dataset.master = themeKey;
     if (!styleEl) { styleEl = document.createElement("style"); styleEl.id = "masterThemeVars"; }
     document.head.appendChild(styleEl); // last in <head>, so it wins over each page's own :root colours
     styleEl.textContent = "html:root:root{" + Object.entries(v.tokens).map(([k, c]) => k + ":" + c).join(";") + "}";
@@ -360,6 +363,7 @@ function applyTheme() {
       Object.assign(VENUE_ACCENTS[k], { label, color, ink });
     });
   }
+  applyExtraVenueColours(themeKey);
   const bg = getComputedStyle(html).getPropertyValue("--bg").trim();
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta && bg) meta.setAttribute("content", bg);
@@ -379,14 +383,22 @@ const POS_LAYOUTS = {
   dock:    { name: "Dock", about: "Categories at the bottom within thumb reach, tonight's top 12, and last order again." }
 };
 const LS_POS_LAYOUT = "starlightTill.posLayout.v1";
-let posLayoutKey = "classic";
-try { const k = localStorage.getItem(LS_POS_LAYOUT); if (k && POS_LAYOUTS[k]) posLayoutKey = k; } catch (e) {}
+let globalLayoutKey = "classic"; // the layout for everyone (Master settings)
+try { const k = localStorage.getItem(LS_POS_LAYOUT); if (k && POS_LAYOUTS[k]) globalLayoutKey = k; } catch (e) {}
+let posLayoutKey = globalLayoutKey; // the layout this till actually shows (a person's own layout wins)
 document.documentElement.dataset.layout = posLayoutKey;
-function getPosLayout() { return posLayoutKey; }
+function getPosLayout() { return globalLayoutKey; }
 function setPosLayoutLocal(key) {
-  if (!POS_LAYOUTS[key] || key === posLayoutKey) return;
-  posLayoutKey = key;
+  if (!POS_LAYOUTS[key] || key === globalLayoutKey) return;
+  globalLayoutKey = key;
   try { localStorage.setItem(LS_POS_LAYOUT, key); } catch (e) {}
+  refreshEffectiveLayout();
+}
+function refreshEffectiveLayout() {
+  const own = personalSetting("layout");
+  const key = own && POS_LAYOUTS[own] ? own : globalLayoutKey;
+  if (key === posLayoutKey) return;
+  posLayoutKey = key;
   document.documentElement.dataset.layout = key;
   try { document.dispatchEvent(new CustomEvent("nipos:layoutchange")); } catch (e) {}
 }
@@ -397,21 +409,179 @@ function setMasterThemeLocal(key) {
   try { localStorage.setItem(LS_MASTER_THEME, key); } catch (e) {}
   applyTheme();
 }
-// Every page follows the master theme and till layout: read on load, every minute, and whenever the
-// tab comes back.
+// --- Master settings: one record holding every optional feature's switch and configuration, set by
+// $YSTEM (Backend > Master settings). Every feature is off until $YSTEM turns it on, so a feature
+// that's being set up never changes what staff see. featureOn("maintenance") etc.
+let systemSettings = {};
+function featureOn(key) { const f = systemSettings[key]; return !!(f && f.enabled); }
+function featureConfig(key) { return systemSettings[key] || {}; }
+
+// Per-person layout and theme (feature "personal"): set when someone signs in on this device.
+let signedInUserId = null;
+function personalSetting(field) {
+  if (!signedInUserId || !featureOn("personal")) return null;
+  const mine = (featureConfig("personal").users || {})[signedInUserId];
+  return mine ? mine[field] || null : null;
+}
+function effectiveThemeKey() {
+  const own = personalSetting("theme");
+  return own && MASTER_THEMES[own] ? own : masterThemeKey;
+}
+// Pages call this whenever who's signed in changes (null when signed out).
+function setSignedInUser(user) {
+  const id = user ? user.id : null;
+  if (id === signedInUserId) return;
+  signedInUserId = id;
+  applyTheme(); refreshEffectiveLayout(); renderMaintenanceWatermark();
+}
+
+// Extra venue colours (feature "venueColours"): each has a shade per theme; the text colour on it is
+// worked out so it always reads (WCAG AA 4.5:1).
+function hexLuminance(hex) {
+  const c = String(hex || "").replace("#", "");
+  if (c.length !== 6) return 0;
+  const ch = [0, 2, 4].map(i => { const v = parseInt(c.slice(i, i + 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+  return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+}
+function contrastRatio(a, b) { const x = hexLuminance(a), y = hexLuminance(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+function inkFor(hex) { return contrastRatio(hex, "#ffffff") >= contrastRatio(hex, "#141414") ? "#ffffff" : "#141414"; }
+function extraVenueColours() { return featureOn("venueColours") ? (featureConfig("venueColours").colours || []) : []; }
+function applyExtraVenueColours(themeKey) {
+  Object.keys(VENUE_ACCENTS).forEach(k => { if (!VENUE_ACCENT_KEYS.includes(k)) delete VENUE_ACCENTS[k]; });
+  extraVenueColours().forEach(c => {
+    const color = (c.shades && (c.shades[themeKey] || c.shades.classic)) || "#3d4a57";
+    VENUE_ACCENTS[c.key] = { label: c.label, color, ink: inkFor(color) };
+  });
+}
+
+// Maintenance Mode (feature "maintenance"): only the chosen people (and $YSTEM) can use the app; every
+// sale made meanwhile is a test sale; a watermark runs across every screen.
+function maintenanceLocksOut(user) {
+  if (!featureOn("maintenance") || !user || user.system) return false;
+  return !(featureConfig("maintenance").allowedUserIds || []).includes(user.id);
+}
+function renderMaintenanceWatermark() {
+  let el = document.getElementById("maintenanceWatermark");
+  if (!featureOn("maintenance")) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "maintenanceWatermark"; el.className = "maint-watermark"; el.setAttribute("aria-hidden", "true");
+    el.innerHTML = Array.from({ length: 14 }, () => "<span>MAINTENANCE MODE - TESTING</span>").join("");
+    document.body.appendChild(el);
+  }
+}
+function maintenanceLockScreen(show, onSignOut) {
+  let el = document.getElementById("maintenanceLock");
+  if (!show) { if (el) el.hidden = true; return; }
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "maintenanceLock"; el.className = "maint-lock";
+    el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "maintLockTitle");
+    el.innerHTML = `<div class="maint-card"><h2 id="maintLockTitle">Maintenance in progress</h2><p>The system is being tested right now, so it's locked for everyone except the people testing it. It'll open again as soon as testing is finished.</p><button type="button" class="btn btn-solid" id="maintLockSignOut">Sign out</button></div>`;
+    document.body.appendChild(el);
+  }
+  el.querySelector("#maintLockSignOut").onclick = onSignOut || null;
+  el.hidden = false;
+}
+
+// Message on every till (feature "announcements"): shown under the venue band on the till and order
+// screen. Posted from Master settings, or by anyone with Send announcements.
+function currentAnnouncement(venueId) {
+  if (!featureOn("announcements")) return null;
+  const posts = systemSettings.announcementPosts || {};
+  return (venueId && posts[venueId]) || posts["*"] || null;
+}
+function renderAnnouncement(venueId) {
+  let el = document.getElementById("niposAnnouncement");
+  const a = currentAnnouncement(venueId);
+  if (!a) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "niposAnnouncement"; el.className = "nipos-announcement"; el.setAttribute("role", "status");
+    const band = document.querySelector(".venue-band:not(.mobile-band)");
+    if (band) band.insertAdjacentElement("afterend", el); else document.body.prepend(el);
+  }
+  el.innerHTML = `${icon("bell")}<span><strong>${esc(a.text)}</strong>${a.by ? ` <span class="by">· ${esc(a.by)}</span>` : ""}</span>`;
+}
+async function postAnnouncement(venueId, text) {
+  try {
+    const { data, error } = await supabaseClient.rpc("nipos_set_announcement", { p_venue: venueId || null, p_text: text || "" });
+    if (error) return "error";
+    if (data === "ok") await syncMasterTheme();
+    return data;
+  } catch (e) { return "error"; }
+}
+
+// Private messages (feature "privateMessages"): beep and pop up on the person's screen, wherever
+// they're signed in, plus a push notification if they've turned those on.
+async function sendPrivateMessage(toUserId, fromUser, text) {
+  const notif = { id: "n" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), toUserId, fromUserId: fromUser ? fromUser.id : null, fromName: fromUser ? fromUser.name : "Someone", message: text, kind: "message", urgent: true };
+  await saveNotification(notif);
+  try {
+    await fetch(SUPABASE_URL + "/functions/v1/send-push", { method: "POST", headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY },
+      body: JSON.stringify({ toUserId, fromUserId: notif.fromUserId, title: `Message from ${notif.fromName}`, body: text, urgent: true }) });
+  } catch (e) {}
+  return notif;
+}
+function showPrivateMessage(n) {
+  let el = document.getElementById("privateMessageBox");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "privateMessageBox"; el.className = "pm-overlay";
+    el.setAttribute("role", "alertdialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "pmTitle"); el.setAttribute("aria-describedby", "pmText");
+    el.innerHTML = `<div class="pm-card"><h2 id="pmTitle"></h2><p id="pmText"></p><div class="pm-time" id="pmTime"></div><button type="button" class="btn btn-accent btn-block" id="pmOk">Got it</button></div>`;
+    document.body.appendChild(el);
+    el.querySelector("#pmOk").addEventListener("click", () => { el.hidden = true; });
+  }
+  el.querySelector("#pmTitle").textContent = `Message from ${n.fromName || "someone"}`;
+  el.querySelector("#pmText").textContent = n.message;
+  el.querySelector("#pmTime").textContent = fmtTime(n.ts);
+  el.hidden = false;
+  el.querySelector("#pmOk").focus();
+}
+
+// Refresh or sign out tills (feature "remote"): $YSTEM adds a command; every till and order screen
+// runs each new one once. Commands from before this page opened are ignored.
+const remoteHandlers = {};
+function onRemoteCommand(action, fn) { remoteHandlers[action] = fn; }
+const pageOpenedAt = Date.now();
+function runRemoteCommands(venueId) {
+  if (!featureOn("remote")) return;
+  let done = [];
+  try { done = JSON.parse(sessionStorage.getItem("nipos.remoteDone") || "[]"); } catch (e) {}
+  (featureConfig("remote").commands || []).forEach(c => {
+    if (!c || done.includes(c.id) || c.ts < pageOpenedAt - 5000) return;
+    if (c.venueId && c.venueId !== venueId) return;
+    done.push(c.id);
+    try { sessionStorage.setItem("nipos.remoteDone", JSON.stringify(done.slice(-50))); } catch (e) {}
+    if (remoteHandlers[c.action]) remoteHandlers[c.action](c);
+  });
+}
+
+// Every page follows the master theme, till layout and Master settings: read on load, every 15
+// seconds, and whenever the tab comes back.
 async function syncMasterTheme() {
   if (!supabaseClient) return;
   try {
-    const { data, error } = await supabaseClient.from("system_theme").select("theme,layout").eq("id", "current").maybeSingle();
-    if (!error && data && data.theme) setMasterThemeLocal(data.theme);
-    if (!error && data && data.layout) setPosLayoutLocal(data.layout);
+    const { data, error } = await supabaseClient.from("system_theme").select("theme,layout,settings").eq("id", "current").maybeSingle();
+    if (error || !data) return;
+    if (data.theme) setMasterThemeLocal(data.theme);
+    if (data.layout) setPosLayoutLocal(data.layout);
+    const next = data.settings || {};
+    if (JSON.stringify(next) !== JSON.stringify(systemSettings)) {
+      systemSettings = next;
+      applyTheme(); refreshEffectiveLayout(); renderMaintenanceWatermark();
+      if (featureOn("maintenance")) maintenanceMode = true;
+      try { document.dispatchEvent(new CustomEvent("nipos:settingschange")); } catch (e) {}
+    }
+    runRemoteCommands(currentVenueId);
   } catch (e) {}
 }
 let masterThemeTimer = null;
 function startMasterThemeSync() {
   if (masterThemeTimer) return;
   syncMasterTheme();
-  masterThemeTimer = setInterval(syncMasterTheme, 60000);
+  masterThemeTimer = setInterval(syncMasterTheme, 15000);
   try { document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncMasterTheme(); }); } catch (e) {}
 }
 
@@ -444,7 +614,7 @@ async function fetchRefundsInRange(startMs, endMs, venueIds) {
 // --- Maintenance Mode: lets an admin test the app without spamming real Discord channels or
 // polluting real takings. Every page that reads app_settings should set this after each fetch.
 let maintenanceMode = false;
-function maintenanceModeOn() { return maintenanceMode; }
+function maintenanceModeOn() { return maintenanceMode || featureOn("maintenance"); }
 
 // Each venue configures its own Discord webhooks in Backend (Venues section), no more one hardcoded
 // channel for every site. Silently no-ops if the current venue hasn't set one, or Maintenance Mode

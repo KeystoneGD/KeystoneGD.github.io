@@ -112,6 +112,31 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .theme-venues{display:flex;gap:6px;flex-wrap:wrap;}
 .layout-title{font-size:20px;margin:34px 0 6px;}
 .wipe-card{max-width:560px;}
+.feature-list{display:flex;flex-direction:column;gap:12px;max-width:860px;}
+.feature{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;}
+.feature.on{border-left:6px solid var(--success);}
+.feature-head{display:flex;align-items:flex-start;gap:12px;}
+.feature-head .info{flex:1;min-width:0;}
+.feature-head h3{margin:0;font-size:17px;}
+.feature-head p{margin:2px 0 0;color:var(--text-muted);font-size:13.5px;line-height:1.45;}
+.feature-toggle{display:inline-flex;align-items:center;gap:10px;font-weight:700;font-size:14px;min-height:44px;cursor:pointer;flex:0 0 auto;}
+.feature-body{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+.feature-body .field{display:block;font-weight:700;font-size:13.5px;margin:8px 0 4px;}
+.feature-body select,.feature-body textarea,.feature-body input[type="text"]{width:100%;max-width:460px;}
+.feature-people{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 14px;margin:6px 0 10px;}
+.feature-people label{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer;}
+.feature-people input{width:22px;height:22px;}
+.feature-table{width:100%;border-collapse:collapse;margin:6px 0 10px;}
+.feature-table th,.feature-table td{text-align:left;padding:6px 8px 6px 0;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle;}
+.feature-table select{min-width:150px;}
+.colour-row{border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:10px;}
+.colour-shades{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:8px;}
+.colour-shade{display:flex;align-items:center;gap:8px;font-size:13px;}
+.colour-shade input[type="color"]{width:44px;height:44px;padding:0;border:1px solid var(--border);background:none;cursor:pointer;}
+.colour-chip{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:28px;padding:0 8px;font-weight:800;font-size:12.5px;border-radius:6px;}
+.feature-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.announce-card{max-width:620px;}
+.announce-title{margin:0 0 4px;font-size:18px;}
 .wipe-summary{margin-top:14px;border:1px solid var(--border);border-left:6px solid var(--danger);padding:12px 14px;background:var(--surface-2);line-height:1.6;}
 .wipe-summary table{border-collapse:collapse;width:100%;}
 .wipe-summary td{padding:3px 0;}
@@ -296,6 +321,19 @@ table.data-table tr:last-child td{border-bottom:0;}
     <div class="status" id="dbStatus" role="status" hidden></div>
 
     <section class="page active" id="page-dashboard">
+      <div class="card announce-card" id="announceCard" hidden>
+        <h2 class="announce-title">Message on every till</h2>
+        <p class="note">Shows as a banner at the top of every till and order screen until it's taken down.</p>
+        <label class="field" for="announceVenue">Where</label>
+        <select id="announceVenue"></select>
+        <label class="field" for="announceText">Message</label>
+        <textarea id="announceText" rows="2" maxlength="280"></textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+          <button type="button" class="btn btn-accent" id="announcePost">Put it up</button>
+          <button type="button" class="btn btn-ghost" id="announceClear">Take it down</button>
+        </div>
+        <p class="note" id="announceMsg" role="status" style="margin-top:8px;"></p>
+      </div>
       <div class="page-header">
         <h1>Takings</h1>
         <div class="range-picker">
@@ -506,7 +544,11 @@ table.data-table tr:last-child td{border-bottom:0;}
 
     <section class="page" id="page-themes">
       <div class="page-header"><h1>Master settings</h1></div>
-      <h2 class="layout-title" style="margin-top:0;">Master theme</h2>
+      <h2 class="layout-title" style="margin-top:0;">Features</h2>
+      <p class="note">Every feature here starts switched off, so you can set it up first. Nothing changes on the tills until you switch it on.</p>
+      <p class="note" id="featureMsg" role="status"></p>
+      <div class="feature-list" id="featureList"></div>
+      <h2 class="layout-title">Master theme</h2>
       <p class="note">Changes the colours on every till, order screen and Backend. Devices that are open switch within a minute. Each device's own switch still flips between the theme's normal colours and its dark mode. Green (ready), red (problem or refund) and yellow (in progress) keep their meaning in every theme.</p>
       <p class="note" id="themeMsg" role="status"></p>
       <div class="theme-grid" id="themeGrid"></div>
@@ -770,6 +812,7 @@ async function loadVenueData(){
     await renderSoundsList();
   }
   await loadDashboard();
+  if (currentUser && currentUser.system) renderFeatures(); // now the staff list is loaded
 }
 
 function applyLoginState(){
@@ -783,7 +826,10 @@ function applyLoginState(){
     shell.hidden = true; hamburger.hidden = true;
     return;
   }
-  if (currentUser && currentUser.system) { renderThemes(); renderLayouts(); renderWipeVenues(); }
+  setSignedInUser(currentUser);
+  maintenanceLockScreen(maintenanceLocksOut(currentUser), signOutBackend);
+  if (currentUser && currentUser.system) { renderThemes(); renderLayouts(); renderWipeVenues(); renderFeatures(); }
+  renderAnnounceCard();
   if (currentUser && currentUser.perms.backendAccess) {
     document.getElementById("loginGate").hidden = true;
     shell.hidden = false; hamburger.hidden = false;
@@ -921,6 +967,154 @@ function renderThemes(){
   }).join("");
   grid.querySelectorAll("[data-use-theme]").forEach(b => b.addEventListener("click", () => chooseMasterTheme(b.dataset.useTheme)));
 }
+/* ---------- $YSTEM: Master settings features ----------
+   Each feature is one key in system_theme.settings ({ enabled, ...its own configuration }), saved
+   through nipos_set_system_setting, which checks the $YSTEM password every time. All start off. */
+const FEATURES = [
+  { key: "maintenance", name: "Maintenance Mode", about: "Only the people you pick can use the app; everyone else sees a locked screen. A MAINTENANCE MODE - TESTING watermark runs across every screen, and every sale is a test sale (kept out of Takings and Discord, cleared from Test Data)." },
+  { key: "announcements", name: "Message on every till", about: "A banner at the top of every till and order screen. You can put one up here; staff with Send Announcements can from Backend and the order screen." },
+  { key: "privateMessages", name: "Private messages", about: "Message one person. It beeps and pops up on their screen. Backend users can from the Users page; on the order screen it needs Notify Specific Users." },
+  { key: "remote", name: "Refresh or sign out tills", about: "Reload every till and order screen (to pick up an update) or sign everyone out, for one venue or everywhere." },
+  { key: "personal", name: "Own layout and theme per person", about: "Give anyone their own till layout and theme. It follows them to whichever device they sign in on." },
+  { key: "venueColours", name: "Extra venue colours", about: "Add your own venue colours, with a shade for each theme. The text on them is picked so it always reads." }
+];
+function staffForSettings(){ return users.filter(u => !u.system).sort((a, b) => a.name.localeCompare(b.name)); }
+function venueOptions(withAll){ return (withAll ? `<option value="">Every venue</option>` : "") + myVenues.map(v => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join(""); }
+async function saveFeature(key, value, okText){
+  const msg = document.getElementById("featureMsg");
+  let result = "error";
+  try { const res = await supabaseClient.rpc("nipos_set_system_setting", { p_password: systemPassword, p_key: key, p_value: value }); if (!res.error) result = res.data; } catch (e) {}
+  if (result === "wrong" || result === "locked" || result === "not_system") {
+    systemPassword = null; document.getElementById("systemGateMsg").textContent = SYSTEM_PASSWORD_MESSAGES[result]; applyLoginState(); return false;
+  }
+  if (result !== "ok") { msg.textContent = "Couldn't save that. Try again."; return false; }
+  systemSettings = { ...systemSettings, [key]: value };
+  applyTheme(); renderMaintenanceWatermark();
+  msg.textContent = okText || "Saved.";
+  renderFeatures(); renderUserList();
+  return true;
+}
+function featureBody(key, cfg){
+  if (key === "maintenance") {
+    const allowed = new Set(cfg.allowedUserIds || []);
+    return `<span class="field">Who can still use the app (you always can)</span>
+      <div class="feature-people">${staffForSettings().map(u => `<label><input type="checkbox" data-maint-user="${esc(u.id)}" ${allowed.has(u.id) ? "checked" : ""}>${esc(u.name)}</label>`).join("") || "<span class='note'>No staff yet.</span>"}</div>
+      <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="maint-save">Save who can get in</button></div>`;
+  }
+  if (key === "announcements") {
+    const posts = systemSettings.announcementPosts || {};
+    const list = Object.entries(posts).map(([v, p]) => `<li><strong>${v === "*" ? "Every venue" : esc(venueName(v))}:</strong> ${esc(p.text)} <span class="note">· ${esc(p.by || "")}</span></li>`).join("");
+    return `${list ? `<span class="field">Up now</span><ul style="margin:0 0 6px 18px;">${list}</ul>` : `<p class="note">No message is up right now.</p>`}
+      <label class="field" for="fAnnVenue">Where</label><select id="fAnnVenue">${venueOptions(true)}</select>
+      <label class="field" for="fAnnText">Message</label><textarea id="fAnnText" rows="2" maxlength="280"></textarea>
+      <div class="feature-actions"><button type="button" class="btn btn-accent" data-act="ann-post">Put it up</button><button type="button" class="btn btn-ghost" data-act="ann-clear">Take it down</button></div>
+      ${cfg.enabled ? "" : `<p class="note">Switch the feature on first. Messages only show while it's on.</p>`}`;
+  }
+  if (key === "privateMessages") return `<p class="note">When it's on, a Message button appears next to each person on the Users page, and staff with Notify Specific Users get "Message someone" on the order screen.</p>`;
+  if (key === "remote") {
+    const recent = (cfg.commands || []).slice(-5).reverse().map(c => `<li>${c.action === "refresh" ? "Refresh" : "Sign out"} · ${c.venueId ? esc(venueName(c.venueId)) : "every venue"} · ${fmtDayTime(c.ts)}</li>`).join("");
+    return `<label class="field" for="fRemoteVenue">Which tills</label><select id="fRemoteVenue">${venueOptions(true)}</select>
+      <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="remote-refresh">Refresh them</button><button type="button" class="btn btn-danger" data-act="remote-signout">Sign everyone out</button></div>
+      <p class="note">Open tills act on it within about 15 seconds. Backend isn't affected.</p>
+      ${recent ? `<span class="field">Recently sent</span><ul style="margin:0 0 0 18px;">${recent}</ul>` : ""}`;
+  }
+  if (key === "personal") {
+    const mine = cfg.users || {};
+    const layoutOpts = sel => `<option value="">Same as everyone</option>` + Object.entries(POS_LAYOUTS).map(([k, l]) => `<option value="${k}" ${sel === k ? "selected" : ""}>${esc(l.name)}</option>`).join("");
+    const themeOpts = sel => `<option value="">Same as everyone</option>` + Object.entries(MASTER_THEMES).map(([k, t]) => `<option value="${k}" ${sel === k ? "selected" : ""}>${esc(t.name)}</option>`).join("");
+    return `<table class="feature-table"><thead><tr><th scope="col">Person</th><th scope="col">Till layout</th><th scope="col">Theme</th></tr></thead><tbody>
+      ${staffForSettings().map(u => { const m = mine[u.id] || {}; return `<tr><th scope="row">${esc(u.name)}</th><td><select data-own-layout="${esc(u.id)}" aria-label="${esc(u.name)} till layout">${layoutOpts(m.layout)}</select></td><td><select data-own-theme="${esc(u.id)}" aria-label="${esc(u.name)} theme">${themeOpts(m.theme)}</select></td></tr>`; }).join("")}
+      </tbody></table><div class="feature-actions"><button type="button" class="btn btn-solid" data-act="personal-save">Save layouts and themes</button></div>`;
+  }
+  if (key === "venueColours") {
+    const colours = cfg.colours || [];
+    return `${colours.map((c, i) => `<div class="colour-row" data-colour="${i}">
+        <label class="field" for="fColName${i}">Colour name</label><input type="text" id="fColName${i}" data-col-name value="${esc(c.label || "")}" maxlength="24">
+        <div class="colour-shades">${Object.entries(MASTER_THEMES).map(([tk, t]) => { const hex = (c.shades && c.shades[tk]) || "#3d6ea8"; return `<label class="colour-shade"><input type="color" data-col-theme="${tk}" value="${hex}" aria-label="${esc(c.label || "Colour")} in ${esc(t.name)}"><span><span class="colour-chip" style="background:${hex};color:${inkFor(hex)}">Aa</span> ${esc(t.name)}</span></label>`; }).join("")}</div>
+        <div class="feature-actions"><button type="button" class="btn btn-ghost btn-sm" data-act="col-remove" data-i="${i}">Remove this colour</button></div>
+      </div>`).join("") || `<p class="note">No extra colours yet.</p>`}
+      <div class="feature-actions"><button type="button" class="btn btn-ghost" data-act="col-add">Add a colour</button><button type="button" class="btn btn-solid" data-act="col-save">Save colours</button></div>
+      <p class="note">Once saved (and switched on), they appear in each venue's Screen colour choice in Venues.</p>`;
+  }
+  return "";
+}
+function renderFeatures(){
+  const wrap = document.getElementById("featureList");
+  if (!wrap) return;
+  wrap.innerHTML = FEATURES.map(f => {
+    const cfg = featureConfig(f.key);
+    return `<div class="feature${cfg.enabled ? " on" : ""}" data-feature="${f.key}">
+      <div class="feature-head"><div class="info"><h3>${esc(f.name)}</h3><p>${esc(f.about)}</p></div>
+        <label class="feature-toggle"><span>${cfg.enabled ? "On" : "Off"}</span><span class="switch"><input type="checkbox" data-feature-toggle="${f.key}" aria-label="${esc(f.name)}" ${cfg.enabled ? "checked" : ""}><span class="slider"></span></span></label></div>
+      <div class="feature-body">${featureBody(f.key, cfg)}</div></div>`;
+  }).join("");
+  wrap.querySelectorAll("[data-feature-toggle]").forEach(inp => inp.addEventListener("change", e => {
+    const key = e.target.dataset.featureToggle, f = FEATURES.find(x => x.key === key);
+    if (e.target.checked && !confirm(`Switch on ${f.name}? It takes effect on every till straight away.`)) { e.target.checked = false; return; }
+    saveFeature(key, { ...featureConfig(key), enabled: e.target.checked }, `${f.name} is ${e.target.checked ? "on" : "off"}.`);
+  }));
+  wrap.querySelectorAll("input[type=color]").forEach(inp => inp.addEventListener("input", e => { const chip = e.target.parentElement.querySelector(".colour-chip"); chip.style.background = e.target.value; chip.style.color = inkFor(e.target.value); }));
+  wrap.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", () => runFeatureAction(b.dataset.act, b)));
+}
+function readColourRows(){
+  return [...document.querySelectorAll("#featureList [data-colour]")].map((row, i) => {
+    const old = (featureConfig("venueColours").colours || [])[i] || {};
+    const shades = {}; row.querySelectorAll("[data-col-theme]").forEach(inp => { shades[inp.dataset.colTheme] = inp.value; });
+    return { key: old.key || "c" + Date.now().toString(36) + i, label: row.querySelector("[data-col-name]").value.trim() || "Colour " + (i + 1), shades };
+  });
+}
+async function runFeatureAction(act, btn){
+  if (act === "maint-save") {
+    const ids = [...document.querySelectorAll("[data-maint-user]:checked")].map(x => x.dataset.maintUser);
+    return saveFeature("maintenance", { ...featureConfig("maintenance"), allowedUserIds: ids }, `Saved: ${ids.length} ${ids.length === 1 ? "person" : "people"} can get in during Maintenance Mode.`);
+  }
+  if (act === "ann-post" || act === "ann-clear") {
+    const text = act === "ann-post" ? document.getElementById("fAnnText").value.trim() : "";
+    if (act === "ann-post" && !text) { document.getElementById("featureMsg").textContent = "Type a message first."; return; }
+    const res = await postAnnouncement(document.getElementById("fAnnVenue").value || null, text);
+    document.getElementById("featureMsg").textContent = res === "ok" ? (text ? "Message is up." : "Message taken down.") : res === "off" ? "Switch Message on every till on first." : "Couldn't do that. Try again.";
+    return renderFeatures();
+  }
+  if (act === "remote-refresh" || act === "remote-signout") {
+    const venueId = document.getElementById("fRemoteVenue").value || null, action = act === "remote-refresh" ? "refresh" : "signout";
+    if (!featureOn("remote")) { document.getElementById("featureMsg").textContent = "Switch Refresh or sign out tills on first."; return; }
+    if (action === "signout" && !confirm(`Sign everyone out at ${venueId ? venueName(venueId) : "every venue"}?`)) return;
+    const commands = (featureConfig("remote").commands || []).concat([{ id: "r" + Date.now().toString(36), action, venueId, ts: Date.now() }]).slice(-20);
+    return saveFeature("remote", { ...featureConfig("remote"), commands }, action === "refresh" ? "Tills will refresh within about 15 seconds." : "Everyone will be signed out within about 15 seconds.");
+  }
+  if (act === "personal-save") {
+    const usersCfg = {};
+    document.querySelectorAll("[data-own-layout]").forEach(sel => { const id = sel.dataset.ownLayout, layout = sel.value, theme = document.querySelector(`[data-own-theme="${CSS.escape(id)}"]`).value; if (layout || theme) usersCfg[id] = { layout: layout || null, theme: theme || null }; });
+    return saveFeature("personal", { ...featureConfig("personal"), users: usersCfg }, "Saved. It applies the next time each person signs in.");
+  }
+  if (act === "col-add" || act === "col-remove" || act === "col-save") {
+    let colours = readColourRows();
+    if (act === "col-add") colours.push({ key: "c" + Date.now().toString(36), label: "", shades: Object.fromEntries(Object.keys(MASTER_THEMES).map(k => [k, "#3d6ea8"])) });
+    if (act === "col-remove") colours.splice(Number(btn.dataset.i), 1);
+    if (act === "col-add" || act === "col-remove") { systemSettings = { ...systemSettings, venueColours: { ...featureConfig("venueColours"), colours } }; renderFeatures(); document.getElementById("featureMsg").textContent = "Not saved yet. Press Save colours."; return; }
+    return saveFeature("venueColours", { ...featureConfig("venueColours"), colours }, "Colours saved.");
+  }
+}
+
+// Staff with Send Announcements put a message up from the Takings page.
+function renderAnnounceCard(){
+  const card = document.getElementById("announceCard");
+  const can = !!(currentUser && !currentUser.system && featureOn("announcements") && currentUser.perms.sendAnnouncements);
+  card.hidden = !can;
+  if (!can) return;
+  const sel = document.getElementById("announceVenue"), keep = sel.value;
+  sel.innerHTML = myVenues.map(v => `<option value="${esc(v.id)}">${esc(v.name)} only</option>`).join("") + (currentUser.perms.globalAdmin ? `<option value="">Every venue</option>` : "");
+  if ([...sel.options].some(o => o.value === keep)) sel.value = keep; else if (currentVenue) sel.value = currentVenue.id;
+}
+async function announceFromCard(text){
+  const res = await postAnnouncement(document.getElementById("announceVenue").value || null, text);
+  document.getElementById("announceMsg").textContent = res === "ok" ? (text ? "Message is up on every till." : "Message taken down.") : res === "no_permission" ? "You don't have permission to do that." : "Couldn't do that. Try again.";
+  if (res === "ok" && !text) document.getElementById("announceText").value = "";
+}
+document.getElementById("announcePost").addEventListener("click", () => { const t = document.getElementById("announceText").value.trim(); if (t) announceFromCard(t); });
+document.getElementById("announceClear").addEventListener("click", () => announceFromCard(""));
+document.addEventListener("nipos:settingschange", () => { if (currentUser) applyLoginState(); });
+
 /* ---------- $YSTEM: remove sales ---------- */
 function renderWipeVenues(){
   const sel = document.getElementById("wipeVenue"), keep = sel.value;
@@ -1675,6 +1869,8 @@ document.getElementById("addOfferBtn").addEventListener("click", async () => {
 
 /* ---------- Users ---------- */
 const PERM_KEYS_ORDERED = Object.keys(PERM_LABELS).filter(k => k !== "globalAdmin" && k !== "active");
+// Permissions that belong to a Master settings feature only show once that feature is switched on.
+function permVisible(k){ return k === "sendAnnouncements" ? featureOn("announcements") : k === "notifySpecificUsers" ? featureOn("privateMessages") : true; }
 function venueName(id){ const v = myVenues.find(x => x.id === id) || venues.find(x => x.id === id); return v ? v.name : id; }
 function groupName(id){ const g = allGroups.find(x => x.id === id); return g ? g.name : id; }
 function permCheckRow(key, label, checked){
@@ -1698,10 +1894,18 @@ function renderUserList(){
         <div class="sub">${permsList}</div>
       </div>
       <div class="actions">
+        ${featureOn("privateMessages") && u.id !== currentUserId ? `<button class="btn btn-ghost btn-sm msg-user-btn" type="button" aria-label="Message ${esc(u.name)}">Message</button>` : ""}
         <button class="btn btn-ghost btn-sm edit-user-btn" type="button">Edit</button>
         <button class="btn btn-danger btn-sm del-user-btn" type="button">Delete</button>
       </div>`;
     row.querySelector(".edit-user-btn").addEventListener("click", () => openUserModal("edit", u));
+    const msgBtn = row.querySelector(".msg-user-btn");
+    if (msgBtn) msgBtn.addEventListener("click", async () => {
+      const text = (prompt(`Message for ${u.name}. It beeps and pops up on their screen.`) || "").trim();
+      if (!text) return;
+      await sendPrivateMessage(u.id, currentUser, text.slice(0, 280));
+      alert(`Sent to ${u.name}.`);
+    });
     row.querySelector(".del-user-btn").addEventListener("click", () => deleteUser(u.id));
     wrap.appendChild(row);
   });
@@ -1742,7 +1946,7 @@ function openUserModal(mode, user){
   document.getElementById("umActive").checked = user ? user.perms.active !== false : true;
   document.getElementById("umGlobalAdminRow").hidden = !canGrantGlobalAdmin;
   document.getElementById("umGlobalAdmin").checked = user ? !!user.perms.globalAdmin : false;
-  document.getElementById("umPerms").innerHTML = PERM_KEYS_ORDERED.map(key => permCheckRow(key, PERM_LABELS[key], user ? !!user.perms[key] : (key === "placeOrders"))).join("");
+  document.getElementById("umPerms").innerHTML = PERM_KEYS_ORDERED.filter(permVisible).map(key => permCheckRow(key, PERM_LABELS[key], user ? !!user.perms[key] : (key === "placeOrders"))).join("");
   document.getElementById("userModal").hidden = false;
 }
 function closeUserModal(){ document.getElementById("userModal").hidden = true; editingUser = null; }
@@ -1759,7 +1963,7 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
   const perms = { active: document.getElementById("umActive").checked };
   const canGrantGlobalAdmin = !document.getElementById("umGlobalAdminRow").hidden;
   perms.globalAdmin = canGrantGlobalAdmin ? document.getElementById("umGlobalAdmin").checked : (editingUser ? !!editingUser.perms.globalAdmin : false);
-  PERM_KEYS_ORDERED.forEach(key => { perms[key] = document.querySelector(`#umPerms [data-perm="${key}"]`).checked; });
+  PERM_KEYS_ORDERED.forEach(key => { const el = document.querySelector(`#umPerms [data-perm="${key}"]`); perms[key] = el ? el.checked : !!(editingUser && editingUser.perms[key]); });
 
   if (userModalMode === "add") {
     const res = await callManageStaff("create", { pin, name, perms, venueIds, groupIds });
@@ -1854,7 +2058,7 @@ function openVenueModal(mode, venue){
   document.getElementById("vmFood").checked = venue ? venue.foodEnabled !== false : true;
   const autoKey = venue ? venueAccentKey({ ...venue, accent: null }) : VENUE_ACCENT_KEYS[(venueCreationOrder || []).length % VENUE_ACCENT_KEYS.length];
   document.getElementById("vmAccent").innerHTML = `<option value="">Automatic (${VENUE_ACCENTS[autoKey].label})</option>` +
-    VENUE_ACCENT_KEYS.map(k => `<option value="${k}">${VENUE_ACCENTS[k].label}</option>`).join("");
+    Object.keys(VENUE_ACCENTS).map(k => `<option value="${k}">${esc(VENUE_ACCENTS[k].label)}</option>`).join(""); // the 5 built in, plus any extra colours from Master settings
   document.getElementById("vmAccent").value = venue && venue.accent && VENUE_ACCENTS[venue.accent] ? venue.accent : "";
   document.getElementById("vmWebhookOrder").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.order || "") : "";
   document.getElementById("vmWebhookZread").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.zread || "") : "";
@@ -1970,7 +2174,7 @@ async function loadAppSettings(){
   // Maintenance Mode has no UI switch anywhere - it's flipped directly in the database
   // (update app_settings set data = data || '{"maintenanceMode":true}' where id='global') so it can
   // never be turned on by accident in production. This nav item only shows up while it's already on.
-  maintenanceMode = !!appSettings.maintenanceMode;
+  maintenanceMode = !!appSettings.maintenanceMode || featureOn("maintenance");
   document.getElementById("navTestData").hidden = !maintenanceMode;
   if (maintenanceMode) await renderTestDataSummary();
 }

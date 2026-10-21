@@ -101,6 +101,52 @@ grant execute on function public.is_system_user() to authenticated, service_role
 grant execute on function public.nipos_check_system_password(text) to authenticated, service_role;
 grant execute on function public.nipos_set_master_theme(text, text) to authenticated, service_role;
 
+-- Master settings: every optional feature's switch and configuration, all off until $YSTEM turns them on.
+alter table public.system_theme add column if not exists settings jsonb not null default '{}'::jsonb;
+
+create or replace function public.nipos_set_system_setting(p_password text, p_key text, p_value jsonb) returns text
+language plpgsql volatile security definer set search_path = public as $$
+declare r text;
+begin
+  r := public.nipos_check_system_password(p_password);
+  if r <> 'ok' then return r; end if;
+  if p_key is null or p_key !~ '^[a-zA-Z][a-zA-Z0-9]{1,40}$' or p_key = 'announcementPosts' then return 'bad_key'; end if;
+  update public.system_theme set settings = jsonb_set(settings, array[p_key], coalesce(p_value, 'null'::jsonb), true),
+    ts = (extract(epoch from now()) * 1000)::bigint, set_by = auth.uid()::text where id = 'current';
+  return 'ok';
+end $$;
+revoke all on function public.nipos_set_system_setting(text, text, jsonb) from public, anon;
+grant execute on function public.nipos_set_system_setting(text, text, jsonb) to authenticated, service_role;
+
+-- Message on every till. p_venue null = every venue. $YSTEM, or staff with Send Announcements for a
+-- venue they work at (every venue needs Global Admin), and only while the feature is switched on.
+create or replace function public.nipos_set_announcement(p_venue text, p_text text) returns text
+language plpgsql volatile security definer set search_path = public as $$
+declare me jsonb; s jsonb; k text := coalesce(p_venue, '*');
+begin
+  select data into me from public.staff_users where id = auth.uid()::text;
+  if me is null then return 'not_signed_in'; end if;
+  select settings into s from public.system_theme where id = 'current';
+  if not coalesce((s->'announcements'->>'enabled')::boolean, false) then return 'off'; end if;
+  if not public.is_system_user() then
+    if not coalesce((me->'perms'->>'sendAnnouncements')::boolean, false) then return 'no_permission'; end if;
+    if p_venue is null and not coalesce((me->'perms'->>'globalAdmin')::boolean, false) then return 'no_permission'; end if;
+    if p_venue is not null and not (coalesce((me->'perms'->>'globalAdmin')::boolean, false) or (me->'venueIds') ? p_venue) then return 'no_permission'; end if;
+  end if;
+  if coalesce(btrim(p_text), '') = '' then
+    update public.system_theme set settings = settings #- array['announcementPosts', k] where id = 'current';
+  else
+    update public.system_theme set settings = jsonb_set(
+      case when settings ? 'announcementPosts' then settings else settings || '{"announcementPosts":{}}'::jsonb end,
+      array['announcementPosts', k],
+      jsonb_build_object('text', left(btrim(p_text), 280), 'by', me->>'name', 'ts', (extract(epoch from now()) * 1000)::bigint), true)
+    where id = 'current';
+  end if;
+  return 'ok';
+end $$;
+revoke all on function public.nipos_set_announcement(text, text) from public, anon;
+grant execute on function public.nipos_set_announcement(text, text) to authenticated, service_role;
+
 -- $YSTEM: remove sales and everything tied to them for one venue (or every venue).
 -- Backend > Master settings > Remove sales. Needs the $YSTEM password and the word DELETE every time.
 create or replace function public.nipos_sales_summary(p_password text, p_venue text) returns jsonb

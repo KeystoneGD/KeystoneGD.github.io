@@ -1011,7 +1011,7 @@ async function checkLockdown(){
   try {
     const { data } = await supabaseClient.from("app_settings").select("data").eq("id", "global").maybeSingle();
     const s = (data && data.data) || {};
-    maintenanceMode = !!s.maintenanceMode;
+    maintenanceMode = !!s.maintenanceMode || featureOn("maintenance");
     const screen = document.getElementById("lockdownScreen");
     if (s.ordersSuspended) {
       document.getElementById("lockdownTitle").textContent = "Orders Suspended";
@@ -2171,9 +2171,17 @@ function checkPersonalNotifications(list){
   const ids = new Set(list.map(n => n.id));
   if (knownNotificationIds === null) { knownNotificationIds = ids; return; }
   list.filter(n => !knownNotificationIds.has(n.id) && (n.toUserId === "all" || n.toUserId === currentUserId) && n.fromUserId !== currentUserId)
-    .forEach(n => n.quiet ? showToast(n.message) : alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent));
+    .forEach(n => {
+      if (n.kind === "message") { playChime(); if (navigator.vibrate) { try { navigator.vibrate([300, 150, 300]); } catch (e) {} } showPrivateMessage(n); }
+      else if (n.quiet) showToast(n.message);
+      else alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent);
+    });
   knownNotificationIds = ids;
 }
+// Master settings: react when $YSTEM changes something, and to "refresh / sign out tills".
+document.addEventListener("nipos:settingschange", () => applyLoginState());
+onRemoteCommand("refresh", () => location.reload());
+onRemoteCommand("signout", () => { if (currentUser && !currentUser.system) signOut(); });
 async function logOrderToDiscord(sale){
   const drinks = sale.items.map(i => `${i.qty}x ${i.name}`).join("\n") || "-";
   const discount = sale.discountAmount ? `${sale.discountLabel || "Discount"} -${fmt(sale.discountAmount)}` : "None";
@@ -2232,6 +2240,10 @@ document.getElementById("gratuityBtn").addEventListener("click", async () => {
 
 /* ---------- login / permissions ---------- */
 function applyLoginState(){
+  // Master settings features: this person's own layout/theme, Maintenance Mode, message on every till.
+  setSignedInUser(currentUser);
+  maintenanceLockScreen(maintenanceLocksOut(currentUser), signOut);
+  renderAnnouncement(currentVenue && currentVenue.id);
   const venuePicker = document.getElementById("venuePickerScreen");
   if (currentUser && !currentVenue) {
     document.getElementById("loginGate").hidden = true;

@@ -137,3 +137,25 @@ button,.btn,.tag,.state-badge,.stepper,.nav-item,.drawer-list button,.product .n
 .oc.oc-next{box-shadow:none !important;outline:2px solid var(--text);outline-offset:-1px;}
 .hist-item.highlight{outline:2px solid var(--danger);outline-offset:-1px;}
 .tab-btn.active{border-top:3px solid var(--text) !important;}
+
+/* ---------- Master settings features (all off until $YSTEM turns them on) ---------- */
+/* Maintenance Mode: a diagonal watermark over every screen. It never blocks taps. */
+.maint-watermark{position:fixed;inset:-50vmax;z-index:200;pointer-events:none;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:90px 140px;transform:rotate(-30deg);opacity:.16;}
+.maint-watermark span{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-weight:800;font-size:44px;letter-spacing:.06em;color:var(--danger);white-space:nowrap;}
+@media (max-width:600px){ .maint-watermark span{font-size:28px;} .maint-watermark{gap:60px 80px;} }
+.maint-lock{position:fixed;inset:0;z-index:190;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;}
+.maint-lock[hidden]{display:none;}
+.maint-card{background:var(--surface);border:1px solid var(--border);border-top:6px solid var(--danger);border-radius:16px;padding:26px 22px;max-width:420px;width:100%;text-align:center;}
+.maint-card h2{margin:0 0 8px;font-size:20px;}
+.maint-card p{margin:0 0 18px;color:var(--text-muted);line-height:1.55;}
+/* Message on every till: a banner straight under the venue band. */
+.nipos-announcement{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:var(--progress-soft);border-bottom:2px solid var(--progress-edge);color:var(--text);font-size:15px;line-height:1.4;}
+.nipos-announcement .ic{flex:0 0 auto;margin-top:1px;}
+.nipos-announcement .by{font-weight:600;color:var(--text-muted);font-size:13.5px;}
+/* Private message pop-up */
+.pm-overlay{position:fixed;inset:0;z-index:180;background:rgba(4,10,11,.6);display:flex;align-items:center;justify-content:center;padding:20px;}
+.pm-overlay[hidden]{display:none;}
+.pm-card{background:var(--surface);border:1px solid var(--border);border-top:6px solid var(--accent);border-radius:16px;padding:22px 20px;max-width:440px;width:100%;}
+.pm-card h2{margin:0 0 8px;font-size:19px;}
+.pm-card p{margin:0 0 6px;font-size:17px;line-height:1.5;white-space:pre-line;}
+.pm-time{color:var(--text-muted);font-size:13px;margin-bottom:16px;}
