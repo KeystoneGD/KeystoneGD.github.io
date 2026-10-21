@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022m">
-<link rel="stylesheet" href="layouts.css?v=20261022m">
+<link rel="stylesheet" href="nipos.css?v=20261022n">
+<link rel="stylesheet" href="layouts.css?v=20261022n">
 </head>
 <body>
 
@@ -752,7 +752,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022m"></script>
+<script src="db.js?v=20261022n"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -2797,14 +2797,16 @@ async function enablePush(){
     await savePushSubscription(sub);
   } catch(e){}
 }
+// The push server sometimes fails under load (500/503 in the stress test): try once more after 3 seconds.
 async function sendPushNotification(toUserId, fromUserId, fromName, message, urgent){
-  try {
-    await fetch(SEND_PUSH_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY },
-      body: JSON.stringify({ toUserId, fromUserId, title: fromName ? `${fromName} says` : "Notification", body: message, urgent: !!urgent })
-    });
-  } catch(e){}
+  const body = JSON.stringify({ toUserId, fromUserId, title: fromName ? `${fromName} says` : "Notification", body: message, urgent: !!urgent });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(SEND_PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY }, body });
+      if (res.ok || (res.status >= 400 && res.status < 500)) return;
+    } catch(e){}
+    if (!attempt) await new Promise(r => setTimeout(r, 3000));
+  }
 }
 // The banner needs one tap per device: the browser remembers the permission after that. It comes back
 // after a reset in Master settings, and stays away on a device where alerts were switched off.
@@ -3167,7 +3169,8 @@ async function loadRefundFor(o){
   flaggedSaleCache.set(o.id, null);
   const sale = (history.find(x => x.ts === o.saleTs)) || await fetchSaleForOrder(o);
   const itemIdx = sale ? sale.items.findIndex(i => i.name === o.flagItem && !i.refunded) : -1;
-  flaggedSaleCache.set(o.id, itemIdx === -1 ? { missing: true } : { sale, itemIdx, pence: refundAmountFor(sale, sale.items[itemIdx]) });
+  // Already refunded (e.g. from Past Orders): nothing left to refund, so the card offers to close it.
+  flaggedSaleCache.set(o.id, itemIdx === -1 ? { missing: true, alreadyRefunded: !!(sale && sale.items.some(i => i.name === o.flagItem && i.refunded)) } : { sale, itemIdx, pence: refundAmountFor(sale, sale.items[itemIdx]) });
   if (adminView === "openOrders") renderOpenOrdersList();
 }
 function renderOpenOrdersList(){
@@ -3178,7 +3181,7 @@ function renderOpenOrdersList(){
   if (!open.length) { wrap.innerHTML = `<div class="empty-state">Nothing open right now.</div>`; return; }
   const canRefund = !!(currentUser && currentUser.perms.processRefunds);
   open.forEach((o, i) => {
-    if (o.flagged && canRefund) loadRefundFor(o);
+    if (o.flagged) loadRefundFor(o);
     const r = flaggedSaleCache.get(o.id);
     const card = buildOrderCard(o, {
       isNext: i === 0,
@@ -3190,11 +3193,21 @@ function renderOpenOrdersList(){
       partsNote: featureOn("kitchenScreen") ? stationsNote(o, orderStations(o, isFoodName)) : "",
       onAccept: () => resolveOrderFlag(o.id, "accepted"),
       onRequestRefund: () => requestOrderRefund(o.id),
-      onRefund: () => startOrderRefund(o.id)
+      onRefund: () => startOrderRefund(o.id),
+      alreadyRefunded: !!(r && r.alreadyRefunded),
+      onCloseRefunded: () => closeRefundedOrder(o.id)
     });
     card.style.marginBottom = "10px";
     wrap.appendChild(card);
   });
+}
+async function closeRefundedOrder(id){
+  const o = openOrders.find(x => x.id === id);
+  if (!o) return;
+  logActivity("Closed an already-refunded order", `${orderLabel(o)}: ${o.flagItem || ""}`);
+  openOrders = openOrders.filter(x => x.id !== id); flaggedSaleCache.delete(id);
+  await ordersStore.remove(id);
+  renderOpenOrdersList(); renderOpenOrdersBadge();
 }
 async function markOrderDelivered(id){
   const o = openOrders.find(x => x.id === id);
@@ -3580,6 +3593,9 @@ document.getElementById("zReadBtn").addEventListener("click", async () => {
   // Reconcile with the database one more time so this Z report reflects every till's sales, not just this device's.
   await pullCurrentShift();
   if (!history.length && !abandoned.length && !gratuities.length) { showToast("Nothing to close out yet"); return; }
+  flushOutbox();
+  const waiting = await salesWaitingAt(currentVenueId);
+  if (waiting.length && !(await askConfirm({ title: "Sales still waiting to save", message: `${waiting.join(". ")}. They aren't in the database yet, so they'd be missing from this Z Read. Get those tills back online first, or Z Read anyway.`, confirmLabel: "Z Read anyway", danger: true }))) return;
   const ok = await askConfirm({ title:"Close till?", message:"Archives today's totals as a Z report (with a full itemized backup) and starts a new shift.", confirmLabel:"Close & archive", danger:true });
   if (!ok) return;
   const result = await performZRead(currentVenue, currentUser ? currentUser.name : null);
