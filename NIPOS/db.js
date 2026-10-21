@@ -192,11 +192,18 @@ async function signInSystem(password) {
   return { ok: true };
 }
 
+// When this device last signed someone in, so a "sign everyone out" sent while it was closed or asleep
+// still signs it out when it wakes.
+const LS_SIGNED_IN_AT = "nipos.signedInAt";
+function markSignedIn() { try { localStorage.setItem(LS_SIGNED_IN_AT, String(Date.now())); } catch (e) {} }
+function signedInAt() { try { return Number(localStorage.getItem(LS_SIGNED_IN_AT)) || 0; } catch (e) { return 0; } }
+
 async function signInWithPin(pin) {
   if (isSystemSignIn(pin)) return { error: "This account only signs in to Backend" };
   const email = "pin" + pin + "@nipos.local";
   const { error } = await supabaseClient.auth.signInWithPassword({ email, password: pin });
   if (error) return { error: "Incorrect PIN" };
+  markSignedIn();
   return { ok: true };
 }
 
@@ -540,8 +547,10 @@ function showPrivateMessage(n) {
   el.querySelector("#pmOk").focus();
 }
 
-// Refresh or sign out tills (feature "remote"): $YSTEM adds a command; every till and order screen
-// runs each new one once. Commands from before this page opened are ignored.
+// Refresh or sign out tills (feature "remote"): $YSTEM adds a command and every till, order screen and
+// Backend runs each new one once. A refresh only counts while the page is open; a sign-out counts for
+// anyone who signed in before it was sent - so a till that was closed or asleep at the time still
+// signs out the moment it comes back.
 const remoteHandlers = {};
 function onRemoteCommand(action, fn) { remoteHandlers[action] = fn; }
 const pageOpenedAt = Date.now();
@@ -550,11 +559,14 @@ function runRemoteCommands(venueId) {
   let done = [];
   try { done = JSON.parse(sessionStorage.getItem("nipos.remoteDone") || "[]"); } catch (e) {}
   (featureConfig("remote").commands || []).forEach(c => {
-    if (!c || done.includes(c.id) || c.ts < pageOpenedAt - 5000) return;
+    if (!c || done.includes(c.id)) return;
+    if (c.action === "signout" ? c.ts < signedInAt() : c.ts < pageOpenedAt - 5000) return;
     if (c.venueId && c.venueId !== venueId) return;
+    // A handler returns false when it can't act yet (e.g. the page hasn't worked out who's signed in);
+    // the command is then tried again next time instead of being marked done.
+    if (!remoteHandlers[c.action] || remoteHandlers[c.action](c) === false) return;
     done.push(c.id);
     try { sessionStorage.setItem("nipos.remoteDone", JSON.stringify(done.slice(-50))); } catch (e) {}
-    if (remoteHandlers[c.action]) remoteHandlers[c.action](c);
   });
 }
 
