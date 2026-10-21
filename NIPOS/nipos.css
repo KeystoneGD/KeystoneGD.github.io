@@ -159,3 +159,4 @@ button,.btn,.tag,.state-badge,.stepper,.nav-item,.drawer-list button,.product .n
 .pm-card h2{margin:0 0 8px;font-size:19px;}
 .pm-card p{margin:0 0 6px;font-size:17px;line-height:1.5;white-space:pre-line;}
 .pm-time{color:var(--text-muted);font-size:13px;margin-bottom:16px;}
+.state-badge.late{background:transparent;border:2px solid var(--danger);color:var(--text);}

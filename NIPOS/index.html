@@ -218,6 +218,9 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 .report-table th,.report-table td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--border);font-size:13.5px;}
 .report-table th{color:var(--text-muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.03em;}
 .report-table td.num,.report-table th.num{text-align:right;font-variant-numeric:tabular-nums;}
+.report-head .rh{border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:12px;font-size:13.5px;line-height:1.5;color:var(--text);}
+.report-head .rh strong{font-size:16px;}
+.report-head .rf{color:var(--text-muted);font-size:12.5px;margin:-4px 0 12px;}
 .report-range{color:var(--text-muted);font-size:12.5px;margin:-6px 0 18px;}
 
 .modal-overlay{position:fixed;inset:0;background:rgba(4,10,11,.6);z-index:50;display:flex;align-items:flex-end;justify-content:center;}
@@ -570,6 +573,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     <h2>Takings Summary Report</h2>
   </div>
   <div class="sheet-body">
+    <div class="report-head" id="xReadHead"></div>
     <div class="report-range" id="xReadRange"></div>
     <table class="report-table">
       <tbody id="xReadRows"></tbody>
@@ -587,6 +591,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     <h2>Shift Report</h2>
   </div>
   <div class="sheet-body">
+    <div class="report-head" id="reportHead"></div>
     <div class="report-range" id="reportRange"></div>
     <table class="report-table">
       <caption>Sales by hour</caption>
@@ -852,6 +857,11 @@ const DASH_MIXERS = [
   { id:"cranberry", name:"Cranberry Juice Dash", pence:100 },
   { id:"pineapple", name:"Pineapple Juice Dash", pence:100 }
 ];
+// Master settings > Drink options can replace these lists (and switch off the lemonade-top question).
+// While it's off - or before it's set up - the till uses the built-in lists below.
+function dashMixers(){ const c = featureOn("drinkOptions") && featureConfig("drinkOptions").dashes; return c && c.length ? c : DASH_MIXERS; }
+function cordialOptions(){ const c = featureOn("drinkOptions") && featureConfig("drinkOptions").cordials; return c && c.length ? [{ id: "none", name: "No cordial" }].concat(c.filter(x => x.id !== "none")) : CORDIAL_OPTIONS; }
+function lemonadeTopOffered(){ return !(featureOn("drinkOptions") && featureConfig("drinkOptions").lemonadeTop === false); }
 const CORDIAL_OPTIONS = [
   { id:"none", name:"No cordial" },
   { id:"blackcurrant", name:"Blackcurrant Cordial" },
@@ -1073,8 +1083,15 @@ let pendingMethod = "card";
 let discount = null; // { id, pct, offerPence, display }
 let cashGivenPence = 0;
 
+// Master settings > Discounts replaces the fixed buttons; Custom % and Custom price always stay.
+function discountButtons(){
+  const c = featureOn("discounts") && featureConfig("discounts").buttons;
+  if (!c || !c.length) return DISCOUNTS;
+  return c.filter(d => d && d.label && Number(d.pct) > 0).map(d => ({ id: d.id, label: d.label, pct: Number(d.pct), notOnHappyHour: !!d.notOnHappyHour }))
+    .concat(DISCOUNTS.filter(d => d.id === "customPct" || d.id === "customOffer"));
+}
 const DISCOUNTS = [
-  { id:"owner10", label:"Owner's 10%", pct:10 },
+  { id:"owner10", label:"Owner's 10%", pct:10, notOnHappyHour:true },
   { id:"team50", label:"Team 50%", pct:50 },
   { id:"team20", label:"Team 20%", pct:20 },
   { id:"customPct", label:"Custom %" },
@@ -1085,7 +1102,7 @@ function fmt(pence){ return "£" + (pence/100).toFixed(2); }
 
 function findMixer(mixerId){
   if (!mixerId || mixerId === "none") return null;
-  return DASH_MIXERS.find(m => m.id === mixerId) || BY_ID[mixerId] || null;
+  return dashMixers().find(m => m.id === mixerId) || DASH_MIXERS.find(m => m.id === mixerId) || BY_ID[mixerId] || null;
 }
 function lineInfo(key){
   const parts = key.split("::");
@@ -1094,7 +1111,7 @@ function lineInfo(key){
   if (parts.length === 1) return { name: product.name, pence: product.pence };
   if (parts[1] === "beer") {
     const size = product.sizes ? product.sizes[Number(parts[2])] : null;
-    const cordial = CORDIAL_OPTIONS.find(c => c.id === parts[3]);
+    const cordial = cordialOptions().find(c => c.id === parts[3]) || CORDIAL_OPTIONS.find(c => c.id === parts[3]);
     const extras = [];
     if (cordial && cordial.id !== "none") extras.push(cordial.name);
     if (parts[4] === "top") extras.push("Lemonade Top");
@@ -1127,9 +1144,25 @@ function removeProductFromCart(id){
 function cartTotalPence(){ return Object.entries(cart).reduce((s,[key,qty]) => s + lineInfo(key).pence * qty, 0); }
 function cartCount(){ return Object.values(cart).reduce((s,q) => s+q, 0); }
 
+// Master settings > Happy Hour: days, times, the deal and which categories count. Off = the
+// original 3-6pm & 9.30pm-close, second cocktail half price, on every day.
+function happyHourConfig(){ return featureOn("happyHour") ? featureConfig("happyHour") : null; }
+function happyHourItemIds(){
+  const cfg = happyHourConfig();
+  if (!cfg || !(cfg.categories || []).length) return COCKTAIL_IDS;
+  const names = new Set(cfg.categories);
+  return new Set(CAT.filter(c => names.has(c.name)).flatMap(c => c.items.map(i => i.id)));
+}
+function happyHourSecondPct(){ const cfg = happyHourConfig(); const p = cfg ? Number(cfg.secondItemPct) : NaN; return isFinite(p) && p >= 0 && p <= 100 ? p : 50; }
 function isHappyHourNow(){
   if (hhOverride === true) return true;
   if (hhOverride === false) return false;
+  const cfg = happyHourConfig();
+  if (cfg) {
+    const now = new Date(), day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
+    const toMins = t => { const [h, m] = String(t || "0:0").split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+    return (cfg.windows || []).some(w => (!w.days || !w.days.length || w.days.includes(day)) && mins >= toMins(w.from) && mins < (w.to === "close" || w.to === "24:00" ? 24 * 60 : toMins(w.to)));
+  }
   const now = new Date();
   const mins = now.getHours() * 60 + now.getMinutes();
   return (mins >= 15*60 && mins < 18*60) || (mins >= 21*60+30 && mins < 24*60);
@@ -1140,17 +1173,19 @@ function priceBreakdown(){
   let cocktailPence = 0, otherPence = 0;
   if (hh) {
     const prices = [];
+    const hhIds = happyHourItemIds(), second = 1 - happyHourSecondPct() / 100;
     Object.entries(cart).forEach(([key, qty]) => {
-      if (COCKTAIL_IDS.has(key)) { const p = BY_ID[key].pence; for (let i = 0; i < qty; i++) prices.push(p); }
+      if (hhIds.has(key)) { const p = BY_ID[key].pence; for (let i = 0; i < qty; i++) prices.push(p); }
       else otherPence += lineInfo(key).pence * qty;
     });
     prices.sort((a, b) => b - a);
     for (let i = 0; i < prices.length; i += 2) {
-      cocktailPence += (i + 1 < prices.length) ? prices[i] + Math.round(prices[i + 1] * 0.5) : prices[i];
+      cocktailPence += (i + 1 < prices.length) ? prices[i] + Math.round(prices[i + 1] * second) : prices[i];
     }
   } else {
+    const hhIds = happyHourItemIds();
     Object.entries(cart).forEach(([key, qty]) => {
-      if (COCKTAIL_IDS.has(key)) cocktailPence += lineInfo(key).pence * qty;
+      if (hhIds.has(key)) cocktailPence += lineInfo(key).pence * qty;
       else otherPence += lineInfo(key).pence * qty;
     });
   }
@@ -1163,17 +1198,18 @@ function computeTotals(){
   const base = baseTotalPence();
   let discountAmount = 0, discountLabel = null;
   if (discount) {
-    if (discount.id === "owner10" && isHappyHourNow()) {
+    const btn = discountButtons().find(d => d.id === discount.id);
+    if (btn && btn.notOnHappyHour && isHappyHourNow()) {
       const { cocktailPence, otherPence } = priceBreakdown();
-      discountAmount = Math.round(otherPence * 0.10);
-      discountLabel = cocktailPence > 0 ? "Owner's 10% (not on cocktails, Happy Hour)" : "Owner's 10% (10% off)";
+      discountAmount = Math.round(otherPence * btn.pct / 100);
+      discountLabel = cocktailPence > 0 ? `${btn.label} (not on cocktails, Happy Hour)` : `${btn.label} (${btn.pct}% off)`;
     } else if (discount.id === "customOffer") {
       const offer = Math.min(discount.offerPence, base);
       discountAmount = base - offer;
       if (discountAmount > 0) discountLabel = `Custom offer (${((discountAmount / base) * 100).toFixed(1)}% off)`;
     } else {
       discountAmount = Math.round(base * discount.pct / 100);
-      const found = DISCOUNTS.concat(customDiscounts).find(d => d.id === discount.id);
+      const found = discountButtons().concat(customDiscounts).find(d => d.id === discount.id);
       discountLabel = `${found ? found.label : "Discount"} (${discount.pct}% off)`;
     }
   }
@@ -1244,7 +1280,7 @@ async function addSpiritToCart(product){
   let mixerId = "none";
   if (product.mixerType) {
     const tonicItems = (CAT.find(c => c.name === "Mixers") ? CAT.find(c => c.name === "Mixers").items : []).filter(i => !stops.has(i.name));
-    const mixerList = product.mixerType === "both" ? tonicItems.concat(DASH_MIXERS) : DASH_MIXERS;
+    const mixerList = product.mixerType === "both" ? tonicItems.concat(dashMixers()) : dashMixers();
     const usedIds = new Set(mixerList.map(m => m.id));
     const extraMixers = ALL_ITEMS.concat(customProducts).filter(p => (mixerOverrides.has(p.name) || p.isMixer) && !usedIds.has(p.id) && !stops.has(p.name));
     const mixerChoices = [{ label: "No mixer (neat)", value: "none" }].concat(
@@ -1270,9 +1306,9 @@ async function addBeerToCart(product){
     if (chosen === null) return;
     sizeIndex = Number(chosen);
   }
-  const cordialId = await askChoice({ title: product.name, message: "Add a cordial? (free)", choices: CORDIAL_OPTIONS.map(c => ({ label: c.name, value: c.id })) });
+  const cordialId = await askChoice({ title: product.name, message: "Add a cordial? (free)", choices: cordialOptions().map(c => ({ label: c.name, value: c.id })) });
   if (cordialId === null) return;
-  const top = await askChoice({ title: product.name, message: "Lemonade top?", choices: [
+  const top = !lemonadeTopOffered() ? "notop" : await askChoice({ title: product.name, message: "Lemonade top?", choices: [
     { label: "No", value: "notop" },
     { label: "Yes, lemonade top", value: "top" }
   ]});
@@ -1595,7 +1631,17 @@ let layoutGroupKey = null, layoutCatId = null, ptShowFood = false;
 
 // Which group a category belongs to, worked out from its name, so new categories added in Backend
 // land somewhere sensible without any extra setup.
+// Master settings > Layout groups: your own groups, colours, and which category goes where.
+// Categories left on "Automatic" keep their built-in group, so a group missing from the custom list
+// is added back rather than its categories vanishing from the till.
+function layoutGroups(){
+  const c = featureOn("layoutGroups") && featureConfig("layoutGroups").groups;
+  if (!c || !c.length) return LAYOUT_GROUPS;
+  return c.concat(LAYOUT_GROUPS.filter(g => !c.some(x => x.key === g.key)));
+}
 function layoutGroupFor(cat){
+  const cfg = featureOn("layoutGroups") ? featureConfig("layoutGroups") : null;
+  if (cfg && cfg.assign && cfg.assign[cat.name] && layoutGroups().some(g => g.key === cfg.assign[cat.name])) return cfg.assign[cat.name];
   if (cat.mode === "food") return "food";
   const n = cat.name.toLowerCase();
   if (/cocktail|shot/.test(n)) return "cocktails";
@@ -1606,7 +1652,7 @@ function layoutGroupFor(cat){
   if (/soft|no & low|low alcohol|water|mixer|juice/.test(n)) return "softs";
   return "other";
 }
-function layoutGroupColour(key){ const g = LAYOUT_GROUPS.find(x => x.key === key); return g ? g.colour : "#3d4a57"; }
+function layoutGroupColour(key){ const g = layoutGroups().find(x => x.key === key); return g ? g.colour : "#3d4a57"; }
 function layoutCategories(){
   const cats = CAT.map(c => ({ ...c }));
   const buckets = { spirit: [], draught: [], drink: [], food: [] };
@@ -1618,7 +1664,7 @@ function layoutCategories(){
     .filter(c => c.items.length);
 }
 function layoutSelection(cats){
-  const groups = LAYOUT_GROUPS.filter(g => cats.some(c => c.group === g.key));
+  const groups = layoutGroups().filter(g => cats.some(c => c.group === g.key));
   const keys = groups.map(g => g.key).concat(posLayoutKey === "dock" ? ["top"] : []);
   // The Dock opens on Top 12 once tonight has sales; before that, on the first group.
   if (!keys.includes(layoutGroupKey)) layoutGroupKey = posLayoutKey === "dock" && layoutTopSellers(cats).length ? "top" : (groups[0] ? groups[0].key : null);
@@ -1906,7 +1952,7 @@ document.getElementById("tableInput").addEventListener("keydown", e => { if (e.k
 function renderDiscountChips(){
   const wrap = document.getElementById("discountChips");
   wrap.innerHTML = "";
-  DISCOUNTS.concat(customDiscounts).forEach(d => {
+  discountButtons().concat(customDiscounts).forEach(d => {
     const chip = document.createElement("button");
     chip.type = "button";
     const active = discount && discount.id === d.id;
@@ -1978,14 +2024,25 @@ function openCharge(method){
   closeSheet("cartSheet");
   openSheet("chargeSheet");
 }
+// Master settings > Table number rules: whether one is needed, and which numbers exist.
+function tableProblem(t){
+  const rules = featureOn("tableRules") ? featureConfig("tableRules") : null;
+  if (!t) return rules && rules.required === false ? null : "Enter the table number before taking payment.";
+  if (!rules || (!rules.min && !rules.max)) return null;
+  const n = Number(t), min = Number(rules.min) || 1, max = Number(rules.max) || Infinity;
+  if (!/^\d+$/.test(t) || n < min || n > max) return `There's no table ${t}. Tables here are ${min}${isFinite(max) ? "–" + max : " and up"}.`;
+  return null;
+}
 async function startCharge(method){
   if (cartCount() === 0) return;
   const tableEl = document.getElementById("tableInput");
   currentTable = tableEl.value.trim();
-  if (!currentTable) {
+  const problem = tableProblem(currentTable);
+  if (problem) {
     // On a phone the order sheet may be closed (tablet: always open), so make sure the field is visible.
     if (!wideLayout.matches && !document.getElementById("cartSheet").classList.contains("show")) { renderCartSheet(); openSheet("cartSheet"); }
     tableEl.classList.add("invalid");
+    document.getElementById("tableError").textContent = problem;
     document.getElementById("tableError").hidden = false;
     tableEl.focus();
     return;
@@ -1998,7 +2055,8 @@ document.getElementById("chargeBack").addEventListener("click", () => { closeShe
 document.getElementById("chargeCancel").addEventListener("click", () => { closeSheet("chargeSheet"); openSheet("cartSheet"); });
 
 function openCashHelper(total){
-  const denoms = [500, 1000, 2000, 5000];
+  const custom = featureOn("cashButtons") && (featureConfig("cashButtons").cash || []).map(Number).filter(v => v > 0);
+  const denoms = custom && custom.length ? custom : [500, 1000, 2000, 5000];
   const nearest = Math.ceil(total / 100) * 100;
   const wrap = document.getElementById("quickCashButtons");
   wrap.innerHTML = "";
@@ -2228,7 +2286,15 @@ async function pushNotification(toUserId, message, urgent){
 
 /* ---------- gratuities ---------- */
 document.getElementById("gratuityBtn").addEventListener("click", async () => {
-  const val = await askText({ title:"Log a gratuity", message:"Cash tip received, kept separate from sales, for declaring at the end of the night.", placeholder:"e.g. 5.00", confirmLabel:"Log tip" });
+  // Master settings > Cash and tip buttons can offer preset tip amounts first.
+  const presets = featureOn("cashButtons") ? (featureConfig("cashButtons").tips || []).map(Number).filter(v => v > 0) : [];
+  let val = null;
+  if (presets.length) {
+    const pick = await askChoice({ title: "Log a gratuity", message: "Cash tip received, kept separate from sales.", choices: presets.map(v => ({ label: fmt(v), value: String(v / 100) })).concat([{ label: "Another amount", value: "other" }]) });
+    if (pick === null) return;
+    if (pick !== "other") val = pick;
+  }
+  if (val === null) val = await askText({ title:"Log a gratuity", message:"Cash tip received, kept separate from sales, for declaring at the end of the night.", placeholder:"e.g. 5.00", confirmLabel:"Log tip" });
   if (val === null) return;
   const pounds = parseFloat(val);
   if (!isFinite(pounds) || pounds <= 0) { showToast("Enter a valid amount"); return; }
@@ -2245,6 +2311,7 @@ function applyLoginState(){
   setSignedInUser(currentUser);
   maintenanceLockScreen(maintenanceLocksOut(currentUser), signOut);
   renderAnnouncement(currentVenue && currentVenue.id);
+  applyBigText(currentUser, currentVenue && currentVenue.id);
   if (currentUser) setTimeout(() => runRemoteCommands(currentVenueId), 0); // e.g. a sign-out sent while this till was closed
   const venuePicker = document.getElementById("venuePickerScreen");
   if (currentUser && !currentVenue) {
@@ -2828,6 +2895,7 @@ function shiftSnapshot(){
 
 let xReadRows = [];
 function renderXRead(){
+  document.getElementById("xReadHead").innerHTML = reportHeaderHTML(currentVenueId);
   const s = shiftSnapshot();
   xReadRows = [
     ["Cash", fmt(s.cashTotal)], ["Card", fmt(s.cardTotal)], ["Takings", fmt(s.grandTotal)],
@@ -2871,6 +2939,7 @@ document.getElementById("reportBack").addEventListener("click", () => closeSheet
 document.getElementById("exportPdfBtn").addEventListener("click", () => window.print());
 
 function renderReport(){
+  document.getElementById("reportHead").innerHTML = reportHeaderHTML(currentVenueId);
   const hourly = {};
   const itemStats = {};
   history.forEach(sale => {
