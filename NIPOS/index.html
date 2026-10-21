@@ -1007,7 +1007,7 @@ async function restoreSession(){
   if (!session) { applyLoginState(); return; }
   currentUser = await fetchMyStaffRow();
   currentUserId = currentUser ? currentUser.id : null;
-  if (!currentUser || currentUser.perms.active === false) {
+  if (!currentUser || currentUser.perms.active === false || currentUser.system) {
     await signOutAuth();
     currentUser = null; currentUserId = null;
     applyLoginState();
@@ -1983,8 +1983,8 @@ async function signIn(pin){
   document.getElementById("loginPinInput").value = "";
   currentUser = await fetchMyStaffRow();
   currentUserId = currentUser ? currentUser.id : null;
-  if (!currentUser || currentUser.perms.active === false) {
-    showToast(currentUser ? "This account is disabled" : "Account not found");
+  if (!currentUser || currentUser.perms.active === false || currentUser.system) {
+    showToast(!currentUser ? "Account not found" : currentUser.system ? "This account only signs in to Backend" : "This account is disabled");
     await signOutAuth();
     currentUser = null; currentUserId = null;
     applyLoginState();
@@ -2009,10 +2009,11 @@ document.getElementById("loginPinInput").addEventListener("keydown", e => { if (
 document.getElementById("lockedLogoutBtn").addEventListener("click", signOut);
 document.getElementById("accountSignOutBtn").addEventListener("click", signOut);
 function updateThemeBtn(){
-  const toLight = getTheme() !== "light";
-  document.getElementById("themeToggleBtn").innerHTML = icon(toLight ? "sun" : "moon") + (toLight ? " Light theme" : " Dark theme");
+  const next = themeSwitchInfo();
+  document.getElementById("themeToggleBtn").innerHTML = icon(next.icon) + " " + next.label;
 }
-document.getElementById("themeToggleBtn").addEventListener("click", () => { setTheme(getTheme() === "light" ? "dark" : "light"); updateThemeBtn(); });
+document.getElementById("themeToggleBtn").addEventListener("click", toggleTheme);
+document.addEventListener("nipos:themechange", updateThemeBtn);
 updateThemeBtn();
 document.getElementById("venuePickerLogoutBtn").addEventListener("click", signOut);
 document.getElementById("switchVenueBtn").addEventListener("click", () => { currentVenue = null; applyLoginState(); });

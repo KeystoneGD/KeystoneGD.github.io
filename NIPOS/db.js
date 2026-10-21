@@ -59,6 +59,7 @@ function venueAccentKey(venue) {
 // Sets --venue / --venue-ink for the page and fills any [data-venue-name] / [data-staff-name]
 // slots. Pass null to clear (signed out).
 async function applyVenueIdentity(venue, staffName) {
+  lastVenueIdentity = venue ? { venue, staffName } : null;
   if (venue) await loadVenueCreationOrder();
   const accent = venue ? VENUE_ACCENTS[venueAccentKey(venue)] : null;
   const root = document.documentElement.style;
@@ -132,6 +133,7 @@ function connectAuthClient() {
       else supabaseClient.auth.stopAutoRefresh();
     });
   } catch (e) {}
+  startMasterThemeSync();
   return supabaseClient;
 }
 
@@ -248,14 +250,129 @@ function makeSupabaseDb(client) {
   }; } };
 }
 
-// --- Theme (light/dark), shared by every page ---
-const LS_THEME = "starlightTill.theme.v1";
+// --- Themes, shared by every page ---
+// The master theme is one setting for every device, chosen by $YSTEM in Backend > Master themes and
+// stored in the system_theme table. Each master theme has a normal and a dark version; the switch on
+// each device picks between them (NIPOS Classic keeps its original dark/light switch). Status colours
+// (green ready, red problem, yellow in progress) never change with the theme. Every colour below was
+// checked for WCAG AA: text 4.5:1, focus rings 3:1.
+const LS_THEME = "starlightTill.theme.v1";              // NIPOS Classic: "dark" (default) or "light"
+const LS_THEME_MODE = "starlightTill.themeMode.v1";     // any other master theme: "normal" (default) or "dark"
+const LS_MASTER_THEME = "starlightTill.masterTheme.v1"; // last master theme seen, so a page opens in it straight away
+const MASTER_THEMES = {
+  classic: { name: "NIPOS Classic" },
+  "neon-nights": { name: "Neon Nights",
+    venues: [["Purple", "#7B2CBF", "#FFFFFF"], ["Electric blue", "#1F6FD6", "#FFFFFF"], ["Magenta", "#B0179B", "#FFFFFF"], ["Indigo", "#4B3FD1", "#FFFFFF"], ["Plum", "#8E2C8E", "#FFFFFF"]],
+    normal: { scheme: "dark", tokens: { "--bg": "#1A1A2E", "--surface": "#2E2E4A", "--surface-2": "#3A3A54", "--border": "#55556B", "--text": "#E0E0E0", "--text-muted": "#A7A7B1", "--accent": "#008080", "--accent-ink": "#FFFFFF", "--accent-soft": "rgba(0,128,128,0.16)", "--accent-text": "#00A9A9", "--sel-bg": "#E0E0E0", "--sel-ink": "#1A1A2E", "--focus": "#9E5AD9" } },
+    dark: { scheme: "dark", tokens: { "--bg": "#121212", "--surface": "#1E1E1E", "--surface-2": "#2D2D2D", "--border": "#4D4D4D", "--text": "#F5F5F5", "--text-muted": "#A3A3A3", "--accent": "#008080", "--accent-ink": "#FFFFFF", "--accent-soft": "rgba(0,128,128,0.16)", "--accent-text": "#009797", "--sel-bg": "#F5F5F5", "--sel-ink": "#121212", "--focus": "#8E3FD3" } }
+  },
+  "classic-pub": { name: "Classic Pub",
+    venues: [["Burgundy", "#800020", "#FFFFFF"], ["Deep teal", "#1F5F5B", "#FFFFFF"], ["Plum", "#5E2750", "#FFFFFF"], ["Navy", "#1F3A5F", "#FFFFFF"], ["Slate", "#3E4A5C", "#FFFFFF"]],
+    normal: { scheme: "light", tokens: { "--bg": "#F5F5DC", "--surface": "#E0D8C0", "--surface-2": "#D5CCB5", "--border": "#BFB29F", "--text": "#4A2C2A", "--text-muted": "#64544C", "--accent": "#5C4033", "--accent-ink": "#FFFFFF", "--accent-soft": "rgba(92,64,51,0.12)", "--accent-text": "#5C4033", "--sel-bg": "#4A2C2A", "--sel-ink": "#F5F5DC", "--focus": "#9A7417" } },
+    dark: { scheme: "dark", tokens: { "--bg": "#1C1C1C", "--surface": "#2F2F2F", "--surface-2": "#3B3B3B", "--border": "#565656", "--text": "#E0E0E0", "--text-muted": "#A5A5A5", "--accent": "#644638", "--accent-ink": "#FFFFFF", "--accent-soft": "rgba(100,70,56,0.16)", "--accent-text": "#B58D7B", "--sel-bg": "#E0E0E0", "--sel-ink": "#1C1C1C", "--focus": "#DAA520" } }
+  },
+  "modern-loft": { name: "Modern Loft",
+    venues: [["Plum", "#8E3A8E", "#FFFFFF"], ["Teal", "#00796B", "#FFFFFF"], ["Rose", "#AD1457", "#FFFFFF"], ["Ocean", "#0277BD", "#FFFFFF"], ["Slate", "#546E7A", "#FFFFFF"]],
+    normal: { scheme: "light", tokens: { "--bg": "#F0F2F5", "--surface": "#FFFFFF", "--surface-2": "#EFEFEF", "--border": "#CECECE", "--text": "#212121", "--text-muted": "#6C6C6C", "--accent": "#3F51B5", "--accent-ink": "#FFFFFF", "--accent-soft": "rgba(63,81,181,0.12)", "--accent-text": "#3F51B5", "--sel-bg": "#212121", "--sel-ink": "#F0F2F5", "--focus": "#3F51B5" } },
+    dark: { scheme: "dark", tokens: { "--bg": "#1A202C", "--surface": "#2D3748", "--surface-2": "#3A4354", "--border": "#555E6D", "--text": "#E2E8F0", "--text-muted": "#AAB1BA", "--accent": "#3F51B5", "--accent-ink": "#FFFFFF", "--accent-soft": "rgba(63,81,181,0.16)", "--accent-text": "#919CD9", "--sel-bg": "#E2E8F0", "--sel-ink": "#1A202C", "--focus": "#6B7ACB" } }
+  },
+  "electric-night": { name: "Electric Night",
+    venues: [["Indigo", "#5856D6", "#FFFFFF"], ["Cyan", "#00C2CB", "#141414"], ["Pink", "#D63384", "#FFFFFF"], ["Slate", "#5A6A80", "#FFFFFF"], ["Orchid", "#B054DE", "#141414"]],
+    normal: { scheme: "dark", tokens: { "--bg": "#1C1C1E", "--surface": "#2C2C2E", "--surface-2": "#3A3A3C", "--border": "#58585A", "--text": "#F2F2F7", "--text-muted": "#A7A7AB", "--accent": "#007AFF", "--accent-ink": "#141414", "--accent-soft": "rgba(0,122,255,0.16)", "--accent-text": "#3395FF", "--sel-bg": "#F2F2F7", "--sel-ink": "#1C1C1E", "--focus": "#007AFF" } },
+    dark: { scheme: "dark", tokens: { "--bg": "#121212", "--surface": "#1E1E1E", "--surface-2": "#2C2C2C", "--border": "#494949", "--text": "#E0E0E0", "--text-muted": "#969696", "--accent": "#007AFF", "--accent-ink": "#141414", "--accent-soft": "rgba(0,122,255,0.16)", "--accent-text": "#1283FF", "--sel-bg": "#E0E0E0", "--sel-ink": "#121212", "--focus": "#007AFF" } }
+  },
+  "lounge-sunset": { name: "Lounge Sunset",
+    venues: [["Violet", "#7A5AF0", "#FFFFFF"], ["Deep teal", "#0F8192", "#FFFFFF"], ["Orange", "#FF9500", "#141414"], ["Indigo", "#4F5BD5", "#FFFFFF"], ["Plum", "#9B3FB5", "#FFFFFF"]],
+    normal: { scheme: "dark", tokens: { "--bg": "#2C2C3A", "--surface": "#3A3A4C", "--surface-2": "#474656", "--border": "#62616A", "--text": "#F0EAD6", "--text-muted": "#B8B5B1", "--accent": "#E8A0B4", "--accent-ink": "#141414", "--accent-soft": "rgba(232,160,180,0.16)", "--accent-text": "#E8A0B4", "--sel-bg": "#F0EAD6", "--sel-ink": "#2C2C3A", "--focus": "#FF9500" } },
+    dark: { scheme: "dark", tokens: { "--bg": "#1A1A24", "--surface": "#282836", "--surface-2": "#353541", "--border": "#525058", "--text": "#E8E0D0", "--text-muted": "#A39E99", "--accent": "#E8A0B4", "--accent-ink": "#141414", "--accent-soft": "rgba(232,160,180,0.16)", "--accent-text": "#E8A0B4", "--sel-bg": "#E8E0D0", "--sel-ink": "#1A1A24", "--focus": "#FF9500" } }
+  },
+  "coastal-breeze": { name: "Coastal Breeze",
+    venues: [["Lavender", "#6E5BD6", "#FFFFFF"], ["Ocean", "#0A6ED1", "#FFFFFF"], ["Sand", "#B08D57", "#141414"], ["Navy", "#1F3A93", "#FFFFFF"], ["Driftwood", "#6D5D4B", "#FFFFFF"]],
+    normal: { scheme: "light", tokens: { "--bg": "#F2F2F7", "--surface": "#FFFFFF", "--surface-2": "#EFEFEF", "--border": "#CDCDCE", "--text": "#1C1C1E", "--text-muted": "#6C6C6E", "--accent": "#00BFB7", "--accent-ink": "#141414", "--accent-soft": "rgba(0,191,183,0.12)", "--accent-text": "#007A75", "--sel-bg": "#1C1C1E", "--sel-ink": "#F2F2F7", "--focus": "#009C95" } },
+    dark: { scheme: "dark", tokens: { "--bg": "#1C1C1E", "--surface": "#2C2C2E", "--surface-2": "#3A3A3C", "--border": "#58585A", "--text": "#F2F2F7", "--text-muted": "#A7A7AB", "--accent": "#00C7BE", "--accent-ink": "#141414", "--accent-soft": "rgba(0,199,190,0.16)", "--accent-text": "#00C7BE", "--sel-bg": "#F2F2F7", "--sel-ink": "#1C1C1E", "--focus": "#00C7BE" } }
+  }
+};
+// Shown in Backend's theme picker for Classic, which uses each page's own built-in colours.
+const CLASSIC_PREVIEW = { bg: "#0c1826", surface: "#13212f", text: "#eef4f8", accent: "#f0a13a", accentInk: "#2b1a02" };
+const CLASSIC_VENUE_ACCENTS = JSON.parse(JSON.stringify(VENUE_ACCENTS));
+
+let masterThemeKey = "classic";
+try { const k = localStorage.getItem(LS_MASTER_THEME); if (k && MASTER_THEMES[k]) masterThemeKey = k; } catch (e) {}
+function getMasterTheme() { return masterThemeKey; }
+
 function getTheme() { try { return localStorage.getItem(LS_THEME) || "dark"; } catch (e) { return "dark"; } }
+function getThemeMode() { try { return localStorage.getItem(LS_THEME_MODE) === "dark" ? "dark" : "normal"; } catch (e) { return "normal"; } }
 function setTheme(theme) {
   try { localStorage.setItem(LS_THEME, theme); } catch (e) {}
-  document.documentElement.dataset.theme = theme;
+  applyTheme();
 }
-function initTheme() { document.documentElement.dataset.theme = getTheme(); }
+// The device switch: Classic flips dark/light, any other theme flips normal/dark mode.
+function toggleTheme() {
+  if (masterThemeKey === "classic") setTheme(getTheme() === "light" ? "dark" : "light");
+  else {
+    try { localStorage.setItem(LS_THEME_MODE, getThemeMode() === "dark" ? "normal" : "dark"); } catch (e) {}
+    applyTheme();
+  }
+}
+// What the switch would change to next, for its label: { icon, label }.
+function themeSwitchInfo() {
+  if (masterThemeKey === "classic") {
+    return getTheme() !== "light" ? { icon: "sun", label: "Light theme" } : { icon: "moon", label: "Dark theme" };
+  }
+  return getThemeMode() === "dark" ? { icon: "sun", label: "Normal colours" } : { icon: "moon", label: "Dark mode" };
+}
+
+let lastVenueIdentity = null; // re-applied when the theme changes, since venue colours come from the theme
+function applyTheme() {
+  const html = document.documentElement;
+  const t = MASTER_THEMES[masterThemeKey];
+  let styleEl = document.getElementById("masterThemeVars");
+  if (masterThemeKey === "classic" || !t) {
+    html.dataset.theme = getTheme();
+    delete html.dataset.master;
+    if (styleEl) styleEl.remove();
+    VENUE_ACCENT_KEYS.forEach(k => Object.assign(VENUE_ACCENTS[k], CLASSIC_VENUE_ACCENTS[k]));
+  } else {
+    const v = t[getThemeMode()];
+    html.dataset.theme = v.scheme; // keeps each page's light/dark-only rules (status shades etc.) in step
+    html.dataset.master = masterThemeKey;
+    if (!styleEl) { styleEl = document.createElement("style"); styleEl.id = "masterThemeVars"; }
+    document.head.appendChild(styleEl); // last in <head>, so it wins over each page's own :root colours
+    styleEl.textContent = "html:root:root{" + Object.entries(v.tokens).map(([k, c]) => k + ":" + c).join(";") + "}";
+    VENUE_ACCENT_KEYS.forEach((k, i) => {
+      const [label, color, ink] = t.venues[i];
+      Object.assign(VENUE_ACCENTS[k], { label, color, ink });
+    });
+  }
+  const bg = getComputedStyle(html).getPropertyValue("--bg").trim();
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta && bg) meta.setAttribute("content", bg);
+  if (lastVenueIdentity) applyVenueIdentity(lastVenueIdentity.venue, lastVenueIdentity.staffName);
+  try { document.dispatchEvent(new CustomEvent("nipos:themechange")); } catch (e) {}
+}
+function initTheme() { applyTheme(); }
+
+function setMasterThemeLocal(key) {
+  if (!MASTER_THEMES[key] || key === masterThemeKey) return;
+  masterThemeKey = key;
+  try { localStorage.setItem(LS_MASTER_THEME, key); } catch (e) {}
+  applyTheme();
+}
+// Every page follows the master theme: read on load, every minute, and whenever the tab comes back.
+async function syncMasterTheme() {
+  if (!supabaseClient) return;
+  try {
+    const { data, error } = await supabaseClient.from("system_theme").select("theme").eq("id", "current").maybeSingle();
+    if (!error && data && data.theme) setMasterThemeLocal(data.theme);
+  } catch (e) {}
+}
+let masterThemeTimer = null;
+function startMasterThemeSync() {
+  if (masterThemeTimer) return;
+  syncMasterTheme();
+  masterThemeTimer = setInterval(syncMasterTheme, 60000);
+  try { document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncMasterTheme(); }); } catch (e) {}
+}
 
 // --- Sales range aggregation, shared by index.html's X/Z-Read and the Backend dashboard ---
 // rowStore's fetchAll() caps at a fixed row limit, fine for "today" but not for a week/month of a busy

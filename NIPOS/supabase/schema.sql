@@ -441,4 +441,7 @@ on conflict (id) do nothing;
 --
 -- 5) Point the site at the new project: update SUPABASE_URL and SUPABASE_ANON_KEY at the top of
 --    NIPOS/db.js (Dashboard > Project Settings > API).
+--
+-- 6) Master themes and the hidden $YSTEM account: run supabase/master_themes.sql, then follow the
+--    note at the bottom of that file to set $YSTEM's PIN and password.
 -- =====================================================================================================

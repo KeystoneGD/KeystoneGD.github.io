@@ -53,14 +53,14 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .order-card.flagged{border-color:var(--danger);background:var(--danger-soft);}
 .order-card.ready{border-color:var(--success);background:var(--success-soft);}
 .order-card.substituted{border-color:var(--accent);background:var(--accent-soft);}
-.order-sub-note{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:10px;}
+.order-sub-note{font-size:13px;font-weight:700;color:var(--accent-text,var(--accent));margin-bottom:10px;}
 .order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;}
 .order-table{font-weight:800;font-size:16px;font-family:inherit;}
 .order-time{font-size:11px;color:var(--text-muted);}
 .pill{display:inline-block;background:var(--surface-2);border:1px solid var(--border);color:var(--text-muted);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:2px 7px;border-radius:999px;flex:0 0 auto;}
 .btn-sm{flex:0 0 auto;padding:7px 12px;font-size:12.5px;}
 .pill-cash{background:var(--success-soft);color:var(--success);}
-.pill-card{background:var(--accent-soft);color:var(--accent);}
+.pill-card{background:var(--accent-soft);color:var(--accent-text,var(--accent));}
 .order-items{font-size:13.5px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;}
 .order-flag{font-size:13px;font-weight:700;color:var(--danger);margin-bottom:10px;}
 .order-actions{display:flex;gap:8px;}
@@ -107,7 +107,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .toolbar-row .btn{flex:1 1 160px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:15px;}
 .toolbar-row[hidden]{display:none;}
 .placed-by{font-size:11.5px;color:var(--text-muted);margin-bottom:6px;}
-.order-notes{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:10px;}
+.order-notes{font-size:13px;font-weight:700;color:var(--accent-text,var(--accent));margin-bottom:10px;}
 .stock-cat{font-size:15px;color:var(--text);font-weight:800;margin:16px 0 4px;}
 .stock-cat:first-child{margin-top:0;}
 .stock-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:14px;}
@@ -332,8 +332,8 @@ document.getElementById("loginSubmitBtn").addEventListener("click", async () => 
   document.getElementById("loginPinInput").value = "";
   currentUser = await fetchMyStaffRow();
   currentUserId = currentUser ? currentUser.id : null;
-  if (!currentUser || currentUser.perms.active === false) {
-    alert(currentUser ? "This account is disabled." : "Account not found.");
+  if (!currentUser || currentUser.perms.active === false || currentUser.system) {
+    alert(!currentUser ? "Account not found." : currentUser.system ? "This account only signs in to Backend." : "This account is disabled.");
     await signOutAuth();
     currentUser = null; currentUserId = null;
     applyLoginState();
@@ -355,11 +355,12 @@ async function signOutOrders(){
 }
 document.getElementById("accountSignOutBtn").addEventListener("click", signOutOrders);
 function updateThemeBtn(){
-  const toLight = getTheme() !== "light", btn = document.getElementById("themeToggleBtn");
-  btn.innerHTML = icon(toLight ? "sun" : "moon");
-  btn.setAttribute("aria-label", toLight ? "Switch to light theme" : "Switch to dark theme");
+  const next = themeSwitchInfo(), btn = document.getElementById("themeToggleBtn");
+  btn.innerHTML = icon(next.icon);
+  btn.setAttribute("aria-label", "Switch to " + next.label.toLowerCase());
 }
-document.getElementById("themeToggleBtn").addEventListener("click", () => { setTheme(getTheme() === "light" ? "dark" : "light"); updateThemeBtn(); });
+document.getElementById("themeToggleBtn").addEventListener("click", toggleTheme);
+document.addEventListener("nipos:themechange", updateThemeBtn);
 updateThemeBtn();
 document.getElementById("venuePickerLogoutBtn").addEventListener("click", signOutOrders);
 document.getElementById("switchVenueBtn").addEventListener("click", () => { currentVenue = null; applyLoginState(); });
@@ -588,7 +589,7 @@ async function init(){
   if (session) {
     currentUser = await fetchMyStaffRow();
     currentUserId = currentUser ? currentUser.id : null;
-    if (currentUser && currentUser.perms.active !== false) {
+    if (currentUser && currentUser.perms.active !== false && !currentUser.system) {
       myVenues = await fetchMyVenues(currentUser);
       await resolveVenueSelection();
     } else {

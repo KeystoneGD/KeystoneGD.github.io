@@ -35,7 +35,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);margin:
 h1,h2,h3,.brand-name,.nav-item,.btn,.kpi-value{font-family:var(--font-display);}
 .tabular{font-variant-numeric:tabular-nums;}
 button,input,select,textarea{font-family:inherit;}
-a{color:var(--accent);}
+a{color:var(--accent-text,var(--accent));}
 
 /* ---------- login / venue picker ---------- */
 .login-gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:50;padding:20px;}
@@ -99,6 +99,18 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .page.active{display:block;}
 .page-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px;}
 .page-header h1{font-size:22px;margin:0;}
+.theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+.theme-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;}
+.theme-card.in-use{outline:3px solid var(--text);outline-offset:-1px;}
+.theme-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.theme-card-head h2{margin:0;font-size:17px;}
+.theme-previews{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.theme-preview{border-radius:10px;padding:10px;border:1px solid rgba(127,127,127,.35);display:flex;flex-direction:column;gap:7px;min-width:0;}
+.theme-preview .tp-label{font-size:12px;font-weight:700;}
+.theme-preview .tp-panel{border-radius:8px;padding:7px 8px;font-size:13px;font-weight:700;}
+.theme-preview .tp-btn{border-radius:8px;padding:6px 8px;font-size:13px;font-weight:800;text-align:center;}
+.theme-venues{display:flex;gap:6px;flex-wrap:wrap;}
+.theme-venues span{width:26px;height:26px;border-radius:7px;border:2px solid rgba(127,127,127,.4);}
 .section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin:24px 0 10px;}
 .section-title:first-child{margin-top:0;}
 
@@ -212,6 +224,16 @@ table.data-table tr:last-child td{border-bottom:0;}
     <button class="btn btn-accent btn-block" id="loginSubmitBtn">Sign in</button>
   </div>
 </div>
+<div class="login-gate" id="systemGate" hidden>
+  <div class="login-card">
+    <h2>Password</h2>
+    <p id="systemGateMsg">This account needs its password as well as the PIN.</p>
+    <label class="field" for="systemPasswordInput">Password</label>
+    <input type="password" id="systemPasswordInput" autocomplete="current-password">
+    <button class="btn btn-accent btn-block" id="systemPasswordBtn">Unlock Backend</button>
+    <button class="btn btn-ghost btn-block" id="systemGateSignOut" style="margin-top:8px;">Sign out</button>
+  </div>
+</div>
 <div class="login-gate" id="venuePickerScreen" hidden>
   <div class="login-card">
     <h2>Choose a venue</h2>
@@ -242,6 +264,7 @@ table.data-table tr:last-child td{border-bottom:0;}
       <button class="nav-item" data-page="zreads" id="navZReads" hidden>Z Reads</button>
       <button class="nav-item" data-page="testdata" id="navTestData" hidden>Test Data</button>
       <button class="nav-item" data-page="settings" id="navSettings" hidden>Settings</button>
+      <button class="nav-item" data-page="themes" id="navThemes" hidden>Master themes</button>
     </nav>
     <div class="sidebar-footer">
       <div class="venue-switcher" id="venueSwitcherWrap" hidden>
@@ -467,6 +490,13 @@ table.data-table tr:last-child td{border-bottom:0;}
         <input type="file" id="soundUploadInput" accept="audio/*">
       </div>
     </section>
+
+    <section class="page" id="page-themes">
+      <div class="page-header"><h1>Master themes</h1></div>
+      <p class="note">Changes the colours on every till, order screen and Backend. Devices that are open switch within a minute. Each device's own switch still flips between the theme's normal colours and its dark mode. Green (ready), red (problem or refund) and yellow (in progress) keep their meaning in every theme.</p>
+      <p class="note" id="themeMsg" role="status"></p>
+      <div class="theme-grid" id="themeGrid"></div>
+    </section>
   </main>
 </div>
 
@@ -576,6 +606,7 @@ let customDiscounts = [];
 let mixerOverrides = new Set();
 let hhOverride = null;
 let currentPage = "dashboard";
+let systemPassword = null; // $YSTEM only - see "$YSTEM: password, then Master themes" below
 let currentRange = "today";
 let charts = {};
 
@@ -611,7 +642,7 @@ async function fetchAllVisibleStaff(){
   try {
     const { data, error } = await supabaseClient.from("staff_users").select("id,data");
     if (error || !data) return [];
-    return data.map(r => ({ id: r.id, ...r.data }));
+    return data.map(r => ({ id: r.id, ...r.data })).filter(u => !u.system); // $YSTEM is never listed
   } catch(e){ return []; }
 }
 async function fetchAllVisibleVenues(){
@@ -642,6 +673,7 @@ async function init(){
     currentUser = await fetchMyStaffRow();
     currentUserId = currentUser ? currentUser.id : null;
     if (currentUser && currentUser.perms.active !== false) {
+      if (currentUser.system) { applyLoginState(); return; } // asks for the password first
       myVenues = await fetchMyVenues(currentUser, true);
       await resolveVenueSelection();
     } else {
@@ -703,6 +735,15 @@ async function loadVenueData(){
 function applyLoginState(){
   const shell = document.getElementById("appShell");
   const hamburger = document.getElementById("hamburgerBtn");
+  const needsPassword = !!(currentUser && currentUser.system && !systemPassword);
+  document.getElementById("systemGate").hidden = !needsPassword;
+  document.getElementById("navThemes").hidden = !(currentUser && currentUser.system && systemPassword);
+  if (needsPassword) {
+    document.getElementById("loginGate").hidden = true;
+    shell.hidden = true; hamburger.hidden = true;
+    return;
+  }
+  if (currentUser && currentUser.system) renderThemes();
   if (currentUser && currentUser.perms.backendAccess) {
     document.getElementById("loginGate").hidden = true;
     shell.hidden = false; hamburger.hidden = false;
@@ -742,16 +783,105 @@ document.getElementById("loginSubmitBtn").addEventListener("click", async () => 
     applyLoginState();
     return;
   }
+  if (currentUser.system) { applyLoginState(); document.getElementById("systemPasswordInput").focus(); return; }
   myVenues = await fetchMyVenues(currentUser, true);
   await resolveVenueSelection();
 });
 document.getElementById("loginPinInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginSubmitBtn").click(); });
 async function signOutBackend(){
+  systemPassword = null;
+  if (currentPage === "themes") showPage("dashboard");
   await signOutAuth();
   currentUser = null; currentUserId = null; currentVenue = null; myVenues = [];
   applyLoginState();
 }
 document.getElementById("accountSignOutBtn").addEventListener("click", signOutBackend);
+document.getElementById("systemGateSignOut").addEventListener("click", signOutBackend);
+
+/* ---------- $YSTEM: password, then Master themes ---------- */
+// The password is checked by the database (nipos_check_system_password) against a hash the browser
+// can never read. It's kept in memory for this page load only, because changing the theme checks it
+// again - reloading the page asks for it again.
+const SYSTEM_PASSWORD_MESSAGES = {
+  wrong: "That password isn't right.",
+  locked: "Too many wrong passwords. Try again in 15 minutes.",
+  not_set: "No password has been set for this account yet. Set one in Supabase first.",
+  not_system: "This account can't use Master themes."
+};
+document.getElementById("systemPasswordBtn").addEventListener("click", async () => {
+  const input = document.getElementById("systemPasswordInput"), msg = document.getElementById("systemGateMsg");
+  const pw = input.value;
+  if (!pw) { input.focus(); return; }
+  const btn = document.getElementById("systemPasswordBtn");
+  btn.disabled = true;
+  let result = "error";
+  try {
+    const { data, error } = await supabaseClient.rpc("nipos_check_system_password", { p_password: pw });
+    if (!error) result = data;
+  } catch (e) {}
+  btn.disabled = false;
+  if (result !== "ok") { msg.textContent = SYSTEM_PASSWORD_MESSAGES[result] || "Couldn't check the password. Try again."; input.select(); return; }
+  input.value = "";
+  msg.textContent = "This account needs its password as well as the PIN.";
+  systemPassword = pw;
+  myVenues = await fetchMyVenues(currentUser, true);
+  await resolveVenueSelection();
+  applyLoginState();
+});
+document.getElementById("systemPasswordInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("systemPasswordBtn").click(); });
+
+function themePreviewHTML(label, p){
+  return `<div class="theme-preview" style="background:${p.bg};color:${p.text};">
+    <span class="tp-label">${label}</span>
+    <span class="tp-panel" style="background:${p.surface};color:${p.text};">Table 12</span>
+    <span class="tp-btn" style="background:${p.accent};color:${p.accentInk};">Card</span>
+  </div>`;
+}
+function renderThemes(){
+  const grid = document.getElementById("themeGrid");
+  const current = getMasterTheme();
+  grid.innerHTML = Object.entries(MASTER_THEMES).map(([key, t]) => {
+    let previews, venues;
+    if (key === "classic") {
+      previews = themePreviewHTML("Dark", CLASSIC_PREVIEW) +
+        themePreviewHTML("Light", { bg: "#f5f7fa", surface: "#ffffff", text: "#16232f", accent: "#c9791e", accentInk: "#2b1a02" });
+      venues = Object.values(CLASSIC_VENUE_ACCENTS).map(v => [v.label, v.color]);
+    } else {
+      const pv = v => ({ bg: v.tokens["--bg"], surface: v.tokens["--surface"], text: v.tokens["--text"], accent: v.tokens["--accent"], accentInk: v.tokens["--accent-ink"] });
+      previews = themePreviewHTML("Normal", pv(t.normal)) + themePreviewHTML("Dark mode", pv(t.dark));
+      venues = t.venues;
+    }
+    const inUse = key === current;
+    return `<div class="theme-card${inUse ? " in-use" : ""}">
+      <div class="theme-card-head"><h2>${esc(t.name)}</h2>${inUse ? `<span class="state-badge next">${icon("check")}In use</span>` : ""}</div>
+      <div class="theme-previews">${previews}</div>
+      <div><div class="note" style="margin-bottom:6px;">Venue colours</div>
+        <div class="theme-venues">${venues.map(([label, color]) => `<span style="background:${color}" title="${esc(label)}"></span>`).join("")}</div></div>
+      ${inUse ? "" : `<button class="btn btn-solid" data-use-theme="${key}">Use ${esc(t.name)}</button>`}
+    </div>`;
+  }).join("");
+  grid.querySelectorAll("[data-use-theme]").forEach(b => b.addEventListener("click", () => chooseMasterTheme(b.dataset.useTheme)));
+}
+async function chooseMasterTheme(key){
+  const t = MASTER_THEMES[key], msg = document.getElementById("themeMsg");
+  if (!t || !systemPassword) return;
+  if (!confirm(`Switch every device to ${t.name}?`)) return;
+  let result = "error";
+  try {
+    const { data, error } = await supabaseClient.rpc("nipos_set_master_theme", { p_password: systemPassword, p_theme: key });
+    if (!error) result = data;
+  } catch (e) {}
+  if (result === "wrong" || result === "locked" || result === "not_system") {
+    systemPassword = null; // password changed or locked since unlocking: ask again
+    document.getElementById("systemGateMsg").textContent = SYSTEM_PASSWORD_MESSAGES[result];
+    applyLoginState();
+    return;
+  }
+  if (result !== "ok") { msg.textContent = "Couldn't change the theme. Try again."; return; }
+  setMasterThemeLocal(key);
+  renderThemes();
+  msg.textContent = `${t.name} is now the theme. Other devices switch within a minute.`;
+}
 document.getElementById("venuePickerLogoutBtn").addEventListener("click", signOutBackend);
 
 /* ---------- shell: nav, theme, mobile drawer ---------- */
@@ -773,13 +903,14 @@ document.getElementById("sidebarOpenBtn").addEventListener("click", openSidebar)
 document.getElementById("sidebarBackdrop").addEventListener("click", closeSidebar);
 
 function updateThemeBtn(){
-  const toLight = getTheme() !== "light", btn = document.getElementById("themeToggleBtn");
-  btn.innerHTML = icon(toLight ? "sun" : "moon");
-  btn.setAttribute("aria-label", toLight ? "Switch to light theme" : "Switch to dark theme");
+  const next = themeSwitchInfo(), btn = document.getElementById("themeToggleBtn");
+  btn.innerHTML = icon(next.icon);
+  btn.setAttribute("aria-label", "Switch to " + next.label.toLowerCase());
 }
-document.getElementById("themeToggleBtn").addEventListener("click", () => {
-  setTheme(getTheme() === "light" ? "dark" : "light");
+document.getElementById("themeToggleBtn").addEventListener("click", toggleTheme);
+document.addEventListener("nipos:themechange", () => {
   updateThemeBtn();
+  if (currentUser && currentUser.system && systemPassword) renderThemes();
   renderCharts(); // re-theme chart colors
 });
 updateThemeBtn();
