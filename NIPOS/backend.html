@@ -331,7 +331,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022s">
+<link rel="stylesheet" href="nipos.css?v=20261022t">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -831,7 +831,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261022s"></script>
+<script src="db.js?v=20261022t"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -1607,7 +1607,7 @@ const FEATURES = [
   { key: "sessionTimeouts", name: "Session timeouts by role", about: "Sign people out after a while without touching the screen: one time for managers (Backend access), another for everyone else." },
   { key: "deviceHealth", name: "Device health", about: "Which tills, order screens and Backends are online, when they last checked in, and which version they're running." },
   { key: "backup", name: "Backup and restore", about: "Download the whole system as one file, and put it back from one. Works whether this is on or off; the switch just shows it here." },
-  { key: "serviceWording", name: "Service call wording", about: "What a Call for service says on the screen it reaches. {name} is whoever called, {place} where they are (set a name for each venue below) and {kitchen} the kitchen's name. Without this, a call says e.g. \"Kitchen Team need you in Functions Kitchen\" or \"Starlight Bar Team need you at Starlight Suite\"." },
+  { key: "serviceWording", name: "Service call wording", about: "What a Call for service says on the screen it reaches. {name} is whoever called, {place} (or {venue}) where they are (set a name for each venue below) and {kitchen} the kitchen's name. Without this, a call says e.g. \"Kitchen Team need you in Functions Kitchen\" or \"Starlight Bar Team need you at Starlight Suite\"." },
   { key: "tabTitles", name: "Browser tab names", about: "What each screen's browser tab says. {venue} is replaced with the venue's name and {kitchen} with the kitchen's. Leave one empty to use the standard name." },
   { key: "loginBranding", name: "Login screen branding", about: "Your logo, the app name and a short message on the sign-in screen of every till, order screen and Backend." },
   { key: "formats", name: "Formats", about: "The currency symbol, how dates are written, and 12 or 24-hour time, everywhere." }

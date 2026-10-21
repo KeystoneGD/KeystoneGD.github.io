@@ -487,7 +487,7 @@ const TAB_TITLES = {
 };
 // Call for service wording: says who called and where they need you, e.g. "Kitchen Team need you in
 // Functions Kitchen" or "Starlight Bar Team need you at Starlight Bar". {name} is whoever called,
-// {place} the venue (or the name set for it in Master settings > Service call wording), {kitchen} the kitchen.
+// {place} (or {venue}) the venue, or the name set for it in Master settings > Service call wording; {kitchen} the kitchen.
 const SERVICE_WORDING = { bar: "{name} need you at {place}", kitchen: "{name} need you in {kitchen}" };
 function servicePlaceName(venueId, venueName) {
   const own = featureOn("serviceWording") ? ((featureConfig("serviceWording").places || {})[venueId] || "").trim() : "";
@@ -498,7 +498,7 @@ function serviceCallText({ name, venueId, venueName, kitchen }) {
   const own = featureOn("serviceWording") ? ((featureConfig("serviceWording").text || {})[kind] || "").trim() : "";
   const tpl = own || SERVICE_WORDING[kind];
   return tpl.replace(/\{name\}/gi, name || "Someone").replace(/\{place\}/gi, servicePlaceName(venueId, venueName))
-    .replace(/\{kitchen\}/gi, kitchen || "the kitchen").replace(/\{venue\}/gi, venueName || "").replace(/\s{2,}/g, " ").trim();
+    .replace(/\{kitchen\}/gi, kitchen || "the kitchen").replace(/\{venue\}/gi, servicePlaceName(venueId, venueName)).replace(/\s{2,}/g, " ").trim();
 }
 // What a service call says on the screen it reaches: its own wording, or the old fixed one.
 function serviceCallMessage(n) { return n.message && n.message !== "needs you at the bar" ? n.message : `${n.fromName || "Someone"} needs you at the bar`; }
@@ -955,7 +955,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261022s";
+const NIPOS_VERSION = "20261022t";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
