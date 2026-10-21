@@ -43,23 +43,6 @@
       ]
     },
     {
-      "name": "No & Low Alcohol",
-      "mode": "drink",
-      "note": "",
-      "isSpirit": false,
-      "isBeer": false,
-      "items": [
-        { "name": "Madri 0% (330ml)", "pence": 490 },
-        { "name": "Staropramen 0% (330ml)", "pence": 490 },
-        { "name": "Doom Bar 0% (500ml)", "pence": 595 },
-        { "name": "Rekorderlig Strawberry & Lime 0% (500ml)", "pence": 595 },
-        { "name": "Guinness 0% (538ml)", "pence": 545 },
-        { "name": "Gordons 0% (25ml)", "pence": 355 },
-        { "name": "Whitley Neill Rhubarb & Ginger 0% (25ml)", "pence": 355 },
-        { "name": "Freixenet 0.0% Prosecco (20cl)", "pence": 885 }
-      ]
-    },
-    {
       "name": "Mineral Water",
       "mode": "drink",
       "note": "",
@@ -80,11 +63,11 @@
       "isBeer": false,
       "items": [
         { "name": "Appletiser", "pence": 355 },
-        { "name": "Pepsi Max", "pence": 345, "sizes": [{ "label": "Small", "pence": 345 }, { "label": "Regular", "pence": 385 }, { "label": "Kids", "pence": 185 }] },
-        { "name": "Diet Pepsi", "pence": 345, "sizes": [{ "label": "Small", "pence": 345 }, { "label": "Regular", "pence": 385 }, { "label": "Kids", "pence": 185 }] },
+        { "name": "Pepsi Max", "pence": 185, "sizes": [{ "label": "Kids", "pence": 185 }, { "label": "Small", "pence": 345 }, { "label": "Regular", "pence": 385 }] },
+        { "name": "Diet Pepsi", "pence": 185, "sizes": [{ "label": "Kids", "pence": 185 }, { "label": "Small", "pence": 345 }, { "label": "Regular", "pence": 385 }] },
         { "name": "J2O Apple & Raspberry", "pence": 355 },
         { "name": "J2O Orange & Passionfruit", "pence": 355 },
-        { "name": "Lemonade", "pence": 345, "sizes": [{ "label": "Small", "pence": 345 }, { "label": "Regular", "pence": 385 }, { "label": "Kids", "pence": 185 }] },
+        { "name": "Lemonade", "pence": 185, "sizes": [{ "label": "Kids", "pence": 185 }, { "label": "Small", "pence": 345 }, { "label": "Regular", "pence": 385 }] },
         { "name": "Pepsi Bottle 330ml", "pence": 370 },
         { "name": "Red Bull Can", "pence": 310 },
         { "name": "Apple Juice Glass", "pence": 195 },
@@ -140,7 +123,12 @@
         { "name": "Peroni Gluten Free 330ml (5.0%)", "pence": 490 },
         { "name": "Rekorderlig Strawberry & Lime 500ml (3.4%)", "pence": 615 },
         { "name": "Rekorderlig Wild Berries 500ml (3.4%)", "pence": 615 },
-        { "name": "WKD Blue 275ml (4%)", "pence": 490 }
+        { "name": "WKD Blue 275ml (4%)", "pence": 490 },
+        { "name": "Madri 0% (330ml)", "pence": 490 },
+        { "name": "Staropramen 0% (330ml)", "pence": 490 },
+        { "name": "Doom Bar 0% (500ml)", "pence": 595 },
+        { "name": "Rekorderlig Strawberry & Lime 0% (500ml)", "pence": 595 },
+        { "name": "Guinness 0% (538ml)", "pence": 545 }
       ]
     },
     {
@@ -192,7 +180,8 @@
         { "name": "Moet Imperial Champagne 75cl (France)", "pence": 6400 },
         { "name": "Bellino Prosecco (Italy)", "pence": 715, "sizes": [{ "label": "125ml", "pence": 715 }, { "label": "Bottle", "pence": 2960 }] },
         { "name": "Freixenet Prosecco 20cl (Italy)", "pence": 985 },
-        { "name": "Freixenet Italian Sparkling Rosé 20cl (Italy)", "pence": 985 }
+        { "name": "Freixenet Italian Sparkling Rosé 20cl (Italy)", "pence": 985 },
+        { "name": "Freixenet 0.0% Prosecco (20cl)", "pence": 885 }
       ]
     },
     {
@@ -209,7 +198,8 @@
         { "name": "Tarquin's Strawberry & Lime (38%)", "pence": 490 },
         { "name": "Whitley Neill Black Cherry (41.3%)", "pence": 420 },
         { "name": "Whitley Neill Rhubarb & Ginger (41.3%)", "pence": 420 },
-        { "name": "Whitley Neill Strawberry & Yuzu (41.3%)", "pence": 420 }
+        { "name": "Whitley Neill Strawberry & Yuzu (41.3%)", "pence": 420 },
+        { "name": "Whitley Neill Rhubarb & Ginger 0% (25ml)", "pence": 355 }
       ]
     },
     {
@@ -234,7 +224,8 @@
       "items": [
         { "name": "Mermaid (42.0%)", "pence": 490 },
         { "name": "Gordon's (37.5%)", "pence": 375 },
-        { "name": "Tanqueray (41.3%)", "pence": 435 }
+        { "name": "Tanqueray (41.3%)", "pence": 435 },
+        { "name": "Gordons 0% (25ml)", "pence": 355 }
       ]
     },
     {

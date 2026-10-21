@@ -111,6 +111,36 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .theme-preview .tp-btn{border-radius:8px;padding:6px 8px;font-size:13px;font-weight:800;text-align:center;}
 .theme-venues{display:flex;gap:6px;flex-wrap:wrap;}
 .layout-title{font-size:20px;margin:34px 0 6px;}
+.wipe-card{max-width:560px;}
+.feature-list{display:flex;flex-direction:column;gap:12px;max-width:860px;}
+.feature{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;}
+.feature.on{border-left:6px solid var(--success);}
+.feature-head{display:flex;align-items:flex-start;gap:12px;}
+.feature-head .info{flex:1;min-width:0;}
+.feature-head h3{margin:0;font-size:17px;}
+.feature-head p{margin:2px 0 0;color:var(--text-muted);font-size:13.5px;line-height:1.45;}
+.feature-toggle{display:inline-flex;align-items:center;gap:10px;font-weight:700;font-size:14px;min-height:44px;cursor:pointer;flex:0 0 auto;}
+.feature-body{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+.feature-body .field{display:block;font-weight:700;font-size:13.5px;margin:8px 0 4px;}
+.feature-body select,.feature-body textarea,.feature-body input[type="text"]{width:100%;max-width:460px;}
+.feature-people{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 14px;margin:6px 0 10px;}
+.feature-people label{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer;}
+.feature-people input{width:22px;height:22px;}
+.feature-table{width:100%;border-collapse:collapse;margin:6px 0 10px;}
+.feature-table th,.feature-table td{text-align:left;padding:6px 8px 6px 0;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle;}
+.feature-table select{min-width:150px;}
+.colour-row{border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:10px;}
+.colour-shades{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:8px;}
+.colour-shade{display:flex;align-items:center;gap:8px;font-size:13px;}
+.colour-shade input[type="color"]{width:44px;height:44px;padding:0;border:1px solid var(--border);background:none;cursor:pointer;}
+.colour-chip{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:28px;padding:0 8px;font-weight:800;font-size:12.5px;border-radius:6px;}
+.feature-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.announce-card{max-width:620px;}
+.announce-title{margin:0 0 4px;font-size:18px;}
+.wipe-summary{margin-top:14px;border:1px solid var(--border);border-left:6px solid var(--danger);padding:12px 14px;background:var(--surface-2);line-height:1.6;}
+.wipe-summary table{border-collapse:collapse;width:100%;}
+.wipe-summary td{padding:3px 0;}
+.wipe-summary td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;}
 .layout-shot{display:block;width:100%;height:auto;aspect-ratio:1180/820;object-fit:cover;border:1px solid var(--border);background:var(--surface-2);}
 .layout-about{margin:0;color:var(--text-muted);font-size:14px;line-height:1.45;}
 .theme-venues span{width:26px;height:26px;border-radius:7px;border:2px solid rgba(127,127,127,.4);}
@@ -167,7 +197,12 @@ table.data-table tr:last-child td{border-bottom:0;}
 .toolbar select{max-width:220px;}
 .product-row{padding:12px 0;border-bottom:1px solid var(--border);}
 .product-row:last-child{border-bottom:0;}
-.product-row-head{display:flex;align-items:center;gap:10px;}
+.product-row-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.mixer-label{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;color:var(--text);cursor:pointer;min-height:44px;}
+.stop-btn{min-height:44px;min-width:120px;padding:0 12px;font-weight:800;font-size:13.5px;border-radius:10px;cursor:pointer;background:var(--surface-2);color:var(--text);border:2px solid var(--text-muted);}
+.stop-btn.on{background:transparent;border-color:var(--danger);}
+.stop-tag{display:inline-block;margin-left:6px;font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--danger);color:#2a0703;vertical-align:1px;}
+:root[data-theme="light"] .stop-tag{background:#b3261e;color:#fff;}
 .product-edit-panel{padding:12px 0 4px;display:none;}
 .product-edit-panel.open{display:block;}
 .size-edit-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
@@ -267,7 +302,7 @@ table.data-table tr:last-child td{border-bottom:0;}
       <button class="nav-item" data-page="zreads" id="navZReads" hidden>Z Reads</button>
       <button class="nav-item" data-page="testdata" id="navTestData" hidden>Test Data</button>
       <button class="nav-item" data-page="settings" id="navSettings" hidden>Settings</button>
-      <button class="nav-item" data-page="themes" id="navThemes" hidden>Master themes</button>
+      <button class="nav-item" data-page="themes" id="navThemes" hidden>Master settings</button>
     </nav>
     <div class="sidebar-footer">
       <div class="venue-switcher" id="venueSwitcherWrap" hidden>
@@ -286,6 +321,19 @@ table.data-table tr:last-child td{border-bottom:0;}
     <div class="status" id="dbStatus" role="status" hidden></div>
 
     <section class="page active" id="page-dashboard">
+      <div class="card announce-card" id="announceCard" hidden>
+        <h2 class="announce-title">Message on every till</h2>
+        <p class="note">Shows as a banner at the top of every till and order screen until it's taken down.</p>
+        <label class="field" for="announceVenue">Where</label>
+        <select id="announceVenue"></select>
+        <label class="field" for="announceText">Message</label>
+        <textarea id="announceText" rows="2" maxlength="280"></textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+          <button type="button" class="btn btn-accent" id="announcePost">Put it up</button>
+          <button type="button" class="btn btn-ghost" id="announceClear">Take it down</button>
+        </div>
+        <p class="note" id="announceMsg" role="status" style="margin-top:8px;"></p>
+      </div>
       <div class="page-header">
         <h1>Takings</h1>
         <div class="range-picker">
@@ -331,7 +379,7 @@ table.data-table tr:last-child td{border-bottom:0;}
       </div>
 
       <div class="card" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-        <div style="font-weight:700;font-size:13.5px;">Happy Hour cocktail pricing</div>
+        <label for="hhMode" style="font-weight:700;font-size:13.5px;">Happy Hour cocktail pricing</label>
         <select id="hhMode" style="max-width:280px;">
           <option value="auto">Automatic (3-6pm &amp; 9.30pm onwards)</option>
           <option value="on">Force ON</option>
@@ -341,8 +389,8 @@ table.data-table tr:last-child td{border-bottom:0;}
 
       <div class="tab-panel active" id="tab-catalogue">
         <div class="toolbar">
-          <input type="text" id="productSearch" placeholder="Search products…">
-          <select id="productCategoryFilter"><option value="">All categories</option></select>
+          <input type="text" id="productSearch" placeholder="Search products…" aria-label="Search products">
+          <select id="productCategoryFilter" aria-label="Show one category"><option value="">All categories</option></select>
           <button class="btn btn-accent" id="toggleAddProductBtn">+ Add product</button>
         </div>
         <div class="card" id="addProductCard" hidden>
@@ -400,7 +448,7 @@ table.data-table tr:last-child td{border-bottom:0;}
         <div class="card">
           <label class="field">Name</label>
           <input type="text" id="newCategoryName" placeholder="e.g. Botanical Gins">
-          <label class="field">Menu</label>
+          <label class="field" for="newCategoryMode">Menu</label>
           <select id="newCategoryMode"><option value="drink">Drinks</option><option value="food">Food</option></select>
           <label class="row" style="border:0;padding:8px 0 0;"><span class="info"><span class="name">Spirit (single/double pricing)</span></span><span class="switch"><input type="checkbox" id="newCategoryIsSpirit"><span class="slider"></span></span></label>
           <label class="row" style="border:0;padding:8px 0 0;"><span class="info"><span class="name">Draught-style</span></span><span class="switch"><input type="checkbox" id="newCategoryIsBeer"><span class="slider"></span></span></label>
@@ -495,7 +543,12 @@ table.data-table tr:last-child td{border-bottom:0;}
     </section>
 
     <section class="page" id="page-themes">
-      <div class="page-header"><h1>Master themes</h1></div>
+      <div class="page-header"><h1>Master settings</h1></div>
+      <h2 class="layout-title" style="margin-top:0;">Features</h2>
+      <p class="note">Every feature here starts switched off, so you can set it up first. Nothing changes on the tills until you switch it on.</p>
+      <p class="note" id="featureMsg" role="status"></p>
+      <div class="feature-list" id="featureList"></div>
+      <h2 class="layout-title">Master theme</h2>
       <p class="note">Changes the colours on every till, order screen and Backend. Devices that are open switch within a minute. Each device's own switch still flips between the theme's normal colours and its dark mode. Green (ready), red (problem or refund) and yellow (in progress) keep their meaning in every theme.</p>
       <p class="note" id="themeMsg" role="status"></p>
       <div class="theme-grid" id="themeGrid"></div>
@@ -504,6 +557,23 @@ table.data-table tr:last-child td{border-bottom:0;}
       <p class="note">How the menu looks on every till. Each layout has a phone and a tablet version, and each device picks the right one by itself. Taking payment, the order panel and every option picker stay the same in all of them.</p>
       <p class="note" id="layoutMsg" role="status"></p>
       <div class="theme-grid" id="layoutGrid"></div>
+
+      <h2 class="layout-title">Remove sales</h2>
+      <p class="note">Clears out test transactions. Removes every sale, refund, tip, abandoned order, open order and Z Read for the venue you pick. Takings, Past Orders and the charts start again from nothing. This can't be undone.</p>
+      <div class="card wipe-card">
+        <label class="field" for="wipeVenue">Venue</label>
+        <select id="wipeVenue"></select>
+        <button type="button" class="btn btn-solid" id="wipeCheckBtn" style="margin-top:12px;">Check what would be removed</button>
+        <div id="wipeSummary" class="wipe-summary" role="status" hidden></div>
+        <div id="wipeConfirmArea" hidden>
+          <label class="field" for="wipeConfirm">Type DELETE to confirm</label>
+          <input type="text" id="wipeConfirm" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <label class="field" for="wipePassword">$YSTEM password</label>
+          <input type="password" id="wipePassword" autocomplete="current-password">
+          <button type="button" class="btn btn-danger-solid btn-block" id="wipeBtn" style="margin-top:12px;" disabled>Remove these sales</button>
+        </div>
+        <p class="note" id="wipeMsg" role="alert" style="margin-top:10px;"></p>
+      </div>
     </section>
   </main>
 </div>
@@ -612,6 +682,7 @@ let realCategories = [];
 let realItems = [];
 let customDiscounts = [];
 let mixerOverrides = new Set();
+let stops = new Set(); // product names on stop at the current venue
 let hhOverride = null;
 let currentPage = "dashboard";
 let systemPassword = null; // $YSTEM only - see "$YSTEM: password, then Master themes" below
@@ -636,6 +707,7 @@ const LS_HH_OVERRIDE = "starlightTill.hhOverride.v1";
 const LS_CUSTOM_DISCOUNTS = "starlightTill.customDiscounts.v1";
 
 const mixerOverridesStore = rowStore("mixer_overrides", 1000);
+const stopsStore = rowStore("stops", 1000); // the same stop list the till uses (Products on Stop)
 const customDiscountsStore = rowStore("custom_discounts", 500);
 const categoriesStore = rowStore("categories", 200);
 const catalogueItemsStore = rowStore("catalogue_items", 2000);
@@ -717,6 +789,7 @@ async function loadVenueData(){
 
   const mixerRows = await mixerOverridesStore.fetchAll();
   mixerOverrides = new Set((mixerRows || []).map(r => r.name));
+  stops = new Set(((await stopsStore.fetchAll()) || []).map(r => r.name));
   customDiscounts = await customDiscountsStore.fetchAll() || [];
   users = await fetchAllVisibleStaff();
   allGroups = await fetchAllGroups();
@@ -739,6 +812,7 @@ async function loadVenueData(){
     await renderSoundsList();
   }
   await loadDashboard();
+  if (currentUser && currentUser.system) renderFeatures(); // now the staff list is loaded
 }
 
 function applyLoginState(){
@@ -752,7 +826,10 @@ function applyLoginState(){
     shell.hidden = true; hamburger.hidden = true;
     return;
   }
-  if (currentUser && currentUser.system) { renderThemes(); renderLayouts(); }
+  setSignedInUser(currentUser);
+  maintenanceLockScreen(maintenanceLocksOut(currentUser), signOutBackend);
+  if (currentUser && currentUser.system) { renderThemes(); renderLayouts(); renderWipeVenues(); renderFeatures(); }
+  renderAnnounceCard();
   if (currentUser && currentUser.perms.backendAccess) {
     document.getElementById("loginGate").hidden = true;
     shell.hidden = false; hamburger.hidden = false;
@@ -890,6 +967,201 @@ function renderThemes(){
   }).join("");
   grid.querySelectorAll("[data-use-theme]").forEach(b => b.addEventListener("click", () => chooseMasterTheme(b.dataset.useTheme)));
 }
+/* ---------- $YSTEM: Master settings features ----------
+   Each feature is one key in system_theme.settings ({ enabled, ...its own configuration }), saved
+   through nipos_set_system_setting, which checks the $YSTEM password every time. All start off. */
+const FEATURES = [
+  { key: "maintenance", name: "Maintenance Mode", about: "Only the people you pick can use the app; everyone else sees a locked screen. A MAINTENANCE MODE - TESTING watermark runs across every screen, and every sale is a test sale (kept out of Takings and Discord, cleared from Test Data)." },
+  { key: "announcements", name: "Message on every till", about: "A banner at the top of every till and order screen. You can put one up here; staff with Send Announcements can from Backend and the order screen." },
+  { key: "privateMessages", name: "Private messages", about: "Message one person. It beeps and pops up on their screen. Backend users can from the Users page; on the order screen it needs Notify Specific Users." },
+  { key: "remote", name: "Refresh or sign out tills", about: "Reload every till and order screen (to pick up an update) or sign everyone out, for one venue or everywhere." },
+  { key: "personal", name: "Own layout and theme per person", about: "Give anyone their own till layout and theme. It follows them to whichever device they sign in on." },
+  { key: "venueColours", name: "Extra venue colours", about: "Add your own venue colours, with a shade for each theme. The text on them is picked so it always reads." }
+];
+function staffForSettings(){ return users.filter(u => !u.system).sort((a, b) => a.name.localeCompare(b.name)); }
+function venueOptions(withAll){ return (withAll ? `<option value="">Every venue</option>` : "") + myVenues.map(v => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join(""); }
+async function saveFeature(key, value, okText){
+  const msg = document.getElementById("featureMsg");
+  let result = "error";
+  try { const res = await supabaseClient.rpc("nipos_set_system_setting", { p_password: systemPassword, p_key: key, p_value: value }); if (!res.error) result = res.data; } catch (e) {}
+  if (result === "wrong" || result === "locked" || result === "not_system") {
+    systemPassword = null; document.getElementById("systemGateMsg").textContent = SYSTEM_PASSWORD_MESSAGES[result]; applyLoginState(); return false;
+  }
+  if (result !== "ok") { msg.textContent = "Couldn't save that. Try again."; return false; }
+  systemSettings = { ...systemSettings, [key]: value };
+  applyTheme(); renderMaintenanceWatermark();
+  msg.textContent = okText || "Saved.";
+  renderFeatures(); renderUserList();
+  return true;
+}
+function featureBody(key, cfg){
+  if (key === "maintenance") {
+    const allowed = new Set(cfg.allowedUserIds || []);
+    return `<span class="field">Who can still use the app (you always can)</span>
+      <div class="feature-people">${staffForSettings().map(u => `<label><input type="checkbox" data-maint-user="${esc(u.id)}" ${allowed.has(u.id) ? "checked" : ""}>${esc(u.name)}</label>`).join("") || "<span class='note'>No staff yet.</span>"}</div>
+      <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="maint-save">Save who can get in</button></div>`;
+  }
+  if (key === "announcements") {
+    const posts = systemSettings.announcementPosts || {};
+    const list = Object.entries(posts).map(([v, p]) => `<li><strong>${v === "*" ? "Every venue" : esc(venueName(v))}:</strong> ${esc(p.text)} <span class="note">· ${esc(p.by || "")}</span></li>`).join("");
+    return `${list ? `<span class="field">Up now</span><ul style="margin:0 0 6px 18px;">${list}</ul>` : `<p class="note">No message is up right now.</p>`}
+      <label class="field" for="fAnnVenue">Where</label><select id="fAnnVenue">${venueOptions(true)}</select>
+      <label class="field" for="fAnnText">Message</label><textarea id="fAnnText" rows="2" maxlength="280"></textarea>
+      <div class="feature-actions"><button type="button" class="btn btn-accent" data-act="ann-post">Put it up</button><button type="button" class="btn btn-ghost" data-act="ann-clear">Take it down</button></div>
+      ${cfg.enabled ? "" : `<p class="note">Switch the feature on first. Messages only show while it's on.</p>`}`;
+  }
+  if (key === "privateMessages") return `<p class="note">When it's on, a Message button appears next to each person on the Users page, and staff with Notify Specific Users get "Message someone" on the order screen.</p>`;
+  if (key === "remote") {
+    const recent = (cfg.commands || []).slice(-5).reverse().map(c => `<li>${c.action === "refresh" ? "Refresh" : "Sign out"} · ${c.venueId ? esc(venueName(c.venueId)) : "every venue"} · ${fmtDayTime(c.ts)}</li>`).join("");
+    return `<label class="field" for="fRemoteVenue">Which tills</label><select id="fRemoteVenue">${venueOptions(true)}</select>
+      <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="remote-refresh">Refresh them</button><button type="button" class="btn btn-danger" data-act="remote-signout">Sign everyone out</button></div>
+      <p class="note">Open tills act on it within about 15 seconds. Backend isn't affected.</p>
+      ${recent ? `<span class="field">Recently sent</span><ul style="margin:0 0 0 18px;">${recent}</ul>` : ""}`;
+  }
+  if (key === "personal") {
+    const mine = cfg.users || {};
+    const layoutOpts = sel => `<option value="">Same as everyone</option>` + Object.entries(POS_LAYOUTS).map(([k, l]) => `<option value="${k}" ${sel === k ? "selected" : ""}>${esc(l.name)}</option>`).join("");
+    const themeOpts = sel => `<option value="">Same as everyone</option>` + Object.entries(MASTER_THEMES).map(([k, t]) => `<option value="${k}" ${sel === k ? "selected" : ""}>${esc(t.name)}</option>`).join("");
+    return `<table class="feature-table"><thead><tr><th scope="col">Person</th><th scope="col">Till layout</th><th scope="col">Theme</th></tr></thead><tbody>
+      ${staffForSettings().map(u => { const m = mine[u.id] || {}; return `<tr><th scope="row">${esc(u.name)}</th><td><select data-own-layout="${esc(u.id)}" aria-label="${esc(u.name)} till layout">${layoutOpts(m.layout)}</select></td><td><select data-own-theme="${esc(u.id)}" aria-label="${esc(u.name)} theme">${themeOpts(m.theme)}</select></td></tr>`; }).join("")}
+      </tbody></table><div class="feature-actions"><button type="button" class="btn btn-solid" data-act="personal-save">Save layouts and themes</button></div>`;
+  }
+  if (key === "venueColours") {
+    const colours = cfg.colours || [];
+    return `${colours.map((c, i) => `<div class="colour-row" data-colour="${i}">
+        <label class="field" for="fColName${i}">Colour name</label><input type="text" id="fColName${i}" data-col-name value="${esc(c.label || "")}" maxlength="24">
+        <div class="colour-shades">${Object.entries(MASTER_THEMES).map(([tk, t]) => { const hex = (c.shades && c.shades[tk]) || "#3d6ea8"; return `<label class="colour-shade"><input type="color" data-col-theme="${tk}" value="${hex}" aria-label="${esc(c.label || "Colour")} in ${esc(t.name)}"><span><span class="colour-chip" style="background:${hex};color:${inkFor(hex)}">Aa</span> ${esc(t.name)}</span></label>`; }).join("")}</div>
+        <div class="feature-actions"><button type="button" class="btn btn-ghost btn-sm" data-act="col-remove" data-i="${i}">Remove this colour</button></div>
+      </div>`).join("") || `<p class="note">No extra colours yet.</p>`}
+      <div class="feature-actions"><button type="button" class="btn btn-ghost" data-act="col-add">Add a colour</button><button type="button" class="btn btn-solid" data-act="col-save">Save colours</button></div>
+      <p class="note">Once saved (and switched on), they appear in each venue's Screen colour choice in Venues.</p>`;
+  }
+  return "";
+}
+function renderFeatures(){
+  const wrap = document.getElementById("featureList");
+  if (!wrap) return;
+  wrap.innerHTML = FEATURES.map(f => {
+    const cfg = featureConfig(f.key);
+    return `<div class="feature${cfg.enabled ? " on" : ""}" data-feature="${f.key}">
+      <div class="feature-head"><div class="info"><h3>${esc(f.name)}</h3><p>${esc(f.about)}</p></div>
+        <label class="feature-toggle"><span>${cfg.enabled ? "On" : "Off"}</span><span class="switch"><input type="checkbox" data-feature-toggle="${f.key}" aria-label="${esc(f.name)}" ${cfg.enabled ? "checked" : ""}><span class="slider"></span></span></label></div>
+      <div class="feature-body">${featureBody(f.key, cfg)}</div></div>`;
+  }).join("");
+  wrap.querySelectorAll("[data-feature-toggle]").forEach(inp => inp.addEventListener("change", e => {
+    const key = e.target.dataset.featureToggle, f = FEATURES.find(x => x.key === key);
+    if (e.target.checked && !confirm(`Switch on ${f.name}? It takes effect on every till straight away.`)) { e.target.checked = false; return; }
+    saveFeature(key, { ...featureConfig(key), enabled: e.target.checked }, `${f.name} is ${e.target.checked ? "on" : "off"}.`);
+  }));
+  wrap.querySelectorAll("input[type=color]").forEach(inp => inp.addEventListener("input", e => { const chip = e.target.parentElement.querySelector(".colour-chip"); chip.style.background = e.target.value; chip.style.color = inkFor(e.target.value); }));
+  wrap.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", () => runFeatureAction(b.dataset.act, b)));
+}
+function readColourRows(){
+  return [...document.querySelectorAll("#featureList [data-colour]")].map((row, i) => {
+    const old = (featureConfig("venueColours").colours || [])[i] || {};
+    const shades = {}; row.querySelectorAll("[data-col-theme]").forEach(inp => { shades[inp.dataset.colTheme] = inp.value; });
+    return { key: old.key || "c" + Date.now().toString(36) + i, label: row.querySelector("[data-col-name]").value.trim() || "Colour " + (i + 1), shades };
+  });
+}
+async function runFeatureAction(act, btn){
+  if (act === "maint-save") {
+    const ids = [...document.querySelectorAll("[data-maint-user]:checked")].map(x => x.dataset.maintUser);
+    return saveFeature("maintenance", { ...featureConfig("maintenance"), allowedUserIds: ids }, `Saved: ${ids.length} ${ids.length === 1 ? "person" : "people"} can get in during Maintenance Mode.`);
+  }
+  if (act === "ann-post" || act === "ann-clear") {
+    const text = act === "ann-post" ? document.getElementById("fAnnText").value.trim() : "";
+    if (act === "ann-post" && !text) { document.getElementById("featureMsg").textContent = "Type a message first."; return; }
+    const res = await postAnnouncement(document.getElementById("fAnnVenue").value || null, text);
+    document.getElementById("featureMsg").textContent = res === "ok" ? (text ? "Message is up." : "Message taken down.") : res === "off" ? "Switch Message on every till on first." : "Couldn't do that. Try again.";
+    return renderFeatures();
+  }
+  if (act === "remote-refresh" || act === "remote-signout") {
+    const venueId = document.getElementById("fRemoteVenue").value || null, action = act === "remote-refresh" ? "refresh" : "signout";
+    if (!featureOn("remote")) { document.getElementById("featureMsg").textContent = "Switch Refresh or sign out tills on first."; return; }
+    if (action === "signout" && !confirm(`Sign everyone out at ${venueId ? venueName(venueId) : "every venue"}?`)) return;
+    const commands = (featureConfig("remote").commands || []).concat([{ id: "r" + Date.now().toString(36), action, venueId, ts: Date.now() }]).slice(-20);
+    return saveFeature("remote", { ...featureConfig("remote"), commands }, action === "refresh" ? "Tills will refresh within about 15 seconds." : "Everyone will be signed out within about 15 seconds.");
+  }
+  if (act === "personal-save") {
+    const usersCfg = {};
+    document.querySelectorAll("[data-own-layout]").forEach(sel => { const id = sel.dataset.ownLayout, layout = sel.value, theme = document.querySelector(`[data-own-theme="${CSS.escape(id)}"]`).value; if (layout || theme) usersCfg[id] = { layout: layout || null, theme: theme || null }; });
+    return saveFeature("personal", { ...featureConfig("personal"), users: usersCfg }, "Saved. It applies the next time each person signs in.");
+  }
+  if (act === "col-add" || act === "col-remove" || act === "col-save") {
+    let colours = readColourRows();
+    if (act === "col-add") colours.push({ key: "c" + Date.now().toString(36), label: "", shades: Object.fromEntries(Object.keys(MASTER_THEMES).map(k => [k, "#3d6ea8"])) });
+    if (act === "col-remove") colours.splice(Number(btn.dataset.i), 1);
+    if (act === "col-add" || act === "col-remove") { systemSettings = { ...systemSettings, venueColours: { ...featureConfig("venueColours"), colours } }; renderFeatures(); document.getElementById("featureMsg").textContent = "Not saved yet. Press Save colours."; return; }
+    return saveFeature("venueColours", { ...featureConfig("venueColours"), colours }, "Colours saved.");
+  }
+}
+
+// Staff with Send Announcements put a message up from the Takings page.
+function renderAnnounceCard(){
+  const card = document.getElementById("announceCard");
+  const can = !!(currentUser && !currentUser.system && featureOn("announcements") && currentUser.perms.sendAnnouncements);
+  card.hidden = !can;
+  if (!can) return;
+  const sel = document.getElementById("announceVenue"), keep = sel.value;
+  sel.innerHTML = myVenues.map(v => `<option value="${esc(v.id)}">${esc(v.name)} only</option>`).join("") + (currentUser.perms.globalAdmin ? `<option value="">Every venue</option>` : "");
+  if ([...sel.options].some(o => o.value === keep)) sel.value = keep; else if (currentVenue) sel.value = currentVenue.id;
+}
+async function announceFromCard(text){
+  const res = await postAnnouncement(document.getElementById("announceVenue").value || null, text);
+  document.getElementById("announceMsg").textContent = res === "ok" ? (text ? "Message is up on every till." : "Message taken down.") : res === "no_permission" ? "You don't have permission to do that." : "Couldn't do that. Try again.";
+  if (res === "ok" && !text) document.getElementById("announceText").value = "";
+}
+document.getElementById("announcePost").addEventListener("click", () => { const t = document.getElementById("announceText").value.trim(); if (t) announceFromCard(t); });
+document.getElementById("announceClear").addEventListener("click", () => announceFromCard(""));
+document.addEventListener("nipos:settingschange", () => { if (currentUser) applyLoginState(); });
+
+/* ---------- $YSTEM: remove sales ---------- */
+function renderWipeVenues(){
+  const sel = document.getElementById("wipeVenue"), keep = sel.value;
+  sel.innerHTML = `<option value="">Every venue</option>` + myVenues.map(v => `<option value="${esc(v.id)}">${esc(v.name)}${v.active === false ? " (closed)" : ""}</option>`).join("");
+  if ([...sel.options].some(o => o.value === keep)) sel.value = keep;
+}
+function wipeReset(){
+  document.getElementById("wipeSummary").hidden = true;
+  document.getElementById("wipeConfirmArea").hidden = true;
+  document.getElementById("wipeConfirm").value = ""; document.getElementById("wipePassword").value = "";
+  document.getElementById("wipeBtn").disabled = true;
+}
+const WIPE_ROWS = [["sales", "Sales"], ["refunds", "Refunds"], ["gratuities", "Tips"], ["abandoned", "Abandoned orders"], ["open_orders", "Open orders"], ["z_reports", "Z Reads"]];
+document.getElementById("wipeVenue").addEventListener("change", () => { wipeReset(); document.getElementById("wipeMsg").textContent = ""; });
+document.getElementById("wipeCheckBtn").addEventListener("click", async () => {
+  const msg = document.getElementById("wipeMsg"), venue = document.getElementById("wipeVenue").value || null;
+  msg.textContent = ""; wipeReset();
+  let data = null;
+  try { const res = await supabaseClient.rpc("nipos_sales_summary", { p_password: systemPassword, p_venue: venue }); if (!res.error) data = res.data; } catch (e) {}
+  if (!data) { msg.textContent = "Couldn't check. If this is the first time, the remove-sales SQL may not have been run in Supabase yet."; return; }
+  if (data.error) { msg.textContent = SYSTEM_PASSWORD_MESSAGES[data.error] || "Couldn't check. Try again."; return; }
+  const total = WIPE_ROWS.reduce((n, [k]) => n + (data[k] ? data[k].count : 0), 0);
+  const name = venue ? (myVenues.find(v => v.id === venue) || {}).name : "every venue";
+  const box = document.getElementById("wipeSummary");
+  box.innerHTML = `<strong>${total ? "This would remove, for " + esc(name) + ":" : "Nothing to remove for " + esc(name) + "."}</strong>` + (total ? `<table>${WIPE_ROWS.map(([k, label]) => `<tr><td>${label}</td><td class="num">${data[k].count}${data[k].pence != null && data[k].count ? " · " + fmt(data[k].pence) : ""}</td></tr>`).join("")}</table>` : "");
+  box.hidden = false;
+  document.getElementById("wipeConfirmArea").hidden = !total;
+});
+function wipeReady(){ document.getElementById("wipeBtn").disabled = !(document.getElementById("wipeConfirm").value.trim() === "DELETE" && document.getElementById("wipePassword").value); }
+document.getElementById("wipeConfirm").addEventListener("input", wipeReady);
+document.getElementById("wipePassword").addEventListener("input", wipeReady);
+document.getElementById("wipeBtn").addEventListener("click", async () => {
+  const msg = document.getElementById("wipeMsg"), venue = document.getElementById("wipeVenue").value || null, btn = document.getElementById("wipeBtn");
+  btn.disabled = true;
+  let data = null;
+  try {
+    const res = await supabaseClient.rpc("nipos_wipe_sales", { p_password: document.getElementById("wipePassword").value, p_venue: venue, p_confirm: document.getElementById("wipeConfirm").value.trim() });
+    if (!res.error) data = res.data;
+  } catch (e) {}
+  document.getElementById("wipePassword").value = "";
+  if (!data) { msg.textContent = "Couldn't remove them. Try again."; wipeReady(); return; }
+  if (data.error) { msg.textContent = data.error === "not_confirmed" ? "Type DELETE to confirm." : (SYSTEM_PASSWORD_MESSAGES[data.error] || "Couldn't remove them."); wipeReady(); return; }
+  wipeReset();
+  msg.textContent = "Removed " + WIPE_ROWS.map(([k, label]) => `${data[k] || 0} ${label.toLowerCase()}`).join(", ") + ". Tills clear their own copies on their next refresh.";
+  if (typeof loadDashboard === "function") loadDashboard();
+});
+
 function renderLayouts(){
   const grid = document.getElementById("layoutGrid");
   const current = getPosLayout();
@@ -1276,6 +1548,22 @@ async function copyCatalogueFrom(sourceVenueId){
   }
 }
 
+// Puts products on stop (or back on sale) at the current venue - the same list every till reads.
+async function setStopsForNames(names, on){
+  const changed = names.filter(n => on !== stops.has(n));
+  for (const name of changed) {
+    if (on) { stops.add(name); await stopsStore.save({ id: stopRowId(name), ts: Date.now(), name }); }
+    else { stops.delete(name); await stopsStore.remove(stopRowId(name)); }
+  }
+  if (!changed.length) return;
+  postDiscordEmbed(currentVenue && currentVenue.discordWebhooks && currentVenue.discordWebhooks.stop, {
+    title: on ? "🛑 Product Stopped" : "✅ Product Back In Stock",
+    color: on ? 0xff7a68 : 0x49c98d,
+    fields: [{ name: changed.length === 1 ? "Product" : "Products", value: changed.join(", ").slice(0, 1000), inline: true }, { name: "By", value: currentUser ? currentUser.name + " (Backend)" : "Backend", inline: true }],
+    timestamp: new Date().toISOString()
+  });
+}
+
 function renderProductRow(it, cat){
   const row = document.createElement("div");
   row.className = "product-row";
@@ -1283,13 +1571,18 @@ function renderProductRow(it, cat){
   const summary = it.sizes && it.sizes.length ? sizes.map(s => `${s.label} ${fmt(s.pence)}`).join(" · ") : (cat.isSpirit ? `Single ${fmt(it.pence)} · Double ${fmt(it.doublePence != null ? it.doublePence : it.pence*2)}` : fmt(it.pence));
   row.innerHTML = `
     <div class="product-row-head">
-      <div class="info"><div class="name">${it.name}</div><div class="price">${summary}</div></div>
-      <label class="switch" title="Usable as a mixer"><input type="checkbox" class="mixer-toggle" ${mixerOverrides.has(it.name) ? "checked" : ""}><span class="slider"></span></label>
+      <div class="info"><div class="name">${esc(it.name)}${stops.has(it.name) ? `<span class="stop-tag">On stop</span>` : ""}</div><div class="price">${summary}</div></div>
+      <button type="button" class="stop-btn${stops.has(it.name) ? " on" : ""}" aria-label="${stops.has(it.name) ? "Put " + esc(it.name) + " back on sale" : "Put " + esc(it.name) + " on stop"}">${stops.has(it.name) ? "Back on sale" : "Put on stop"}</button>
+      <label class="mixer-label" title="Offer this as a mixer when someone orders a spirit"><span>Mixer</span><span class="switch"><input type="checkbox" class="mixer-toggle" aria-label="${esc(it.name)} can be a mixer" ${mixerOverrides.has(it.name) ? "checked" : ""}><span class="slider"></span></span></label>
       <button type="button" class="btn btn-ghost btn-sm edit-product-btn">Edit</button>
       <button type="button" class="btn btn-danger btn-sm delete-product-btn">Delete</button>
     </div>
     <div class="product-edit-panel"></div>`;
 
+  row.querySelector(".stop-btn").addEventListener("click", async () => {
+    await setStopsForNames([it.name], !stops.has(it.name));
+    renderProductsList(); renderCategoriesList();
+  });
   row.querySelector(".mixer-toggle").addEventListener("change", async e => {
     if (e.target.checked) { mixerOverrides.add(it.name); await mixerOverridesStore.save({ id: it.name, ts: Date.now(), name: it.name }); }
     else { mixerOverrides.delete(it.name); await mixerOverridesStore.remove(it.name); }
@@ -1485,14 +1778,18 @@ function renderCategoriesList(){
   const cats = realCategories.slice().sort((a,b)=>a.order-b.order);
   if (!cats.length) { wrap.innerHTML = `<div class="empty">None yet.</div>`; return; }
   cats.forEach((cat, idx) => {
-    const itemCount = realItems.filter(it => it.categoryId === cat.id).length;
+    const catItems = realItems.filter(it => it.categoryId === cat.id);
+    const itemCount = catItems.length;
+    const allStopped = itemCount > 0 && catItems.every(it => stops.has(it.name));
+    const someStopped = catItems.filter(it => stops.has(it.name)).length;
     const row = document.createElement("div");
     row.className = "row";
     row.innerHTML = `
       <div class="info">
-        <div class="name"><input type="text" class="cat-name-input" value="${cat.name.replace(/"/g,"&quot;")}" style="width:auto;display:inline-block;padding:4px 8px;font-size:13.5px;font-weight:600;"></div>
-        <div class="sub">${itemCount} item${itemCount===1?"":"s"} · ${cat.mode === "food" ? "Food" : "Drinks"}${cat.isSpirit ? " · Spirit" : ""}${cat.isBeer ? " · Draught" : ""}</div>
+        <div class="name"><input type="text" class="cat-name-input" aria-label="Category name" value="${cat.name.replace(/"/g,"&quot;")}" style="width:auto;display:inline-block;padding:4px 8px;font-size:13.5px;font-weight:600;"></div>
+        <div class="sub">${itemCount} item${itemCount===1?"":"s"} · ${cat.mode === "food" ? "Food" : "Drinks"}${cat.isSpirit ? " · Spirit" : ""}${cat.isBeer ? " · Draught" : ""}${allStopped ? ` <span class="stop-tag">On stop</span>` : someStopped ? ` · ${someStopped} on stop` : ""}</div>
       </div>
+      ${itemCount ? `<button type="button" class="stop-btn cat-stop-btn${allStopped ? " on" : ""}" aria-label="${allStopped ? "Put all of " + esc(cat.name) + " back on sale" : "Put all of " + esc(cat.name) + " on stop"}">${allStopped ? "Back on sale" : "Stop all"}</button>` : ""}
       <button type="button" class="btn btn-ghost btn-sm move-up-btn" aria-label="Move ${esc(cat.name)} up" ${idx===0?"disabled":""}>${icon("up")}</button>
       <button type="button" class="btn btn-ghost btn-sm move-down-btn" aria-label="Move ${esc(cat.name)} down" ${idx===cats.length-1?"disabled":""}>${icon("down")}</button>
       <button type="button" class="btn btn-danger btn-sm del-cat-btn">Delete</button>`;
@@ -1500,6 +1797,12 @@ function renderCategoriesList(){
       cat.name = e.target.value.trim() || cat.name;
       await categoriesStore.save(cat);
       renderCategoryFilterOptions(); renderNewProductCategoryOptions(); renderProductsList();
+    });
+    const catStop = row.querySelector(".cat-stop-btn");
+    if (catStop) catStop.addEventListener("click", async () => {
+      catStop.disabled = true;
+      await setStopsForNames(catItems.map(it => it.name), !allStopped);
+      renderCategoriesList(); renderProductsList();
     });
     row.querySelector(".move-up-btn").addEventListener("click", async () => { await swapCategoryOrder(cats, idx, idx-1); });
     row.querySelector(".move-down-btn").addEventListener("click", async () => { await swapCategoryOrder(cats, idx, idx+1); });
@@ -1566,6 +1869,8 @@ document.getElementById("addOfferBtn").addEventListener("click", async () => {
 
 /* ---------- Users ---------- */
 const PERM_KEYS_ORDERED = Object.keys(PERM_LABELS).filter(k => k !== "globalAdmin" && k !== "active");
+// Permissions that belong to a Master settings feature only show once that feature is switched on.
+function permVisible(k){ return k === "sendAnnouncements" ? featureOn("announcements") : k === "notifySpecificUsers" ? featureOn("privateMessages") : true; }
 function venueName(id){ const v = myVenues.find(x => x.id === id) || venues.find(x => x.id === id); return v ? v.name : id; }
 function groupName(id){ const g = allGroups.find(x => x.id === id); return g ? g.name : id; }
 function permCheckRow(key, label, checked){
@@ -1589,10 +1894,18 @@ function renderUserList(){
         <div class="sub">${permsList}</div>
       </div>
       <div class="actions">
+        ${featureOn("privateMessages") && u.id !== currentUserId ? `<button class="btn btn-ghost btn-sm msg-user-btn" type="button" aria-label="Message ${esc(u.name)}">Message</button>` : ""}
         <button class="btn btn-ghost btn-sm edit-user-btn" type="button">Edit</button>
         <button class="btn btn-danger btn-sm del-user-btn" type="button">Delete</button>
       </div>`;
     row.querySelector(".edit-user-btn").addEventListener("click", () => openUserModal("edit", u));
+    const msgBtn = row.querySelector(".msg-user-btn");
+    if (msgBtn) msgBtn.addEventListener("click", async () => {
+      const text = (prompt(`Message for ${u.name}. It beeps and pops up on their screen.`) || "").trim();
+      if (!text) return;
+      await sendPrivateMessage(u.id, currentUser, text.slice(0, 280));
+      alert(`Sent to ${u.name}.`);
+    });
     row.querySelector(".del-user-btn").addEventListener("click", () => deleteUser(u.id));
     wrap.appendChild(row);
   });
@@ -1633,7 +1946,7 @@ function openUserModal(mode, user){
   document.getElementById("umActive").checked = user ? user.perms.active !== false : true;
   document.getElementById("umGlobalAdminRow").hidden = !canGrantGlobalAdmin;
   document.getElementById("umGlobalAdmin").checked = user ? !!user.perms.globalAdmin : false;
-  document.getElementById("umPerms").innerHTML = PERM_KEYS_ORDERED.map(key => permCheckRow(key, PERM_LABELS[key], user ? !!user.perms[key] : (key === "placeOrders"))).join("");
+  document.getElementById("umPerms").innerHTML = PERM_KEYS_ORDERED.filter(permVisible).map(key => permCheckRow(key, PERM_LABELS[key], user ? !!user.perms[key] : (key === "placeOrders"))).join("");
   document.getElementById("userModal").hidden = false;
 }
 function closeUserModal(){ document.getElementById("userModal").hidden = true; editingUser = null; }
@@ -1650,7 +1963,7 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
   const perms = { active: document.getElementById("umActive").checked };
   const canGrantGlobalAdmin = !document.getElementById("umGlobalAdminRow").hidden;
   perms.globalAdmin = canGrantGlobalAdmin ? document.getElementById("umGlobalAdmin").checked : (editingUser ? !!editingUser.perms.globalAdmin : false);
-  PERM_KEYS_ORDERED.forEach(key => { perms[key] = document.querySelector(`#umPerms [data-perm="${key}"]`).checked; });
+  PERM_KEYS_ORDERED.forEach(key => { const el = document.querySelector(`#umPerms [data-perm="${key}"]`); perms[key] = el ? el.checked : !!(editingUser && editingUser.perms[key]); });
 
   if (userModalMode === "add") {
     const res = await callManageStaff("create", { pin, name, perms, venueIds, groupIds });
@@ -1745,7 +2058,7 @@ function openVenueModal(mode, venue){
   document.getElementById("vmFood").checked = venue ? venue.foodEnabled !== false : true;
   const autoKey = venue ? venueAccentKey({ ...venue, accent: null }) : VENUE_ACCENT_KEYS[(venueCreationOrder || []).length % VENUE_ACCENT_KEYS.length];
   document.getElementById("vmAccent").innerHTML = `<option value="">Automatic (${VENUE_ACCENTS[autoKey].label})</option>` +
-    VENUE_ACCENT_KEYS.map(k => `<option value="${k}">${VENUE_ACCENTS[k].label}</option>`).join("");
+    Object.keys(VENUE_ACCENTS).map(k => `<option value="${k}">${esc(VENUE_ACCENTS[k].label)}</option>`).join(""); // the 5 built in, plus any extra colours from Master settings
   document.getElementById("vmAccent").value = venue && venue.accent && VENUE_ACCENTS[venue.accent] ? venue.accent : "";
   document.getElementById("vmWebhookOrder").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.order || "") : "";
   document.getElementById("vmWebhookZread").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.zread || "") : "";
@@ -1861,7 +2174,7 @@ async function loadAppSettings(){
   // Maintenance Mode has no UI switch anywhere - it's flipped directly in the database
   // (update app_settings set data = data || '{"maintenanceMode":true}' where id='global') so it can
   // never be turned on by accident in production. This nav item only shows up while it's already on.
-  maintenanceMode = !!appSettings.maintenanceMode;
+  maintenanceMode = !!appSettings.maintenanceMode || featureOn("maintenance");
   document.getElementById("navTestData").hidden = !maintenanceMode;
   if (maintenanceMode) await renderTestDataSummary();
 }
