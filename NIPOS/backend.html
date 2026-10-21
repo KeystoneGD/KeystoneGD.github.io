@@ -409,7 +409,7 @@ table.data-table tr:last-child td{border-bottom:0;}
         <div class="card" id="addProductCard" hidden>
           <label class="field">Name</label>
           <input type="text" id="newName" placeholder="e.g. Bacardi">
-          <label class="field">Category</label>
+          <label class="field" for="newProductCategory">Category</label>
           <select id="newProductCategory"></select>
           <div id="newCategoryFields" hidden>
             <label class="field">New category name</label>
@@ -420,7 +420,7 @@ table.data-table tr:last-child td{border-bottom:0;}
             <label class="row" style="border:0;padding:8px 0 0;"><span class="info"><span class="name">Draught-style</span></span><span class="switch"><input type="checkbox" id="newCategoryIsBeerInline"><span class="slider"></span></span></label>
           </div>
 
-          <label class="field">Price shape</label>
+          <label class="field" for="newType">Price shape</label>
           <select id="newType">
             <option value="spirit">Spirit (single/double, optional mixer)</option>
             <option value="draught">Draught (pint/half/cup/pitcher)</option>
@@ -574,7 +574,15 @@ table.data-table tr:last-child td{border-bottom:0;}
       <div class="feature-list" id="featureList"></div>
       </div>
       <div class="tab-panel" id="tab-ms-looks" role="tabpanel">
-      <h2 class="layout-title" style="margin-top:0;">Master theme</h2>
+      <h2 class="layout-title" style="margin-top:0;">Name for all venues</h2>
+      <p class="note">Shown in the corner instead of a venue's name whenever Takings, Products or Discounts is looking at All venues.</p>
+      <div class="card" style="max-width:560px;">
+        <label class="field" for="siteNameInput">Name</label>
+        <input type="text" id="siteNameInput" maxlength="40">
+        <div class="feature-actions"><button type="button" class="btn btn-solid" id="siteNameSave">Save name</button></div>
+        <p class="note" id="siteNameMsg" role="status"></p>
+      </div>
+      <h2 class="layout-title">Master theme</h2>
       <p class="note">Changes the colours on every till, order screen and Backend. Devices that are open switch within a minute. Each device's own switch still flips between the theme's normal colours and its dark mode. Green (ready), red (problem or refund) and yellow (in progress) keep their meaning in every theme.</p>
       <p class="note" id="themeMsg" role="status"></p>
       <div class="theme-grid" id="themeGrid"></div>
@@ -843,6 +851,7 @@ async function loadVenueData(){
   allGroups = await fetchAllGroups();
   realCategories = await categoriesStore.fetchAll() || [];
   realItems = await catalogueItemsStore.fetchAll() || [];
+  if (productsAllVenues && myVenues.length > 1) await loadAllVenuesData(); else productsAllVenues = false;
 
   renderVenueSwitcher();
   renderSidebarAccount();
@@ -860,6 +869,7 @@ async function loadVenueData(){
     await renderSoundsList();
   }
   await loadDashboard();
+  refreshCornerIdentity(); // last, after everything that sets the venue identity
   if (currentUser && currentUser.system) renderFeaturesIfIdle(); // now the staff list is loaded
 }
 
@@ -876,7 +886,7 @@ function applyLoginState(){
   }
   setSignedInUser(currentUser);
   maintenanceLockScreen(maintenanceLocksOut(currentUser), signOutBackend);
-  if (currentUser && currentUser.system) { renderThemes(); renderLayouts(); renderWipeVenues(); renderFeaturesIfIdle(); }
+  if (currentUser && currentUser.system) { renderThemes(); renderLayouts(); renderWipeVenues(); renderFeaturesIfIdle(); if (document.activeElement !== document.getElementById("siteNameInput")) document.getElementById("siteNameInput").value = siteName(); }
   renderAnnounceCard();
   if (currentUser && !currentUser.system) setTimeout(() => runRemoteCommands(currentVenueId), 0);
   if (currentUser && currentUser.perms.backendAccess) {
@@ -888,6 +898,87 @@ function applyLoginState(){
     shell.hidden = true; hamburger.hidden = true;
   }
 }
+/* ---------- All venues on Products and Discounts ----------
+   Each venue has its own copy of the menu and offers. With "All venues" picked, Products and
+   Discounts list each item once (matched by name, inside a category of the same name) and every
+   change - price, stop, mixer, delete, add, rename - is written to every venue's copy. */
+let productsAllVenues = false;
+let stopsByVenue = new Map(), mixersByVenue = new Map();
+async function upsertFor(table, venueId, row){
+  try { await supabaseClient.from(table).upsert({ id: row.id, ts: row.ts || Date.now(), venue_id: venueId, data: row }); } catch (e) {}
+}
+async function removeRowById(table, id){ try { await supabaseClient.from(table).delete().eq("id", id); } catch (e) {} }
+async function fetchRowsFor(table, ids){
+  try {
+    const { data } = await supabaseClient.from(table).select("data,venue_id").in("venue_id", ids).limit(5000);
+    return (data || []).map(r => ({ row: r.data, venueId: r.venue_id })).filter(x => x.row && !x.row.isTest);
+  } catch (e) { return []; }
+}
+function namesByVenue(rows){ const m = new Map(); rows.forEach(({ row, venueId }) => { if (!m.has(venueId)) m.set(venueId, new Set()); m.get(venueId).add(row.name); }); return m; }
+function atEveryVenue(map){
+  const n = myVenues.length, count = new Map();
+  map.forEach(set => set.forEach(name => count.set(name, (count.get(name) || 0) + 1)));
+  return new Set([...count].filter(([, c]) => c === n).map(([name]) => name));
+}
+function stopCountFor(name){ let n = 0; stopsByVenue.forEach(s => { if (s.has(name)) n++; }); return n; }
+async function loadAllVenuesData(){
+  const ids = myVenues.map(v => v.id);
+  const [cats, items, st, mx, offers] = await Promise.all(["categories", "catalogue_items", "stops", "mixer_overrides", "custom_discounts"].map(t => fetchRowsFor(t, ids)));
+  const catBy = new Map();
+  cats.forEach(({ row, venueId }) => {
+    if (!catBy.has(row.name)) catBy.set(row.name, { ...row, id: "all:" + row.name, __copies: [] });
+    const m = catBy.get(row.name); m.order = Math.min(m.order, row.order); m.__copies.push({ venueId, cat: row });
+  });
+  realCategories = [...catBy.values()];
+  const catNameById = new Map(cats.map(({ row, venueId }) => [venueId + "|" + row.id, row.name]));
+  const itemBy = new Map();
+  items.forEach(({ row, venueId }) => {
+    const cn = catNameById.get(venueId + "|" + row.categoryId); if (!cn) return;
+    const k = cn + "|" + row.name;
+    if (!itemBy.has(k)) itemBy.set(k, { ...row, id: "all:" + k, categoryId: "all:" + cn, __copies: [] });
+    itemBy.get(k).__copies.push({ venueId, item: row });
+  });
+  realItems = [...itemBy.values()];
+  realItems.forEach(it => { it.__varies = new Set(it.__copies.map(c => JSON.stringify([c.item.pence, c.item.doublePence, c.item.sizes]))).size > 1; });
+  stopsByVenue = namesByVenue(st); mixersByVenue = namesByVenue(mx);
+  stops = atEveryVenue(stopsByVenue); mixerOverrides = atEveryVenue(mixersByVenue);
+  const offBy = new Map();
+  offers.forEach(({ row, venueId }) => { const k = row.label + "|" + row.pct; if (!offBy.has(k)) offBy.set(k, { ...row, id: "all:" + k, __copies: [] }); offBy.get(k).__copies.push({ venueId, offer: row }); });
+  customDiscounts = [...offBy.values()];
+}
+// The venue ids a change goes to: every venue in All venues, otherwise just the working one.
+function scopeVenueIds(){ return productsAllVenues ? myVenues.map(v => v.id) : [currentVenueId]; }
+async function saveDocFor(venueId, key, value){ try { await supabaseClient.from("app_state").upsert({ key: venueId + ":state/" + key, value }); } catch (e) {} }
+// The corner shows the site name (Master settings) while a page is looking at every venue.
+function siteName(){ return (systemSettings.siteName && systemSettings.siteName.name) || "Cleethorpes Pearl"; }
+function viewingAllVenues(){
+  if (myVenues.length < 2) return false;
+  if (currentPage === "dashboard") return !dashVenueId;
+  if (currentPage === "products" || currentPage === "discounts") return productsAllVenues;
+  return false;
+}
+function refreshCornerIdentity(){
+  if (!currentUser) return;
+  // Takings showing one venue: the corner shows that venue.
+  const dashOne = currentPage === "dashboard" && dashVenueId && myVenues.find(v => v.id === dashVenueId);
+  if (dashOne && dashOne.id !== currentVenueId) {
+    applyVenueIdentity(dashOne, currentUser.name);
+    document.getElementById("accountName").textContent = currentUser.name + " · " + dashOne.name;
+    return;
+  }
+  if (viewingAllVenues()) {
+    document.querySelectorAll("[data-venue-name]").forEach(el => { el.textContent = siteName(); });
+    document.documentElement.style.setProperty("--venue", "#3d4a57");
+    document.documentElement.style.setProperty("--venue-ink", "#ffffff");
+    document.getElementById("accountName").textContent = currentUser.name + " · " + siteName();
+  } else renderSidebarAccount();
+}
+
+document.getElementById("siteNameSave").addEventListener("click", async () => {
+  const name = document.getElementById("siteNameInput").value.trim() || "Cleethorpes Pearl";
+  if (await saveFeature("siteName", { enabled: true, name }, `The name for all venues is now ${name}.`)) { refreshCornerIdentity(); document.getElementById("siteNameMsg").textContent = `Saved: ${name}.`; }
+});
+
 // Each page that works on one venue's data (Products, Discounts, Z Reads) has its own venue box; they
 // all stay in step. Takings has its own, with All venues, which doesn't change the working venue.
 let dashVenueId = null; // null = not chosen yet; "" = All venues
@@ -896,7 +987,9 @@ function renderVenueSwitcher(){
   const label = v => esc(v.name) + (v.active === false ? " (Closed)" : "");
   document.querySelectorAll("[data-page-venue-wrap]").forEach(w => { w.hidden = !many; });
   document.querySelectorAll("[data-page-venue]").forEach(sel => {
-    sel.innerHTML = myVenues.map(v => `<option value="${esc(v.id)}" ${v.id === currentVenueId ? "selected" : ""}>${label(v)}</option>`).join("");
+    const allowAll = many && !!sel.closest("#page-products, #page-discounts");
+    sel.innerHTML = (allowAll ? `<option value="__all">All venues</option>` : "") + myVenues.map(v => `<option value="${esc(v.id)}">${label(v)}</option>`).join("");
+    sel.value = allowAll && productsAllVenues ? "__all" : currentVenueId;
   });
   document.getElementById("dashVenueWrap").hidden = !many;
   if (dashVenueId === null) dashVenueId = many ? "" : (currentVenueId || "");
@@ -905,10 +998,19 @@ function renderVenueSwitcher(){
   document.getElementById("dashVenue").value = dashVenueId;
 }
 document.querySelectorAll("[data-page-venue]").forEach(sel => sel.addEventListener("change", async e => {
+  if (e.target.value === "__all") {
+    productsAllVenues = true;
+    await loadAllVenuesData();
+    renderVenueSwitcher(); renderOfferList(); renderCategoryFilterOptions(); renderNewProductCategoryOptions(); renderProductsList(); renderCategoriesList();
+    refreshCornerIdentity();
+    return;
+  }
+  productsAllVenues = false;
   setCurrentVenueId(e.target.value);
   await resolveVenueSelection();
+  refreshCornerIdentity();
 }));
-document.getElementById("dashVenue").addEventListener("change", e => { dashVenueId = e.target.value; loadDashboard(); });
+document.getElementById("dashVenue").addEventListener("change", e => { dashVenueId = e.target.value; loadDashboard(); refreshCornerIdentity(); });
 function renderSidebarAccount(){
   document.getElementById("accountName").textContent = currentUser.name + (currentVenue ? " · " + currentVenue.name : "");
   applyVenueIdentity(currentVenue, currentUser.name);
@@ -1655,6 +1757,7 @@ document.getElementById("venuePickerLogoutBtn").addEventListener("click", signOu
 /* ---------- shell: nav, theme, mobile drawer ---------- */
 function showPage(page){
   currentPage = page;
+  setTimeout(refreshCornerIdentity, 0);
   document.querySelectorAll(".page").forEach(el => el.classList.remove("active"));
   document.getElementById("page-" + page).classList.add("active");
   document.querySelectorAll(".nav-item").forEach(el => {
@@ -1678,6 +1781,7 @@ function updateThemeBtn(){
 document.getElementById("themeToggleBtn").addEventListener("click", toggleTheme);
 document.addEventListener("nipos:themechange", () => {
   updateThemeBtn();
+  setTimeout(refreshCornerIdentity, 0); // the theme re-applies the venue colour; put All venues back
   if (currentUser && currentUser.system && systemPassword) { renderThemes(); renderLayouts(); }
   renderCharts(); // re-theme chart colors
 });
@@ -1933,6 +2037,7 @@ function renderProductsList(){
 }
 
 function renderEmptyCatalogueBanner(wrap){
+  if (productsAllVenues) { wrap.innerHTML = `<div class="empty">None of your venues has a menu yet. Pick one venue to copy or add a menu.</div>`; return; }
   const others = myVenues.filter(v => currentVenue && v.id !== currentVenue.id);
   wrap.innerHTML = `
     <div class="card">
@@ -1986,8 +2091,12 @@ async function copyCatalogueFrom(sourceVenueId){
 async function setStopsForNames(names, on){
   const changed = names.filter(n => on !== stops.has(n));
   for (const name of changed) {
-    if (on) { stops.add(name); await stopsStore.save({ id: stopRowId(name), ts: Date.now(), name }); }
-    else { stops.delete(name); await stopsStore.remove(stopRowId(name)); }
+    for (const v of scopeVenueIds()) {
+      const id = v + ":" + name; // a stop belongs to one venue (see stopRowId in db.js)
+      if (on) await upsertFor("stops", v, { id, ts: Date.now(), name }); else await removeRowById("stops", id);
+      if (productsAllVenues) { if (!stopsByVenue.has(v)) stopsByVenue.set(v, new Set()); stopsByVenue.get(v)[on ? "add" : "delete"](name); }
+    }
+    if (on) stops.add(name); else stops.delete(name);
   }
   if (!changed.length) return;
   logActivity(on ? "Put on stop" : "Back on sale", changed.join(", "));
@@ -2006,7 +2115,7 @@ function renderProductRow(it, cat){
   const summary = it.sizes && it.sizes.length ? sizes.map(s => `${s.label} ${fmt(s.pence)}`).join(" · ") : (cat.isSpirit ? `Single ${fmt(it.pence)} · Double ${fmt(it.doublePence != null ? it.doublePence : it.pence*2)}` : fmt(it.pence));
   row.innerHTML = `
     <div class="product-row-head">
-      <div class="info"><div class="name">${esc(it.name)}${stops.has(it.name) ? `<span class="stop-tag">On stop</span>` : ""}</div><div class="price">${summary}</div></div>
+      <div class="info"><div class="name">${esc(it.name)}${stops.has(it.name) ? `<span class="stop-tag">On stop</span>` : it.__copies && stopCountFor(it.name) ? `<span class="stop-tag">On stop at ${stopCountFor(it.name)} of ${myVenues.length}</span>` : ""}</div><div class="price">${it.__varies ? "Prices differ by venue" : summary}${it.__copies ? ` · at ${it.__copies.length} of ${myVenues.length} venues` : ""}</div></div>
       <button type="button" class="stop-btn${stops.has(it.name) ? " on" : ""}" aria-label="${stops.has(it.name) ? "Put " + esc(it.name) + " back on sale" : "Put " + esc(it.name) + " on stop"}">${stops.has(it.name) ? "Back on sale" : "Put on stop"}</button>
       <label class="mixer-label" title="Offer this as a mixer when someone orders a spirit"><span>Mixer</span><span class="switch"><input type="checkbox" class="mixer-toggle" aria-label="${esc(it.name)} can be a mixer" ${mixerOverrides.has(it.name) ? "checked" : ""}><span class="slider"></span></span></label>
       <button type="button" class="btn btn-ghost btn-sm edit-product-btn">Edit</button>
@@ -2019,13 +2128,17 @@ function renderProductRow(it, cat){
     renderProductsList(); renderCategoriesList();
   });
   row.querySelector(".mixer-toggle").addEventListener("change", async e => {
-    if (e.target.checked) { mixerOverrides.add(it.name); await mixerOverridesStore.save({ id: it.name, ts: Date.now(), name: it.name }); }
-    else { mixerOverrides.delete(it.name); await mixerOverridesStore.remove(it.name); }
+    for (const v of scopeVenueIds()) {
+      const id = v + ":" + it.name; // per venue, like stops
+      if (e.target.checked) await upsertFor("mixer_overrides", v, { id, ts: Date.now(), name: it.name }); else { await removeRowById("mixer_overrides", id); await removeRowById("mixer_overrides", it.name); }
+    }
+    if (e.target.checked) mixerOverrides.add(it.name); else mixerOverrides.delete(it.name);
   });
   row.querySelector(".delete-product-btn").addEventListener("click", async () => {
     if (!confirm(`Delete "${it.name}"?`)) return;
-    await catalogueItemsStore.remove(it.id);
-    logActivity("Deleted a product", it.name);
+    if (it.__copies) { for (const c of it.__copies) await removeRowById("catalogue_items", c.item.id); }
+    else await catalogueItemsStore.remove(it.id);
+    logActivity("Deleted a product", it.name + (it.__copies ? " (every venue)" : ""), it.__copies ? null : undefined);
     realItems = realItems.filter(x => x.id !== it.id);
     renderProductsList();
   });
@@ -2065,7 +2178,18 @@ function renderProductRow(it, cat){
       } else {
         it.pence = Math.round(parseFloat(panel.querySelector(".edit-flat").value)*100);
       }
-      await catalogueItemsStore.save(it);
+      if (it.__copies) {
+        // Same change at every venue; the category is matched by name in each venue.
+        const target = realCategories.find(c => c.id === it.categoryId);
+        for (const c of it.__copies) {
+          const catCopy = target && target.__copies ? target.__copies.find(x => x.venueId === c.venueId) : null;
+          const updated = { ...c.item, name: it.name, pence: it.pence, sizes: it.sizes || null, categoryId: catCopy ? catCopy.cat.id : c.item.categoryId };
+          if (it.doublePence != null) updated.doublePence = it.doublePence;
+          c.item = updated;
+          await upsertFor("catalogue_items", c.venueId, updated);
+        }
+        it.__varies = false;
+      } else await catalogueItemsStore.save(it);
       logActivity("Changed a product", `${it.name}: ${it.sizes && it.sizes.length ? it.sizes.map(s => `${s.label} ${fmt(s.pence)}`).join(", ") : fmt(it.pence) + (it.doublePence != null ? " / double " + fmt(it.doublePence) : "")}`);
       e.target.textContent = "Saved";
       setTimeout(() => { renderProductsList(); }, 700);
@@ -2165,10 +2289,24 @@ document.getElementById("addBtn").addEventListener("click", async () => {
     item.pence = Math.round(pounds * 100); item.sizes = null;
   }
 
-  await catalogueItemsStore.save(item);
-  logActivity("Added a product", `${item.name} (${fmt(item.pence)})`);
-  realItems.push(item);
-  if (isMixer) { mixerOverrides.add(name); await mixerOverridesStore.save({ id: name, ts: Date.now(), name }); }
+  if (productsAllVenues) {
+    const cat = realCategories.find(c => c.id === item.categoryId);
+    const copies = [];
+    for (const [i, cc] of (cat && cat.__copies ? cat.__copies : []).entries()) {
+      const copy = { ...item, id: item.id + "_" + i, categoryId: cc.cat.id };
+      await upsertFor("catalogue_items", cc.venueId, copy); copies.push({ venueId: cc.venueId, item: copy });
+    }
+    realItems.push({ ...item, id: "all:" + (cat ? cat.name : "") + "|" + item.name, __copies: copies });
+    logActivity("Added a product", `${item.name} (${fmt(item.pence)}) at ${copies.length} venues`, null);
+  } else {
+    await catalogueItemsStore.save(item);
+    logActivity("Added a product", `${item.name} (${fmt(item.pence)})`);
+    realItems.push(item);
+  }
+  if (isMixer) {
+    for (const v of scopeVenueIds()) await upsertFor("mixer_overrides", v, { id: v + ":" + name, ts: Date.now(), name });
+    mixerOverrides.add(name);
+  }
 
   document.getElementById("newName").value = "";
   document.getElementById("spiritSingle").value = ""; document.getElementById("spiritDouble").value = "";
@@ -2186,6 +2324,14 @@ async function createCategory({ name, mode, isSpirit, isBeer }){
   const id = "cat" + Date.now();
   const order = realCategories.length ? Math.max(...realCategories.map(c => c.order)) + 1 : 0;
   const cat = { id, ts: Date.now(), name, note: null, mode, order, isSpirit, isBeer, mixerType: isSpirit ? "both" : null, isCocktailHappyHour: false };
+  if (productsAllVenues) {
+    const existing = realCategories.find(c => c.name === name);
+    if (existing) return existing.id;
+    const copies = [];
+    for (const [i, v] of myVenues.entries()) { const copy = { ...cat, id: id + "_" + i }; await upsertFor("categories", v.id, copy); copies.push({ venueId: v.id, cat: copy }); }
+    realCategories.push({ ...cat, id: "all:" + name, __copies: copies });
+    return "all:" + name;
+  }
   await categoriesStore.save(cat);
   realCategories.push(cat);
   return id;
@@ -2195,6 +2341,7 @@ async function updateCategoryFlags(id, patch){
   if (!cat) return;
   Object.assign(cat, patch);
   if (patch.isSpirit && !cat.mixerType) cat.mixerType = "both";
+  if (cat.__copies) { for (const c of cat.__copies) { Object.assign(c.cat, patch); if (patch.isSpirit && !c.cat.mixerType) c.cat.mixerType = "both"; await upsertFor("categories", c.venueId, c.cat); } return; }
   await categoriesStore.save(cat);
 }
 document.getElementById("addCategoryBtn").addEventListener("click", async () => {
@@ -2228,12 +2375,15 @@ function renderCategoriesList(){
         <div class="sub">${itemCount} item${itemCount===1?"":"s"} · ${cat.mode === "food" ? "Food" : "Drinks"}${cat.isSpirit ? " · Spirit" : ""}${cat.isBeer ? " · Draught" : ""}${allStopped ? ` <span class="stop-tag">On stop</span>` : someStopped ? ` · ${someStopped} on stop` : ""}</div>
       </div>
       ${itemCount ? `<button type="button" class="stop-btn cat-stop-btn${allStopped ? " on" : ""}" aria-label="${allStopped ? "Put all of " + esc(cat.name) + " back on sale" : "Put all of " + esc(cat.name) + " on stop"}">${allStopped ? "Back on sale" : "Stop all"}</button>` : ""}
-      <button type="button" class="btn btn-ghost btn-sm move-up-btn" aria-label="Move ${esc(cat.name)} up" ${idx===0?"disabled":""}>${icon("up")}</button>
+      ${cat.__copies ? `<span class="note" style="margin:0;">Pick one venue to re-order or delete</span>` : `<button type="button" class="btn btn-ghost btn-sm move-up-btn" aria-label="Move ${esc(cat.name)} up" ${idx===0?"disabled":""}>${icon("up")}</button>
       <button type="button" class="btn btn-ghost btn-sm move-down-btn" aria-label="Move ${esc(cat.name)} down" ${idx===cats.length-1?"disabled":""}>${icon("down")}</button>
-      <button type="button" class="btn btn-danger btn-sm del-cat-btn">Delete</button>`;
+      <button type="button" class="btn btn-danger btn-sm del-cat-btn">Delete</button>`}`;
     row.querySelector(".cat-name-input").addEventListener("change", async e => {
-      cat.name = e.target.value.trim() || cat.name;
-      await categoriesStore.save(cat);
+      const newName = e.target.value.trim() || cat.name;
+      if (cat.__copies) {
+        for (const c of cat.__copies) { c.cat.name = newName; await upsertFor("categories", c.venueId, c.cat); }
+        cat.name = newName;
+      } else { cat.name = newName; await categoriesStore.save(cat); }
       renderCategoryFilterOptions(); renderNewProductCategoryOptions(); renderProductsList();
     });
     const catStop = row.querySelector(".cat-stop-btn");
@@ -2242,6 +2392,7 @@ function renderCategoriesList(){
       await setStopsForNames(catItems.map(it => it.name), !allStopped);
       renderCategoriesList(); renderProductsList();
     });
+    if (cat.__copies) { wrap.appendChild(row); return; }
     row.querySelector(".move-up-btn").addEventListener("click", async () => { await swapCategoryOrder(cats, idx, idx-1); });
     row.querySelector(".move-down-btn").addEventListener("click", async () => { await swapCategoryOrder(cats, idx, idx+1); });
     row.querySelector(".del-cat-btn").addEventListener("click", async () => {
@@ -2272,7 +2423,8 @@ document.querySelectorAll(".tab-btn").forEach(btn => btn.addEventListener("click
 
 document.getElementById("hhMode").addEventListener("change", async e => {
   hhOverride = e.target.value === "on" ? true : e.target.value === "off" ? false : null;
-  await saveDoc(LS_HH_OVERRIDE, hhOverride);
+  if (productsAllVenues) { for (const v of scopeVenueIds()) await saveDocFor(v, LS_HH_OVERRIDE, hhOverride); }
+  else await saveDoc(LS_HH_OVERRIDE, hhOverride);
 });
 
 /* ---------- Discounts ---------- */
@@ -2292,7 +2444,8 @@ async function deleteOffer(id){
   if (!confirm("Delete this offer?")) return;
   const gone = customDiscounts.find(o => o.id === id);
   customDiscounts = customDiscounts.filter(o => o.id !== id);
-  await customDiscountsStore.remove(id);
+  if (gone && gone.__copies) { for (const c of gone.__copies) await removeRowById("custom_discounts", c.offer.id); }
+  else await customDiscountsStore.remove(id);
   logActivity("Deleted an offer", gone ? gone.label : id);
   renderOfferList();
 }
@@ -2302,8 +2455,14 @@ document.getElementById("addOfferBtn").addEventListener("click", async () => {
   if (!label) { alert("Enter a name."); return; }
   if (!isFinite(pct) || pct <= 0 || pct >= 100) { alert("Enter a % between 0 and 100."); return; }
   const offer = { id: "custom" + Date.now(), ts: Date.now(), label, pct };
-  customDiscounts.push(offer);
-  await customDiscountsStore.save(offer);
+  if (productsAllVenues) {
+    const copies = [];
+    for (const [i, v] of myVenues.entries()) { const copy = { ...offer, id: offer.id + "_" + i }; await upsertFor("custom_discounts", v.id, copy); copies.push({ venueId: v.id, offer: copy }); }
+    customDiscounts.push({ ...offer, id: "all:" + label + "|" + pct, __copies: copies });
+  } else {
+    customDiscounts.push(offer);
+    await customDiscountsStore.save(offer);
+  }
   logActivity("Added an offer", `${label} (${pct}%)`);
   document.getElementById("offerName").value = ""; document.getElementById("offerPct").value = "";
   renderOfferList();
