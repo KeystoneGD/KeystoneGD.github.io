@@ -122,7 +122,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021k">
+<link rel="stylesheet" href="nipos.css?v=20261021l">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -249,7 +249,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021k"></script>
+<script src="db.js?v=20261021l"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -314,6 +314,7 @@ function applyLoginState(){
   if (u) setTimeout(() => runRemoteCommands(currentVenueId), 0);
   document.getElementById("notifyBtn").hidden = !canNotify(u);
   ensurePushForUser();
+  if (u && !idleStarted) { idleStarted = true; startIdleWatch(() => currentUser, () => signOutOrders()); startDeviceReports(() => ({ venue: currentVenue ? currentVenue.name : "" })); }
 }
 document.addEventListener("nipos:settingschange", () => applyLoginState());
 onRemoteCommand("refresh", () => location.reload());
@@ -467,7 +468,7 @@ async function savePushSubscription(sub){
 }
 // Called on every sign-in (and venue change), so this device's subscription always belongs to whoever
 // is signed in on it now.
-var pushSavedFor = null; // var: applyLoginState can run before this line on first load
+var pushSavedFor = null, idleStarted = false; // var: applyLoginState can run before this line on first load
 function ensurePushForUser(){
   const key = currentUserId ? currentUserId + "|" + currentVenueId : null;
   if (!key || key === pushSavedFor || !("Notification" in window) || Notification.permission !== "granted") return;
@@ -513,10 +514,12 @@ document.getElementById("enableAlertsBtn").addEventListener("click", async () =>
 });
 refreshAlertsRow();
 
-function alertUser(title, body, urgent){
+function alertUser(title, body, urgent, event){
+  if (event && !alertAllowed(event, currentUser)) return; // Alert settings: this event is off for this person
   logNotificationReceived(title, body);
   showToast(`${title}${body ? ": " + body : ""}`);
-  playChime();
+  const sound = event ? alertSound(event, currentUser) : null;
+  if (sound) playNotificationSound(audioCtx, sound); else playChime();
   if (urgent && navigator.vibrate) { try { navigator.vibrate([300, 150, 300, 150, 300]); } catch(e){} }
   if ("Notification" in window && Notification.permission === "granted") {
     try {
@@ -536,11 +539,11 @@ function checkOrderChanges(){
     const label = o.table ? `Table ${o.table}` : "Order";
     const prev = knownOrderStates.get(o.id);
     if (!prev) {
-      if (!o.delivered) alertUser("New order", `${label}: ${o.items.map(i => `${i.qty}× ${i.name}`).join(", ")}`);
+      if (!o.delivered) alertUser("New order", `${label}: ${o.items.map(i => `${i.qty}× ${i.name}`).join(", ")}`, false, "newOrder");
       return;
     }
-    if (!prev.refund && needsRefund(o)) alertUser("Refund needed", `${label}: ${o.flagItem}`);
-    else if (!prev.flagged && o.flagged) alertUser("Problem reported", `${label}: ${o.flagItem}, ${o.flagReason}`);
+    if (!prev.refund && needsRefund(o)) alertUser("Refund needed", `${label}: ${o.flagItem}`, false, "refund");
+    else if (!prev.flagged && o.flagged) alertUser("Problem reported", `${label}: ${o.flagItem}, ${o.flagReason}`, false, "problem");
     if (!prev.ready && o.ready) alertUser("Ready to take out", label);
   });
   knownOrderStates = stateNow;
@@ -560,7 +563,7 @@ function checkPersonalNotifications(list){
   list.filter(n => !knownNotificationIds.has(n.id) && (n.toUserId === "all" || n.toUserId === currentUserId) && n.fromUserId !== currentUserId)
     .forEach(n => {
       if (n.kind === "message") { playChime(); if (navigator.vibrate) { try { navigator.vibrate([300, 150, 300]); } catch (e) {} } showPrivateMessage(n); }
-      else if (isServiceCall(n)) showServiceCall(n);
+      else if (isServiceCall(n)) { if (alertAllowed("serviceCall", currentUser)) showServiceCall(n, alertSound("serviceCall", currentUser)); }
       else if (n.quiet) { showToast(n.message); logNotificationReceived("Notice", n.message, n.fromName); }
       else alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent);
     });

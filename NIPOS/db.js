@@ -474,13 +474,18 @@ function maintenanceLocksOut(user) {
   if (!featureOn("maintenance") || !user || user.system) return false;
   return !(featureConfig("maintenance").allowedUserIds || []).includes(user.id);
 }
+// Training mode for one person (feature "training"): their sales are tests, like Maintenance Mode,
+// while everyone else works normally.
+function trainingFor(userId) { const id = userId === undefined ? signedInUserId : userId; return !!id && featureOn("training") && (featureConfig("training").userIds || []).includes(id); }
 function renderMaintenanceWatermark() {
   let el = document.getElementById("maintenanceWatermark");
-  if (!featureOn("maintenance")) { if (el) el.remove(); return; }
+  const text = featureOn("maintenance") ? "MAINTENANCE MODE - TESTING" : trainingFor() ? "TRAINING MODE - PRACTICE SALES" : null;
+  if (!text) { if (el) el.remove(); return; }
+  if (el && el.dataset.text !== text) { el.remove(); el = null; }
   if (!el) {
     el = document.createElement("div");
-    el.id = "maintenanceWatermark"; el.className = "maint-watermark"; el.setAttribute("aria-hidden", "true");
-    el.innerHTML = Array.from({ length: 14 }, () => "<span>MAINTENANCE MODE - TESTING</span>").join("");
+    el.id = "maintenanceWatermark"; el.className = "maint-watermark"; el.setAttribute("aria-hidden", "true"); el.dataset.text = text;
+    el.innerHTML = Array.from({ length: 14 }, () => `<span>${text}</span>`).join("");
     document.body.appendChild(el);
   }
 }
@@ -782,6 +787,54 @@ function isOpenNow(venueId, at) {
   return c > o ? mins >= o && mins < c : mins >= o;
 }
 
+// Session timeouts by role (feature "sessionTimeouts"): signs someone out after this many minutes
+// without touching the screen. Managers (Backend access or Global Admin) and everyone else separately.
+let lastActivityAt = Date.now(), idleTimer = null;
+["pointerdown", "keydown", "touchstart"].forEach(e => document.addEventListener(e, () => { lastActivityAt = Date.now(); }, { passive: true, capture: true }));
+function idleLimitMinutes(user) {
+  if (!featureOn("sessionTimeouts") || !user || user.system) return 0;
+  const c = featureConfig("sessionTimeouts"), manager = user.perms && (user.perms.globalAdmin || user.perms.backendAccess);
+  return Number(manager ? c.managerMinutes : c.staffMinutes) || 0;
+}
+function startIdleWatch(getUser, onTimeout) {
+  clearInterval(idleTimer);
+  idleTimer = setInterval(() => {
+    const user = getUser(), limit = idleLimitMinutes(user);
+    if (!limit || !user) return;
+    if (Date.now() - lastActivityAt > limit * 60000) { lastActivityAt = Date.now(); logActivity("Signed out for being idle", `${limit} minutes`); onTimeout(); }
+  }, 20000);
+}
+
+// Alert settings (feature "alertSettings"): per event, on or off, who gets it (a permission) and the
+// sound. Events: newOrder, problem, serviceCall, refund.
+const ALERT_EVENTS = [["newOrder", "New order (order screen)"], ["problem", "Problem reported"], ["serviceCall", "Call for service"], ["refund", "Refund requested"]];
+function alertRule(event) { return featureOn("alertSettings") ? ((featureConfig("alertSettings").events || {})[event] || {}) : {}; }
+function alertAllowed(event, user) {
+  const r = alertRule(event);
+  if (r.on === false) return false;
+  if (r.perm && !(user && user.perms && (user.perms[r.perm] || user.perms.globalAdmin))) return false;
+  return true;
+}
+function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
+
+// Device health (feature "deviceHealth"): every page reports in once a minute.
+const NIPOS_VERSION = "20261021l";
+function deviceId() {
+  let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
+  if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
+  return id;
+}
+let deviceTimer = null;
+function startDeviceReports(getInfo) {
+  const send = async () => {
+    if (!featureOn("deviceHealth") || !supabaseClient || !signedInUserId) return;
+    const info = getInfo() || {}, ua = navigator.userAgent;
+    const kind = /iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && "ontouchend" in document) ? "Tablet" : /iPhone|Android.*Mobile/i.test(ua) ? "Phone" : "Computer";
+    try { await supabaseClient.from("devices").upsert({ id: deviceId(), ts: Date.now(), venue_id: currentVenueId || null, data: { who: signedInUserName || "", screen: activityScreenName(), venue: info.venue || "", version: NIPOS_VERSION, kind, browser: /Edg\//.test(ua) ? "Edge" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : /Firefox\//.test(ua) ? "Firefox" : "Browser", standalone: !!(window.matchMedia && matchMedia("(display-mode: standalone)").matches) || !!navigator.standalone, online: navigator.onLine } }); } catch (e) {}
+  };
+  clearInterval(deviceTimer); deviceTimer = setInterval(send, 60000); setTimeout(send, 3000);
+}
+
 // Allergen and diet tags (feature "dietTags"): the tags items can have; "filter" ones get a till filter.
 const DEFAULT_DIET_TAGS = [{ code: "V", name: "Vegetarian", filter: true }, { code: "VG", name: "Vegan", filter: true }, { code: "GF", name: "Gluten free", filter: true }, { code: "DF", name: "Dairy free", filter: true }, { code: "N", name: "Contains nuts", filter: false }];
 function dietTagList() { return (featureConfig("dietTags").tags || DEFAULT_DIET_TAGS).filter(t => t && t.code); }
@@ -837,8 +890,9 @@ function untilText(ts) { if (!ts) return ""; const d = new Date(ts), today = new
 // Call for service: pops up on the person's screen with the beep (and still sends the push
 // notification, which the sender's page does). Older calls without a kind are spotted by their text.
 function isServiceCall(n) { return n && (n.kind === "service" || (n.urgent && n.message === "needs you at the bar")); }
-function showServiceCall(n) {
-  if (typeof playChime === "function") { try { playChime(); } catch (e) {} }
+function showServiceCall(n, sound) {
+  if (sound && typeof playNotificationSound === "function" && typeof audioCtx !== "undefined") { try { playNotificationSound(audioCtx, sound); } catch (e) {} }
+  else if (typeof playChime === "function") { try { playChime(); } catch (e) {} }
   if (navigator.vibrate) { try { navigator.vibrate([300, 150, 300, 150, 300]); } catch (e) {} }
   if ("Notification" in window && Notification.permission === "granted" && document.visibilityState !== "visible") {
     try { new Notification("Service call", { body: `${n.fromName || "Someone"} needs you at the bar`, requireInteraction: true, tag: "service-" + n.id }); } catch (e) {}

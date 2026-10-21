@@ -293,7 +293,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021k">
+<link rel="stylesheet" href="nipos.css?v=20261021l">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -344,6 +344,7 @@ table.data-table tr:last-child td{border-bottom:0;}
       <button class="nav-item" data-page="zreads" id="navZReads" hidden>Z Reads</button>
       <button class="nav-item" data-page="testdata" id="navTestData" hidden>Test Data</button>
       <button class="nav-item" data-page="settings" id="navSettings" hidden>Settings</button>
+      <button class="nav-item" data-page="hours" id="navHours" hidden>Hours</button>
       <button class="nav-item" data-page="activity" id="navActivity" hidden>Activity log</button>
       <button class="nav-item" data-page="themes" id="navThemes" hidden>Master settings</button>
       <button class="nav-item nav-notify" id="navNotify" type="button" hidden><span data-icon="bell"></span>Notify</button>
@@ -589,6 +590,20 @@ table.data-table tr:last-child td{border-bottom:0;}
       </div>
     </section>
 
+    <section class="page" id="page-hours">
+      <div class="page-header"><h1>Hours</h1></div>
+      <p class="note">Shifts clocked on the tills (Clock in and out). Hours still running count up to now.</p>
+      <div class="card">
+        <div class="edit-row">
+          <label>Venue <select id="hrVenue"></select></label>
+          <label>From <input type="date" id="hrFrom"></label>
+          <label>To <input type="date" id="hrTo"></label>
+        </div>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" id="hrLoad">Show hours</button><button type="button" class="btn btn-ghost" id="hrCsv">Download as spreadsheet</button></div>
+      </div>
+      <div id="hrTotals"></div>
+      <div id="hrList"></div>
+    </section>
     <section class="page" id="page-activity">
       <div class="page-header"><h1>Activity log</h1></div>
       <p class="note">Everything people do on the tills, the order screens and Backend: signing in and out, sales and money, refunds, stops, menu and price changes, discounts, staff and settings. Untick what you don't want to see.</p>
@@ -741,7 +756,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021k"></script>
+<script src="db.js?v=20261021l"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -911,6 +926,7 @@ function applyLoginState(){
   document.getElementById("systemGate").hidden = !needsPassword;
   document.getElementById("navThemes").hidden = !(currentUser && currentUser.system && systemPassword);
   document.getElementById("navActivity").hidden = !(canViewActivity(currentUser) && !(currentUser.system && !systemPassword));
+  document.getElementById("navHours").hidden = !(currentUser && featureOn("clockInOut") && (currentUser.system ? !!systemPassword : currentUser.perms.backendAccess));
   if (needsPassword) {
     document.getElementById("loginGate").hidden = true;
     shell.hidden = true; hamburger.hidden = true;
@@ -920,6 +936,7 @@ function applyLoginState(){
   maintenanceLockScreen(maintenanceLocksOut(currentUser), signOutBackend);
   if (currentUser && currentUser.system) { renderThemes(); renderLayouts(); renderWipeVenues(); renderFeaturesIfIdle(); if (document.activeElement !== document.getElementById("siteNameInput")) document.getElementById("siteNameInput").value = siteName(); }
   renderNotifyNav();
+  if (currentUser && !idleStarted) { idleStarted = true; startIdleWatch(() => currentUser, () => signOutBackend()); startDeviceReports(() => ({ venue: "NIPOS Backend" })); }
   if (currentUser && !currentUser.system) setTimeout(() => runRemoteCommands(currentVenueId), 0);
   if (currentUser && currentUser.perms.backendAccess) {
     document.getElementById("loginGate").hidden = true;
@@ -1086,6 +1103,15 @@ function readProductExtras(panel, it, cat){
   }
   return out;
 }
+// Device health: the devices table, newest first. Online = checked in within 2 minutes.
+async function loadDevices(){
+  const el = document.getElementById("deviceList"); if (!el) return;
+  let rows = [];
+  try { const { data } = await supabaseClient.from("devices").select("id,ts,venue_id,data").order("ts", { ascending: false }).limit(200); rows = data || []; } catch (e) {}
+  if (!featureOn("deviceHealth")) { el.innerHTML = `<p class="note">Switch it on to start collecting. Devices report in once a minute while someone's signed in.</p>`; return; }
+  el.innerHTML = rows.length ? `<div class="table-scroll"><table class="feature-table"><thead><tr><th scope="col">Status</th><th scope="col">Screen</th><th scope="col">Venue</th><th scope="col">Signed in</th><th scope="col">Device</th><th scope="col">Version</th><th scope="col">Last checked in</th></tr></thead><tbody>${rows.map(r => { const on = Date.now() - r.ts < 120000; const old = r.data.version && r.data.version !== NIPOS_VERSION; return `<tr><td><span class="pill ${on ? "pill-cash" : ""}">${on ? "Online" : "Offline"}</span></td><td>${esc(r.data.screen || "")}</td><td>${esc(r.data.venue || (r.venue_id ? venueName(r.venue_id) : ""))}</td><td>${esc(r.data.who || "")}</td><td>${esc((r.data.kind || "") + " · " + (r.data.browser || ""))}${r.data.standalone ? " · app" : ""}</td><td>${esc(r.data.version || "?")}${old ? ` <span class="note">(old, refresh it)</span>` : ""}</td><td>${minutesAgo(r.ts)}</td></tr>`; }).join("")}</tbody></table></div>` : `<p class="note">No devices have reported in yet.</p>`;
+}
+
 // Master settings › Copy a venue's setup.
 async function copyVenueSetup(){
   const from = document.getElementById("cvFrom").value, to = document.getElementById("cvTo").value, msg = document.getElementById("featureMsg");
@@ -1251,7 +1277,8 @@ document.getElementById("systemGateSignOut").addEventListener("click", signOutBa
 // The password is checked by the database (nipos_check_system_password) against a hash the browser
 // can never read. It's kept in memory for this page load only, because changing the theme checks it
 // again - reloading the page asks for it again.
-let systemSignInCode = "$YSTEM"; // which $YSTEM sign-in was typed ($YSTEM, or an extra one like 07466707188)
+let systemSignInCode = "$YSTEM";
+var idleStarted = false; // which $YSTEM sign-in was typed ($YSTEM, or an extra one like 07466707188)
 const SYSTEM_PASSWORD_MESSAGES = {
   wrong: "That password isn't right.",
   locked: "Too many wrong passwords. Try again in 15 minutes.",
@@ -1366,7 +1393,12 @@ const FEATURES = [
   { key: "staffTakings", name: "Takings per person", about: "Sales, tips and refunds by staff member, on the Takings page. Counts from when it's switched on." },
   { key: "zReminder", name: "Z Read reminder", about: "If nobody has done the Z Read by a set time, the tills of people who can do it pop up a reminder." },
   { key: "dailySummary", name: "Daily summary by email", about: "Each night's takings for every venue, emailed to the people you choose at a set time. Needs a Resend email key in Supabase (see below)." },
-  { key: "discordSettings", name: "Discord settings", about: "Choose which events go to Discord (orders, refunds, stops, Z Reads), and test each venue's webhooks." }
+  { key: "discordSettings", name: "Discord settings", about: "Choose which events go to Discord (orders, refunds, stops, Z Reads), and test each venue's webhooks." },
+  { key: "clockInOut", name: "Clock in and out", about: "Staff clock on and off on the till (Settings › Clock in), with an Hours page in Backend." },
+  { key: "training", name: "Training mode for one person", about: "Like Maintenance Mode, but only for the people you pick: their sales are practice (kept out of takings) and their screens say TRAINING MODE, while everyone else works normally." },
+  { key: "alertSettings", name: "Alert settings", about: "Which events alert whom, and with which sound: new orders, problems, service calls and refunds." },
+  { key: "sessionTimeouts", name: "Session timeouts by role", about: "Sign people out after a while without touching the screen: one time for managers (Backend access), another for everyone else." },
+  { key: "deviceHealth", name: "Device health", about: "Which tills, order screens and Backends are online, when they last checked in, and which version they're running." }
 ];
 /* Batch 2 editors. Each one opens filled in with what the till does today (the built-in values), so
    switching a feature on changes nothing until something is edited. render(cfg) draws it; read()
@@ -1591,6 +1623,36 @@ const FEATURE_EDITORS = {
     },
     read(){ const events = {}; F("[data-dc-ev]").forEach(c => { events[c.dataset.dcEv] = c.checked; }); return { events }; }
   },
+  clockInOut: {
+    render(cfg){ return `<label class="check"><input type="checkbox" id="ciAsk" ${cfg.askOnSignIn !== false ? "checked" : ""}>Ask people to clock in when they sign in</label><div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="clockInOut">Save</button></div>`; },
+    read(){ return { askOnSignIn: document.getElementById("ciAsk").checked }; }
+  },
+  training: {
+    render(cfg){ const on = new Set(cfg.userIds || []); return `<span class="field">Who's training</span><div class="feature-people">${staffForSettings().map(u => `<label><input type="checkbox" data-tr-user="${esc(u.id)}" ${on.has(u.id) ? "checked" : ""}>${esc(u.name)}</label>`).join("") || "<span class='note'>No staff yet.</span>"}</div>
+      <p class="note">Their practice sales show under Test Data and can be cleared from there.</p><div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="training">Save</button></div>`; },
+    read(){ return { userIds: F("[data-tr-user]").filter(x => x.checked).map(x => x.dataset.trUser) }; }
+  },
+  alertSettings: {
+    render(cfg){
+      const ev = cfg.events || {}, perms = [["", "Everyone"], ["orderScreen", "Order screen people"], ["placeOrders", "Till people"], ["processRefunds", "Refund people"], ["backendAccess", "Managers (Backend access)"]];
+      const sounds = [["", "Their own sound"]].concat(Object.entries(CHIME_PRESETS));
+      return `<table class="feature-table"><thead><tr><th scope="col">Event</th><th scope="col">On</th><th scope="col">Who</th><th scope="col">Sound</th></tr></thead><tbody>${ALERT_EVENTS.map(([k, l]) => { const r = ev[k] || {}; return `<tr data-al="${k}"><th scope="row">${esc(l)}</th>
+        <td><input type="checkbox" data-al-on aria-label="${esc(l)} on" ${r.on !== false ? "checked" : ""}></td>
+        <td><select data-al-perm aria-label="${esc(l)}: who">${perms.map(([v, n]) => `<option value="${v}" ${(r.perm || "") === v ? "selected" : ""}>${n}</option>`).join("")}</select></td>
+        <td><select data-al-sound aria-label="${esc(l)}: sound">${sounds.map(([v, n]) => `<option value="${v}" ${(r.sound || "") === v ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></td></tr>`; }).join("")}</tbody></table>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="alertSettings">Save</button></div>`;
+    },
+    read(){ const events = {}; F("[data-al]").forEach(r => { events[r.dataset.al] = { on: r.querySelector("[data-al-on]").checked, perm: r.querySelector("[data-al-perm]").value, sound: r.querySelector("[data-al-sound]").value }; }); return { events }; }
+  },
+  sessionTimeouts: {
+    render(cfg){ return `<div class="edit-row"><label>Managers (minutes) <input type="number" id="stMgr" min="0" value="${cfg.managerMinutes != null ? esc(cfg.managerMinutes) : 60}" style="max-width:110px;"></label><label>Everyone else (minutes) <input type="number" id="stStaff" min="0" value="${cfg.staffMinutes != null ? esc(cfg.staffMinutes) : 15}" style="max-width:110px;"></label></div>
+      <p class="note">0 means never. Managers are people with Backend access or Global Admin. $YSTEM is never signed out.</p><div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="sessionTimeouts">Save</button></div>`; },
+    read(){ return { managerMinutes: Math.max(0, Number(document.getElementById("stMgr").value) || 0), staffMinutes: Math.max(0, Number(document.getElementById("stStaff").value) || 0) }; }
+  },
+  deviceHealth: {
+    render(){ return `<div id="deviceList"><p class="note">Loading…</p></div><div class="feature-actions"><button type="button" class="btn btn-ghost" data-act="devices-refresh">Refresh</button></div>`; },
+    read(){ return {}; }
+  },
   activityLog: {
     render(cfg){
       return `<label class="check"><input type="checkbox" id="alEveryTap" ${cfg.everyTap !== false ? "checked" : ""}>Full logs: every button, tile, tab, menu, tick box and drop-down anyone presses, and every notification they get</label>
@@ -1801,6 +1863,31 @@ function showActivity(k){
 }
 document.querySelector('#page-themes .tab-btn[data-tab="ms-activity"]').addEventListener("click", () => { mountActivityViewer("ms"); renderActivityFilters("ms"); document.getElementById("actOffNote").hidden = featureOn("activityLog"); loadActivity("ms"); });
 document.getElementById("navActivity").addEventListener("click", () => { mountActivityViewer("pg"); renderActivityFilters("pg"); loadActivity("pg"); });
+// Hours (feature "clockInOut"): who worked when, from the tills' clock in and out.
+let hoursRows = [];
+function renderHoursFilters(){
+  const v = document.getElementById("hrVenue"), keep = v.value;
+  v.innerHTML = (myVenues.length > 1 ? `<option value="">All venues</option>` : "") + myVenues.map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("");
+  if ([...v.options].some(o => o.value === keep)) v.value = keep;
+  if (!document.getElementById("hrFrom").value) { const d = new Date(Date.now() - 6 * 864e5); document.getElementById("hrFrom").value = d.toLocaleDateString("en-CA"); }
+}
+const hm = mins => `${Math.floor(mins / 60)} h ${String(mins % 60).padStart(2, "0")} min`;
+async function loadHours(){
+  const venue = document.getElementById("hrVenue").value, ids = venue ? [venue] : myVenues.map(v => v.id);
+  const from = document.getElementById("hrFrom").value, to = document.getElementById("hrTo").value;
+  const start = from ? new Date(from + "T00:00:00").getTime() : 0, end = to ? new Date(to + "T23:59:59.999").getTime() : Date.now();
+  let data = [];
+  try { const res = await supabaseClient.from("clock_events").select("venue_id,data").in("venue_id", ids).limit(5000); data = res.data || []; } catch (e) {}
+  hoursRows = data.map(r => ({ ...r.data, venueId: r.venue_id })).filter(r => r.inAt <= end && (r.outAt || Date.now()) >= start).sort((a, b) => b.inAt - a.inAt);
+  const byPerson = new Map();
+  hoursRows.forEach(r => { const m = Math.round(((r.outAt || Date.now()) - r.inAt) / 60000); const p = byPerson.get(r.name) || { mins: 0, shifts: 0 }; p.mins += m; p.shifts++; byPerson.set(r.name, p); });
+  document.getElementById("hrTotals").innerHTML = byPerson.size ? `<div class="section-title">Totals</div><div class="card"><table class="data-table"><thead><tr><th>Person</th><th>Hours</th><th>Shifts</th></tr></thead><tbody>${[...byPerson].sort((a, b) => b[1].mins - a[1].mins).map(([n, p]) => `<tr><td>${esc(n)}</td><td>${hm(p.mins)}</td><td>${p.shifts}</td></tr>`).join("")}</tbody></table></div>` : "";
+  document.getElementById("hrList").innerHTML = hoursRows.length ? `<div class="section-title">Shifts</div><div class="card"><div class="table-scroll"><table class="data-table"><thead><tr><th>Person</th><th>Venue</th><th>In</th><th>Out</th><th>Hours</th></tr></thead><tbody>${hoursRows.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(venueName(r.venueId))}</td><td>${fmtDayTime(r.inAt)}</td><td>${r.outAt ? fmtDayTime(r.outAt) : "Still in"}</td><td>${hm(Math.round(((r.outAt || Date.now()) - r.inAt) / 60000))}</td></tr>`).join("")}</tbody></table></div></div>` : `<div class="empty">No shifts clocked for these dates.</div>`;
+}
+document.getElementById("navHours").addEventListener("click", () => { renderHoursFilters(); loadHours(); });
+document.getElementById("hrLoad").addEventListener("click", loadHours);
+document.getElementById("hrCsv").addEventListener("click", () => downloadCsv(`hours_${new Date().toISOString().slice(0, 10)}.csv`, ["Person", "Venue", "In", "Out", "Minutes"],
+  hoursRows.map(r => [r.name, venueName(r.venueId), fmtDayTime(r.inAt), r.outAt ? fmtDayTime(r.outAt) : "", Math.round(((r.outAt || Date.now()) - r.inAt) / 60000)])));
 function canViewActivity(u){ return !!(u && featureOn("activityLog") && (u.system || (u.perms && u.perms.viewActivityLogs))); }
 
 // "Start from a role" in the staff editor (feature roleTemplates).
@@ -1916,6 +2003,7 @@ function featureBody(key, cfg){
   return "";
 }
 function renderFeatures(){
+  setTimeout(loadDevices, 0); // fills Device health, if it is open
   const wrap = document.getElementById("featureList");
   if (!wrap) return;
   wrap.innerHTML = FEATURES.map(f => {
@@ -1958,6 +2046,7 @@ async function runFeatureAction(act, btn){
   if (act === "tag-add") return editorRowChange("dietTags", "tags", l => (l.length ? l : DEFAULT_DIET_TAGS).concat([{ code: "", name: "", filter: true }]));
   if (act === "tag-remove") { const i = Number(btn.dataset.i); return editorRowChange("dietTags", "tags", l => l.filter((_, j) => j !== i)); }
   if (act === "copy-venue") return copyVenueSetup();
+  if (act === "devices-refresh") return loadDevices();
   if (act === "dc-test") {
     const v = (venues.length ? venues : myVenues).find(x => x.id === btn.dataset.venue), url = v && v.discordWebhooks && v.discordWebhooks[btn.dataset.hook];
     if (!url) return;
@@ -3425,7 +3514,7 @@ async function loadAppSettings(){
   // Maintenance Mode has no UI switch anywhere - it's flipped directly in the database
   // (update app_settings set data = data || '{"maintenanceMode":true}' where id='global') so it can
   // never be turned on by accident in production. This nav item only shows up while it's already on.
-  maintenanceMode = !!appSettings.maintenanceMode || featureOn("maintenance");
+  maintenanceMode = !!appSettings.maintenanceMode || featureOn("maintenance") || trainingFor(currentUserId);
   document.getElementById("navTestData").hidden = !maintenanceMode;
   if (maintenanceMode) await renderTestDataSummary();
 }

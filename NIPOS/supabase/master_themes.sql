@@ -410,3 +410,22 @@ insert into public.app_secrets (key, value) values ('cron_secret', encode(extens
 -- address), create an API key, then run this once with your own values:
 --   insert into public.app_secrets (key, value) values ('resend_api_key', 'YOUR-RESEND-KEY'), ('resend_from', 'NIPOS <takings@yourdomain.com>')
 --   on conflict (key) do update set value = excluded.value;
+
+-- Clock in and out (feature "clockInOut"): one row per shift worked { id, userId, name, inAt, outAt }.
+create table if not exists public.clock_events (id text primary key, ts bigint not null default 0, venue_id text, data jsonb not null default '{}'::jsonb);
+alter table public.clock_events enable row level security;
+drop policy if exists "venue members full access" on public.clock_events;
+create policy "venue members full access" on public.clock_events for all to authenticated
+  using (is_global_admin() or is_member_of_venue(venue_id)) with check (is_global_admin() or is_member_of_venue(venue_id));
+grant select, insert, update, delete on public.clock_events to authenticated;
+
+-- Device health (feature "deviceHealth"): each till, order screen and Backend reports in every minute.
+create table if not exists public.devices (id text primary key, ts bigint not null default 0, venue_id text, data jsonb not null default '{}'::jsonb);
+alter table public.devices enable row level security;
+drop policy if exists "signed-in devices report in" on public.devices;
+create policy "signed-in devices report in" on public.devices for insert to authenticated with check (true);
+drop policy if exists "devices update their own row" on public.devices;
+create policy "devices update their own row" on public.devices for update to authenticated using (true) with check (true);
+drop policy if exists "admins read devices" on public.devices;
+create policy "admins read devices" on public.devices for select to authenticated using (is_global_admin() or is_system_user() or is_member_of_venue(venue_id));
+grant select, insert, update on public.devices to authenticated;
