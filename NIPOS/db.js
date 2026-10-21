@@ -951,7 +951,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261022t";
+const NIPOS_VERSION = "20261022u";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -2204,9 +2204,51 @@ async function deleteNotificationSound(path) {
   if (!supabaseClient) return;
   try { await supabaseClient.storage.from(NOTIFICATION_SOUNDS_BUCKET).remove([path]); } catch (e) {}
 }
-// Plays whichever kind of sound choice this is: a built-in preset (synthesized, needs the page's
-// audioCtx) or an uploaded file (played through a plain <audio> element instead).
+// Plays whichever kind of sound choice this is: a built-in preset (synthesized) or an uploaded file.
+// Both go through the page's audioCtx once it's unlocked (a plain <audio> element is blocked by the
+// browser on a screen nobody has tapped since it loaded); the <audio> element is the fallback.
+const soundBuffers = new Map();
 function playNotificationSound(audioCtx, soundChoice) {
+  if (audioCtx && audioCtx.state !== "running") { try { audioCtx.resume(); } catch (e) {} }
   if (!soundChoice || CHIME_PRESETS[soundChoice]) { playChimePreset(audioCtx, soundChoice || "classic"); return; }
-  try { new Audio(notificationSoundUrl(soundChoice)).play().catch(() => {}); } catch (e) {}
+  const url = notificationSoundUrl(soundChoice);
+  const viaAudio = () => { try { new Audio(url).play().catch(() => playChimePreset(audioCtx, "classic")); } catch (e) {} };
+  if (!audioCtx) { viaAudio(); return; }
+  const play = buf => { try { const src = audioCtx.createBufferSource(); src.buffer = buf; src.connect(audioCtx.destination); src.start(); } catch (e) { viaAudio(); } };
+  if (soundBuffers.has(url)) { play(soundBuffers.get(url)); return; }
+  fetch(url).then(r => r.arrayBuffer()).then(b => new Promise((ok, no) => audioCtx.decodeAudioData(b, ok, no)))
+    .then(buf => { soundBuffers.set(url, buf); play(buf); }).catch(viaAudio);
 }
+
+// Browsers only let a page make sound after someone has tapped it, and iPads/iPhones pause it again
+// when the screen sleeps. So every tap or key press (not just the first) wakes the sound back up, and
+// a screen that can't beep says so, rather than staying silent through a call for service.
+function unlockSound() {
+  if (typeof audioCtx === "undefined") return; // this page has no sounds
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state !== "running") audioCtx.resume().then(renderSoundNote, () => {});
+    const b = audioCtx.createBuffer(1, 1, 22050), src = audioCtx.createBufferSource(); // a silent blip unlocks iOS
+    src.buffer = b; src.connect(audioCtx.destination); src.start(0);
+  } catch (e) {}
+  renderSoundNote();
+}
+function soundReady() { return typeof audioCtx !== "undefined" && !!audioCtx && audioCtx.state === "running"; }
+function renderSoundNote() {
+  if (typeof audioCtx === "undefined" || typeof document === "undefined" || !document.body) return;
+  let el = document.getElementById("soundNote");
+  if (soundReady()) { if (el) el.hidden = true; return; }
+  if (!el) {
+    el = document.createElement("button");
+    el.type = "button"; el.id = "soundNote"; el.className = "sound-note";
+    el.textContent = "🔇 Sound is off on this screen. Tap here (or anywhere) to turn it on.";
+    el.addEventListener("click", unlockSound);
+    document.body.appendChild(el);
+  }
+  el.hidden = false;
+}
+try {
+  ["pointerdown", "keydown", "touchend"].forEach(evt => document.addEventListener(evt, unlockSound, { passive: true, capture: true }));
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { if (soundReady() === false && typeof audioCtx !== "undefined" && audioCtx) { try { audioCtx.resume(); } catch (e) {} } setTimeout(renderSoundNote, 500); } });
+  setInterval(renderSoundNote, 3000);
+} catch (e) {}

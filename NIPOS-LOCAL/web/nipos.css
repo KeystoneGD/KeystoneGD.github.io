@@ -248,3 +248,7 @@ button,.btn,.tag,.state-badge,.stepper,.nav-item,.drawer-list button,.product .n
 /* A save waiting to reach the database (db.js outbox). */
 .outbox-note{position:fixed;left:50%;transform:translateX(-50%);bottom:max(12px, env(safe-area-inset-bottom));z-index:9000;max-width:min(92vw,520px);background:var(--danger, #c62828);color:#fff;font-weight:800;font-size:14px;padding:10px 14px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.35);text-align:center;}
 .outbox-note[hidden]{display:none;}
+
+/* Shown on a till or order screen that can't beep yet (nobody has tapped it since it loaded). */
+.sound-note{position:fixed;left:50%;transform:translateX(-50%);top:max(10px, env(safe-area-inset-top));z-index:9001;max-width:min(92vw,520px);background:#b45309;color:#fff;font:inherit;font-weight:800;font-size:15px;padding:12px 16px;border:0;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.35);cursor:pointer;}
+.sound-note[hidden]{display:none;}
