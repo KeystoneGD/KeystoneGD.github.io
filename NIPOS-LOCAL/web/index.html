@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022l">
-<link rel="stylesheet" href="layouts.css?v=20261022l">
+<link rel="stylesheet" href="nipos.css?v=20261022m">
+<link rel="stylesheet" href="layouts.css?v=20261022m">
 </head>
 <body>
 
@@ -752,7 +752,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022l"></script>
+<script src="db.js?v=20261022m"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -2958,13 +2958,13 @@ function applyLoginState(){
   }
   venuePicker.hidden = true;
   document.getElementById("loginGate").hidden = !!currentUser;
-  if (!currentUser) { document.getElementById("lockedScreen").hidden = true; applyVenueIdentity(null); document.title = "NIPOS Till"; return; }
+  if (!currentUser) { document.getElementById("lockedScreen").hidden = true; applyVenueIdentity(null); setTabTitle("pos", ""); return; }
   const locked = !currentUser.perms.placeOrders;
   document.getElementById("lockedScreen").hidden = !locked;
   document.getElementById("lockedUserName").textContent = currentUser.name;
   document.getElementById("accountName").textContent = currentUser.name + (currentVenue ? " · " + currentVenue.name : "");
   applyVenueIdentity(currentVenue, currentUser.name);
-  if (currentVenue) document.title = currentVenue.name + " · Till";
+  setTabTitle("pos", currentVenue ? currentVenue.name : "");
   document.getElementById("switchVenueBtn").hidden = myVenues.length < 2;
   document.getElementById("soundRowSub").textContent = CHIME_PRESETS[currentUser.notificationSound] || (currentUser.notificationSound ? "Uploaded sound" : "Classic (triple beep)");
   const notifyCount = (currentUser.notifyVenueIds || []).length;
