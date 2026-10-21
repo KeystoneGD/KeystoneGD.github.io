@@ -134,7 +134,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022t">
+<link rel="stylesheet" href="nipos.css?v=20261022u">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -263,7 +263,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022t"></script>
+<script src="db.js?v=20261022u"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -493,11 +493,7 @@ function playChime(){
 // "Enable alerts" tap every single time the app is opened, piggyback on the first tap/key anywhere on
 // the page (typing the PIN to log in already counts), so the chime just works on reload without anyone
 // having to remember a separate step.
-function ensureAudioCtx(){
-  if (audioCtx) return;
-  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
-}
-["pointerdown", "keydown"].forEach(evt => document.addEventListener(evt, ensureAudioCtx, { once: true, passive: true }));
+function ensureAudioCtx(){ unlockSound(); } // db.js wakes the sound on every tap and warns when it's off
 const SEND_PUSH_URL = SUPABASE_URL + "/functions/v1/send-push";
 const VAPID_PUBLIC_KEY = NIPOS_CONFIG.vapidPublicKey;
 function urlBase64ToUint8Array(base64String){
