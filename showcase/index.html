@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Every NIPOS theme in light and dark on the till, order screen, kitchen view, customer display, Backend and sign-in screen, on tablet and phone.">
+<meta name="description" content="Every NIPOS theme in light and dark on the till (all six layouts), order screen, kitchen view, customer display, Backend and sign-in screen, on tablet and phone.">
 <link rel="icon" href="../NIPOS/favicon.ico" sizes="any">
 <title>NIPOS Theme Gallery</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -78,8 +78,8 @@ footer{color:var(--muted);font-size:14px;}
   <header>
     <span class="eyebrow">NIPOS · bar till system</span>
     <h1>Seven themes, light and dark</h1>
-    <p class="lede">Every master theme on the till, the order screen, the kitchen view, the customer display, Backend and the sign-in screen, on a tablet and a phone. Demo data from Starlight Suite; tap any screen to see it full size.</p>
-    <div class="stats"><span class="stat">7 themes</span><span class="stat">2 modes</span><span class="stat">6 screens</span><span class="stat">Tablet and phone</span><span class="stat">168 screenshots</span></div>
+    <p class="lede">Every master theme on the till, the order screen, the kitchen view, the customer display, Backend and the sign-in screen, on a tablet and a phone, with all six till layouts. Demo data from Starlight Suite; tap any screen to see it full size.</p>
+    <div class="stats"><span class="stat">7 themes</span><span class="stat">2 modes</span><span class="stat">6 screens</span><span class="stat">6 till layouts</span><span class="stat">Tablet and phone</span><span class="stat">308 screenshots</span></div>
   </header>
 
   <div class="controls">
@@ -87,6 +87,7 @@ footer{color:var(--muted);font-size:14px;}
     <div class="row" role="group" aria-label="Screen"><span class="label">Screen</span><div class="row" id="screens"></div></div>
     <div class="row" role="group" aria-label="Light or dark"><span class="label">Mode</span><div class="row" id="modes"></div></div>
     <div class="row" role="group" aria-label="Device"><span class="label">Device</span><div class="row" id="devices"></div></div>
+    <div class="row" role="group" aria-label="Till layout (POS screens)"><span class="label">Layout</span><div class="row" id="layouts"></div></div>
   </div>
 
   <section aria-live="polite">
@@ -94,7 +95,7 @@ footer{color:var(--muted);font-size:14px;}
     <div class="grid" id="grid" style="margin-top:14px;"></div>
   </section>
 
-  <footer>Tablet: 1180 × 820 (Backend and customer display 1280 × 800). Phone: 390 × 844. All with the Tiles till layout.</footer>
+  <footer>Tablet: 1180 × 820 (Backend and customer display 1280 × 800). Phone: 390 × 844. The Layout row changes the POS screens; the other screens look the same in every layout.</footer>
 </div>
 
 <div class="lb" id="lb" role="dialog" aria-modal="true" aria-labelledby="lbTitle" hidden>
@@ -115,7 +116,8 @@ const THEMES = [
 const SCREENS = [["pos", "POS"], ["orders", "Orders"], ["kitchen", "Kitchen"], ["display", "Customer display"], ["backend", "Backend"], ["login", "Login"]];
 const MODES = [["both", "Both"], ["light", "Light"], ["dark", "Dark"]];
 const DEVICES = [["tablet", "Tablet"], ["phone", "Phone"]];
-let theme = "classic", screen = "all", mode = "both", device = "tablet", shown = [], lbIndex = 0;
+const LAYOUTS = [["tiles", "Big tiles"], ["classic", "Classic list"], ["colour", "Colour-coded"], ["list", "Restyled list"], ["pubtill", "Pub till"], ["dock", "Dock"]];
+let theme = "classic", screen = "all", mode = "both", device = "tablet", layout = "tiles", shown = [], lbIndex = 0;
 const hash = (location.hash || "").slice(1);
 if (THEMES.some(t => t.key === hash)) theme = hash;
 const $ = id => document.getElementById(id);
@@ -125,19 +127,26 @@ function chips(){
   $("screens").innerHTML = [["all", "All"]].concat(SCREENS).map(([k, l]) => `<button type="button" class="chip" data-screen="${k}" aria-pressed="${k === screen}">${l}</button>`).join("");
   $("modes").innerHTML = MODES.map(([k, l]) => `<button type="button" class="chip" data-mode="${k}" aria-pressed="${k === mode}">${l}</button>`).join("");
   $("devices").innerHTML = DEVICES.map(([k, l]) => `<button type="button" class="chip" data-device="${k}" aria-pressed="${k === device}">${l}</button>`).join("");
+  $("layouts").innerHTML = LAYOUTS.concat([["all", "Every layout"]]).map(([k, l]) => `<button type="button" class="chip" data-layout="${k}" aria-pressed="${k === layout}">${l}</button>`).join("");
 }
 function render(){
   chips();
   const t = THEMES.find(x => x.key === theme);
   $("themeName").textContent = t.name; $("themeNote").textContent = t.note;
   shown = [];
-  SCREENS.filter(([k]) => screen === "all" || k === screen).forEach(([k, l]) => ["light", "dark"].filter(m => mode === "both" || m === mode).forEach(m => shown.push({ src: `shots/${theme}-${m}-${k}${device === "phone" ? "-phone" : ""}.jpg`, label: l, mode: m })));
+  const ph = device === "phone" ? "-phone" : "";
+  SCREENS.filter(([k]) => screen === "all" || k === screen).forEach(([k, l]) => {
+    const variants = k !== "pos" ? [["", l]] : (layout === "all" ? LAYOUTS : LAYOUTS.filter(([lk]) => lk === layout)).map(([lk, ln]) => [lk === "tiles" ? "" : "-" + lk, `${l} · ${ln}`]);
+    variants.forEach(([suffix, label]) => ["light", "dark"].filter(m => mode === "both" || m === mode).forEach(m => shown.push({ src: `shots/${theme}-${m}-${k}${suffix}${ph}.jpg`, label, mode: m })));
+  });
   $("grid").classList.toggle("phone", device === "phone");
   $("grid").innerHTML = shown.map((s, i) => `<button type="button" class="shot" data-i="${i}" aria-label="${esc(t.name)}, ${esc(s.label)}, ${s.mode} mode, ${device}. Open full size"><span class="frame"><img src="${s.src}" alt="" loading="lazy" width="${device === "phone" ? 390 : 1180}" height="${device === "phone" ? 844 : 820}"></span><span class="cap"><b>${esc(s.label)}</b><span class="mode">${s.mode === "light" ? "Light" : "Dark"}</span></span></button>`).join("") || `<p class="empty">Nothing matches those choices.</p>`;
 }
 document.addEventListener("click", e => {
   const th = e.target.closest("[data-theme-key]"), sc = e.target.closest("[data-screen]"), md = e.target.closest("[data-mode]"), dv = e.target.closest("[data-device]"), sh = e.target.closest(".shot");
   if (dv) { device = dv.dataset.device; render(); }
+  const ly = e.target.closest("[data-layout]");
+  if (ly) { layout = ly.dataset.layout; if (screen !== "all" && screen !== "pos") screen = "pos"; render(); }
   if (th) { theme = th.dataset.themeKey; try { history.replaceState(null, "", "#" + theme); } catch (err) {} render(); }
   if (sc) { screen = sc.dataset.screen; render(); }
   if (md) { mode = md.dataset.mode; render(); }
