@@ -438,6 +438,47 @@ let systemSettings = {};
 function featureOn(key) { const f = systemSettings[key]; return !!(f && f.enabled); }
 function featureConfig(key) { return systemSettings[key] || {}; }
 
+// --- Push notifications on this device. $YSTEM can reset them for everyone (Master settings), which
+// clears every saved device and asks each device to accept again; staff can also switch them off or
+// on for their device from the till menu. Both are remembered per device in localStorage.
+const LS_PUSH_ACCEPTED = "nipos.pushAcceptedAt", LS_PUSH_OFF = "nipos.pushOffAt";
+function lsNumber(key) { try { return Number(localStorage.getItem(key)) || 0; } catch (e) { return 0; } }
+function lsSetNumber(key, n) { try { if (n) localStorage.setItem(key, String(n)); else localStorage.removeItem(key); } catch (e) {} }
+// The last reset seen is kept here too, so a device that signs in before Master settings has loaded
+// still knows about it.
+function pushResetAt() {
+  const r = systemSettings.notifyReset, ts = (r && Number(r.ts)) || 0;
+  if (ts > lsNumber("nipos.pushResetSeen")) lsSetNumber("nipos.pushResetSeen", ts);
+  return Math.max(ts, lsNumber("nipos.pushResetSeen"));
+}
+// "unsupported", "blocked" (browser said no), "off" (switched off here), "ask" (never allowed),
+// "reset" (allowed, but $YSTEM reset notifications since) or "on".
+function pushState() {
+  if (!("Notification" in window)) return "unsupported";
+  if (Notification.permission === "denied") return "blocked";
+  const accepted = lsNumber(LS_PUSH_ACCEPTED), off = lsNumber(LS_PUSH_OFF), reset = pushResetAt();
+  if (off && off >= accepted && off >= reset) return "off";
+  if (Notification.permission !== "granted") return "ask";
+  return accepted < reset ? "reset" : "on";
+}
+function pushWanted() { return pushState() === "on"; }
+// Never earlier than the last reset, in case this device's clock is behind the Backend's.
+function pushNow() { return Math.max(Date.now(), pushResetAt() + 1); }
+function markPushAccepted() { lsSetNumber(LS_PUSH_ACCEPTED, pushNow()); lsSetNumber(LS_PUSH_OFF, 0); }
+function pushRowId(endpoint) { return "px" + btoa(endpoint).replace(/[^a-zA-Z0-9]/g, "").slice(0, 60); }
+// Switch off here: forget this device's push registration in the browser and in the database.
+async function disablePushHere() {
+  lsSetNumber(LS_PUSH_OFF, Math.max(pushNow(), lsNumber(LS_PUSH_ACCEPTED) + 1));
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
+    if (!sub) return;
+    if (typeof supabaseClient !== "undefined" && supabaseClient) { try { await supabaseClient.from("push_subscriptions").delete().eq("id", pushRowId(sub.endpoint)); } catch (e) {} }
+    await sub.unsubscribe();
+  } catch (e) {}
+}
+
 // Per-person layout and theme (feature "personal"): set when someone signs in on this device.
 let signedInUserId = null, signedInUserName = null;
 function personalSetting(field) {
@@ -827,7 +868,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261021m";
+const NIPOS_VERSION = "20261021n";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }

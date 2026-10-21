@@ -295,7 +295,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021m">
+<link rel="stylesheet" href="nipos.css?v=20261021n">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -626,6 +626,12 @@ table.data-table tr:last-child td{border-bottom:0;}
       <p class="note">Every feature here starts switched off, so you can set it up first. Nothing changes on the tills until you switch it on.</p>
       <p class="note" id="featureMsg" role="status"></p>
       <div class="feature-list" id="featureList"></div>
+      <h2 class="layout-title">Reset notifications</h2>
+      <p class="note">Removes every device's push alerts. Each till and order screen then shows Turn on alerts again, and nobody gets push alerts until they tap it on their device.</p>
+      <div class="card wipe-card">
+        <button type="button" class="btn btn-danger-solid" id="notifyResetBtn">Reset notifications for everyone</button>
+        <p class="note" id="notifyResetMsg" role="status" style="margin-top:10px;"></p>
+      </div>
       </div>
       <div class="tab-panel" id="tab-ms-looks" role="tabpanel">
       <h2 class="layout-title" style="margin-top:0;">Name for all venues</h2>
@@ -759,7 +765,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261021m"></script>
+<script src="db.js?v=20261021n"></script>
 <script src="vendor/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -1458,6 +1464,7 @@ const FEATURES = [
   { key: "lateOrders", name: "Late-order warning", about: "On the order screen and the till's Open Orders, orders waiting longer than this get a Late badge and move up." },
   { key: "bigText", name: "Bigger text", about: "Makes the till and order screen bigger, everywhere or just for some venues or people." },
   { key: "reportHeader", name: "Report header details", about: "Venue name, address and contact details on Z Reads and shift reports, plus a footer line." },
+  { key: "pushChoice", name: "Alerts on or off per device", about: "Adds Alerts on this device to the till menu, so staff can switch push alerts off for that device, or back on." },
   { key: "activityLog", name: "Activity log", about: "Records who did what and when, everywhere: signing in and out, sales, refunds, discounts, stops, product, price and category changes, deals, staff, venues and settings, Notify, Z Reads and Master settings - and with full logs, every button pressed and every notification. Read it in the Activity tab, or give staff the View Activity Logs permission to read it on Backend's Activity log page." },
   { key: "exportData", name: "Export data", about: "Download sales, refunds and tips for any dates as spreadsheets, for one venue or all of them." },
   { key: "roleTemplates", name: "Staff role templates", about: "Save permission sets like \"Bar staff\" or \"Table service\" and give them to someone in one tap when adding or editing staff." },
@@ -2329,6 +2336,27 @@ document.getElementById("wipeCheckBtn").addEventListener("click", async () => {
   box.innerHTML = `<strong>${total ? "This would remove, for " + esc(name) + ":" : "Nothing to remove for " + esc(name) + "."}</strong>` + (total ? `<table>${WIPE_ROWS.filter(([k]) => data[k]).map(([k, label]) => `<tr><td>${label}</td><td class="num">${data[k].count}${data[k].pence != null && data[k].count ? " · " + fmt(data[k].pence) : ""}</td></tr>`).join("")}</table>` : "");
   box.hidden = false;
   document.getElementById("wipeConfirmArea").hidden = !total;
+});
+// Reset notifications: clears every saved push device, and the new notifyReset time makes each till
+// and order screen ask again (it reaches them within 15 seconds).
+document.getElementById("notifyResetBtn").addEventListener("click", async () => {
+  const msg = document.getElementById("notifyResetMsg"), btn = document.getElementById("notifyResetBtn");
+  if (!confirm("Reset notifications for everyone? Every device stops getting push alerts until someone taps Turn on alerts on it.")) return;
+  btn.disabled = true; msg.textContent = "Resetting…";
+  const value = { ts: Date.now() };
+  let result = "error";
+  try { const res = await supabaseClient.rpc("nipos_set_system_setting", { p_password: systemPassword, p_key: "notifyReset", p_value: value }); if (!res.error) result = res.data; } catch (e) {}
+  if (result === "wrong" || result === "locked" || result === "not_system") {
+    btn.disabled = false; systemPassword = null; document.getElementById("systemGateMsg").textContent = SYSTEM_PASSWORD_MESSAGES[result]; msg.textContent = ""; applyLoginState(); return;
+  }
+  if (result !== "ok") { btn.disabled = false; msg.textContent = "Couldn't reset them. Try again."; return; }
+  let count = 0, failed = false;
+  try { const { data, error } = await supabaseClient.from("push_subscriptions").delete().neq("id", "").select("id"); if (error) failed = true; else count = (data || []).length; } catch (e) { failed = true; }
+  btn.disabled = false;
+  if (failed) { msg.textContent = "Every device will ask again, but the saved devices couldn't be removed, so they still get alerts. Try again."; return; }
+  systemSettings = { ...systemSettings, notifyReset: value };
+  logActivity("Master settings", `Notifications reset for everyone (${count} device${count === 1 ? "" : "s"} removed)`, null);
+  msg.textContent = `Done. ${count} device${count === 1 ? "" : "s"} removed. Each one asks to turn on alerts again.`;
 });
 function wipeReady(){ document.getElementById("wipeBtn").disabled = !(document.getElementById("wipeConfirm").value.trim() === "DELETE" && document.getElementById("wipePassword").value); }
 document.getElementById("wipeConfirm").addEventListener("input", wipeReady);
