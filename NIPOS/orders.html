@@ -122,7 +122,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021m">
+<link rel="stylesheet" href="nipos.css?v=20261021n">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -249,7 +249,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021m"></script>
+<script src="db.js?v=20261021n"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -460,7 +460,7 @@ function urlBase64ToUint8Array(base64String){
 async function savePushSubscription(sub){
   if (!supabaseClient || !sub || !currentVenueId) return;
   const json = sub.toJSON ? sub.toJSON() : sub;
-  const id = "px" + btoa(json.endpoint).replace(/[^a-zA-Z0-9]/g, "").slice(0, 60);
+  const id = pushRowId(json.endpoint);
   // Only once someone's signed in: a subscription saved before that had no person, so pushes sent
   // to them (e.g. Call for service) never found this device.
   if (!currentUserId) return;
@@ -471,7 +471,7 @@ async function savePushSubscription(sub){
 var pushSavedFor = null, idleStarted = false; // var: applyLoginState can run before this line on first load
 function ensurePushForUser(){
   const key = currentUserId ? currentUserId + "|" + currentVenueId : null;
-  if (!key || key === pushSavedFor || !("Notification" in window) || Notification.permission !== "granted") return;
+  if (!key || key === pushSavedFor || !pushWanted()) return;
   pushSavedFor = key;
   enablePush();
 }
@@ -493,25 +493,29 @@ async function sendPushNotification(toUserId, fromUserId, fromName, message, urg
     });
   } catch(e){}
 }
-// The banner only needs the explicit tap the very first time - once Notification permission is
-// granted, that's a browser-level, per-device grant that persists on its own (it survives reloads,
-// force-closes, reinstalls of the PWA, all of it), so there's nothing left to "remember": every later
-// load just checks the browser's own permission state and skips straight past the banner.
+// The banner needs one tap per device: the browser remembers the permission after that. It comes back
+// after a reset in Master settings, and stays away on a device where alerts were switched off.
 function refreshAlertsRow(){
-  const granted = ("Notification" in window) && Notification.permission === "granted";
-  const denied = ("Notification" in window) && Notification.permission === "denied";
-  document.getElementById("alertsRow").hidden = granted;
-  document.getElementById("alertsStatus").textContent = denied
+  const state = pushState();
+  // Switched off on this device, or already on: no banner. After a reset in Master settings it comes
+  // back on every device until someone taps Turn on alerts again.
+  document.getElementById("alertsRow").hidden = state === "on" || state === "off" || state === "unsupported";
+  document.getElementById("alertsStatus").textContent = state === "blocked"
     ? "Alerts are blocked. Turn them on in your browser's site settings."
-    : "Turn on alerts to hear new orders";
-  if (granted) enablePush(); // re-confirm the push subscription's still registered, no prompt shown
+    : state === "reset" ? "Notifications were reset. Tap Turn on alerts to get them again." : "Turn on alerts to hear new orders";
+  if (state === "on") enablePush(); // re-confirm the push subscription's still registered, no prompt shown
+  if (typeof refreshPushRow === "function") refreshPushRow();
 }
-document.getElementById("enableAlertsBtn").addEventListener("click", async () => {
+async function turnOnAlerts(){
   ensureAudioCtx(); playChime();
   if ("Notification" in window) { try { await Notification.requestPermission(); } catch(e){} }
-  await enablePush();
+  if (("Notification" in window) && Notification.permission === "granted") { markPushAccepted(); pushSavedFor = null; await enablePush(); }
   refreshAlertsRow();
-});
+}
+document.getElementById("enableAlertsBtn").addEventListener("click", turnOnAlerts);
+// A reset in Master settings reaches this device within a few seconds.
+var lastPushReset = null;
+document.addEventListener("nipos:settingschange", () => { const r = pushResetAt(); if (r !== lastPushReset) { lastPushReset = r; pushSavedFor = null; refreshAlertsRow(); } });
 refreshAlertsRow();
 
 function alertUser(title, body, urgent, event){
