@@ -875,7 +875,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261022g";
+const NIPOS_VERSION = "20261022h";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -1774,8 +1774,11 @@ function saveOutbox() { try { localStorage.setItem(LS_OUTBOX, JSON.stringify(out
 async function upsertRow(table, rec) {
   try { const { error } = await supabaseClient.from(table).upsert(rec); return !error; } catch (e) { return false; }
 }
-function queueOutbox(table, rec) {
-  outbox = outbox.filter(o => !(o.table === table && o.rec.id === rec.id)).concat([{ table, rec, at: Date.now() }]);
+async function deleteRow(table, id) {
+  try { const { error } = await supabaseClient.from(table).delete().eq("id", id); return !error; } catch (e) { return false; }
+}
+function queueOutbox(table, rec, op) {
+  outbox = outbox.filter(o => !(o.table === table && o.rec.id === rec.id)).concat([{ table, rec, op: op || "upsert", at: Date.now() }]);
   saveOutbox();
 }
 let outboxBusy = false;
@@ -1784,7 +1787,7 @@ async function flushOutbox() {
   outboxBusy = true;
   try {
     for (const o of outbox.slice()) {
-      if (!(await upsertRow(o.table, o.rec))) break; // still offline: try again later, in order
+      if (!(o.op === "delete" ? await deleteRow(o.table, o.rec.id) : await upsertRow(o.table, o.rec))) break; // still offline: try again later, in order
       outbox = outbox.filter(x => x !== o);
       saveOutbox();
     }
@@ -1814,10 +1817,12 @@ function rowStore(table, limit) {
       if (outbox.some(o => o.table === table)) { queueOutbox(table, rec); flushOutbox(); return; } // keep the order
       if (!(await upsertRow(table, rec))) queueOutbox(table, rec);
     },
+    // A delete that doesn't get through (e.g. Delivered on a dropped connection) waits in the outbox
+    // too, instead of the order popping back up on every screen.
     async remove(id) {
       if (!supabaseClient) return;
       if (outbox.some(o => o.table === table && o.rec.id === id)) { outbox = outbox.filter(o => !(o.table === table && o.rec.id === id)); saveOutbox(); }
-      try { await supabaseClient.from(table).delete().eq("id", id); } catch (e) {}
+      if (!(await deleteRow(table, id))) queueOutbox(table, { id }, "delete");
     },
     // Fetches the row fresh right before applying `mutator` and saving it, so a field another device
     // set in the meantime (e.g. someone else flagging this same order) isn't clobbered by a stale copy.
@@ -1840,7 +1845,9 @@ function rowStore(table, limit) {
         // Maintenance Mode's test rows are invisible everywhere except the Backend Test Data view
         // (countTest/clearTest below) - harmless no-op filter for tables that never set isTest.
         // A scheduled stop (Master settings "scheduledStops") stops counting once its time is up.
-        return data.map(r => r.data).filter(row => !row.isTest && (table !== "stops" || stopActive(row)));
+        // ...and a row this device has deleted (but not yet got through) stays gone here.
+        const gone = new Set(outbox.filter(o => o.op === "delete" && o.table === table).map(o => o.rec.id));
+        return data.map(r => r.data).filter(row => !row.isTest && !gone.has(row.id) && (table !== "stops" || stopActive(row)));
       } catch (e) { return null; }
     },
     async clear() {
