@@ -702,6 +702,58 @@ function showPrivateMessage(n) {
   el.querySelector("#pmOk").focus();
 }
 
+// Allergen and diet tags (feature "dietTags"): the tags items can have; "filter" ones get a till filter.
+const DEFAULT_DIET_TAGS = [{ code: "V", name: "Vegetarian", filter: true }, { code: "VG", name: "Vegan", filter: true }, { code: "GF", name: "Gluten free", filter: true }, { code: "DF", name: "Dairy free", filter: true }, { code: "N", name: "Contains nuts", filter: false }];
+function dietTagList() { return (featureConfig("dietTags").tags || DEFAULT_DIET_TAGS).filter(t => t && t.code); }
+
+// Scheduled stops (feature "scheduledStops"): a stop can have an end time (row.until), after which
+// the item is back on sale everywhere by itself. Putting something on stop asks how long for.
+function stopActive(row) { return !row || !row.until || row.until > Date.now(); }
+function nextTimeOfDay(hhmm) {
+  const [h, m] = String(hhmm || "23:59").split(":").map(Number), d = new Date();
+  d.setHours(h || 0, m || 0, 0, 0);
+  if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+  return d.getTime();
+}
+// Resolves to: null = no end, a timestamp = until then, false = cancelled. Without the feature it's null.
+function askStopUntil(what) {
+  if (!featureOn("scheduledStops")) return Promise.resolve(null);
+  const close = featureConfig("scheduledStops").closeTime || "02:00";
+  return new Promise(resolve => {
+    let el = document.getElementById("stopUntilModal");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "stopUntilModal"; el.className = "modal-overlay notify-overlay"; el.hidden = true;
+      el.innerHTML = `<div class="modal-card notify-card" role="dialog" aria-modal="true" aria-labelledby="suTitle"><h3 id="suTitle">How long for?</h3><p class="nfy-intro" id="suWhat"></p>
+        <div class="su-choices" role="group" aria-label="How long">
+          <button type="button" class="btn btn-ghost btn-block" data-su="none">Until someone puts it back</button>
+          <button type="button" class="btn btn-ghost btn-block" data-su="60">For 1 hour</button>
+          <button type="button" class="btn btn-ghost btn-block" data-su="120">For 2 hours</button>
+          <button type="button" class="btn btn-ghost btn-block" data-su="close"></button>
+        </div>
+        <label class="field" for="suTime">Or until a set time</label>
+        <div style="display:flex;gap:8px;"><input type="time" id="suTime" style="flex:1;min-height:44px;"><button type="button" class="btn btn-solid" data-su="time">Set</button></div>
+        <div class="modal-actions"><button type="button" class="btn btn-ghost" data-su="cancel">Cancel</button></div></div>`;
+      document.body.appendChild(el);
+    }
+    el.querySelector("#suWhat").textContent = `${what} goes on stop. It comes back on sale by itself at the time you pick.`;
+    el.querySelector('[data-su="close"]').textContent = `Until closing (${close})`;
+    const done = v => { el.hidden = true; el.querySelectorAll("[data-su]").forEach(b => { b.onclick = null; }); resolve(v); };
+    el.querySelectorAll("[data-su]").forEach(b => { b.onclick = () => {
+      const k = b.dataset.su;
+      if (k === "cancel") return done(false);
+      if (k === "none") return done(null);
+      if (k === "close") return done(nextTimeOfDay(close));
+      if (k === "time") { const t = el.querySelector("#suTime").value; if (!t) { el.querySelector("#suTime").focus(); return; } return done(nextTimeOfDay(t)); }
+      done(Date.now() + Number(k) * 60000);
+    }; });
+    el.onkeydown = e => { if (e.key === "Escape") done(false); };
+    el.hidden = false;
+    el.querySelector('[data-su="none"]').focus();
+  });
+}
+function untilText(ts) { if (!ts) return ""; const d = new Date(ts), today = new Date().toDateString() === d.toDateString(); return `until ${today ? "" : d.toLocaleDateString("en-GB", { weekday: "short" }) + " "}${fmtTime(ts)}`; }
+
 // Call for service: pops up on the person's screen with the beep (and still sends the push
 // notification, which the sender's page does). Older calls without a kind are spotted by their text.
 function isServiceCall(n) { return n && (n.kind === "service" || (n.urgent && n.message === "needs you at the bar")); }
@@ -1430,7 +1482,8 @@ function rowStore(table, limit) {
         if (error) return null;
         // Maintenance Mode's test rows are invisible everywhere except the Backend Test Data view
         // (countTest/clearTest below) - harmless no-op filter for tables that never set isTest.
-        return data.map(r => r.data).filter(row => !row.isTest);
+        // A scheduled stop (Master settings "scheduledStops") stops counting once its time is up.
+        return data.map(r => r.data).filter(row => !row.isTest && (table !== "stops" || stopActive(row)));
       } catch (e) { return null; }
     },
     async clear() {

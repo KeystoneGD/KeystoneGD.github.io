@@ -126,6 +126,8 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .feature-body select,.feature-body textarea,.feature-body input[type="text"]{width:100%;max-width:460px;}
 .feature-people{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 14px;margin:6px 0 10px;}
 .feature-people label{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer;}
+.fav-btn{font-size:20px;min-width:44px;line-height:1;}
+.fav-btn.on{color:var(--accent);border-color:var(--accent);}
 .act-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:12px 0 4px;}
 .act-group{border:1px solid var(--border);border-radius:12px;padding:8px 12px 10px;margin:0;min-width:0;}
 .act-group legend{font-weight:800;font-size:14px;padding:0 4px;}
@@ -286,7 +288,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021g">
+<link rel="stylesheet" href="nipos.css?v=20261021h">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -725,7 +727,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021g"></script>
+<script src="db.js?v=20261021h"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -864,6 +866,8 @@ async function loadVenueData(){
   realCategories = await categoriesStore.fetchAll() || [];
   realItems = await catalogueItemsStore.fetchAll() || [];
   if (productsAllVenues && myVenues.length > 1) await loadAllVenuesData(); else productsAllVenues = false;
+  await applyDuePriceChanges();
+  await loadStockAndFavourites();
 
   renderVenueSwitcher();
   renderSidebarAccount();
@@ -928,7 +932,7 @@ async function fetchRowsFor(table, ids){
     return (data || []).map(r => ({ row: r.data, venueId: r.venue_id })).filter(x => x.row && !x.row.isTest);
   } catch (e) { return []; }
 }
-function namesByVenue(rows){ const m = new Map(); rows.forEach(({ row, venueId }) => { if (!m.has(venueId)) m.set(venueId, new Set()); m.get(venueId).add(row.name); }); return m; }
+function namesByVenue(rows){ const m = new Map(); rows.forEach(({ row, venueId }) => { if (!m.has(venueId)) m.set(venueId, new Set()); if (stopActive(row)) m.get(venueId).add(row.name); }); return m; }
 function atEveryVenue(map){
   const n = myVenues.length, count = new Map();
   map.forEach(set => set.forEach(name => count.set(name, (count.get(name) || 0) + 1)));
@@ -936,6 +940,7 @@ function atEveryVenue(map){
 }
 function stopCountFor(name){ let n = 0; stopsByVenue.forEach(s => { if (s.has(name)) n++; }); return n; }
 async function loadAllVenuesData(){
+  setTimeout(() => loadStockAndFavourites().then(() => { if (currentPage === "products") renderProductsList(); }), 0);
   const ids = myVenues.map(v => v.id);
   const [cats, items, st, mx, offers] = await Promise.all(["categories", "catalogue_items", "stops", "mixer_overrides", "custom_discounts"].map(t => fetchRowsFor(t, ids)));
   const catBy = new Map();
@@ -960,6 +965,163 @@ async function loadAllVenuesData(){
   offers.forEach(({ row, venueId }) => { const k = row.label + "|" + row.pct; if (!offBy.has(k)) offBy.set(k, { ...row, id: "all:" + k, __copies: [] }); offBy.get(k).__copies.push({ venueId, offer: row }); });
   customDiscounts = [...offBy.values()];
 }
+/* ---------- Section B: stock counts, favourites, scheduled prices, diet tags (Products page) ---------- */
+const LS_FAVS = "starlightTill.favourites.v1";
+let stockByVenue = new Map(), favByVenue = new Map(); // venueId -> Map(name -> count) / Set(names)
+async function loadStockAndFavourites(){
+  stockByVenue = new Map(); favByVenue = new Map();
+  const ids = scopeVenueIds();
+  if (featureOn("stockCounts")) {
+    try { const { data } = await supabaseClient.from("stock_counts").select("venue_id,data").in("venue_id", ids); (data || []).forEach(r => { if (!stockByVenue.has(r.venue_id)) stockByVenue.set(r.venue_id, new Map()); stockByVenue.get(r.venue_id).set(r.data.name, Number(r.data.count) || 0); }); } catch (e) {}
+  }
+  if (featureOn("favourites")) {
+    try { const { data } = await supabaseClient.from("app_state").select("key,value").in("key", ids.map(v => v + ":state/" + LS_FAVS)); (data || []).forEach(r => favByVenue.set(r.key.split(":state/")[0], new Set(r.value || []))); } catch (e) {}
+  }
+}
+// One number when every venue in view has the same count, "varies" when not, null when nobody counts it.
+function stockFor(name){
+  const vals = scopeVenueIds().map(v => stockByVenue.get(v) && stockByVenue.get(v).has(name) ? stockByVenue.get(v).get(name) : null);
+  if (vals.every(v => v === null)) return null;
+  return new Set(vals).size === 1 ? vals[0] : "varies";
+}
+async function setStockFor(name, count){
+  for (const v of scopeVenueIds()) {
+    const id = v + ":" + name;
+    if (count === null) await removeRowById("stock_counts", id); else await upsertFor("stock_counts", v, { id, ts: Date.now(), name, count });
+    if (!stockByVenue.has(v)) stockByVenue.set(v, new Map());
+    if (count === null) stockByVenue.get(v).delete(name); else stockByVenue.get(v).set(name, count);
+  }
+}
+function isFavourite(name){ const ids = scopeVenueIds(); return ids.length > 0 && ids.every(v => favByVenue.get(v) && favByVenue.get(v).has(name)); }
+async function toggleFavourite(name){
+  const on = !isFavourite(name);
+  for (const v of scopeVenueIds()) {
+    const set = favByVenue.get(v) || new Set(); if (on) set.add(name); else set.delete(name); favByVenue.set(v, set);
+    await saveDocFor(v, LS_FAVS, [...set]);
+  }
+  logActivity(on ? "Added to favourites" : "Removed from favourites", name, productsAllVenues ? null : undefined);
+}
+const todayKey = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local
+// A scheduled price whose day has come becomes the normal price (the till already uses it from that day).
+async function applyDuePriceChanges(){
+  if (!featureOn("scheduledPrices") || productsAllVenues) return;
+  for (const it of realItems) {
+    const pc = it.priceChange;
+    if (!pc || !pc.from || pc.from > todayKey()) continue;
+    const was = priceText(it);
+    if (pc.sizes && it.sizes && it.sizes.length) it.sizes = it.sizes.map((s, i) => ({ ...s, pence: pc.sizes[i] != null ? pc.sizes[i] : s.pence }));
+    if (pc.pence != null) it.pence = it.sizes && it.sizes.length ? it.sizes[0].pence : pc.pence;
+    if (it.sizes && it.sizes.length) it.pence = it.sizes[0].pence;
+    if (pc.doublePence != null) it.doublePence = pc.doublePence;
+    delete it.priceChange;
+    await catalogueItemsStore.save(it);
+    logActivity("Scheduled price change", `${it.name}: price ${was} → ${priceText(it)} (from ${pc.from})`);
+  }
+}
+function priceChangeText(pc){
+  if (!pc || !pc.from) return "";
+  const p = pc.sizes ? pc.sizes.map(x => fmt(x)).join(", ") : fmt(pc.pence) + (pc.doublePence != null ? " / double " + fmt(pc.doublePence) : "");
+  return `${p} from ${fmtDay(pc.from)}`;
+}
+function productExtrasText(it){
+  const bits = [];
+  if (featureOn("dietTags") && it.tags && it.tags.length) bits.push(it.tags.join(" "));
+  if (featureOn("stockCounts")) { const n = stockFor(it.name); if (n !== null) bits.push(n === "varies" ? "stock differs by venue" : `${n} left`); }
+  if (featureOn("favourites") && isFavourite(it.name)) bits.push("favourite");
+  if (featureOn("scheduledPrices") && it.priceChange) bits.push("new price " + priceChangeText(it.priceChange));
+  return bits.length ? " · " + esc(bits.join(" · ")) : "";
+}
+function productExtrasEditorHTML(it, cat){
+  let h = "";
+  if (featureOn("stockCounts")) {
+    const n = stockFor(it.name);
+    h += `<label class="field">Stock left <span class="note">(empty = not counted; at 0 it goes on stop)</span></label><input type="number" class="edit-stock" aria-label="Stock left" min="0" step="1" value="${n === null || n === "varies" ? "" : n}" placeholder="${n === "varies" ? "Differs by venue" : "Not counted"}" style="max-width:160px;">`;
+  }
+  if (featureOn("dietTags")) {
+    const mine = new Set(it.tags || []);
+    h += `<span class="field">Tags</span><div class="feature-people">${dietTagList().map(t => `<label><input type="checkbox" class="edit-tag" value="${esc(t.code)}" ${mine.has(t.code) ? "checked" : ""}>${esc(t.code)} · ${esc(t.name)}</label>`).join("")}</div>`;
+  }
+  if (featureOn("scheduledPrices")) {
+    const pc = it.priceChange || {};
+    const sizes = it.sizes && it.sizes.length ? it.sizes : null;
+    const box = (cls, label, pence, extra) => `<div class="size-edit-row"><label>${label}</label><input type="number" step="0.01" class="${cls}" aria-label="New ${esc(label)}" ${extra || ""} value="${pence != null ? fmtPoundsFromPence(pence) : ""}"></div>`;
+    h += `<fieldset class="deal-choice"><legend>New price from a date</legend>
+      <label class="field">From</label><input type="date" class="edit-pc-date" aria-label="New price from" value="${esc(pc.from || "")}" min="${todayKey()}">
+      ${sizes ? sizes.map((s, i) => box("edit-pc-size", s.label + " (£)", pc.sizes ? pc.sizes[i] : null, `data-i="${i}"`)).join("") : cat.isSpirit ? box("edit-pc-single", "Single (£)", pc.pence) + box("edit-pc-double", "Double (£)", pc.doublePence) : box("edit-pc-flat", "Price (£)", pc.pence)}
+      <p class="note">Leave the date empty for no price change.</p></fieldset>`;
+  }
+  return h;
+}
+function readProductExtras(panel, it, cat){
+  const out = {};
+  const st = panel.querySelector(".edit-stock");
+  if (st) out.stock = st.value === "" ? (st.placeholder === "Differs by venue" ? stockFor(it.name) : null) : Math.max(0, Math.round(Number(st.value)));
+  if (panel.querySelector(".edit-tag") || featureOn("dietTags")) out.tags = [...panel.querySelectorAll(".edit-tag:checked")].map(x => x.value);
+  const d = panel.querySelector(".edit-pc-date");
+  if (d) {
+    if (!d.value) out.priceChange = null;
+    else {
+      const num = el => el && el.value !== "" ? Math.round(parseFloat(el.value) * 100) : null;
+      const pc = { from: d.value };
+      if (panel.querySelector(".edit-pc-size")) pc.sizes = [...panel.querySelectorAll(".edit-pc-size")].map(num);
+      else if (panel.querySelector(".edit-pc-single")) { pc.pence = num(panel.querySelector(".edit-pc-single")); pc.doublePence = num(panel.querySelector(".edit-pc-double")); }
+      else pc.pence = num(panel.querySelector(".edit-pc-flat"));
+      if ((pc.sizes && pc.sizes.some(x => x == null)) || (!pc.sizes && pc.pence == null)) { alert("Fill in the new price, or clear the date."); return false; }
+      out.priceChange = pc;
+    }
+  }
+  return out;
+}
+// Master settings › Copy a venue's setup.
+async function copyVenueSetup(){
+  const from = document.getElementById("cvFrom").value, to = document.getElementById("cvTo").value, msg = document.getElementById("featureMsg");
+  const what = new Set(F("[data-cv]:checked").map(x => x.dataset.cv));
+  if (from === to) { msg.textContent = "Pick two different venues."; return; }
+  if (!what.size) { msg.textContent = "Tick at least one thing to copy."; return; }
+  if (!confirm(`Copy ${[...what].join(", ")} from ${venueName(from)} to ${venueName(to)}? What's ticked replaces what ${venueName(to)} has now.`)) return;
+  msg.textContent = "Copying…";
+  const rows = async t => { const { data } = await supabaseClient.from(t).select("id,ts,data").eq("venue_id", from); return data || []; };
+  const wipe = async t => { await supabaseClient.from(t).delete().eq("venue_id", to); };
+  const stamp = Date.now().toString(36), done = [];
+  try {
+    if (what.has("menu")) {
+      const [cats, items] = [await rows("categories"), await rows("catalogue_items")];
+      await wipe("catalogue_items"); await wipe("categories");
+      const idMap = {};
+      const catRows = cats.map((r, i) => { const id = "cat" + stamp + "_" + i; idMap[r.data.id] = id; return { id, ts: r.ts, venue_id: to, data: { ...r.data, id } }; });
+      const itemRows = items.filter(r => idMap[r.data.categoryId]).map((r, i) => { const id = "p" + stamp + "_" + i; return { id, ts: r.ts, venue_id: to, data: { ...r.data, id, categoryId: idMap[r.data.categoryId] } }; });
+      if (catRows.length) await supabaseClient.from("categories").insert(catRows);
+      if (itemRows.length) await supabaseClient.from("catalogue_items").insert(itemRows);
+      done.push(`${catRows.length} categories and ${itemRows.length} products`);
+    }
+    if (what.has("offers")) {
+      const offers = await rows("custom_discounts"); await wipe("custom_discounts");
+      if (offers.length) await supabaseClient.from("custom_discounts").insert(offers.map((r, i) => { const id = "cd" + stamp + "_" + i; return { id, ts: r.ts, venue_id: to, data: { ...r.data, id } }; }));
+      done.push(`${offers.length} offer${offers.length === 1 ? "" : "s"}`);
+    }
+    if (what.has("mixers")) {
+      const mx = await rows("mixer_overrides"); await wipe("mixer_overrides");
+      if (mx.length) await supabaseClient.from("mixer_overrides").insert(mx.map(r => { const id = to + ":" + r.data.name; return { id, ts: r.ts, venue_id: to, data: { ...r.data, id } }; }));
+      done.push(`${mx.length} mixer settings`);
+    }
+    for (const [k, key, label] of [["deals", LS_DEALS, "deals"], ["deals", LS_HH_OVERRIDE, null], ["favourites", LS_FAVS, "favourites"]]) {
+      if (!what.has(k)) continue;
+      const { data } = await supabaseClient.from("app_state").select("value").eq("key", from + ":state/" + key).maybeSingle();
+      if (data) await saveDocFor(to, key, data.value); else await supabaseClient.from("app_state").delete().eq("key", to + ":state/" + key);
+      if (label) done.push(label);
+    }
+    if (what.has("look")) {
+      const [{ data: a }, { data: b }] = await Promise.all([from, to].map(id => supabaseClient.from("venues").select("data").eq("id", id).maybeSingle()));
+      if (a && b) await supabaseClient.from("venues").update({ data: { ...b.data, accent: a.data.accent || null, foodEnabled: a.data.foodEnabled } }).eq("id", to);
+      done.push("colour and food setting");
+    }
+  } catch (e) { msg.textContent = "Something went wrong part way. Check " + venueName(to) + " before using it."; return; }
+  logActivity("Copied a venue's setup", `${venueName(from)} → ${venueName(to)}: ${done.join(", ")}`, null);
+  msg.textContent = `Copied to ${venueName(to)}: ${done.join(", ")}.`;
+  if (to === currentVenueId) loadVenueData();
+}
+function fmtDay(key){ return new Date(key + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); }
+
 // The venue ids a change goes to: every venue in All venues, otherwise just the working one.
 function scopeVenueIds(){ return productsAllVenues ? myVenues.map(v => v.id) : [currentVenueId]; }
 async function saveDocFor(venueId, key, value){ try { await supabaseClient.from("app_state").upsert({ key: venueId + ":state/" + key, value }); } catch (e) {} }
@@ -1168,7 +1330,14 @@ const FEATURES = [
   { key: "reportHeader", name: "Report header details", about: "Venue name, address and contact details on Z Reads and shift reports, plus a footer line." },
   { key: "activityLog", name: "Activity log", about: "Records who did what and when, everywhere: signing in and out, sales, refunds, discounts, stops, product, price and category changes, deals, staff, venues and settings, Notify, Z Reads and Master settings - and with full logs, every button pressed and every notification. Read it in the Activity tab, or give staff the View Activity Logs permission to read it on Backend's Activity log page." },
   { key: "exportData", name: "Export data", about: "Download sales, refunds and tips for any dates as spreadsheets, for one venue or all of them." },
-  { key: "roleTemplates", name: "Staff role templates", about: "Save permission sets like \"Bar staff\" or \"Table service\" and give them to someone in one tap when adding or editing staff." }
+  { key: "roleTemplates", name: "Staff role templates", about: "Save permission sets like \"Bar staff\" or \"Table service\" and give them to someone in one tap when adding or editing staff." },
+  { key: "scheduledStops", name: "Scheduled stops", about: "Putting something on stop asks how long for: until someone puts it back, an hour, two hours, closing time or a set time. It comes back on sale by itself." },
+  { key: "stockCounts", name: "Stock counts", about: "Set how many of an item are left (e.g. 12 sharers) on the Products page. Each sale takes them off, the till shows how many are left when it's low, and at 0 it goes on stop by itself." },
+  { key: "scheduledPrices", name: "Scheduled price changes", about: "On the Products page, set new prices that switch on by themselves on a chosen date." },
+  { key: "dietTags", name: "Allergen and diet tags", about: "Tag items V, VG, GF and so on, on the Products page. The tags show on the till buttons, and the till gets a filter to show only items with a tag." },
+  { key: "quickNotes", name: "Quick item notes", about: "One-tap notes like \"No ice\" or \"Extra shot\" on the till's order, per category." },
+  { key: "favourites", name: "Favourites tab", about: "Star the drinks a venue sells most on the Products page. They get a Favourites tab of their own at the front of the till." },
+  { key: "copyVenue", name: "Copy a venue's setup", about: "Copy one venue's menu, offers, mixer settings, deals, favourites and colour to another venue, e.g. when opening a new one." }
 ];
 /* Batch 2 editors. Each one opens filled in with what the till does today (the built-in values), so
    switching a feature on changes nothing until something is edited. render(cfg) draws it; read()
@@ -1178,6 +1347,7 @@ const BUILTIN_CORDIALS = [["blackcurrant", "Blackcurrant Cordial"], ["lime", "Li
 const BUILTIN_GROUPS = [["cocktails", "Cocktails", "#8a2f6b"], ["softs", "Softs", "#17696d"], ["beer", "Beer & Cider", "#6e4b12"], ["wine", "Wine", "#7a1f33"], ["spirits", "Spirits", "#34458a"], ["hot", "Hot drinks", "#5a3d2b"], ["other", "Other drinks", "#3d4a57"], ["food", "Food", "#3f5e1f"]].map(([key, name, colour]) => ({ key, name, colour }));
 const BUILTIN_DISCOUNTS = [{ id: "owner10", label: "Owner's 10%", pct: 10, notOnHappyHour: true }, { id: "team50", label: "Team 50%", pct: 50 }, { id: "team20", label: "Team 20%", pct: 20 }];
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 const poundsIn = p => (Number(p || 0) / 100).toFixed(2);
 const penceOut = v => Math.round(parseFloat(String(v).replace(/[£,\s]/g, "")) * 100);
 const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
@@ -1255,6 +1425,64 @@ const FEATURE_EDITORS = {
     render(cfg){ return `<label class="field" for="loMins">Mark an order late after this many minutes</label><input type="number" id="loMins" min="1" max="120" value="${Number(cfg.minutes) || 10}" style="max-width:120px;">
       <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="lateOrders">Save</button></div>`; },
     read(){ return { minutes: Math.max(1, Number(document.getElementById("loMins").value) || 10) }; }
+  },
+  scheduledStops: {
+    render(cfg){
+      return `<label class="field" for="ssClose">Closing time (for "Until closing")</label><input type="time" id="ssClose" value="${esc(cfg.closeTime || "02:00")}" style="max-width:160px;">
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="scheduledStops">Save</button></div>`;
+    },
+    read(){ return { closeTime: document.getElementById("ssClose").value || "02:00" }; }
+  },
+  stockCounts: {
+    render(cfg){
+      return `<label class="field" for="scLow">Show how many are left on the till once it's down to</label><input type="number" id="scLow" min="1" max="99" value="${Number(cfg.lowAt) || 10}" style="max-width:120px;">
+        <p class="note">Set the counts on the Products page (Edit › Stock left). Leave it empty for items you don't count.</p>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="stockCounts">Save</button></div>`;
+    },
+    read(){ return { lowAt: Math.max(1, Number(document.getElementById("scLow").value) || 10) }; }
+  },
+  scheduledPrices: {
+    render(){ return `<p class="note">Set them on the Products page: Edit › New price from a date. On that date the till uses the new price, and Backend makes it the normal price.</p>`; },
+    read(){ return {}; }
+  },
+  dietTags: {
+    render(cfg){
+      const tags = cfg.tags || DEFAULT_DIET_TAGS;
+      return `<p class="note">The tags you can give items. Tick "Filter" for the ones staff can filter the till by (a warning like "Contains nuts" usually isn't one).</p>
+        ${tags.map((t, i) => `<div class="edit-row" data-tag>
+          <label>Short <input type="text" data-tag-code value="${esc(t.code)}" maxlength="4" style="max-width:80px;"></label>
+          <label>Name <input type="text" data-tag-name value="${esc(t.name)}" maxlength="30"></label>
+          <label class="check"><input type="checkbox" data-tag-filter ${t.filter !== false ? "checked" : ""}>Filter</label>
+          <button type="button" class="btn btn-ghost btn-sm" data-act="tag-remove" data-i="${i}">Remove</button></div>`).join("")}
+        <div class="feature-actions"><button type="button" class="btn btn-ghost" data-act="tag-add">Add a tag</button><button type="button" class="btn btn-solid" data-act="save-editor" data-key="dietTags">Save tags</button></div>`;
+    },
+    read(){ return { tags: F("[data-tag]").map(r => ({ code: r.querySelector("[data-tag-code]").value.trim().toUpperCase(), name: r.querySelector("[data-tag-name]").value.trim(), filter: r.querySelector("[data-tag-filter]").checked })).filter(t => t.code) }; }
+  },
+  quickNotes: {
+    render(cfg){
+      const notes = cfg.notes || { "*": ["No ice", "Extra ice", "Slice of lemon"] };
+      const cats = ["*", ...allCategoryNames()];
+      return `<p class="note">Separate notes with commas. "Every category" notes show on any order; the others only when that category is in the order.</p>
+        <table class="feature-table"><tbody>${cats.map(c => `<tr><th scope="row"><label for="qn_${esc(c)}">${c === "*" ? "Every category" : esc(c)}</label></th><td><input type="text" id="qn_${esc(c)}" data-qn="${esc(c)}" value="${esc((notes[c] || []).join(", "))}" style="width:100%;"></td></tr>`).join("")}</tbody></table>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="quickNotes">Save notes</button></div>`;
+    },
+    read(){ const notes = {}; F("[data-qn]").forEach(i => { const list = i.value.split(",").map(x => x.trim()).filter(Boolean); if (list.length) notes[i.dataset.qn] = list; }); return { notes }; }
+  },
+  favourites: {
+    render(){ return `<p class="note">Star items on the Products page (one venue, or All venues). Each venue has its own favourites.</p>`; },
+    read(){ return {}; }
+  },
+  copyVenue: {
+    render(){
+      const opts = myVenues.map(v => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join("");
+      return `<div class="edit-row"><label>From <select id="cvFrom">${opts}</select></label><label>To <select id="cvTo">${opts}</select></label></div>
+        <div class="feature-people" role="group" aria-label="What to copy">
+          ${[["menu", "Menu (categories and products, with prices)"], ["offers", "Custom offers"], ["mixers", "Mixer settings"], ["deals", "Deals"], ["favourites", "Favourites"], ["look", "Venue colour and food on/off"]].map(([k, l]) => `<label><input type="checkbox" data-cv="${k}" checked>${l}</label>`).join("")}
+        </div>
+        <p class="note">What you tick replaces what the "To" venue has. Sales, Z Reads and staff are never copied.</p>
+        <div class="feature-actions"><button type="button" class="btn btn-danger" data-act="copy-venue">Copy</button></div>`;
+    },
+    read(){ return {}; }
   },
   activityLog: {
     render(cfg){
@@ -1620,6 +1848,9 @@ async function runFeatureAction(act, btn){
   if (act === "export-run") return runExport();
   if (act === "role-add") return editorRowChange("roleTemplates", "templates", l => l.concat([{ id: uid("role"), name: "New role", perms: { active: true, placeOrders: true } }]));
   if (act === "role-remove") { const i = Number(btn.dataset.i); return editorRowChange("roleTemplates", "templates", l => l.filter((_, j) => j !== i)); }
+  if (act === "tag-add") return editorRowChange("dietTags", "tags", l => (l.length ? l : DEFAULT_DIET_TAGS).concat([{ code: "", name: "", filter: true }]));
+  if (act === "tag-remove") { const i = Number(btn.dataset.i); return editorRowChange("dietTags", "tags", l => l.filter((_, j) => j !== i)); }
+  if (act === "copy-venue") return copyVenueSetup();
   if (act === "disc-add") return editorRowChange("discounts", "buttons", l => l.concat([{ id: uid("d"), label: "New discount", pct: 10 }]));
   if (act === "disc-remove") return editorRowChange("discounts", "buttons", removeAt(btn.dataset.i));
   if (act === "dash-add") return editorRowChange("drinkOptions", "dashes", l => l.concat([{ id: uid("x"), name: "", pence: 100 }]));
@@ -2175,16 +2406,18 @@ async function copyCatalogueFrom(sourceVenueId){
 // Puts products on stop (or back on sale) at the current venue - the same list every till reads.
 async function setStopsForNames(names, on){
   const changed = names.filter(n => on !== stops.has(n));
+  const until = on && changed.length ? await askStopUntil(changed.length === 1 ? changed[0] : `${changed.length} items`) : null;
+  if (until === false) return;
   for (const name of changed) {
     for (const v of scopeVenueIds()) {
       const id = v + ":" + name; // a stop belongs to one venue (see stopRowId in db.js)
-      if (on) await upsertFor("stops", v, { id, ts: Date.now(), name }); else await removeRowById("stops", id);
+      if (on) await upsertFor("stops", v, { id, ts: Date.now(), name, until }); else await removeRowById("stops", id);
       if (productsAllVenues) { if (!stopsByVenue.has(v)) stopsByVenue.set(v, new Set()); stopsByVenue.get(v)[on ? "add" : "delete"](name); }
     }
     if (on) stops.add(name); else stops.delete(name);
   }
   if (!changed.length) return;
-  logActivity(on ? "Put on stop" : "Back on sale", changed.join(", "));
+  logActivity(on ? "Put on stop" : "Back on sale", changed.join(", ") + (until ? " (" + untilText(until) + ")" : ""));
   postDiscordEmbed(currentVenue && currentVenue.discordWebhooks && currentVenue.discordWebhooks.stop, {
     title: on ? "🛑 Product Stopped" : "✅ Product Back In Stock",
     color: on ? 0xff7a68 : 0x49c98d,
@@ -2200,7 +2433,8 @@ function renderProductRow(it, cat){
   const summary = it.sizes && it.sizes.length ? sizes.map(s => `${s.label} ${fmt(s.pence)}`).join(" · ") : (cat.isSpirit ? `Single ${fmt(it.pence)} · Double ${fmt(it.doublePence != null ? it.doublePence : it.pence*2)}` : fmt(it.pence));
   row.innerHTML = `
     <div class="product-row-head">
-      <div class="info"><div class="name">${esc(it.name)}${stops.has(it.name) ? `<span class="stop-tag">On stop</span>` : it.__copies && stopCountFor(it.name) ? `<span class="stop-tag">On stop at ${stopCountFor(it.name)} of ${myVenues.length}</span>` : ""}</div><div class="price">${it.__varies ? "Prices differ by venue" : summary}${it.__copies ? ` · at ${it.__copies.length} of ${myVenues.length} venues` : ""}</div></div>
+      <div class="info"><div class="name">${esc(it.name)}${stops.has(it.name) ? `<span class="stop-tag">On stop</span>` : it.__copies && stopCountFor(it.name) ? `<span class="stop-tag">On stop at ${stopCountFor(it.name)} of ${myVenues.length}</span>` : ""}</div><div class="price">${it.__varies ? "Prices differ by venue" : summary}${it.__copies ? ` · at ${it.__copies.length} of ${myVenues.length} venues` : ""}${productExtrasText(it)}</div></div>
+      ${featureOn("favourites") ? `<button type="button" class="btn btn-ghost btn-sm fav-btn${isFavourite(it.name) ? " on" : ""}" aria-pressed="${isFavourite(it.name)}" aria-label="Favourite: ${esc(it.name)}">${isFavourite(it.name) ? "★" : "☆"}</button>` : ""}
       <button type="button" class="stop-btn${stops.has(it.name) ? " on" : ""}" aria-label="${stops.has(it.name) ? "Put " + esc(it.name) + " back on sale" : "Put " + esc(it.name) + " on stop"}">${stops.has(it.name) ? "Back on sale" : "Put on stop"}</button>
       <label class="mixer-label" title="Offer this as a mixer when someone orders a spirit"><span>Mixer</span><span class="switch"><input type="checkbox" class="mixer-toggle" aria-label="${esc(it.name)} can be a mixer" ${mixerOverrides.has(it.name) ? "checked" : ""}><span class="slider"></span></span></label>
       <button type="button" class="btn btn-ghost btn-sm edit-product-btn">Edit</button>
@@ -2212,6 +2446,8 @@ function renderProductRow(it, cat){
     await setStopsForNames([it.name], !stops.has(it.name));
     renderProductsList(); renderCategoriesList();
   });
+  const favBtn = row.querySelector(".fav-btn");
+  if (favBtn) favBtn.addEventListener("click", async () => { favBtn.disabled = true; await toggleFavourite(it.name); renderProductsList(); });
   row.querySelector(".mixer-toggle").addEventListener("change", async e => {
     for (const v of scopeVenueIds()) {
       const id = v + ":" + it.name; // per venue, like stops
@@ -2234,25 +2470,33 @@ function renderProductRow(it, cat){
     panel.classList.add("open");
     panel.innerHTML = `
       <label class="field">Name</label>
-      <input type="text" class="edit-name" value="${it.name.replace(/"/g,"&quot;")}">
+      <input type="text" class="edit-name" aria-label="Name" value="${it.name.replace(/"/g,"&quot;")}">
       <label class="field">Category</label>
-      <select class="edit-category">${realCategories.slice().sort((a,b)=>a.order-b.order).map(c => `<option value="${c.id}" ${c.id===it.categoryId?"selected":""}>${c.name}</option>`).join("")}</select>
+      <select class="edit-category" aria-label="Category">${realCategories.slice().sort((a,b)=>a.order-b.order).map(c => `<option value="${c.id}" ${c.id===it.categoryId?"selected":""}>${c.name}</option>`).join("")}</select>
       <div class="edit-sizes"></div>
+      <div class="edit-extras"></div>
       <button type="button" class="btn btn-accent btn-sm save-product-btn" style="margin-top:10px;">Save</button>`;
+    panel.querySelector(".edit-extras").innerHTML = productExtrasEditorHTML(it, cat);
     const sizesWrap = panel.querySelector(".edit-sizes");
     if (it.sizes && it.sizes.length) {
-      sizesWrap.innerHTML = it.sizes.map((s,i) => `<div class="size-edit-row"><label>${s.label}</label><input type="number" step="0.01" class="edit-size-price" data-i="${i}" value="${fmtPoundsFromPence(s.pence)}"></div>`).join("");
+      sizesWrap.innerHTML = it.sizes.map((s,i) => `<div class="size-edit-row"><label>${s.label}</label><input type="number" step="0.01" class="edit-size-price" aria-label="${esc(s.label)} price (£)" data-i="${i}" value="${fmtPoundsFromPence(s.pence)}"></div>`).join("");
     } else if (cat.isSpirit) {
       sizesWrap.innerHTML = `
-        <div class="size-edit-row"><label>Single (£)</label><input type="number" step="0.01" class="edit-single" value="${fmtPoundsFromPence(it.pence)}"></div>
-        <div class="size-edit-row"><label>Double (£)</label><input type="number" step="0.01" class="edit-double" value="${fmtPoundsFromPence(it.doublePence != null ? it.doublePence : it.pence*2)}"></div>`;
+        <div class="size-edit-row"><label>Single (£)</label><input type="number" step="0.01" class="edit-single" aria-label="Single (£)" value="${fmtPoundsFromPence(it.pence)}"></div>
+        <div class="size-edit-row"><label>Double (£)</label><input type="number" step="0.01" class="edit-double" aria-label="Double (£)" value="${fmtPoundsFromPence(it.doublePence != null ? it.doublePence : it.pence*2)}"></div>`;
     } else {
-      sizesWrap.innerHTML = `<div class="size-edit-row"><label>Price (£)</label><input type="number" step="0.01" class="edit-flat" value="${fmtPoundsFromPence(it.pence)}"></div>`;
+      sizesWrap.innerHTML = `<div class="size-edit-row"><label>Price (£)</label><input type="number" step="0.01" class="edit-flat" aria-label="Price (£)" value="${fmtPoundsFromPence(it.pence)}"></div>`;
     }
     panel.querySelector(".save-product-btn").addEventListener("click", async (e) => {
       const name = panel.querySelector(".edit-name").value.trim();
       if (!name) { alert("Enter a name."); return; }
-      const was = { name: it.name, price: priceText(it), cat: catNameById(it.categoryId) };
+      const was = { name: it.name, price: priceText(it), cat: catNameById(it.categoryId), tags: (it.tags || []).join(" "), pc: priceChangeText(it.priceChange) };
+      const extras = readProductExtras(panel, it, cat);
+      if (extras === false) return;
+      if (extras.tags !== undefined) { if (extras.tags.length) it.tags = extras.tags; else delete it.tags; }
+      if (extras.priceChange !== undefined) { if (extras.priceChange) it.priceChange = extras.priceChange; else delete it.priceChange; }
+      const stockWas = stockFor(it.name);
+      if (extras.stock !== undefined && extras.stock !== stockWas) await setStockFor(name, extras.stock);
       it.name = name;
       it.categoryId = panel.querySelector(".edit-category").value;
       if (it.sizes && it.sizes.length) {
@@ -2271,14 +2515,18 @@ function renderProductRow(it, cat){
         for (const c of it.__copies) {
           const catCopy = target && target.__copies ? target.__copies.find(x => x.venueId === c.venueId) : null;
           const updated = { ...c.item, name: it.name, pence: it.pence, sizes: it.sizes || null, categoryId: catCopy ? catCopy.cat.id : c.item.categoryId };
+          if (it.tags) updated.tags = it.tags; else delete updated.tags;
+          if (it.priceChange) updated.priceChange = it.priceChange; else delete updated.priceChange;
           if (it.doublePence != null) updated.doublePence = it.doublePence;
           c.item = updated;
           await upsertFor("catalogue_items", c.venueId, updated);
         }
         it.__varies = false;
       } else await catalogueItemsStore.save(it);
-      const now = { name: it.name, price: priceText(it), cat: catNameById(it.categoryId) };
-      logActivity("Changed a product", `${was.name}: ${[was.name !== now.name ? `name ${was.name} → ${now.name}` : "", was.price !== now.price ? `price ${was.price} → ${now.price}` : "", was.cat !== now.cat ? `category ${was.cat} → ${now.cat}` : ""].filter(Boolean).join("; ") || "nothing changed"}${it.__copies ? " (every venue)" : ""}`, it.__copies ? null : undefined);
+      const now = { name: it.name, price: priceText(it), cat: catNameById(it.categoryId), tags: (it.tags || []).join(" "), pc: priceChangeText(it.priceChange) };
+      const stockNow = stockFor(it.name);
+      logActivity("Changed a product", `${was.name}: ${[was.name !== now.name ? `name ${was.name} → ${now.name}` : "", was.price !== now.price ? `price ${was.price} → ${now.price}` : "", was.cat !== now.cat ? `category ${was.cat} → ${now.cat}` : "",
+        was.tags !== now.tags ? `tags ${was.tags || "none"} → ${now.tags || "none"}` : "", was.pc !== now.pc ? `price change ${was.pc || "none"} → ${now.pc || "none"}` : "", extras.stock !== undefined && extras.stock !== stockWas ? `stock left ${stockWas == null ? "not counted" : stockWas} → ${stockNow == null ? "not counted" : stockNow}` : ""].filter(Boolean).join("; ") || "nothing changed"}${it.__copies ? " (every venue)" : ""}`, it.__copies ? null : undefined);
       e.target.textContent = "Saved";
       setTimeout(() => { renderProductsList(); }, 700);
     });

@@ -296,3 +296,40 @@ revoke all on function public.nipos_setup_system_account(text) from public, anon
 --
 --   select public.nipos_setup_system_account('YOUR-PASSWORD');
 -- =====================================================================================================
+
+-- Stock counts (Master settings feature "stockCounts"): how many of an item are left at a venue.
+-- Selling takes them off; at 0 the item goes on stop by itself.
+create table if not exists public.stock_counts (
+  id text primary key,          -- venueId:itemName, like stops
+  ts bigint not null default 0,
+  venue_id text,
+  data jsonb not null default '{}'::jsonb   -- { id, ts, name, count }
+);
+alter table public.stock_counts enable row level security;
+drop policy if exists "venue members full access" on public.stock_counts;
+create policy "venue members full access" on public.stock_counts for all to authenticated
+  using (is_global_admin() or is_member_of_venue(venue_id)) with check (is_global_admin() or is_member_of_venue(venue_id));
+grant select, insert, update, delete on public.stock_counts to authenticated;
+
+create or replace function public.nipos_take_stock(p_venue text, p_items jsonb) returns jsonb
+language plpgsql volatile security definer set search_path = public as $$
+declare it jsonb; nm text; q int; left_now int; sold_out jsonb := '[]'::jsonb; counts jsonb := '{}'::jsonb; now_ms bigint := (extract(epoch from now()) * 1000)::bigint;
+begin
+  if not (is_global_admin() or is_member_of_venue(p_venue)) then return jsonb_build_object('error', 'no_permission'); end if;
+  for it in select * from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) loop
+    nm := it->>'name'; q := greatest(coalesce((it->>'qty')::int, 1), 0);
+    update stock_counts set ts = now_ms, data = jsonb_set(data, '{count}', to_jsonb(greatest(coalesce((data->>'count')::int, 0) - q, 0)))
+      where id = p_venue || ':' || nm returning (data->>'count')::int into left_now;
+    if found then
+      counts := counts || jsonb_build_object(nm, left_now);
+      if left_now <= 0 then
+        insert into stops (id, ts, venue_id, data) values (p_venue || ':' || nm, now_ms, p_venue,
+          jsonb_build_object('id', p_venue || ':' || nm, 'ts', now_ms, 'name', nm, 'soldOut', true)) on conflict (id) do nothing;
+        sold_out := sold_out || to_jsonb(nm);
+      end if;
+    end if;
+  end loop;
+  return jsonb_build_object('soldOut', sold_out, 'counts', counts);
+end $$;
+revoke all on function public.nipos_take_stock(text, jsonb) from public, anon;
+grant execute on function public.nipos_take_stock(text, jsonb) to authenticated, service_role;

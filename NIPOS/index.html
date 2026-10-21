@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021g">
-<link rel="stylesheet" href="layouts.css?v=20261021g">
+<link rel="stylesheet" href="nipos.css?v=20261021h">
+<link rel="stylesheet" href="layouts.css?v=20261021h">
 </head>
 <body>
 
@@ -334,6 +334,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
       <span data-icon="search"></span>
       <input id="search" type="search" placeholder="Search drinks" aria-label="Search the menu" autocomplete="off">
     </div>
+    <div class="diet-filter" id="dietFilter" role="group" aria-label="Show only items that are" hidden></div>
   </div>
 </header>
 
@@ -379,6 +380,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     <div id="cartLines"></div>
     <div class="empty-state" id="cartEmpty" style="display:none;">Order is empty.<br>Tap items on the menu to add them.</div>
     <button class="btn btn-ghost btn-block" id="addProductBtn" style="margin-top:8px;">Add an item that's not on the menu</button>
+    <div class="quick-notes" id="quickNotes" role="group" aria-label="Quick notes for the bar" hidden></div>
     <details class="notes-toggle" id="notesToggle">
       <summary>Add a note for the bar (optional)</summary>
       <textarea id="notesInput" aria-label="Note for the bar" placeholder="e.g. 6 glasses, no ice, running a tab"></textarea>
@@ -676,7 +678,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021g"></script>
+<script src="db.js?v=20261021h"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -962,6 +964,7 @@ const ordersStore = rowStore("open_orders", 2000);
 const stopsStore = rowStore("stops", 1000);
 const mixerOverridesStore = rowStore("mixer_overrides", 1000);
 const customDiscountsStore = rowStore("custom_discounts", 500);
+const stockStore = rowStore("stock_counts", 2000);
 async function pullRowStores(){
   const orders = await ordersStore.fetchAll();
   if (orders) { openOrders = orders; renderOpenOrdersBadge(); if (adminView === "openOrders") renderOpenOrdersList(); }
@@ -969,6 +972,7 @@ async function pullRowStores(){
   if (notifs) { checkPersonalNotifications(notifs); notifications = notifs; }
   const stopRows = await stopsStore.fetchAll();
   if (stopRows) {
+    stopUntil = new Map(stopRows.filter(r => r.until).map(r => [r.name, r.until]));
     const next = new Set(stopRows.map(r => r.name));
     const changed = next.size !== stops.size || [...next].some(n => !stops.has(n));
     stops = next;
@@ -988,15 +992,28 @@ async function pullRowStores(){
   if (mixerRows) mixerOverrides = new Set(mixerRows.map(r => r.name));
   const discountRows = await customDiscountsStore.fetchAll();
   if (discountRows) { customDiscounts = discountRows; renderDiscountChips(); }
+  if (featureOn("stockCounts")) {
+    const stockRows = await stockStore.fetchAll();
+    if (stockRows) {
+      const next = new Map(stockRows.map(r => [r.name, Number(r.count) || 0]));
+      if (JSON.stringify([...next]) !== JSON.stringify([...stockLeft])) { stockLeft = next; refreshPriceLines(); renderPosMenu(); }
+    }
+  }
 }
 
 const LS_DEALS = "starlightTill.deals.v1"; // the venue's deals (see Deals below)
 let dealsDoc = null;
+// Section B state (Favourites tab, stock counts, diet filter), declared early: the menu draws before
+// the code that uses them further down.
+const LS_FAVS = "starlightTill.favourites.v1";
+const FAV_GROUP = { key: "favourites", name: "Favourites", colour: "#a0531c" };
+let favNames = [], stockLeft = new Map(), dietFilterSet = new Set();
 const PERSISTED_KEYS = [
   { key: LS_CART, set: v => { cart = v; renderQtys(); renderCartBar(); } },
   { key: LS_CUSTOM, set: v => { customProducts = v; customProducts.forEach(p => { BY_ID[p.id] = hydrateCustomProduct(p); }); renderCustomCategories(); }, live: true },
   { key: LS_HH_OVERRIDE, set: v => { hhOverride = v; }, live: true },
   { key: LS_DEALS, set: v => { dealsDoc = v; }, live: true },
+  { key: LS_FAVS, set: v => { const next = Array.isArray(v) ? v : []; if (JSON.stringify(next) !== JSON.stringify(favNames)) { favNames = next; renderMenuSections(); renderQtys(); applyVisibility(); } }, live: true },
   { key: LS_MODE, set: v => { menuMode = v; applyVisibility(); } }
 ];
 
@@ -1090,6 +1107,7 @@ let abandoned = loadJSON(LS_ABANDONED, []);
 let refunds = loadJSON(LS_REFUNDS, []);
 let gratuities = loadJSON(LS_GRAT, []);
 let stops = new Set(loadJSON(LS_STOPS, []));
+let stopUntil = new Map(); // scheduled stops: name -> when it's back on sale
 let shiftStart = 0; // ts of the last Z Read for the current venue; sales/refunds/gratuities before this belong to an already-closed shift
 let pendingMethod = "card";
 let discount = null; // { id, pct, offerPence, display }
@@ -1220,6 +1238,39 @@ function priceBreakdown(){
   const otherPence = Object.entries(remaining).reduce((sum, [key, qty]) => sum + lineInfo(key).pence * qty, 0);
   return { cocktailPence, otherPence, total: cocktailPence + otherPence, savings };
 }
+
+// Stock counts: each sale takes its items off; anything that hits 0 goes on stop (done in the database).
+async function takeStock(items){
+  if (!featureOn("stockCounts") || !supabaseClient || !currentVenueId) return;
+  const byName = new Map();
+  items.forEach(i => { const base = String(i.name || "").replace(/ \+ .*$/, "").replace(/ \([^)]*\)$/, ""); if (stockLeft.has(base)) byName.set(base, (byName.get(base) || 0) + (i.qty || 1)); });
+  if (!byName.size) return;
+  try {
+    const { data } = await supabaseClient.rpc("nipos_take_stock", { p_venue: currentVenueId, p_items: [...byName].map(([name, qty]) => ({ name, qty })) });
+    if (data && data.counts) { Object.entries(data.counts).forEach(([n, c]) => stockLeft.set(n, c)); refreshPriceLines(); renderPosMenu(); }
+    if (data && data.soldOut && data.soldOut.length) { showToast(`Sold out, now on stop: ${data.soldOut.join(", ")}`); logActivity("Sold out (stock count)", data.soldOut.join(", ")); }
+  } catch (e) {}
+}
+// Quick item notes (feature "quickNotes"): one-tap notes for what's in the order.
+function renderQuickNotes(){
+  const el = document.getElementById("quickNotes");
+  if (!featureOn("quickNotes")) { el.hidden = true; return; }
+  const notes = featureConfig("quickNotes").notes || { "*": ["No ice", "Extra ice", "Slice of lemon"] };
+  const inCart = new Set(CAT.filter(c => c.items.some(i => qtyForProduct(i.id) > 0)).map(c => c.name));
+  const list = [...new Set([...(notes["*"] || []), ...[...inCart].flatMap(n => notes[n] || [])])];
+  el.hidden = !list.length || !cartCount();
+  const have = currentNotes.toLowerCase();
+  el.innerHTML = list.map(n => `<button type="button" class="qn-chip" data-qn="${esc(n)}" aria-pressed="${have.includes(n.toLowerCase())}">${esc(n)}</button>`).join("");
+}
+document.getElementById("quickNotes").addEventListener("click", e => {
+  const b = e.target.closest("[data-qn]"); if (!b) return;
+  const n = b.dataset.qn, ta = document.getElementById("notesInput");
+  const parts = currentNotes.split(/,\s*/).map(x => x.trim()).filter(Boolean);
+  const i = parts.findIndex(x => x.toLowerCase() === n.toLowerCase());
+  if (i === -1) parts.push(n); else parts.splice(i, 1);
+  currentNotes = parts.join(", "); ta.value = currentNotes;
+  renderQuickNotes();
+});
 
 function baseTotalPence(){ return priceBreakdown().total; }
 
@@ -1411,7 +1462,7 @@ function categoryHeaderHTML(cat){
 }
 function productRowHTML(p){
   return `
-        <div class="info"><div class="name">${esc(p.name)}</div><div class="price tabular">${p.sizes && p.sizes.length > 1 ? "From " : ""}${fmt(p.pence)}</div></div>
+        <div class="info"><div class="name">${esc(p.name)}</div><div class="price tabular">${esc(pmPrice(p))}</div></div>
         <div class="stepper empty${p.hasOptions ? " spirit" : ""}" data-id="${p.id}">
           <button class="minus" type="button" aria-label="Remove one ${esc(p.name)}">${icon("minus")}</button>
           <span class="qty tabular" aria-label="in order">0</span>
@@ -1422,7 +1473,8 @@ let menuMode = loadJSON(LS_MODE, null) || "drink";
 
 function renderMenuSections(){
   menuEl.querySelectorAll(".category").forEach(el => el.remove());
-  CAT.forEach(cat => {
+  const fav = typeof favouritesCategory === "function" ? favouritesCategory() : null;
+  (fav ? [fav, ...CAT] : CAT).forEach(cat => {
     const section = document.createElement("section");
     section.className = "category";
     section.id = cat.id;
@@ -1455,12 +1507,18 @@ function catalogueFromDb(catRows, itemRows){
   return catRows.slice().sort((a,b) => a.order - b.order).map(c => {
     const items = (byCat[c.id] || []).slice().sort((a,b) => a.order - b.order).map(it => {
       const isSized = !!(it.sizes && it.sizes.length);
-      const pence = isSized ? it.sizes[0].pence : it.pence;
-      return {
+      // Scheduled price change (Master settings "scheduledPrices"): from its day, the new prices.
+      const pc = featureOn("scheduledPrices") && it.priceChange && it.priceChange.from && it.priceChange.from <= new Date().toLocaleDateString("en-CA") ? it.priceChange : null;
+      const sizes = isSized ? (pc && pc.sizes ? it.sizes.map((s, i) => ({ ...s, pence: pc.sizes[i] != null ? pc.sizes[i] : s.pence })) : it.sizes) : null;
+      const pence = isSized ? sizes[0].pence : (pc && pc.pence != null ? pc.pence : it.pence);
+      const item = {
         id: it.id, name: it.name, pence,
-        isSpirit: c.isSpirit, isBeer: c.isBeer, isSized, sizes: it.sizes || null,
-        mixerType: c.mixerType, hasOptions: c.isSpirit || c.isBeer || isSized
+        isSpirit: c.isSpirit, isBeer: c.isBeer, isSized, sizes,
+        mixerType: c.mixerType, hasOptions: c.isSpirit || c.isBeer || isSized, tags: it.tags || []
       };
+      const dbl = pc && pc.doublePence != null ? pc.doublePence : it.doublePence;
+      if (dbl != null) item.doublePence = dbl;
+      return item;
     });
     return { id: c.id, name: c.name, note: c.note, mode: c.mode, isSpirit: c.isSpirit, isBeer: c.isBeer, items };
   });
@@ -1477,6 +1535,7 @@ async function loadCatalogueFromDb(){
   renderMenuSections();
   renderCustomCategories();
   renderQtys();
+  renderDietFilter();
   applyVisibility();
 }
 
@@ -1533,7 +1592,7 @@ renderCustomCategories();
 function applyVisibility(){
   const q = document.getElementById("search").value.trim().toLowerCase();
   menuEl.querySelectorAll(".product[data-id]").forEach(row => {
-    const matches = row.dataset.search.includes(q);
+    const matches = row.dataset.search.includes(q) && passesDiet(BY_ID[row.dataset.id]);
     row.style.display = (matches && !stops.has(row.dataset.name)) ? "" : "none";
   });
   menuEl.querySelectorAll(".category").forEach(cat => {
@@ -1682,8 +1741,15 @@ let layoutGroupKey = null, layoutCatId = null, ptShowFood = false;
 // is added back rather than its categories vanishing from the till.
 function layoutGroups(){
   const c = featureOn("layoutGroups") && featureConfig("layoutGroups").groups;
-  if (!c || !c.length) return LAYOUT_GROUPS;
-  return c.concat(LAYOUT_GROUPS.filter(g => !c.some(x => x.key === g.key)));
+  const base = !c || !c.length ? LAYOUT_GROUPS : c.concat(LAYOUT_GROUPS.filter(g => !c.some(x => x.key === g.key)));
+  return favouritesCategory() ? [FAV_GROUP, ...base] : base;
+}
+// Favourites tab (feature "favourites"): the drinks this venue starred in Backend, first.
+function favouritesCategory(){
+  if (!featureOn("favourites") || !favNames.length) return null;
+  const byName = new Map(ALL_ITEMS.map(p => [p.name, p]));
+  const items = favNames.map(n => byName.get(n)).filter(Boolean);
+  return items.length ? { id: "__favourites", name: "Favourites", mode: "drink", group: "favourites", items } : null;
 }
 function layoutGroupFor(cat){
   const cfg = featureOn("layoutGroups") ? featureConfig("layoutGroups") : null;
@@ -1701,12 +1767,14 @@ function layoutGroupFor(cat){
 function layoutGroupColour(key){ const g = layoutGroups().find(x => x.key === key); return g ? g.colour : "#3d4a57"; }
 function layoutCategories(){
   const cats = CAT.map(c => ({ ...c }));
+  const fav = favouritesCategory();
+  if (fav) cats.unshift(fav);
   const buckets = { spirit: [], draught: [], drink: [], food: [] };
   customProducts.forEach(p => buckets[customBucketFor(p)].push(BY_ID[p.id] || hydrateCustomProduct(p)));
   CUSTOM_CAT_DEFS.forEach(def => { if (buckets[def.bucket].length) cats.push({ id: def.id, name: def.name, mode: def.mode, isSpirit: def.bucket === "spirit", items: buckets[def.bucket] }); });
   return cats
     .filter(c => c.mode !== "food" || foodOnSale())
-    .map(c => ({ ...c, group: layoutGroupFor(c), short: splitCatName(c.name).title, items: c.items.filter(p => !stops.has(p.name)) }))
+    .map(c => ({ ...c, group: c.group || layoutGroupFor(c), short: splitCatName(c.name).title, items: c.items.filter(p => !stops.has(p.name) && passesDiet(p)) }))
     .filter(c => c.items.length);
 }
 function layoutSelection(cats){
@@ -1741,7 +1809,36 @@ function addProductOnce(product){
   changeQty(product.id, 1);
 }
 
-function pmPrice(p){ return (p.sizes && p.sizes.length > 1 ? "From " : "") + fmt(p.pence); }
+function pmPrice(p){ return (p.sizes && p.sizes.length > 1 ? "From " : "") + fmt(p.pence) + itemExtras(p); }
+// Section B extras after the price: diet tags and, when it's low, how many are left.
+function itemExtras(p){
+  const bits = [];
+  if (featureOn("dietTags") && p.tags && p.tags.length) bits.push(p.tags.join(" "));
+  const n = stockNote(p); if (n) bits.push(n);
+  return bits.length ? " · " + bits.join(" · ") : "";
+}
+function stockNote(p){
+  if (!featureOn("stockCounts") || !stockLeft.has(p.name)) return "";
+  const n = stockLeft.get(p.name), low = Number(featureConfig("stockCounts").lowAt) || 10;
+  return n <= low ? `${n} left` : "";
+}
+function refreshPriceLines(){
+  menuEl.querySelectorAll(".product[data-id]").forEach(row => { const p = BY_ID[row.dataset.id]; const el = row.querySelector(".price"); if (p && el) el.textContent = pmPrice(p); });
+}
+// Diet filter: tap a tag to show only items that have it.
+function passesDiet(p){ if (!featureOn("dietTags") || !dietFilterSet.size) return true; const t = new Set((p && p.tags) || []); return [...dietFilterSet].every(c => t.has(c)); }
+function renderDietFilter(){
+  const el = document.getElementById("dietFilter");
+  const tags = featureOn("dietTags") ? dietTagList().filter(t => t.filter !== false && ALL_ITEMS.some(p => (p.tags || []).includes(t.code))) : [];
+  dietFilterSet = new Set([...dietFilterSet].filter(c => tags.some(t => t.code === c)));
+  el.hidden = !tags.length;
+  el.innerHTML = tags.length ? `<span class="df-label">Show only</span>` + tags.map(t => `<button type="button" class="df-chip" data-diet="${esc(t.code)}" aria-pressed="${dietFilterSet.has(t.code)}" title="${esc(t.name)}">${esc(t.code)}<span class="df-name"> ${esc(t.name)}</span></button>`).join("") : "";
+}
+document.getElementById("dietFilter").addEventListener("click", e => {
+  const b = e.target.closest("[data-diet]"); if (!b) return;
+  const c = b.dataset.diet; if (dietFilterSet.has(c)) dietFilterSet.delete(c); else dietFilterSet.add(c);
+  renderDietFilter(); applyVisibility();
+});
 function pmAria(p, q){ return `${p.name}, ${pmPrice(p)}${q ? `, ${q} in the order` : ""}`; }
 function pmTileHTML(p, colour){
   const q = qtyForProduct(p.id);
@@ -1955,6 +2052,7 @@ document.getElementById("cartClear").addEventListener("click", async () => {
 });
 
 function renderCartSheet(){
+  renderQuickNotes();
   const notesEl = document.getElementById("notesInput"), tableEl = document.getElementById("tableInput");
   if (document.activeElement !== notesEl) notesEl.value = currentNotes;
   if (currentNotes) document.getElementById("notesToggle").open = true;
@@ -2166,6 +2264,7 @@ document.getElementById("chargeConfirm").addEventListener("click", async () => {
   if (!newOrder.isTest) openOrders.unshift(newOrder);
   ordersStore.save(newOrder);
   logOrderToDiscord(sale);
+  if (!sale.isTest) takeStock(items);
   logActivity(sale.isTest ? "Sale (test)" : "Sale", `${fmt(sale.total)} by ${sale.method}, ${items.reduce((n, i) => n + i.qty, 0)} items${sale.table ? ", table " + sale.table : ""}`);
   if (sale.discountAmount > 0) logActivity("Discount given", `${sale.discountLabel || "Discount"} −${fmt(sale.discountAmount)} on ${fmt(sale.base)}${sale.table ? ", table " + sale.table : ""}`);
   saveLocal(LS_LAST_ORDER, cart); // for the Dock layout's "Last order again"
@@ -2240,7 +2339,19 @@ async function savePushSubscription(sub){
   if (!supabaseClient || !sub || !currentVenueId) return;
   const json = sub.toJSON ? sub.toJSON() : sub;
   const id = "px" + btoa(json.endpoint).replace(/[^a-zA-Z0-9]/g, "").slice(0, 60);
-  try { await supabaseClient.from("push_subscriptions").upsert({ id, user_id: currentUserId || "unknown", venue_id: currentVenueId, endpoint: json.endpoint, subscription: json }); } catch(e){}
+  // Only once someone's signed in: a subscription saved before that had no person, so pushes sent
+  // to them (e.g. Call for service) never found this device.
+  if (!currentUserId) return;
+  try { await supabaseClient.from("push_subscriptions").upsert({ id, user_id: currentUserId, venue_id: currentVenueId, endpoint: json.endpoint, subscription: json }); } catch(e){}
+}
+// Called on every sign-in (and venue change), so this device's subscription always belongs to whoever
+// is signed in on it now.
+var pushSavedFor = null; // var: applyLoginState can run before this line on first load
+function ensurePushForUser(){
+  const key = currentUserId ? currentUserId + "|" + currentVenueId : null;
+  if (!key || key === pushSavedFor || !("Notification" in window) || Notification.permission !== "granted") return;
+  pushSavedFor = key;
+  enablePush();
 }
 async function enablePush(){
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
@@ -2296,6 +2407,8 @@ function checkPersonalNotifications(list){
 }
 // Master settings: react when $YSTEM changes something, and to "refresh / sign out tills".
 document.addEventListener("nipos:settingschange", () => applyLoginState());
+// Section B switches change what the menu shows (tags, favourites, stock, new prices).
+document.addEventListener("nipos:settingschange", () => { if (!currentVenue) return; renderMenuSections(); renderQtys(); renderDietFilter(); applyVisibility(); });
 onRemoteCommand("refresh", () => location.reload());
 onRemoteCommand("signout", () => { if (!currentUser) return false; if (!currentUser.system) signOut(); });
 async function logOrderToDiscord(sale){
@@ -2370,6 +2483,7 @@ function applyLoginState(){
   maintenanceLockScreen(maintenanceLocksOut(currentUser), signOut);
   renderAnnouncement(currentVenue && currentVenue.id);
   renderNotifyRow();
+  ensurePushForUser();
   applyBigText(currentUser, currentVenue && currentVenue.id);
   if (currentUser) setTimeout(() => runRemoteCommands(currentVenueId), 0); // e.g. a sign-out sent while this till was closed
   const venuePicker = document.getElementById("venuePickerScreen");
@@ -2725,11 +2839,13 @@ function renderAdminHome(){
   renderOpenOrdersBadge();
 }
 
-function toggleCategoryStop(catId, on){
+async function toggleCategoryStop(catId, on){
   const cat = CAT.find(c => c.id === catId);
+  const until = on ? await askStopUntil("All of " + cat.name) : null;
+  if (until === false) return;
   logActivity(on ? "Put on stop" : "Back on sale", `All of ${cat.name}`);
   cat.items.forEach(i => {
-    if (on) { stops.add(i.name); removeProductFromCart(i.id); stopsStore.save({ id: stopRowId(i.name), ts: Date.now(), name: i.name }); }
+    if (on) { stops.add(i.name); removeProductFromCart(i.id); stopsStore.save({ id: stopRowId(i.name), ts: Date.now(), name: i.name, until }); }
     else { stops.delete(i.name); stopsStore.remove(stopRowId(i.name)); }
   });
   try{ localStorage.setItem(LS_STOPS, JSON.stringify([...stops])); }catch(e){}
@@ -2740,9 +2856,11 @@ function toggleCategoryStop(catId, on){
   if (adminView === "detail") renderAdminDetailList();
 }
 
-function toggleStop(id, name, on){
-  logActivity(on ? "Put on stop" : "Back on sale", name);
-  if (on) { stops.add(name); stopsStore.save({ id: stopRowId(name), ts: Date.now(), name }); }
+async function toggleStop(id, name, on){
+  const until = on ? await askStopUntil(name) : null;
+  if (until === false) { if (adminView === "detail") renderAdminDetailList(); return; }
+  logActivity(on ? "Put on stop" : "Back on sale", name + (until ? " (" + untilText(until) + ")" : ""));
+  if (on) { stops.add(name); stopsStore.save({ id: stopRowId(name), ts: Date.now(), name, until }); }
   else { stops.delete(name); stopsStore.remove(stopRowId(name)); }
   try{ localStorage.setItem(LS_STOPS, JSON.stringify([...stops])); }catch(e){}
   logStopToDiscord(name, on);
@@ -2772,10 +2890,10 @@ function renderAdminDetailList(){
     const row = document.createElement("div");
     row.className = "stop-row";
     row.innerHTML = `
-      <div class="info"><div class="name">${esc(p.name)}${on ? `<span class="stop-tag">On stop</span>` : ""}</div><div class="price tabular">${fmt(p.pence)}</div></div>
+      <div class="info"><div class="name">${esc(p.name)}${on ? `<span class="stop-tag">On stop${stopUntil.has(p.name) ? " " + untilText(stopUntil.get(p.name)) : ""}</span>` : ""}</div><div class="price tabular">${fmt(p.pence)}</div></div>
       <button type="button" class="stop-btn${on ? " on" : ""}" aria-label="${on ? "Put " + esc(p.name) + " back on sale" : "Put " + esc(p.name) + " on stop"}">${on ? "Back on sale" : "Put on stop"}</button>`;
-    row.querySelector(".stop-btn").addEventListener("click", () => {
-      toggleStop(p.id, p.name, !on);
+    row.querySelector(".stop-btn").addEventListener("click", async () => {
+      await toggleStop(p.id, p.name, !on);
       renderAdminDetailList();
     });
     wrap.appendChild(row);

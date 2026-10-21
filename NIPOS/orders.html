@@ -122,7 +122,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021g">
+<link rel="stylesheet" href="nipos.css?v=20261021h">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -248,7 +248,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021g"></script>
+<script src="db.js?v=20261021h"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -312,6 +312,7 @@ function applyLoginState(){
   applyBigText(currentUser, currentVenue && currentVenue.id);
   if (u) setTimeout(() => runRemoteCommands(currentVenueId), 0);
   document.getElementById("notifyBtn").hidden = !canNotify(u);
+  ensurePushForUser();
 }
 document.addEventListener("nipos:settingschange", () => applyLoginState());
 onRemoteCommand("refresh", () => location.reload());
@@ -452,7 +453,19 @@ async function savePushSubscription(sub){
   if (!supabaseClient || !sub || !currentVenueId) return;
   const json = sub.toJSON ? sub.toJSON() : sub;
   const id = "px" + btoa(json.endpoint).replace(/[^a-zA-Z0-9]/g, "").slice(0, 60);
-  try { await supabaseClient.from("push_subscriptions").upsert({ id, user_id: currentUserId || "unknown", venue_id: currentVenueId, endpoint: json.endpoint, subscription: json }); } catch(e){}
+  // Only once someone's signed in: a subscription saved before that had no person, so pushes sent
+  // to them (e.g. Call for service) never found this device.
+  if (!currentUserId) return;
+  try { await supabaseClient.from("push_subscriptions").upsert({ id, user_id: currentUserId, venue_id: currentVenueId, endpoint: json.endpoint, subscription: json }); } catch(e){}
+}
+// Called on every sign-in (and venue change), so this device's subscription always belongs to whoever
+// is signed in on it now.
+var pushSavedFor = null; // var: applyLoginState can run before this line on first load
+function ensurePushForUser(){
+  const key = currentUserId ? currentUserId + "|" + currentVenueId : null;
+  if (!key || key === pushSavedFor || !("Notification" in window) || Notification.permission !== "granted") return;
+  pushSavedFor = key;
+  enablePush();
 }
 async function enablePush(){
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
@@ -1015,11 +1028,14 @@ function renderStockList(){
     h.className = "stock-cat";
     h.innerHTML = `<span>${esc(cat.name)}</span><button type="button" class="stock-cat-btn${allStopped ? " on" : ""}" aria-label="${allStopped ? "Put all of " + esc(cat.name) + " back on sale" : "Put all of " + esc(cat.name) + " on stop"}">${allStopped ? "Back on sale" : "Stop all"}</button>`;
     h.querySelector("button").addEventListener("click", async e => {
-      e.currentTarget.disabled = true;
+      const btn = e.currentTarget;
       const on = !allStopped;
+      const until = on ? await askStopUntil("All of " + cat.name) : null;
+      if (until === false) return;
+      btn.disabled = true;
       for (const p of cat.items) {
         if (on === stops.has(p.name)) continue;
-        if (on) { stops.add(p.name); await stopsStore.save({ id: stopRowId(p.name), ts: Date.now(), name: p.name }); }
+        if (on) { stops.add(p.name); await stopsStore.save({ id: stopRowId(p.name), ts: Date.now(), name: p.name, until }); }
         else { stops.delete(p.name); await stopsStore.remove(stopRowId(p.name)); }
       }
       knownStops = new Set(stops);
@@ -1034,10 +1050,12 @@ function renderStockList(){
       row.className = "stock-row" + (on ? " on" : "");
       row.innerHTML = `<span>${esc(p.name)}</span><span class="stock-state">${on ? "On stop" : "Available"}</span><span class="switch"><input type="checkbox" aria-label="${esc(p.name)} on stop" ${on ? "checked" : ""}><span class="slider"></span></span>`;
       row.querySelector('input[type="checkbox"]').addEventListener("change", async e => {
+        const until = e.target.checked ? await askStopUntil(p.name) : null;
+        if (until === false) { e.target.checked = false; return; }
         row.classList.toggle("on", e.target.checked);
         row.querySelector(".stock-state").textContent = e.target.checked ? "On stop" : "Available";
         logActivity(e.target.checked ? "Put on stop" : "Back on sale", p.name);
-        if (e.target.checked) { stops.add(p.name); await stopsStore.save({ id: stopRowId(p.name), ts: Date.now(), name: p.name }); }
+        if (e.target.checked) { stops.add(p.name); await stopsStore.save({ id: stopRowId(p.name), ts: Date.now(), name: p.name, until }); }
         else { stops.delete(p.name); await stopsStore.remove(stopRowId(p.name)); }
         knownStops = new Set(stops);
         logStopToDiscord(p.name, e.target.checked);
