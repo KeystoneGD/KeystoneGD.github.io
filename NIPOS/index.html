@@ -373,8 +373,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   <div class="pt-lcd" id="ptDisplay" aria-live="polite"></div>
   <div class="sheet-body">
     <div class="hh-status" id="hhStatus" hidden>
-      <span class="hh-label"><span data-icon="clock"></span>Happy Hour pricing is on</span>
-      <span class="hh-sub">Cocktails: buy one, get one half price</span>
+      <span class="hh-label"><span data-icon="clock"></span><span id="hhStatusLabel">Happy Hour pricing is on</span></span>
+      <span class="hh-sub" id="hhStatusSub">Cocktails: buy one, get one half price</span>
     </div>
     <div id="cartLines"></div>
     <div class="empty-state" id="cartEmpty" style="display:none;">Order is empty.<br>Tap items on the menu to add them.</div>
@@ -982,10 +982,13 @@ async function pullRowStores(){
   if (discountRows) { customDiscounts = discountRows; renderDiscountChips(); }
 }
 
+const LS_DEALS = "starlightTill.deals.v1"; // the venue's deals (see Deals below)
+let dealsDoc = null;
 const PERSISTED_KEYS = [
   { key: LS_CART, set: v => { cart = v; renderQtys(); renderCartBar(); } },
   { key: LS_CUSTOM, set: v => { customProducts = v; customProducts.forEach(p => { BY_ID[p.id] = hydrateCustomProduct(p); }); renderCustomCategories(); }, live: true },
   { key: LS_HH_OVERRIDE, set: v => { hhOverride = v; }, live: true },
+  { key: LS_DEALS, set: v => { dealsDoc = v; }, live: true },
   { key: LS_MODE, set: v => { menuMode = v; applyVisibility(); } }
 ];
 
@@ -1087,11 +1090,11 @@ let cashGivenPence = 0;
 function discountButtons(){
   const c = featureOn("discounts") && featureConfig("discounts").buttons;
   if (!c || !c.length) return DISCOUNTS;
-  return c.filter(d => d && d.label && Number(d.pct) > 0).map(d => ({ id: d.id, label: d.label, pct: Number(d.pct), notOnHappyHour: !!d.notOnHappyHour }))
+  return c.filter(d => d && d.label && Number(d.pct) > 0).map(d => ({ id: d.id, label: d.label, pct: Number(d.pct) }))
     .concat(DISCOUNTS.filter(d => d.id === "customPct" || d.id === "customOffer"));
 }
 const DISCOUNTS = [
-  { id:"owner10", label:"Owner's 10%", pct:10, notOnHappyHour:true },
+  { id:"owner10", label:"Owner's 10%", pct:10 },
   { id:"team50", label:"Team 50%", pct:50 },
   { id:"team20", label:"Team 20%", pct:20 },
   { id:"customPct", label:"Custom %" },
@@ -1144,73 +1147,105 @@ function removeProductFromCart(id){
 function cartTotalPence(){ return Object.entries(cart).reduce((s,[key,qty]) => s + lineInfo(key).pence * qty, 0); }
 function cartCount(){ return Object.values(cart).reduce((s,q) => s+q, 0); }
 
-// Master settings > Happy Hour: days, times, the deal and which categories count. Off = the
-// original 3-6pm & 9.30pm-close, second cocktail half price, on every day.
-function happyHourConfig(){ return featureOn("happyHour") ? featureConfig("happyHour") : null; }
-function happyHourItemIds(){
-  const cfg = happyHourConfig();
-  if (!cfg || !(cfg.categories || []).length) return COCKTAIL_IDS;
-  const names = new Set(cfg.categories);
+// --- Deals (Backend > Discounts, per venue). Each deal: a name, when it's on, which categories count,
+// what makes a pair (any two from the selection, or two of the same product; optionally only when both
+// cost the same), which of the pair gets money off (the cheaper or the dearer one) and how much, plus
+// how each discount button behaves while it's on. Until a venue saves its own deals it gets the
+// original Happy Hour: cocktails, 3-6pm and 9.30pm-close, the cheaper of each two half price, and
+// Owner's 10% not on the cocktails.
+const DEFAULT_DEALS = [{ id: "happyhour", name: "Happy Hour", enabled: true,
+  windows: [{ days: [], from: "15:00", to: "18:00" }, { days: [], from: "21:30", to: "close" }],
+  categories: [], pairFrom: "selection", samePrice: false, discounted: "cheaper", pct: 50, buttons: { owner10: "notOnDeal" } }];
+function venueDeals(){ return Array.isArray(dealsDoc) ? dealsDoc : DEFAULT_DEALS; }
+function dealInWindow(d){
+  const now = new Date(), day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
+  const toMins = t => { const [h, m] = String(t || "0:0").split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+  const windows = d.windows || [];
+  if (!windows.length) return true; // no times set = all day
+  return windows.some(w => (!w.days || !w.days.length || w.days.includes(day)) && mins >= toMins(w.from) && mins < (!w.to || w.to === "close" || w.to === "24:00" ? 24 * 60 : toMins(w.to)));
+}
+// Backend's "Deals right now" switch (hhOverride) forces every switched-on deal on or off.
+function activeDeals(){
+  if (hhOverride === false) return [];
+  return venueDeals().filter(d => d.enabled !== false && (hhOverride === true || dealInWindow(d)));
+}
+function isHappyHourNow(){ return activeDeals().length > 0; }
+function dealItemIds(d){
+  if (!d.categories || !d.categories.length) return COCKTAIL_IDS;
+  const names = new Set(d.categories);
   return new Set(CAT.filter(c => names.has(c.name)).flatMap(c => c.items.map(i => i.id)));
 }
-function happyHourSecondPct(){ const cfg = happyHourConfig(); const p = cfg ? Number(cfg.secondItemPct) : NaN; return isFinite(p) && p >= 0 && p <= 100 ? p : 50; }
-function isHappyHourNow(){
-  if (hhOverride === true) return true;
-  if (hhOverride === false) return false;
-  const cfg = happyHourConfig();
-  if (cfg) {
-    const now = new Date(), day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
-    const toMins = t => { const [h, m] = String(t || "0:0").split(":").map(Number); return (h || 0) * 60 + (m || 0); };
-    return (cfg.windows || []).some(w => (!w.days || !w.days.length || w.days.includes(day)) && mins >= toMins(w.from) && mins < (w.to === "close" || w.to === "24:00" ? 24 * 60 : toMins(w.to)));
-  }
-  const now = new Date();
-  const mins = now.getHours() * 60 + now.getMinutes();
-  return (mins >= 15*60 && mins < 18*60) || (mins >= 21*60+30 && mins < 24*60);
+function dealDescription(d){
+  const what = !d.categories || !d.categories.length ? "Cocktails" : d.categories.map(n => splitCatName(n).title).join(", ");
+  const pct = Number(d.pct) || 0, off = pct >= 100 ? "free" : pct === 50 ? "half price" : `${pct}% off`;
+  return `${what}: buy 2${d.pairFrom === "sameProduct" ? " of the same" : ""}${d.samePrice ? " at the same price" : ""}, the ${d.discounted === "dearer" ? "dearer" : "cheaper"} one ${off}`;
 }
-
+// Splits the order into deal items (with each active deal's money off) and everything else.
 function priceBreakdown(){
-  const hh = isHappyHourNow();
-  let cocktailPence = 0, otherPence = 0;
-  if (hh) {
-    const prices = [];
-    const hhIds = happyHourItemIds(), second = 1 - happyHourSecondPct() / 100;
-    Object.entries(cart).forEach(([key, qty]) => {
-      if (hhIds.has(key)) { const p = BY_ID[key].pence; for (let i = 0; i < qty; i++) prices.push(p); }
-      else otherPence += lineInfo(key).pence * qty;
+  const remaining = { ...cart };
+  let cocktailPence = 0;
+  const savings = [];
+  activeDeals().forEach(d => {
+    const ids = dealItemIds(d), pct = Math.max(0, Math.min(100, Number(d.pct) || 0));
+    const groups = new Map();
+    Object.keys(remaining).forEach(key => {
+      if (!ids.has(key) || !remaining[key]) return; // plain items only, as before (not ones with options)
+      const price = BY_ID[key].pence;
+      const g = (d.pairFrom === "sameProduct" ? key : "*") + (d.samePrice ? "|" + price : "");
+      if (!groups.has(g)) groups.set(g, []);
+      for (let i = 0; i < remaining[key]; i++) groups.get(g).push(price);
+      delete remaining[key];
     });
-    prices.sort((a, b) => b - a);
-    for (let i = 0; i < prices.length; i += 2) {
-      cocktailPence += (i + 1 < prices.length) ? prices[i] + Math.round(prices[i + 1] * second) : prices[i];
-    }
-  } else {
-    const hhIds = happyHourItemIds();
-    Object.entries(cart).forEach(([key, qty]) => {
-      if (hhIds.has(key)) cocktailPence += lineInfo(key).pence * qty;
-      else otherPence += lineInfo(key).pence * qty;
+    let saved = 0;
+    groups.forEach(prices => {
+      prices.sort((a, b) => b - a);
+      for (let i = 0; i < prices.length; i += 2) {
+        if (i + 1 >= prices.length) { cocktailPence += prices[i]; continue; }
+        const dear = prices[i], cheap = prices[i + 1];
+        const off = d.discounted === "dearer" ? Math.round(dear * pct / 100) : Math.round(cheap * pct / 100);
+        cocktailPence += dear + cheap - off; saved += off;
+      }
     });
-  }
-  return { cocktailPence, otherPence, total: cocktailPence + otherPence };
+    if (saved) savings.push({ deal: d, saved });
+  });
+  const otherPence = Object.entries(remaining).reduce((sum, [key, qty]) => sum + lineInfo(key).pence * qty, 0);
+  return { cocktailPence, otherPence, total: cocktailPence + otherPence, savings };
 }
 
 function baseTotalPence(){ return priceBreakdown().total; }
 
+// How a discount button behaves right now: "allowed", "notOnDeal" (not on the deal's items) or "off".
+// Custom offers are saved against their name ("offer:<name>"), since each venue's copy has its own id.
+function dealButtonKey(id){
+  const offer = customDiscounts.find(o => o.id === id);
+  return offer ? "offer:" + offer.label : id;
+}
+function discountRuleNow(id){
+  let rule = "allowed";
+  const key = dealButtonKey(id);
+  activeDeals().forEach(d => { const r = (d.buttons || {})[key]; if (r === "off") rule = "off"; else if (r === "notOnDeal" && rule !== "off") rule = "notOnDeal"; });
+  return rule;
+}
 function computeTotals(){
   const base = baseTotalPence();
   let discountAmount = 0, discountLabel = null;
+  if (discount && discountRuleNow(discount.id) === "off") discount = null; // a deal that's just started switches it off
   if (discount) {
-    const btn = discountButtons().find(d => d.id === discount.id);
-    if (btn && btn.notOnHappyHour && isHappyHourNow()) {
+    const btn = discountButtons().concat(customDiscounts).find(d => d.id === discount.id);
+    const rule = discountRuleNow(discount.id);
+    if (rule === "notOnDeal" && discount.pct) {
       const { cocktailPence, otherPence } = priceBreakdown();
-      discountAmount = Math.round(otherPence * btn.pct / 100);
-      discountLabel = cocktailPence > 0 ? `${btn.label} (not on cocktails, Happy Hour)` : `${btn.label} (${btn.pct}% off)`;
+      const names = activeDeals().filter(d => (d.buttons || {})[dealButtonKey(discount.id)] === "notOnDeal");
+      discountAmount = Math.round(otherPence * discount.pct / 100);
+      const label = btn ? btn.label : "Discount";
+      discountLabel = cocktailPence > 0 ? `${label} (not on ${names.some(d => !d.categories || !d.categories.length) ? "cocktails" : "deal items"}, ${names.map(d => d.name).join(" & ")})` : `${label} (${discount.pct}% off)`;
     } else if (discount.id === "customOffer") {
       const offer = Math.min(discount.offerPence, base);
       discountAmount = base - offer;
       if (discountAmount > 0) discountLabel = `Custom offer (${((discountAmount / base) * 100).toFixed(1)}% off)`;
     } else {
       discountAmount = Math.round(base * discount.pct / 100);
-      const found = discountButtons().concat(customDiscounts).find(d => d.id === discount.id);
-      discountLabel = `${found ? found.label : "Discount"} (${discount.pct}% off)`;
+      discountLabel = `${btn ? btn.label : "Discount"} (${discount.pct}% off)`;
     }
   }
   return { base, discountAmount, discountLabel, total: Math.max(0, base - discountAmount) };
@@ -1919,7 +1954,12 @@ function renderCartSheet(){
   cardBtn.textContent = hasItems ? `Card ${fmt(payTotal)}` : "Card";
   cashBtn.textContent = "Cash";
   cardBtn.disabled = cashBtn.disabled = !hasItems;
-  document.getElementById("hhStatus").hidden = !isHappyHourNow();
+  const dealsOn = activeDeals();
+  document.getElementById("hhStatus").hidden = !dealsOn.length;
+  if (dealsOn.length) {
+    document.getElementById("hhStatusLabel").textContent = `${dealsOn.map(d => d.name).join(" & ")} pricing is on`;
+    document.getElementById("hhStatusSub").textContent = dealsOn.map(dealDescription).join(" · ");
+  }
   const wrap = document.getElementById("cartLines");
   const ids = Object.keys(cart);
   document.getElementById("cartEmpty").style.display = ids.length ? "none" : "";
@@ -1953,7 +1993,7 @@ document.getElementById("tableInput").addEventListener("keydown", e => { if (e.k
 function renderDiscountChips(){
   const wrap = document.getElementById("discountChips");
   wrap.innerHTML = "";
-  discountButtons().concat(customDiscounts).forEach(d => {
+  discountButtons().concat(customDiscounts).filter(d => discountRuleNow(d.id) !== "off").forEach(d => {
     const chip = document.createElement("button");
     chip.type = "button";
     const active = discount && discount.id === d.id;

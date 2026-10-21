@@ -146,6 +146,13 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .feature-body input[type="checkbox"]{width:22px;height:22px;}
 .feature-body input[type="color"]{width:44px;height:44px;padding:0;border:1px solid var(--border);background:none;cursor:pointer;}
 .feature-body label.field textarea,.feature-body label.field input{display:block;margin-top:4px;}
+.deal-card{max-width:860px;}
+.deal-head{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 16px;}
+.deal-head input[type="text"]{max-width:320px;}
+.deal-choice{border:1px solid var(--border);border-radius:10px;padding:6px 12px 8px;margin:10px 0 0;max-width:520px;}
+.deal-choice legend{font-weight:700;font-size:13.5px;padding:0 4px;}
+.deal-card label.check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;cursor:pointer;}
+.deal-card input[type="checkbox"],.deal-card input[type="radio"]{width:22px;height:22px;}
 .hh-window{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 0;border-bottom:1px solid var(--border);}
 .hh-days{display:flex;flex-wrap:wrap;gap:4px 10px;}
 .hh-days label{display:inline-flex;align-items:center;gap:4px;min-height:44px;font-size:14px;}
@@ -391,15 +398,6 @@ table.data-table tr:last-child td{border-bottom:0;}
         </div>
       </div>
 
-      <div class="card" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-        <label for="hhMode" style="font-weight:700;font-size:13.5px;">Happy Hour cocktail pricing</label>
-        <select id="hhMode" style="max-width:280px;">
-          <option value="auto">Automatic (3-6pm &amp; 9.30pm onwards)</option>
-          <option value="on">Force ON</option>
-          <option value="off">Force OFF</option>
-        </select>
-      </div>
-
       <div class="tab-panel active" id="tab-catalogue">
         <div class="toolbar">
           <input type="text" id="productSearch" placeholder="Search products…" aria-label="Search products">
@@ -473,6 +471,20 @@ table.data-table tr:last-child td{border-bottom:0;}
 
     <section class="page" id="page-discounts">
       <div class="page-header"><h1>Discounts</h1><label class="page-venue" data-page-venue-wrap hidden><span>Venue</span><select data-page-venue aria-label="Venue for Discounts"></select></label></div>
+      <div class="section-title">Deals</div>
+      <p class="note">Money off when someone buys two, like Happy Hour. Each deal has its own times, the categories it covers, what makes a pair, which one gets money off, and which discount buttons can be used with it.</p>
+      <div class="card" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <label for="hhMode" style="font-weight:700;font-size:13.5px;">Deals right now</label>
+        <select id="hhMode" style="max-width:320px;">
+          <option value="auto">Follow each deal's times</option>
+          <option value="on">All switched-on deals on now</option>
+          <option value="off">All deals off now</option>
+        </select>
+      </div>
+      <p class="note" id="dealsScopeNote"></p>
+      <div id="dealsList"></div>
+      <div class="feature-actions"><button type="button" class="btn btn-ghost" id="dealAdd">Add a deal</button><button type="button" class="btn btn-accent" id="dealsSave">Save deals</button></div>
+      <p class="note" id="dealsMsg" role="status"></p>
       <div class="section-title">Add a Custom Offer</div>
       <div class="card">
         <label class="field">Name</label>
@@ -841,6 +853,7 @@ async function loadVenueData(){
   if (currentUser && currentUser.perms.xzRead) await renderZReads();
 
   hhOverride = await loadDoc(LS_HH_OVERRIDE, null);
+  venueDeals = await loadDoc(LS_DEALS, null);
   document.getElementById("hhMode").value = hhOverride === true ? "on" : hhOverride === false ? "off" : "auto";
 
   const mixerRows = await mixerOverridesStore.fetchAll();
@@ -856,6 +869,7 @@ async function loadVenueData(){
   renderVenueSwitcher();
   renderSidebarAccount();
   renderOfferList();
+  renderDeals();
   renderUserList();
   renderCategoryFilterOptions();
   renderNewProductCategoryOptions();
@@ -1001,7 +1015,7 @@ document.querySelectorAll("[data-page-venue]").forEach(sel => sel.addEventListen
   if (e.target.value === "__all") {
     productsAllVenues = true;
     await loadAllVenuesData();
-    renderVenueSwitcher(); renderOfferList(); renderCategoryFilterOptions(); renderNewProductCategoryOptions(); renderProductsList(); renderCategoriesList();
+    renderVenueSwitcher(); renderOfferList(); renderDeals(); renderCategoryFilterOptions(); renderNewProductCategoryOptions(); renderProductsList(); renderCategoriesList();
     refreshCornerIdentity();
     return;
   }
@@ -1141,7 +1155,6 @@ const FEATURES = [
   { key: "remote", name: "Refresh or sign out tills", about: "Reload every till and order screen (to pick up an update) or sign everyone out, for one venue or everywhere." },
   { key: "personal", name: "Own layout and theme per person", about: "Give anyone their own till layout and theme. It follows them to whichever device they sign in on." },
   { key: "venueColours", name: "Extra venue colours", about: "Add your own venue colours, with a shade for each theme. The text on them is picked so it always reads." },
-  { key: "happyHour", name: "Happy Hour", about: "Choose the days and times, the deal, and which categories count. Backend's Happy Hour switch on the Products page still forces it on or off." },
   { key: "discounts", name: "Discount buttons", about: "Add, rename, change or remove the fixed discount buttons on the till (Owner's 10%, Team 50%, Team 20%)." },
   { key: "drinkOptions", name: "Drink options", about: "The mixer dashes and their prices, the cordials, and whether draught asks about a lemonade top." },
   { key: "layoutGroups", name: "Layout groups", about: "Your own groups and colours for the new till layouts, and which category goes in which group." },
@@ -1170,46 +1183,17 @@ const allCategoryNames = () => [...new Set(realCategories.slice().sort((a, b) =>
 const F = sel => [...document.querySelectorAll("#featureList " + sel)];
 
 const FEATURE_EDITORS = {
-  happyHour: {
-    render(cfg){
-      const windows = cfg.windows || [{ days: [], from: "15:00", to: "18:00" }, { days: [], from: "21:30", to: "close" }];
-      const cats = cfg.categories || drinkCategoryNames().filter(n => n.startsWith("Cocktails"));
-      return `<span class="field">When it's on</span>
-        ${windows.map((w, i) => `<div class="hh-window" data-hh-window>
-          <div class="hh-days" role="group" aria-label="Days for time ${i + 1}">${DAY_NAMES.map((d, di) => `<label><input type="checkbox" data-hh-day="${di}" ${!w.days || !w.days.length || w.days.includes(di) ? "checked" : ""}>${d}</label>`).join("")}</div>
-          <label>From <input type="time" data-hh-from value="${esc(w.from || "15:00")}"></label>
-          <label>Until <input type="time" data-hh-to value="${w.to === "close" || w.to === "24:00" ? "" : esc(w.to || "")}"></label><span class="note">(leave Until empty for close)</span>
-          <button type="button" class="btn btn-ghost btn-sm" data-act="hh-remove" data-i="${i}">Remove</button></div>`).join("")}
-        <div class="feature-actions"><button type="button" class="btn btn-ghost" data-act="hh-add">Add a time</button></div>
-        <label class="field" for="hhPct">The deal: when someone buys 2, the cheaper one is this much off (%)</label>
-        <input type="number" id="hhPct" min="0" max="100" step="5" value="${cfg.secondItemPct != null ? Number(cfg.secondItemPct) : 50}" style="max-width:120px;">
-        <span class="field">Which categories count (none ticked = Cocktails)</span>
-        <div class="feature-people">${drinkCategoryNames().map(n => `<label><input type="checkbox" data-hh-cat="${esc(n)}" ${cats.includes(n) ? "checked" : ""}>${esc(n)}</label>`).join("")}</div>
-        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="happyHour">Save Happy Hour</button></div>`;
-    },
-    read(){
-      return {
-        windows: F("[data-hh-window]").map(row => {
-          const days = [...row.querySelectorAll("[data-hh-day]")].filter(x => x.checked).map(x => Number(x.dataset.hhDay));
-          return { days: days.length === 7 ? [] : days, from: row.querySelector("[data-hh-from]").value || "00:00", to: row.querySelector("[data-hh-to]").value || "close" };
-        }),
-        secondItemPct: Math.max(0, Math.min(100, Number(document.getElementById("hhPct").value) || 0)),
-        categories: F("[data-hh-cat]").filter(x => x.checked).map(x => x.dataset.hhCat)
-      };
-    }
-  },
   discounts: {
     render(cfg){
       const buttons = cfg.buttons || BUILTIN_DISCOUNTS;
-      return `<p class="note">The discount buttons on the till's order panel. Custom % and Custom price always stay.</p>
+      return `<p class="note">The discount buttons on the till's order panel. Custom % and Custom price always stay. Whether a button works during a deal is set on each deal (Discounts page).</p>
         ${buttons.map((d, i) => `<div class="edit-row" data-disc data-id="${esc(d.id)}">
           <label>Name <input type="text" data-disc-label value="${esc(d.label)}" maxlength="24"></label>
           <label>% off <input type="number" data-disc-pct min="1" max="100" value="${Number(d.pct) || 10}" style="max-width:90px;"></label>
-          <label class="check"><input type="checkbox" data-disc-hh ${d.notOnHappyHour ? "checked" : ""}>Not on Happy Hour drinks</label>
           <button type="button" class="btn btn-ghost btn-sm" data-act="disc-remove" data-i="${i}">Remove</button></div>`).join("")}
         <div class="feature-actions"><button type="button" class="btn btn-ghost" data-act="disc-add">Add a discount</button><button type="button" class="btn btn-solid" data-act="save-editor" data-key="discounts">Save discounts</button></div>`;
     },
-    read(){ return { buttons: F("[data-disc]").map(row => ({ id: row.dataset.id, label: row.querySelector("[data-disc-label]").value.trim(), pct: Number(row.querySelector("[data-disc-pct]").value) || 0, notOnHappyHour: row.querySelector("[data-disc-hh]").checked })).filter(d => d.label && d.pct > 0) }; }
+    read(){ return { buttons: F("[data-disc]").map(row => ({ id: row.dataset.id, label: row.querySelector("[data-disc-label]").value.trim(), pct: Number(row.querySelector("[data-disc-pct]").value) || 0 })).filter(d => d.label && d.pct > 0) }; }
   },
   drinkOptions: {
     render(cfg){
@@ -1540,8 +1524,6 @@ async function runFeatureAction(act, btn){
   if (act === "export-run") return runExport();
   if (act === "role-add") return editorRowChange("roleTemplates", "templates", l => l.concat([{ id: uid("role"), name: "New role", perms: { active: true, placeOrders: true } }]));
   if (act === "role-remove") { const i = Number(btn.dataset.i); return editorRowChange("roleTemplates", "templates", l => l.filter((_, j) => j !== i)); }
-  if (act === "hh-add") return editorRowChange("happyHour", "windows", l => l.concat([{ days: [], from: "17:00", to: "19:00" }]));
-  if (act === "hh-remove") return editorRowChange("happyHour", "windows", removeAt(btn.dataset.i));
   if (act === "disc-add") return editorRowChange("discounts", "buttons", l => l.concat([{ id: uid("d"), label: "New discount", pct: 10 }]));
   if (act === "disc-remove") return editorRowChange("discounts", "buttons", removeAt(btn.dataset.i));
   if (act === "dash-add") return editorRowChange("drinkOptions", "dashes", l => l.concat([{ id: uid("x"), name: "", pence: 100 }]));
@@ -2425,6 +2407,95 @@ document.getElementById("hhMode").addEventListener("change", async e => {
   hhOverride = e.target.value === "on" ? true : e.target.value === "off" ? false : null;
   if (productsAllVenues) { for (const v of scopeVenueIds()) await saveDocFor(v, LS_HH_OVERRIDE, hhOverride); }
   else await saveDoc(LS_HH_OVERRIDE, hhOverride);
+});
+
+/* ---------- Discounts: Deals (per venue, or every venue on All venues) ----------
+   Replaces the old fixed Happy Hour. Stored per venue in app_state (starlightTill.deals.v1); until a
+   venue saves its own, the till uses the original Happy Hour, which is also what this opens with. */
+const LS_DEALS = "starlightTill.deals.v1";
+const DEFAULT_DEALS = [{ id: "happyhour", name: "Happy Hour", enabled: true,
+  windows: [{ days: [], from: "15:00", to: "18:00" }, { days: [], from: "21:30", to: "close" }],
+  categories: [], pairFrom: "selection", samePrice: false, discounted: "cheaper", pct: 50, buttons: { owner10: "notOnDeal" } }];
+let venueDeals = null, dealsSavedNote = "";
+// Every button the till can show: the fixed ones (Master settings > Discount buttons, or the built-in
+// three), the custom offers below, and Custom % / Custom price. Custom offers are matched by name, so
+// the same rule works at every venue.
+function dealButtonList(){
+  const fixed = featureOn("discounts") && (featureConfig("discounts").buttons || []).length ? featureConfig("discounts").buttons : BUILTIN_DISCOUNTS;
+  return fixed.map(b => ({ key: b.id, label: b.label }))
+    .concat(customDiscounts.map(o => ({ key: "offer:" + o.label, label: o.label + " (custom offer)" })))
+    .concat([{ key: "customPct", label: "Custom %" }, { key: "customOffer", label: "Custom price" }]);
+}
+function dealCardHTML(d, i){
+  const cats = drinkCategoryNames(), chosen = new Set(d.categories || []);
+  const windows = d.windows || [];
+  return `<div class="card deal-card" data-deal="${i}" data-id="${esc(d.id)}">
+    <div class="deal-head"><label class="field" for="dealName${i}">Deal name</label><input type="text" id="dealName${i}" data-deal-name value="${esc(d.name || "")}" maxlength="30">
+      <label class="check"><input type="checkbox" data-deal-on ${d.enabled !== false ? "checked" : ""}>Switched on</label></div>
+    <span class="field">When it's on (no times = all day)</span>
+    ${windows.map((w, wi) => `<div class="hh-window" data-deal-window>
+      <div class="hh-days" role="group" aria-label="Days">${DAY_NAMES.map((dn, di) => `<label><input type="checkbox" data-day="${di}" ${!w.days || !w.days.length || w.days.includes(di) ? "checked" : ""}>${dn}</label>`).join("")}</div>
+      <label>From <input type="time" data-from value="${esc(w.from || "15:00")}"></label>
+      <label>Until <input type="time" data-to value="${w.to === "close" || w.to === "24:00" || !w.to ? "" : esc(w.to)}"></label><span class="note">(empty = close)</span>
+      <button type="button" class="btn btn-ghost btn-sm" data-deal-act="window-remove" data-i="${i}" data-w="${wi}">Remove</button></div>`).join("")}
+    <div class="feature-actions"><button type="button" class="btn btn-ghost btn-sm" data-deal-act="window-add" data-i="${i}">Add a time</button></div>
+    <span class="field">Which categories count (none ticked = Cocktails)</span>
+    <div class="feature-people">${cats.map(n => `<label><input type="checkbox" data-deal-cat="${esc(n)}" ${chosen.has(n) ? "checked" : ""}>${esc(n)}</label>`).join("") || `<span class="note">No categories at this venue yet.</span>`}</div>
+    <fieldset class="deal-choice"><legend>What makes a pair</legend>
+      <label class="check"><input type="radio" name="dealPair${i}" value="selection" ${d.pairFrom !== "sameProduct" ? "checked" : ""}>Any two from the categories above</label>
+      <label class="check"><input type="radio" name="dealPair${i}" value="sameProduct" ${d.pairFrom === "sameProduct" ? "checked" : ""}>Two of the same product</label>
+      <label class="check"><input type="checkbox" data-deal-same-price ${d.samePrice ? "checked" : ""}>Only when both cost the same</label></fieldset>
+    <fieldset class="deal-choice"><legend>Which one gets money off</legend>
+      <label class="check"><input type="radio" name="dealWhich${i}" value="cheaper" ${d.discounted !== "dearer" ? "checked" : ""}>The cheaper one</label>
+      <label class="check"><input type="radio" name="dealWhich${i}" value="dearer" ${d.discounted === "dearer" ? "checked" : ""}>The more expensive one</label></fieldset>
+    <label class="field" for="dealPct${i}">How much off it (%)</label><input type="number" id="dealPct${i}" data-deal-pct min="1" max="100" step="5" value="${Number(d.pct) || 50}" style="max-width:120px;">
+    <span class="field">Discount buttons while this deal is on</span>
+    <table class="feature-table"><tbody>${dealButtonList().map(b => { const v = (d.buttons || {})[b.key] || "allowed"; return `<tr><th scope="row">${esc(b.label)}</th><td><select data-deal-button="${esc(b.key)}" aria-label="${esc(b.label)} during ${esc(d.name || "this deal")}">
+      <option value="allowed" ${v === "allowed" ? "selected" : ""}>Allowed</option><option value="notOnDeal" ${v === "notOnDeal" ? "selected" : ""}>Not on this deal's items</option><option value="off" ${v === "off" ? "selected" : ""}>Switched off</option></select></td></tr>`; }).join("")}</tbody></table>
+    <div class="feature-actions"><button type="button" class="btn btn-danger btn-sm" data-deal-act="remove" data-i="${i}">Remove this deal</button></div>
+  </div>`;
+}
+function renderDeals(list){
+  const deals = list || venueDeals || DEFAULT_DEALS;
+  document.getElementById("dealsList").innerHTML = deals.map(dealCardHTML).join("") || `<div class="empty">No deals. Add one below.</div>`;
+  document.getElementById("dealsScopeNote").textContent = productsAllVenues ? `Showing ${currentVenue ? currentVenue.name : "this venue"}'s deals. Saving copies them to every venue.` : (venueDeals ? "" : "These are the original Happy Hour settings. Nothing is saved for this venue yet.");
+  document.getElementById("dealsList").querySelectorAll("[data-deal-act]").forEach(b => b.addEventListener("click", () => dealAction(b)));
+}
+function readDeals(){
+  return [...document.querySelectorAll("#dealsList [data-deal]")].map(card => {
+    const i = card.dataset.deal, buttons = {};
+    card.querySelectorAll("[data-deal-button]").forEach(sel => { if (sel.value !== "allowed") buttons[sel.dataset.dealButton] = sel.value; });
+    return {
+      id: card.dataset.id, name: card.querySelector("[data-deal-name]").value.trim() || "Deal", enabled: card.querySelector("[data-deal-on]").checked,
+      windows: [...card.querySelectorAll("[data-deal-window]")].map(w => { const days = [...w.querySelectorAll("[data-day]")].filter(x => x.checked).map(x => Number(x.dataset.day)); return { days: days.length === 7 ? [] : days, from: w.querySelector("[data-from]").value || "00:00", to: w.querySelector("[data-to]").value || "close" }; }),
+      categories: [...card.querySelectorAll("[data-deal-cat]")].filter(x => x.checked).map(x => x.dataset.dealCat),
+      pairFrom: card.querySelector(`input[name="dealPair${i}"]:checked`).value, samePrice: card.querySelector("[data-deal-same-price]").checked,
+      discounted: card.querySelector(`input[name="dealWhich${i}"]:checked`).value, pct: Math.max(1, Math.min(100, Number(card.querySelector("[data-deal-pct]").value) || 50)), buttons
+    };
+  });
+}
+function dealAction(btn){
+  const deals = readDeals(), i = Number(btn.dataset.i);
+  if (btn.dataset.dealAct === "window-add") deals[i].windows.push({ days: [], from: "17:00", to: "19:00" });
+  if (btn.dataset.dealAct === "window-remove") deals[i].windows.splice(Number(btn.dataset.w), 1);
+  if (btn.dataset.dealAct === "remove") { if (!confirm(`Remove ${deals[i].name}?`)) return; deals.splice(i, 1); }
+  renderDeals(deals);
+  document.getElementById("dealsMsg").textContent = "Not saved yet.";
+}
+document.getElementById("dealAdd").addEventListener("click", () => {
+  const deals = readDeals();
+  deals.push({ id: "deal" + Date.now().toString(36), name: "New deal", enabled: false, windows: [], categories: [], pairFrom: "selection", samePrice: false, discounted: "cheaper", pct: 50, buttons: {} });
+  renderDeals(deals);
+  document.getElementById("dealsMsg").textContent = "Not saved yet. New deals start switched off.";
+});
+document.getElementById("dealsSave").addEventListener("click", async () => {
+  const deals = readDeals();
+  if (productsAllVenues) { for (const v of scopeVenueIds()) await saveDocFor(v, LS_DEALS, deals); }
+  else await saveDoc(LS_DEALS, deals);
+  venueDeals = deals;
+  renderDeals();
+  document.getElementById("dealsMsg").textContent = `Deals saved${productsAllVenues ? " at every venue" : ""}. Tills pick them up within a few seconds.`;
+  logActivity("Changed deals", deals.map(d => `${d.name} (${d.enabled ? "on" : "off"})`).join(", "), productsAllVenues ? null : undefined);
 });
 
 /* ---------- Discounts ---------- */
