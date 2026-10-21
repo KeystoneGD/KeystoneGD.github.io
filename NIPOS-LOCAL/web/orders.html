@@ -133,7 +133,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021p">
+<link rel="stylesheet" href="nipos.css?v=20261022a">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -146,7 +146,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 </div>
 <div class="login-gate" id="venuePickerScreen" hidden>
   <div class="login-card">
-    <h2>Choose a venue</h2>
+    <h2 id="venuePickerTitle">Choose a venue</h2>
     <p>Signed in as <span id="venuePickerUserName"></span>.</p>
     <div id="venuePickerList"></div>
     <button class="btn btn-ghost" id="venuePickerLogoutBtn">Sign out</button>
@@ -262,7 +262,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261021p"></script>
+<script src="db.js?v=20261022a"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -297,7 +297,7 @@ function modeOf(name){
 
 function applyLoginState(){
   const venuePicker = document.getElementById("venuePickerScreen");
-  if (currentUser && !currentVenue) {
+  if (currentUser && (!currentVenue || pickingKitchen)) {
     document.getElementById("loginGate").hidden = true;
     venuePicker.hidden = false;
     document.getElementById("venuePickerUserName").textContent = currentUser.name;
@@ -309,14 +309,19 @@ function applyLoginState(){
   if (u && u.perms.orderScreen) {
     document.getElementById("loginGate").hidden = true;
     document.getElementById("accountName").textContent = "Signed in as " + u.name + (currentVenue ? " · " + currentVenue.name : "");
-    applyVenueIdentity(currentVenue, u.name);
+    applyVenueIdentity(activeKitchen && currentVenue ? { ...currentVenue, name: activeKitchen.name } : currentVenue, u.name);
     if (currentVenue) document.title = currentVenue.name + (KITCHEN_PAGE ? " · Kitchen" : " · Orders");
+    if (activeKitchen) {
+      document.title = activeKitchen.name + " · Kitchen";
+    }
   } else {
     applyVenueIdentity(null);
     document.getElementById("loginGate").hidden = false;
     document.getElementById("loginMessage").textContent = u ? `Signed in as ${u.name}, but no Order Screen access.` : "Enter your PIN for Order Screen access.";
   }
-  document.getElementById("switchVenueBtn").hidden = myVenues.length < 2;
+  const switchBtn = document.getElementById("switchVenueBtn");
+  switchBtn.textContent = activeKitchen ? "Switch kitchen" : "Switch venue";
+  switchBtn.hidden = activeKitchen ? myKitchens.length < 2 : myVenues.length < 2;
   document.getElementById("stockBtn").hidden = !(u && u.perms.productsOnStop);
   document.getElementById("serviceBtn").hidden = !(u && u.perms.callToService);
   // Master settings features: own theme, Maintenance Mode, message on every till, messaging.
@@ -339,8 +344,20 @@ document.getElementById("notifyBtn").addEventListener("click", () => {
   openNotifyDialog({ user: currentUser, venue: currentVenue, venues: myVenues, fetchStaff: fetchVenueStaff, toast: showToast });
 });
 function renderVenuePicker(){
-  if (!venueCreationOrder) { loadVenueCreationOrder().then(renderVenuePicker); }
   const wrap = document.getElementById("venuePickerList");
+  document.getElementById("venuePickerTitle").textContent = pickingKitchen ? "Which kitchen is this?" : "Choose a venue";
+  if (pickingKitchen) {
+    wrap.innerHTML = "";
+    myKitchens.forEach(k => {
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "btn btn-solid venue-choice"; btn.style.marginBottom = "8px"; btn.style.width = "100%";
+      btn.innerHTML = `${esc(k.name)}<span class="oc-muted" style="margin-left:8px;font-weight:600;">${esc(kitchenVenues(k).map(v => v.name).join(", "))}</span>`;
+      btn.addEventListener("click", async () => { try { localStorage.setItem(LS_KITCHEN, k.id); } catch (e) {} pickingKitchen = false; await resolveVenueSelection(); });
+      wrap.appendChild(btn);
+    });
+    return;
+  }
+  if (!venueCreationOrder) { loadVenueCreationOrder().then(renderVenuePicker); }
   wrap.innerHTML = "";
   myVenues.forEach(v => {
     const btn = document.createElement("button");
@@ -350,8 +367,31 @@ function renderVenuePicker(){
     wrap.appendChild(btn);
   });
 }
+// Kitchens (Backend > Kitchens): on /kitchen, a kitchen cooking for several venues shows all their food
+// orders together. Each device remembers which kitchen it is.
+const LS_KITCHEN = "nipos.kitchenId";
+let myKitchens = [], activeKitchen = null, pickingKitchen = false, orderVenue = new Map();
+function kitchenVenues(k){ return myVenues.filter(v => (k.venueIds || []).includes(v.id)); }
+function kitchenVenueIds(){ return activeKitchen ? kitchenVenues(activeKitchen).map(v => v.id) : []; }
+async function resolveKitchen(){
+  activeKitchen = null; pickingKitchen = false;
+  if (!KITCHEN_PAGE || !supabaseClient) return;
+  await syncMasterTheme();
+  if (!featureOn("kitchenScreen")) return;
+  let rows = [];
+  try { const { data, error } = await supabaseClient.from("kitchens").select("id,data").order("ts"); if (!error) rows = data || []; } catch (e) {}
+  myKitchens = rows.map(r => ({ name: "Kitchen", venueIds: [], ...r.data, id: r.id })).filter(k => kitchenVenues(k).length);
+  if (!myKitchens.length) return;
+  let saved = null; try { saved = localStorage.getItem(LS_KITCHEN); } catch (e) {}
+  activeKitchen = myKitchens.find(k => k.id === saved) || (myKitchens.length === 1 ? myKitchens[0] : null);
+  if (!activeKitchen) { pickingKitchen = true; return; }
+  const ids = kitchenVenueIds();
+  if (!ids.includes(currentVenueId)) setCurrentVenueId(ids[0]);
+}
 async function resolveVenueSelection(){
   if (!myVenues.length) { currentVenue = null; applyLoginState(); return; }
+  await resolveKitchen();
+  if (pickingKitchen) { currentVenue = null; applyLoginState(); return; }
   let venue = myVenues.find(v => v.id === currentVenueId);
   if (!venue && myVenues.length === 1) { venue = myVenues[0]; setCurrentVenueId(venue.id); }
   currentVenue = venue || null;
@@ -402,7 +442,10 @@ document.getElementById("themeToggleBtn").addEventListener("click", toggleTheme)
 document.addEventListener("nipos:themechange", updateThemeBtn);
 updateThemeBtn();
 document.getElementById("venuePickerLogoutBtn").addEventListener("click", signOutOrders);
-document.getElementById("switchVenueBtn").addEventListener("click", () => { currentVenue = null; applyLoginState(); });
+document.getElementById("switchVenueBtn").addEventListener("click", () => {
+  if (activeKitchen) { try { localStorage.removeItem(LS_KITCHEN); } catch (e) {} activeKitchen = null; pickingKitchen = true; }
+  currentVenue = null; applyLoginState();
+});
 
 function fmt(pence){ return poundsText(pence); } // £ unless Master settings › Formats says otherwise
 function formatTime(ts){ return fmtTime(ts); }
@@ -612,7 +655,7 @@ async function pushNotification(toUserId, message, urgent, kind){
 
 async function pullOrders(){
   if (!dbNs || !currentVenueId) return;
-  const fetchedOrders = await ordersStore.fetchAll();
+  const fetchedOrders = kitchenVenueIds().length > 1 ? await fetchKitchenOrders() : await ordersStore.fetchAll();
   if (fetchedOrders) openOrders = fetchedOrders;
   setConnectionProblem(fetchedOrders === null && !!currentUser);
   venueStaff = await fetchVenueStaff();
@@ -630,6 +673,15 @@ async function pullOrders(){
   if (!document.getElementById("stockModal").hidden) renderStockList();
 }
 
+// Every venue this kitchen cooks for, newest first (like ordersStore.fetchAll), remembering each order's venue.
+async function fetchKitchenOrders(){
+  try {
+    const { data, error } = await supabaseClient.from("open_orders").select("data,venue_id").in("venue_id", kitchenVenueIds()).order("ts", { ascending: false }).limit(2000);
+    if (error) return null;
+    data.forEach(r => orderVenue.set(r.data.id, r.venue_id));
+    return data.map(r => r.data).filter(o => !o.isTest);
+  } catch (e) { return null; }
+}
 let connectionFailures = 0;
 function setConnectionProblem(failed){
   // One missed poll is normal on venue Wi-Fi; say something after a few in a row.
@@ -685,7 +737,8 @@ function screenView(){ if (!featureOn("kitchenScreen")) return KITCHEN_PAGE ? "o
 async function loadFoodNames(){
   if (!featureOn("kitchenScreen") || !supabaseClient || !currentVenueId) return;
   try {
-    const [{ data: cats }, { data: items }] = await Promise.all([supabaseClient.from("categories").select("data").eq("venue_id", currentVenueId), supabaseClient.from("catalogue_items").select("data").eq("venue_id", currentVenueId)]);
+    const ids = kitchenVenueIds().length ? kitchenVenueIds() : [currentVenueId];
+    const [{ data: cats }, { data: items }] = await Promise.all([supabaseClient.from("categories").select("data").in("venue_id", ids), supabaseClient.from("catalogue_items").select("data").in("venue_id", ids)]);
     const foodCats = new Set((cats || []).filter(c => c.data.mode === "food").map(c => c.data.id));
     foodNames = new Set((items || []).filter(i => foodCats.has(i.data.categoryId)).map(i => i.data.name));
     flatCatalogue.filter(p => p.mode === "food").forEach(p => foodNames.add(p.name));
@@ -736,6 +789,8 @@ function render(){
       refundPence: r ? (r.missing ? undefined : r.pence) : null,
       onAcceptOrder: () => acceptOrder(o.id),
       onReady: () => markReady(o.id),
+      venueName: kitchenVenueIds().length > 1 ? (myVenues.find(v => v.id === orderVenue.get(o.id)) || {}).name : "",
+      venueColor: (v => v ? VENUE_ACCENTS[venueAccentKey(v)].color : "")(kitchenVenueIds().length > 1 && myVenues.find(v => v.id === orderVenue.get(o.id))),
       partsNote: o.__full ? stationsNote(o.__full, stationsOf(o.__full), stationFor(o.__full)) : "",
       readyNote: o.__full && !o.__full.ready ? `${STATION_NAMES[stationFor(o.__full)]} ready. Only table service staff can mark it delivered` : "",
       // No onDeliver: once it's ready, only the till can mark it delivered (see buildOrderCard).
@@ -1076,6 +1131,17 @@ document.getElementById("serviceBtn").addEventListener("click", async () => {
 });
 document.getElementById("serviceCloseBtn").addEventListener("click", closeServiceModal);
 
+// A kitchen cooking for several venues puts things on (and off) stop at all of them.
+async function setStopHere(name, on, until){
+  const ids = kitchenVenueIds().length > 1 ? kitchenVenueIds() : [currentVenueId];
+  for (const venueId of ids) {
+    const id = venueId + ":" + name;
+    try {
+      if (on) await supabaseClient.from("stops").upsert({ id, ts: Date.now(), venue_id: venueId, data: { id, ts: Date.now(), name, until } });
+      else await supabaseClient.from("stops").delete().eq("id", id);
+    } catch (e) {}
+  }
+}
 document.getElementById("stockBtn").addEventListener("click", () => {
   document.getElementById("stockSearch").value = "";
   renderStockList();
@@ -1104,8 +1170,8 @@ function renderStockList(){
       btn.disabled = true;
       for (const p of cat.items) {
         if (on === stops.has(p.name)) continue;
-        if (on) { stops.add(p.name); await stopsStore.save({ id: stopRowId(p.name), ts: Date.now(), name: p.name, until }); }
-        else { stops.delete(p.name); await stopsStore.remove(stopRowId(p.name)); }
+        if (on) { stops.add(p.name); await setStopHere(p.name, true, until); }
+        else { stops.delete(p.name); await setStopHere(p.name, false); }
       }
       knownStops = new Set(stops);
       logStopToDiscord(cat.name + " (whole category)", on);
@@ -1124,8 +1190,8 @@ function renderStockList(){
         row.classList.toggle("on", e.target.checked);
         row.querySelector(".stock-state").textContent = e.target.checked ? "On stop" : "Available";
         logActivity(e.target.checked ? "Put on stop" : "Back on sale", p.name);
-        if (e.target.checked) { stops.add(p.name); await stopsStore.save({ id: stopRowId(p.name), ts: Date.now(), name: p.name, until }); }
-        else { stops.delete(p.name); await stopsStore.remove(stopRowId(p.name)); }
+        if (e.target.checked) { stops.add(p.name); await setStopHere(p.name, true, until); }
+        else { stops.delete(p.name); await setStopHere(p.name, false); }
         knownStops = new Set(stops);
         logStopToDiscord(p.name, e.target.checked);
       });

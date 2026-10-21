@@ -864,7 +864,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261021p";
+const NIPOS_VERSION = "20261022a";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -1575,7 +1575,8 @@ async function claimRefund(o, byName, byId) {
 }
 // opts: { isNext, myId, canRefund, refundPence (number | null while loading | undefined if no sale), onAcceptOrder,
 // onReady, onDeliver, onFlag, onAccept (customer took the substitute), onRequestRefund, onRefund,
-// partsNote (how the order's other parts are getting on), readyNote (text once this part is ready) }
+// partsNote (how the order's other parts are getting on), readyNote (text once this part is ready),
+// venueName / venueColor (a kitchen cooking for several venues) }
 function buildOrderCard(o, opts) {
   const subItem = o.items.find(i => i.substituted);
   const state = orderStage(o), refund = state === "refund" || state === "refunding";
@@ -1604,7 +1605,7 @@ function buildOrderCard(o, opts) {
       : `<div class="oc-problem">${icon("alert")}<span>${what}${o.flagIntent === "substitute" && o.flagSubstitute ? ` Offer ${esc(o.flagSubstitute)} instead, free.` : ""}</span></div>`;
   card.innerHTML = `
     <div class="oc-top">${opts.isNext ? `<span class="state-badge next">Next</span>` : ""}${badge}${orderIsLate(o) ? `<span class="state-badge late">${icon("clock")}Late</span>` : ""}<span class="oc-time">${fmtTime(o.ts)} · ${minutesAgo(o.ts)}</span></div>
-    <div class="oc-head"><h3 class="oc-table">${esc(orderLabel(o))}</h3><span class="tag">${o.method === "cash" ? "Cash" : "Card"}</span></div>
+    <div class="oc-head"><h3 class="oc-table">${esc(orderLabel(o))}</h3>${opts.venueName ? `<span class="tag oc-venue"><span class="venue-swatch" style="background:${opts.venueColor || "currentColor"}"></span>${esc(opts.venueName)}</span>` : ""}<span class="tag">${o.method === "cash" ? "Cash" : "Card"}</span></div>
     <div class="oc-items">${items}</div>
     ${o.notes ? `<div class="note-box">${icon("note")}<span>${esc(o.notes)}</span></div>` : ""}
     ${flagText}
