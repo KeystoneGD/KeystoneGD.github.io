@@ -323,8 +323,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022v">
-<link rel="stylesheet" href="layouts.css?v=20261022v">
+<link rel="stylesheet" href="nipos.css?v=20261022w">
+<link rel="stylesheet" href="layouts.css?v=20261022w">
 </head>
 <body>
 
@@ -759,7 +759,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261022v"></script>
+<script src="db.js?v=20261022w"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -1287,8 +1287,9 @@ function dealInWindow(d){
 }
 // Backend's "Deals right now" switch (hhOverride) forces every switched-on deal on or off.
 function activeDeals(){
-  if (hhOverride === false) return [];
-  return venueDeals().filter(d => d.enabled !== false && (hhOverride === true || dealInWindow(d)));
+  const forced = effectiveDealsOverride(hhOverride); // on/off until 6am, then back to each deal's times
+  if (forced === false) return [];
+  return venueDeals().filter(d => d.enabled !== false && (forced === true || dealInWindow(d)));
 }
 function isHappyHourNow(){ return activeDeals().length > 0; }
 function dealItemIds(d){
@@ -1406,8 +1407,8 @@ function computeTotals(){
 }
 
 /* ---------- modal (replaces prompt/confirm/alert, which don't work in iOS home-screen apps) ---------- */
-let modalResolve = null, modalMulti = false;
-function openModal({ title, message, withInput, placeholder, value, confirmLabel, danger, hideCancel, inputType, inputMode, choices, multi }){
+let modalResolve = null, modalMulti = false, modalPicked = []; // modalPicked: ticked values, in the order tapped
+function openModal({ title, message, withInput, placeholder, value, confirmLabel, danger, hideCancel, inputType, inputMode, choices, multi, onChange }){
   return new Promise(resolve => {
     modalResolve = resolve;
     document.getElementById("modalTitle").textContent = title;
@@ -1423,7 +1424,7 @@ function openModal({ title, message, withInput, placeholder, value, confirmLabel
     const choicesEl = document.getElementById("modalChoices");
     choicesEl.hidden = !choices;
     choicesEl.innerHTML = "";
-    modalMulti = !!(choices && multi);
+    modalMulti = !!(choices && multi); modalPicked = [];
     if (choices) {
       choices.forEach(c => {
         const b = document.createElement("button");
@@ -1439,6 +1440,9 @@ function openModal({ title, message, withInput, placeholder, value, confirmLabel
             const on = b.getAttribute("aria-pressed") !== "true";
             if (on) choicesEl.querySelectorAll("button").forEach(o => { if ((c.exclusive || o.dataset.exclusive) && o !== b) o.setAttribute("aria-pressed", "false"); });
             b.setAttribute("aria-pressed", on ? "true" : "false");
+            const ticked = new Set([...choicesEl.querySelectorAll('button[aria-pressed="true"]')].map(o => o.dataset.value));
+            modalPicked = modalPicked.filter(v => ticked.has(v) && v !== c.value).concat(on ? [c.value] : []);
+            if (onChange) onChange(modalPicked.slice());
           });
           if (c.exclusive) b.dataset.exclusive = "1";
         } else b.addEventListener("click", () => closeModal(c.value));
@@ -1462,7 +1466,7 @@ function closeModal(result){
 document.getElementById("modalCancel").addEventListener("click", () => closeModal(null));
 document.getElementById("modalConfirm").addEventListener("click", () => {
   const inputEl = document.getElementById("modalInput");
-  if (modalMulti) { closeModal([...document.querySelectorAll('#modalChoices button[aria-pressed="true"]')].map(b => b.dataset.value)); return; }
+  if (modalMulti) { closeModal(modalPicked.slice()); return; }
   closeModal(inputEl.hidden ? true : inputEl.value);
 });
 document.getElementById("modalInput").addEventListener("keydown", e => {
@@ -1482,6 +1486,7 @@ async function addSpiritToCart(product){
     { label: "Double", value: "double", sub: fmt(doublePence) }
   ]});
   if (!measure) return;
+  setDisplayPending(lineInfo(`${product.id}::${measure}::none`));
   let mixerId = "none";
   if (product.mixerType) {
     const tonicItems = (CAT.find(c => c.name === "Mixers") ? CAT.find(c => c.name === "Mixers").items : []).filter(i => !stops.has(i.name));
@@ -1492,7 +1497,8 @@ async function addSpiritToCart(product){
       mixerList.map(m => ({ label: m.name, value: m.id, sub: fmt(m.pence) })),
       extraMixers.map(m => ({ label: m.name, value: m.id, sub: fmt(m.pence) }))
     );
-    const picked = await askMultiChoice({ title: "Add mixers?", message: `For the ${product.name}. Tick as many as wanted, then Add.`, choices: mixerChoices });
+    const picked = await askMultiChoice({ title: "Add mixers?", message: `For the ${product.name}. Tick as many as wanted, then Add.`, choices: mixerChoices,
+      onChange: ids => setDisplayPending(lineInfo(`${product.id}::${measure}::${ids.filter(i => i !== "none").join("+") || "none"}`)) });
     if (picked === null) return;
     const ids = picked.filter(id => id !== "none");
     mixerId = ids.length ? ids.join("+") : "none";
@@ -1513,10 +1519,12 @@ async function addBeerToCart(product){
     if (chosen === null) return;
     sizeIndex = Number(chosen);
   }
+  setDisplayPending(lineInfo(`${product.id}::beer::${sizeIndex}::none::notop`));
   // Cordials and the lemonade top in one list: tick any (or none), then Add.
   const extraChoices = cordialOptions().map(c => c.id === "none" ? { label: "Nothing extra", value: "none", exclusive: true } : { label: c.name, value: c.id, sub: "Free" })
     .concat(lemonadeTopOffered() ? [{ label: "Lemonade Top", value: "top", sub: "Free" }] : []);
-  const picked = await askMultiChoice({ title: product.name, message: "Add cordials or a lemonade top? Tick as many as wanted, then Add.", choices: extraChoices });
+  const picked = await askMultiChoice({ title: product.name, message: "Add cordials or a lemonade top? Tick as many as wanted, then Add.", choices: extraChoices,
+    onChange: ids => setDisplayPending(lineInfo(`${product.id}::beer::${sizeIndex}::${ids.filter(i => i !== "none").join("+") || "none"}::notop`)) });
   if (picked === null) return;
   const extras = picked.filter(id => id !== "none");
   const key = `${product.id}::beer::${sizeIndex}::${extras.length ? extras.join("+") : "none"}::notop`;
@@ -1921,9 +1929,10 @@ function layoutTopSellers(cats){
 function addProductOnce(product){
   if (!product) return;
   if (product.hasOptions) {
-    if (product.isSpirit) addSpiritToCart(product);
-    else if (product.isBeer) addBeerToCart(product);
-    else if (product.isSized) addSizedToCart(product);
+    const flow = product.isSpirit ? addSpiritToCart : product.isBeer ? addBeerToCart : product.isSized ? addSizedToCart : null;
+    if (!flow) return;
+    setDisplayPending({ name: product.name, pence: product.pence });
+    Promise.resolve(flow(product)).finally(() => setDisplayPending(null));
     return;
   }
   changeQty(product.id, 1);
@@ -2734,15 +2743,25 @@ function displayCode(){
   if (!c) { c = String(Math.floor(1000 + Math.random() * 9000)); try { localStorage.setItem("nipos.displayCode", c); } catch (e) {} }
   return c;
 }
+// The line being rung up (a spirit while its measure and mixers are picked) shows on the display as it's
+// built, step by step, before it's added. Deals and discounts show above the total, as on a real till.
+let displayPending = null;
+function setDisplayPending(line){ displayPending = line ? { name: line.name, pence: line.pence } : null; publishDisplay(); }
 function publishDisplay(extra){
   if (!featureOn("customerDisplay") || !supabaseClient || !currentVenueId) return;
   clearTimeout(displayTimer);
   displayTimer = setTimeout(async () => {
     const t = computeTotals();
+    const lines = cartLines(cart), pend = displayPending ? displayPending.pence || 0 : 0;
+    if (displayPending) lines.push({ name: displayPending.name, pence: displayPending.pence || 0, qty: 1, building: true });
+    const listPence = cartTotalPence(), dealSaving = Math.max(0, listPence - t.base);
+    const deals = activeDeals().map(d => d.name).join(" & ");
     const value = extra && extra.thanks ? { thanks: true, total: extra.total, ts: Date.now(), venue: currentVenue ? currentVenue.name : "" }
-      : { lines: cartLines(cart), base: t.base, discountLabel: t.discountLabel, discountAmount: t.discountAmount, total: t.total, table: currentTable || null, ts: Date.now(), venue: currentVenue ? currentVenue.name : "" };
+      : { lines, subtotal: listPence + pend, dealLabel: dealSaving ? (deals || "Deal") : null, dealAmount: dealSaving,
+          base: t.base + pend, discountLabel: t.discountLabel, discountAmount: t.discountAmount, total: t.total + pend,
+          table: currentTable || null, ts: Date.now(), venue: currentVenue ? currentVenue.name : "" };
     try { await supabaseClient.from("app_state").upsert({ key: currentVenueId + ":display/" + displayCode(), value }); } catch (e) {}
-  }, extra && extra.thanks ? 0 : 400);
+  }, extra && extra.thanks ? 0 : 120);
 }
 
 document.getElementById("cancelOrderBtn").addEventListener("click", async () => {

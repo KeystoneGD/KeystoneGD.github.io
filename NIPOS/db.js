@@ -498,6 +498,18 @@ function serviceCallText({ name, venueId, venueName, kitchen }) {
 }
 // What a service call says on the screen it reaches: its own wording, or the old fixed one.
 function serviceCallMessage(n) { return n.message && n.message !== "needs you at the bar" ? n.message : `${n.fromName || "Someone"} needs you at the bar`; }
+// Backend's "Deals right now" can force every deal on or off, but only until 6am (the end of that night);
+// then each deal follows its own times again. Stored as { mode: "on" | "off", until }. The old plain
+// true/false had no end, so a forced-on Happy Hour ran on for days; those are ignored now.
+function dealsOverrideUntil(now) {
+  const d = new Date(now || Date.now()); const end = new Date(d); end.setHours(6, 0, 0, 0);
+  if (end <= d) end.setDate(end.getDate() + 1);
+  return end.getTime();
+}
+function effectiveDealsOverride(v) {
+  if (v && typeof v === "object" && (v.mode === "on" || v.mode === "off") && Date.now() < Number(v.until || 0)) return v.mode === "on";
+  return null;
+}
 let tabTitleNow = null;
 function tabTitle(kind, name) {
   const own = featureOn("tabTitles") ? ((featureConfig("tabTitles").titles || {})[kind] || "").trim() : "";
@@ -951,7 +963,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261022v";
+const NIPOS_VERSION = "20261022w";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }

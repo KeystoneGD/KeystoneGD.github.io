@@ -331,7 +331,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022v">
+<link rel="stylesheet" href="nipos.css?v=20261022w">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -538,8 +538,8 @@ table.data-table tr:last-child td{border-bottom:0;}
         <label for="hhMode" style="font-weight:700;font-size:13.5px;">Deals right now</label>
         <select id="hhMode" style="max-width:320px;">
           <option value="auto">Follow each deal's times</option>
-          <option value="on">All switched-on deals on now</option>
-          <option value="off">All deals off now</option>
+          <option value="on">All switched-on deals on now (until 6am)</option>
+          <option value="off">All deals off now (until 6am)</option>
         </select>
       </div>
       <p class="note" id="dealsScopeNote"></p>
@@ -831,7 +831,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261022v"></script>
+<script src="db.js?v=20261022w"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -959,7 +959,8 @@ async function loadVenueData(){
 
   hhOverride = await loadDoc(LS_HH_OVERRIDE, null);
   venueDeals = await loadDoc(LS_DEALS, null);
-  document.getElementById("hhMode").value = hhOverride === true ? "on" : hhOverride === false ? "off" : "auto";
+  const forced = effectiveDealsOverride(hhOverride);
+  document.getElementById("hhMode").value = forced === true ? "on" : forced === false ? "off" : "auto";
 
   const mixerRows = await mixerOverridesStore.fetchAll();
   mixerOverrides = new Set((mixerRows || []).map(r => r.name));
@@ -3390,10 +3391,10 @@ document.querySelectorAll(".tab-btn").forEach(btn => btn.addEventListener("click
 }));
 
 document.getElementById("hhMode").addEventListener("change", async e => {
-  hhOverride = e.target.value === "on" ? true : e.target.value === "off" ? false : null;
+  hhOverride = e.target.value === "auto" ? null : { mode: e.target.value, until: dealsOverrideUntil() };
   if (productsAllVenues) { for (const v of scopeVenueIds()) await saveDocFor(v, LS_HH_OVERRIDE, hhOverride); }
   else await saveDoc(LS_HH_OVERRIDE, hhOverride);
-  logActivity("Deals right now", hhOverride === true ? "Forced on" : hhOverride === false ? "Forced off" : "Automatic (by their times)", productsAllVenues ? null : undefined);
+  logActivity("Deals right now", hhOverride ? `Forced ${hhOverride.mode} until 6am` : "Automatic (by their times)", productsAllVenues ? null : undefined);
 });
 
 /* ---------- Discounts: Deals (per venue, or every venue on All venues) ----------
