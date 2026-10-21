@@ -122,7 +122,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021d">
+<link rel="stylesheet" href="nipos.css?v=20261021e">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -248,7 +248,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021d"></script>
+<script src="db.js?v=20261021e"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -494,6 +494,7 @@ document.getElementById("enableAlertsBtn").addEventListener("click", async () =>
 refreshAlertsRow();
 
 function alertUser(title, body, urgent){
+  logNotificationReceived(title, body);
   showToast(`${title}${body ? ": " + body : ""}`);
   playChime();
   if (urgent && navigator.vibrate) { try { navigator.vibrate([300, 150, 300, 150, 300]); } catch(e){} }
@@ -539,7 +540,7 @@ function checkPersonalNotifications(list){
   list.filter(n => !knownNotificationIds.has(n.id) && (n.toUserId === "all" || n.toUserId === currentUserId) && n.fromUserId !== currentUserId)
     .forEach(n => {
       if (n.kind === "message") { playChime(); if (navigator.vibrate) { try { navigator.vibrate([300, 150, 300]); } catch (e) {} } showPrivateMessage(n); }
-      else if (n.quiet) showToast(n.message);
+      else if (n.quiet) { showToast(n.message); logNotificationReceived("Notice", n.message, n.fromName); }
       else alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent);
     });
   knownNotificationIds = ids;
@@ -674,6 +675,7 @@ async function acceptOrder(id){
   const o = openOrders.find(x => x.id === id);
   const fresh = await mergeOpenOrder(id, { accepted: true, acceptedBy: currentUser ? currentUser.name : null, acceptedAt: Date.now() });
   if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
+  if (o) logActivity("Order accepted", orderLabel(o));
   if (o && o.placedById && o.placedById !== currentUserId) {
     const n = await sendQuietNotice(o.placedById, currentUserId, currentUser && currentUser.name, `${orderLabel(o)}: order accepted, in progress`);
     if (n) { notifications.unshift(n); knownNotificationIds = new Set(notifications.map(x => x.id)); }
@@ -682,6 +684,7 @@ async function acceptOrder(id){
 }
 async function markReady(id){
   const fresh = await mergeOpenOrder(id, { ready: true });
+  if (fresh) logActivity("Order ready to take out", orderLabel(fresh));
   if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
   render();
 }
@@ -691,6 +694,7 @@ async function requestRefund(id){
   const o = openOrders.find(x => x.id === id);
   if (!o) return;
   const fresh = await requestRefundForOrder(o, currentUser ? currentUser.name : null);
+  logActivity("Refund requested", orderLabel(o));
   if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
   knownOrderStates = new Map(openOrders.map(x => [x.id, orderAlertState(x)]));
   render();
@@ -888,6 +892,7 @@ document.getElementById("flagConfirm").addEventListener("click", async () => {
       const idx = openOrders.findIndex(x => x.id === flagTargetId);
       if (idx !== -1) openOrders[idx] = fresh;
       if (fresh.placedById) await pushNotification(fresh.placedById, `Table ${fresh.table || "?"}: ${fresh.flagItem} flagged - ${fresh.flagReason}`, true);
+      logActivity("Reported a problem", `Table ${fresh.table || "?"}: ${fresh.flagItem}, ${fresh.flagReason} (${flagIntent === "substitute" ? "substitute " + flagSubstituteName : "offer refund"})`);
     }
   }
   closeFlagModal();
