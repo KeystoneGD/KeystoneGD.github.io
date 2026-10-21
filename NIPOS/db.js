@@ -178,7 +178,19 @@ async function getSession() {
   } catch (e) { return null; }
 }
 
+// $YSTEM signs in by typing "$YSTEM" where the PIN goes, then its password. The password is the real
+// sign-in, so the well-known name on its own gets nobody anywhere. Backend only.
+const SYSTEM_SIGN_IN = "$YSTEM";
+const SYSTEM_EMAIL = "system@nipos.local";
+function isSystemSignIn(code) { return String(code || "").trim().toUpperCase() === SYSTEM_SIGN_IN; }
+async function signInSystem(password) {
+  const { error } = await supabaseClient.auth.signInWithPassword({ email: SYSTEM_EMAIL, password });
+  if (error) return { error: /rate|too many/i.test(error.message || "") ? "Too many tries. Wait a few minutes and try again." : "That password isn't right." };
+  return { ok: true };
+}
+
 async function signInWithPin(pin) {
+  if (isSystemSignIn(pin)) return { error: "This account only signs in to Backend" };
   const email = "pin" + pin + "@nipos.local";
   const { error } = await supabaseClient.auth.signInWithPassword({ email, password: pin });
   if (error) return { error: "Incorrect PIN" };

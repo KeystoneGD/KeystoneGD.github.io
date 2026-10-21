@@ -6,7 +6,7 @@
 --                   directly - only through nipos_set_master_theme below)
 --   system_secrets  the $YSTEM password hash. RLS on with no policies, so the browser can never read it.
 --   is_system_user(), nipos_check_system_password(), nipos_set_master_theme()   called from Backend
---   nipos_setup_system_account()   run by hand in the SQL Editor to create $YSTEM / change its PIN and
+--   nipos_setup_system_account()   run by hand in the SQL Editor to create $YSTEM / change its
 --                                  password. Nobody can call it from the browser.
 -- =====================================================================================================
 
@@ -82,30 +82,28 @@ grant execute on function public.is_system_user() to authenticated, service_role
 grant execute on function public.nipos_check_system_password(text) to authenticated, service_role;
 grant execute on function public.nipos_set_master_theme(text, text) to authenticated, service_role;
 
--- Creates the hidden $YSTEM account, or changes its PIN and password if it already exists.
--- Run it yourself in the SQL Editor (see the bottom of this file). It never appears in Backend's staff
--- list, can't be edited or deleted from Backend, and can't sign in to the till or order screen.
-create or replace function public.nipos_setup_system_account(p_pin text, p_password text) returns text
+-- Creates the hidden $YSTEM account, or changes its password if it already exists. Run it yourself in
+-- the SQL Editor (see the bottom of this file). To sign in, type $YSTEM in Backend's PIN box and then
+-- the password: the password is the account's real sign-in, so knowing the name gets nobody in. It
+-- never appears in Backend's staff list, can't be edited or deleted from Backend, and can't sign in
+-- to the till or order screen.
+create or replace function public.nipos_setup_system_account(p_password text) returns text
 language plpgsql volatile security definer set search_path = public, extensions, auth as $$
 declare
   uid      uuid;
   existing text;
-  em       text := 'pin' || p_pin || '@nipos.local';
+  em       constant text := 'system@nipos.local';
+  pw_hash  text;
 begin
-  if p_pin is null or p_pin !~ '^[0-9]{6,}$' then raise exception 'The PIN must be 6 or more digits'; end if;
   if p_password is null or length(p_password) < 10 then raise exception 'The password must be at least 10 characters'; end if;
+  pw_hash := extensions.crypt(p_password, extensions.gen_salt('bf', 10));
   select id into existing from public.staff_users where coalesce((data->>'system')::boolean, false) limit 1;
-  if exists (select 1 from auth.users where email = em and (existing is null or id::text <> existing)) then
-    raise exception 'That PIN is already used by another account - pick a different one';
-  end if;
-
   if existing is null then
     uid := gen_random_uuid();
     insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
                             raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
                             confirmation_token, recovery_token, email_change, email_change_token_new)
-    values ('00000000-0000-0000-0000-000000000000', uid, 'authenticated', 'authenticated', em,
-            extensions.crypt(p_pin, extensions.gen_salt('bf')), now(),
+    values ('00000000-0000-0000-0000-000000000000', uid, 'authenticated', 'authenticated', em, pw_hash, now(),
             '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now(), '', '', '', '');
     insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
     values (gen_random_uuid(), uid, uid::text,
@@ -117,21 +115,19 @@ begin
                                     'clearHistory', false, 'endOfDay', false, 'orderScreen', false, 'viewOpenOrders', false,
                                     'processRefunds', false)));
   else
-    update auth.users set email = em, encrypted_password = extensions.crypt(p_pin, extensions.gen_salt('bf')), updated_at = now()
-     where id = existing::uuid;
+    update auth.users set email = em, encrypted_password = pw_hash, updated_at = now() where id = existing::uuid;
     update auth.identities set identity_data = identity_data || jsonb_build_object('email', em), updated_at = now()
      where user_id = existing::uuid and provider = 'email';
   end if;
-
-  insert into public.system_secrets (id, hash) values ('system_password', extensions.crypt(p_password, extensions.gen_salt('bf', 10)))
+  insert into public.system_secrets (id, hash) values ('system_password', pw_hash)
   on conflict (id) do update set hash = excluded.hash, failed = 0, locked_until = null;
-  return 'Done. Sign in to Backend with the PIN, then enter the password.';
+  return 'Done. In Backend, type $YSTEM in the PIN box, then your password.';
 end $$;
-revoke all on function public.nipos_setup_system_account(text, text) from public, anon, authenticated;
+revoke all on function public.nipos_setup_system_account(text) from public, anon, authenticated;
 
 -- =====================================================================================================
--- TO CREATE $YSTEM (or change its PIN / password later), run this on its own in the SQL Editor with
--- your own PIN and password, then delete the query from the editor so the password isn't left saved:
+-- TO CREATE $YSTEM (or change its password later), run this on its own in the SQL Editor with your
+-- own password (10+ characters), then delete the query from the editor so it isn't left saved:
 --
---   select public.nipos_setup_system_account('YOUR-PIN', 'YOUR-PASSWORD');
+--   select public.nipos_setup_system_account('YOUR-PASSWORD');
 -- =====================================================================================================
