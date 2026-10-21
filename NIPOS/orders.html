@@ -122,7 +122,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021e">
+<link rel="stylesheet" href="nipos.css?v=20261021f">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -248,7 +248,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021e"></script>
+<script src="db.js?v=20261021f"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -540,6 +540,7 @@ function checkPersonalNotifications(list){
   list.filter(n => !knownNotificationIds.has(n.id) && (n.toUserId === "all" || n.toUserId === currentUserId) && n.fromUserId !== currentUserId)
     .forEach(n => {
       if (n.kind === "message") { playChime(); if (navigator.vibrate) { try { navigator.vibrate([300, 150, 300]); } catch (e) {} } showPrivateMessage(n); }
+      else if (isServiceCall(n)) showServiceCall(n);
       else if (n.quiet) { showToast(n.message); logNotificationReceived("Notice", n.message, n.fromName); }
       else alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent);
     });
@@ -561,9 +562,10 @@ async function logStopToDiscord(name, on){
     }] }) });
   } catch(e){}
 }
-async function pushNotification(toUserId, message, urgent){
+async function pushNotification(toUserId, message, urgent, kind){
   const me = currentUser;
   const notif = { id: "n" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), toUserId, fromUserId: currentUserId, fromName: me ? me.name : "Someone", message, urgent: !!urgent };
+  if (kind) notif.kind = kind;
   notifications.unshift(notif);
   notifications = notifications.slice(0, 50);
   await saveNotification(notif);
@@ -931,7 +933,7 @@ function renderServicePeople(){
       <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex:0 0 auto;"></span>${label}
     </span>`;
     b.addEventListener("click", async () => {
-      await pushNotification(u.id, `needs you at the bar`, true);
+      await pushNotification(u.id, `needs you at the bar`, true, "service");
       closeServiceModal();
       showToast(`Notified ${u.name}`);
     });
@@ -951,7 +953,7 @@ function renderServiceGroups(){
     b.innerHTML = `<span>${g.name}</span><span class="pill">${members.length}</span>`;
     b.addEventListener("click", async () => {
       if (!members.length) return;
-      await Promise.all(members.map(u => pushNotification(u.id, `needs you at the bar`, true)));
+      await Promise.all(members.map(u => pushNotification(u.id, `needs you at the bar`, true, "service")));
       closeServiceModal();
       showToast(`Notified ${g.name} (${members.length})`);
     });

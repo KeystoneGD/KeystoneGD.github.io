@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021e">
-<link rel="stylesheet" href="layouts.css?v=20261021e">
+<link rel="stylesheet" href="nipos.css?v=20261021f">
+<link rel="stylesheet" href="layouts.css?v=20261021f">
 </head>
 <body>
 
@@ -676,7 +676,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021e"></script>
+<script src="db.js?v=20261021f"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -2287,6 +2287,7 @@ function checkPersonalNotifications(list){
   list.filter(n => !knownNotificationIds.has(n.id) && (n.toUserId === "all" || n.toUserId === currentUserId) && n.fromUserId !== currentUserId)
     .forEach(n => {
       if (n.kind === "message") { playChime(); if (navigator.vibrate) { try { navigator.vibrate([300, 150, 300]); } catch (e) {} } showPrivateMessage(n); }
+      else if (isServiceCall(n)) showServiceCall(n);
       else if (n.quiet) { showToast(n.message); logNotificationReceived("Notice", n.message, n.fromName); }
       else alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent);
     });

@@ -695,11 +695,23 @@ function showPrivateMessage(n) {
     el.querySelector("#pmOk").addEventListener("click", () => { el.hidden = true; });
   }
   el.querySelector("#pmTitle").textContent = n.title || `Message from ${n.fromName || "someone"}`;
-  logNotificationReceived(n.title ? "Urgent pop-up" : "Private message", n.message, n.fromName);
+  logNotificationReceived(n.title || "Private message", n.message, n.fromName);
   el.querySelector("#pmText").textContent = n.message;
   el.querySelector("#pmTime").textContent = fmtTime(n.ts);
   el.hidden = false;
   el.querySelector("#pmOk").focus();
+}
+
+// Call for service: pops up on the person's screen with the beep (and still sends the push
+// notification, which the sender's page does). Older calls without a kind are spotted by their text.
+function isServiceCall(n) { return n && (n.kind === "service" || (n.urgent && n.message === "needs you at the bar")); }
+function showServiceCall(n) {
+  if (typeof playChime === "function") { try { playChime(); } catch (e) {} }
+  if (navigator.vibrate) { try { navigator.vibrate([300, 150, 300, 150, 300]); } catch (e) {} }
+  if ("Notification" in window && Notification.permission === "granted" && document.visibilityState !== "visible") {
+    try { new Notification("Service call", { body: `${n.fromName || "Someone"} needs you at the bar`, requireInteraction: true, tag: "service-" + n.id }); } catch (e) {}
+  }
+  showPrivateMessage({ ...n, title: "Service call", message: `${n.fromName || "Someone"} needs you at the bar` });
 }
 
 // Refresh or sign out tills (feature "remote"): $YSTEM adds a command and every till, order screen and
