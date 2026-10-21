@@ -209,7 +209,7 @@
       "isSpirit": true,
       "isBeer": false,
       "items": [
-        { "name": "Bombay Sapphire (40%)", "pence": 840 },
+        { "name": "Bombay Sapphire (40%)", "pence": 420 },
         { "name": "Gordon's Mediterranean Orange (37.5%)", "pence": 420 },
         { "name": "Gordon's Sicilian Lemon (35%)", "pence": 420 },
         { "name": "Tanqueray Sevilla (41.3%)", "pence": 435 }
@@ -273,8 +273,8 @@
         { "name": "AU Vodka Blue Raspberry (35.2%)", "pence": 450 },
         { "name": "AU Vodka Pink Lemonade (35.2%)", "pence": 450 },
         { "name": "Ciroc Vodka (40%)", "pence": 475 },
-        { "name": "Smirnoff Red Vodka (37.5%)", "pence": 750 },
-        { "name": "Smirnoff Mango & Passionfruit (35%)", "pence": 850 }
+        { "name": "Smirnoff Red Vodka (37.5%)", "pence": 375 },
+        { "name": "Smirnoff Mango & Passionfruit (35%)", "pence": 425 }
       ]
     },
     {
