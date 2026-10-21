@@ -21,7 +21,7 @@ WEB = ROOT / "web"
 # Default: the hosted NIPOS folder next to this one (both live in the KeystoneGD.github.io repository).
 SRC = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else ROOT.parent / "NIPOS").resolve()
 
-COPY_SUFFIXES = {".html", ".js", ".css", ".json", ".png", ".ico", ".svg", ".webmanifest"}
+COPY_SUFFIXES = {".html", ".js", ".css", ".json", ".png", ".jpg", ".ico", ".svg", ".webmanifest"}
 SKIP_DIRS = {"supabase", "vendor"}
 
 FONTS = (re.compile(r'<link rel="stylesheet" href="https://fonts\.googleapis\.com/css2\?[^"]*">'),
@@ -42,6 +42,9 @@ const NIPOS_CONFIG = window.NIPOS_CONFIG || {};
 const SUPABASE_URL = location.protocol + "//" + location.hostname + ":" + (NIPOS_CONFIG.apiPort || 54321);
 const SUPABASE_ANON_KEY = NIPOS_CONFIG.anonKey;''')
 
+# The system guide sits one folder down, so its fonts come from ../vendor/.
+GUIDE_FONTS = (FONTS[0], '<link rel="stylesheet" href="../vendor/fonts/fonts.css">')
+
 # Which rewrites each file must contain (exactly once). Pages not listed are copied unchanged.
 RULES = {
     "index.html": [FONTS, SUPABASE_JS, PUSH_URL, VAPID],
@@ -49,6 +52,7 @@ RULES = {
     "backend.html": [FONTS, SUPABASE_JS, CHART_JS],
     "display.html": [FONTS, SUPABASE_JS],
     "db.js": [DB_CONFIG],
+    "system-guide/index.html": [GUIDE_FONTS],
 }
 # Nothing that reaches the internet may survive in a copied file.
 FORBIDDEN = re.compile(r"supabase\.co\b|fonts\.googleapis|fonts\.gstatic|cdn\.jsdelivr|cdnjs\.cloudflare|unpkg\.com")

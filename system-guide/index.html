@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="../NIPOS/favicon.ico" sizes="any">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>NIPOS Handbook</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Atkinson+Hyperlegible+Next:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a handbook. Sticky contents rail on the left, one long reading column, screenshots set as
+   framed "screens" in a slate bezel, the way they sit on the bar. Amber is the till's own accent. */
+:root{
+  --bg:#f6f7f9; --paper:#ffffff; --ink:#18212c; --muted:#5b6876; --line:#dfe4ea;
+  --accent:#c86f08; --accent-soft:#fff1dc; --bezel:#1d2733; --code:#eef1f5;
+  --ok:#1f7a4d; --ok-soft:#e3f4ea; --warn:#9a5b00; --warn-soft:#fff3d6; --bad:#b3261e; --bad-soft:#fde7e5;
+  --display:'Plus Jakarta Sans',ui-sans-serif,system-ui,sans-serif;
+  --body:'Atkinson Hyperlegible Next','Atkinson Hyperlegible',ui-sans-serif,system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f151c; --paper:#151d26; --ink:#e7ecf1; --muted:#9aa7b4; --line:#26313d;
+  --accent:#f3a43b; --accent-soft:#2b2010; --bezel:#05080b; --code:#1c2631;
+  --ok:#5fd39a; --ok-soft:#10291d; --warn:#f2c46b; --warn-soft:#2b220d; --bad:#ff8a80; --bad-soft:#2e1513; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0f151c; --paper:#151d26; --ink:#e7ecf1; --muted:#9aa7b4; --line:#26313d;
+  --accent:#f3a43b; --accent-soft:#2b2010; --bezel:#05080b; --code:#1c2631;
+  --ok:#5fd39a; --ok-soft:#10291d; --warn:#f2c46b; --warn-soft:#2b220d; --bad:#ff8a80; --bad-soft:#2e1513; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16.5px;line-height:1.6;margin:0}
+.wrap{display:grid;grid-template-columns:260px minmax(0,1fr);max-width:1240px;margin:0 auto;gap:48px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 80px}
+nav.toc{position:sticky;top:env(safe-area-inset-top, 0px);align-self:start;max-height:100vh;overflow-y:auto;padding-block:32px;font-size:14px}
+nav.toc .brand{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.01em;margin:0 0 2px}
+nav.toc .ver{color:var(--muted);font-family:var(--mono);font-size:12px;margin:0 0 20px}
+nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;counter-reset:t}
+nav.toc li a{display:flex;gap:10px;padding:5px 10px;border-radius:8px;color:var(--ink);text-decoration:none}
+nav.toc li a::before{counter-increment:t;content:counter(t);font-family:var(--mono);font-size:11.5px;color:var(--muted);min-width:18px;padding-top:2px}
+nav.toc li a:hover,nav.toc li a:focus-visible{background:var(--accent-soft);outline:none}
+main{min-width:0;padding-block:32px}
+header.cover{background:var(--bezel);color:#eef2f6;border-radius:18px;padding:40px 36px 34px;margin-bottom:40px;position:relative;overflow:hidden}
+header.cover .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#f3a43b;margin:0 0 14px}
+header.cover h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,5vw,52px);line-height:1.04;letter-spacing:-.02em;margin:0 0 14px;text-wrap:balance}
+header.cover p{max-width:62ch;margin:0;color:#c4cdd6;font-size:17px}
+.receipt{margin-top:26px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:#2c3946;border-radius:12px;overflow:hidden;font-variant-numeric:tabular-nums}
+.receipt div{background:#16202a;padding:14px 16px}
+.receipt b{display:block;font-family:var(--display);font-size:22px;color:#fff}
+.receipt span{font-size:13px;color:#9fb0bf}
+section{margin-top:56px;scroll-margin-top:20px}
+h2{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:-.015em;line-height:1.15;margin:0 0 8px;text-wrap:balance}
+h2 .n{font-family:var(--mono);font-size:14px;color:var(--accent);font-weight:600;display:block;letter-spacing:.06em;margin-bottom:6px}
+h3{font-family:var(--display);font-weight:700;font-size:20px;margin:34px 0 6px;text-wrap:balance}
+h4{font-family:var(--display);font-weight:700;font-size:16px;margin:22px 0 4px}
+p,li{max-width:70ch}
+.lede{color:var(--muted);font-size:17.5px;margin:0 0 18px}
+a{color:var(--accent)}
+code,kbd{font-family:var(--mono);font-size:.86em;background:var(--code);padding:.1em .4em;border-radius:5px}
+kbd{border:1px solid var(--line);border-bottom-width:2px;background:var(--paper)}
+figure{margin:22px 0 26px}
+figure .screen{background:var(--bezel);padding:10px;border-radius:14px;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+figure .screen img{display:block;width:100%;height:auto;border-radius:6px}
+figure.phone{max-width:300px}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;align-items:start}
+.pair figure{margin:0}
+figcaption{font-size:14px;color:var(--muted);margin-top:8px;max-width:70ch}
+figcaption b{color:var(--ink)}
+.steps{counter-reset:s;list-style:none;padding:0;margin:14px 0;display:flex;flex-direction:column;gap:10px}
+.steps li{position:relative;padding-left:40px}
+.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-family:var(--mono);font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center}
+.note{border-left:4px solid var(--accent);background:var(--accent-soft);padding:12px 16px;border-radius:0 10px 10px 0;margin:18px 0;max-width:74ch}
+.note.ok{border-color:var(--ok);background:var(--ok-soft)}
+.note.warn{border-color:var(--warn);background:var(--warn-soft)}
+.note.bad{border-color:var(--bad);background:var(--bad-soft)}
+.note p{margin:0}
+.tbl{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
+table{border-collapse:collapse;width:100%;font-size:15px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--display);font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td code{white-space:nowrap}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--code);white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:16px 0}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 18px;min-width:0}
+.card h4{margin-top:0}
+.card p{margin:4px 0 0;font-size:15px;color:var(--muted)}
+.check{list-style:none;padding:0;margin:12px 0;display:flex;flex-direction:column;gap:8px}
+.check li{padding-left:30px;position:relative}
+.check li::before{content:"";position:absolute;left:0;top:4px;width:17px;height:17px;border:2px solid var(--muted);border-radius:4px}
+.urls{font-family:var(--mono);font-size:14px}
+hr{border:0;border-top:1px solid var(--line);margin:40px 0}
+footer{margin-top:60px;color:var(--muted);font-size:14px}
+@media (max-width: 880px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:0}
+  nav.toc{position:static;max-height:none;padding-block:24px 0}
+  nav.toc ol{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  header.cover{padding:28px 22px}
+}
+@media (prefers-reduced-motion: no-preference){ nav.toc li a{transition:background .15s} }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <p class="brand">NIPOS Handbook</p>
+  <p class="ver">Version 20261023a · 22 Oct 2026</p>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#setup">Setting up a device</a></li>
+    <li><a href="#till">The till</a></li>
+    <li><a href="#drinks">Spirits, mixers and pints</a></li>
+    <li><a href="#paying">Paying, tables and tabs</a></li>
+    <li><a href="#orders">Open orders and delivery</a></li>
+    <li><a href="#orderscreen">Order screen (bar)</a></li>
+    <li><a href="#kitchen">Kitchen View</a></li>
+    <li><a href="#display">Customer display</a></li>
+    <li><a href="#alerts">Notifications, alerts and sounds</a></li>
+    <li><a href="#refunds">Problems and refunds</a></li>
+    <li><a href="#backend">Back Office</a></li>
+    <li><a href="#master">Master settings</a></li>
+    <li><a href="#reliability">Reliability and security</a></li>
+    <li><a href="#night">Running a night</a></li>
+    <li><a href="#trouble">Troubleshooting</a></li>
+    <li><a href="#tech">Technical reference</a></li>
+    <li><a href="#changes">Change history</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="cover">
+  <p class="eyebrow">Cleethorpes Pearl · Starlight Suite · Lounge Bar · Carousel</p>
+  <h1>NIPOS Handbook</h1>
+  <p>How the tills, order screens, kitchen screen, customer display and Back Office work, how to set them up for a night, and what to do when something goes wrong.</p>
+  <div class="receipt" aria-label="At a glance">
+    <div><b>5</b><span>screens: till, order screen, kitchen, customer display, Back Office</span></div>
+    <div><b>3</b><span>venues sharing one menu system</span></div>
+    <div><b>6</b><span>till layouts, phone and tablet</span></div>
+    <div><b>£3,298.83</b><span>final stress test, 148 sales, matched to the penny</span></div>
+  </div>
+</header>
+
+<p class="note"><b>About the screenshots.</b> They were taken from the offline test copy of the current version, using sample staff (Sam Taylor, Jordan Lee) and sample orders. They are not real takings.</p>
+
+<!-- 1 -->
+<section id="overview">
+  <h2><span class="n">01</span>Overview</h2>
+  <p class="lede">NIPOS is a web app. Every screen is a page on the same site, so any tablet, phone or computer with a browser can be a till, an order screen or the kitchen screen.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Screen</th><th>Address</th><th>Who uses it</th></tr></thead>
+    <tbody>
+      <tr><td><b>Till</b></td><td class="urls">keystonegd.github.io/NIPOS/</td><td>Table service and bar staff taking orders and payments</td></tr>
+      <tr><td><b>Order screen</b></td><td class="urls">keystonegd.github.io/NIPOS/orders</td><td>The bar: accept drinks orders, mark them ready, report problems</td></tr>
+      <tr><td><b>Kitchen View</b></td><td class="urls">keystonegd.github.io/NIPOS/kitchen</td><td>The kitchen: food from every venue it cooks for</td></tr>
+      <tr><td><b>Customer display</b></td><td class="urls">keystonegd.github.io/NIPOS/display</td><td>A screen facing the customer, paired to one till</td></tr>
+      <tr><td><b>Back Office</b></td><td class="urls">keystonegd.github.io/NIPOS/backend</td><td>Managers: takings, menu, staff, notifications, Z Reads</td></tr>
+    </tbody>
+  </table></div>
+  <h3>How an order moves</h3>
+  <ol class="steps">
+    <li>A till rings up the order, takes a table number and takes payment. The sale is saved straight away.</li>
+    <li>The order appears on the bar's order screen. If it has food, the food part also appears on the Kitchen View.</li>
+    <li>The bar and the kitchen each accept and finish their own part. The order is <b>ready to take out</b> once every part is done.</li>
+    <li>The till that takes it out taps <b>Delivered</b>. Only one till can deliver it, and the person who placed it gets a "delivered" notice.</li>
+  </ol>
+  <p>Each browser tab is named after its screen, for example <code>NIPOS - Starlight Suite</code>, <code>NIPOS Kitchen View - Functions Kitchen</code> or <code>NIPOS Back Office - Cleethorpes Pearl</code>. You can change these names in Master settings.</p>
+</section>
+
+<!-- 2 -->
+<section id="setup">
+  <h2><span class="n">02</span>Setting up a device</h2>
+  <figure><div class="screen"><img src="img/01-login.jpg" alt="The sign-in screen with the Cleethorpes Pearl branding and a PIN box" loading="lazy"></div>
+    <figcaption><b>Sign in.</b> Everyone signs in with their own PIN of 6 digits or more. If the person works at more than one venue, they pick the venue next.</figcaption></figure>
+  <ol class="steps">
+    <li><b>Open the right address</b> for the screen (see the table above). On an iPhone or iPad, use Share › <b>Add to Home Screen</b> and open NIPOS from the Home Screen from then on. Phone alerts only work that way.</li>
+    <li><b>Sign in</b> with the PIN of the person or team using the device, for example <i>Starlight Bar Team</i> on the bar's order screen.</li>
+    <li><b>Tap Turn on alerts</b> and allow notifications. You only need to do this once per device.</li>
+    <li><b>Check for the amber button.</b> If "Sound is off on this screen" shows at the top, tap it. Browsers only allow sound after the screen has been tapped once.</li>
+    <li><b>Customer display only:</b> open <code>/display</code>, sign in, pick the venue and enter the till's 4-digit code. The till shows its code in Settings › Customer display.</li>
+  </ol>
+  <div class="note warn"><p><b>iPhone and iPad.</b> When the screen is locked or NIPOS is in the background, iOS doesn't let it make sound. In that case only the push notification sounds. Beeps now play with the silent switch on, on iOS 17 and later.</p></div>
+</section>
+
+<!-- 3 -->
+<section id="till">
+  <h2><span class="n">03</span>The till</h2>
+  <p class="lede">The till rings up orders and takes payment. It comes in six layouts; Master settings sets the default and can give individual people their own.</p>
+  <figure><div class="screen"><img src="img/02-till-classic.jpg" alt="The Classic till layout on a tablet with an order of three cocktails and a vodka" loading="lazy"></div>
+    <figcaption><b>Classic layout on a tablet.</b> Categories on the left, items in the middle, the current order on the right with the table number, discount buttons and Cash and Card.</figcaption></figure>
+  <div class="pair">
+    <figure><div class="screen"><img src="img/03-till-pubtill-tablet.jpg" alt="The Pub Till layout on a tablet" loading="lazy"></div><figcaption><b>Pub Till.</b> Big department keys and an LCD-style order line, like a traditional till.</figcaption></figure>
+    <figure><div class="screen"><img src="img/04-till-tiles-tablet.jpg" alt="The Colour tiles layout on a tablet" loading="lazy"></div><figcaption><b>Colour tiles.</b> Sections in a coloured rail, items as large tiles.</figcaption></figure>
+  </div>
+  <h3>Layouts</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Layout</th><th>Best for</th></tr></thead>
+    <tbody>
+      <tr><td>Classic</td><td>Tablets. A list with + and − buttons, and a Drinks/Food switch.</td></tr>
+      <tr><td>Tiles</td><td>Quick tapping on any size of screen.</td></tr>
+      <tr><td>Colour</td><td>Tiles coloured by section, so you can find things at a glance.</td></tr>
+      <tr><td>List</td><td>Long menus on phones.</td></tr>
+      <tr><td>Pub Till</td><td>Staff used to a traditional till. Department keys and function keys.</td></tr>
+      <tr><td>Dock</td><td>One-handed phone use. Sections along the bottom, plus "Tonight's top 12".</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Food and drinks</h3>
+  <p>Food is its own menu. On the drinks side, the section row ends with <b>Food ›</b>. Tapping it swaps the row for one <b>‹ Drinks</b> button and the food categories, and ‹ Drinks takes you back to the drinks section you were on. On a phone, a long list of categories sits in a two-row strip you swipe sideways, so the items keep most of the screen.</p>
+  <div class="pair">
+    <figure class="phone"><div class="screen"><img src="img/05-till-pubtill-phone-drinks.jpg" alt="Pub Till on a phone showing drinks sections and a Food button" loading="lazy"></div><figcaption><b>Drinks side</b> with <b>Food ›</b> at the end of the row.</figcaption></figure>
+    <figure class="phone"><div class="screen"><img src="img/06-till-pubtill-phone-food.jpg" alt="Pub Till on a phone showing the food categories with a Drinks button" loading="lazy"></div><figcaption><b>Food side</b> with <b>‹ Drinks</b>, and burgers whose names and prices fit their tiles.</figcaption></figure>
+  </div>
+  <p>Food only shows at venues where it's switched on (Back Office › Venues). At the moment that's Starlight Suite only.</p>
+  <h3>The till menu</h3>
+  <p>The menu button at the top right opens Settings and reports. What you see there depends on your permissions:</p>
+  <ul>
+    <li><b>Open orders</b>: orders waiting to go out (see <a href="#orders">Open orders</a>).</li>
+    <li><b>Notify</b>: a message to one person, or to everyone as a banner or pop-up.</li>
+    <li><b>X Read and Z Read</b>: takings so far, and closing the shift.</li>
+    <li><b>Past orders</b>: find a sale to refund or reprint.</li>
+    <li><b>Clock in and out</b>, <b>gratuities</b>, <b>tabs</b>, your <b>notification sound</b>, and the customer display code.</li>
+  </ul>
+</section>
+
+<!-- 4 -->
+<section id="drinks">
+  <h2><span class="n">04</span>Spirits, mixers and pints</h2>
+  <p class="lede">Spirits, draught and sized drinks open a short set of questions. On the customer display, the line builds up as each one is answered.</p>
+  <div class="pair">
+    <figure><div class="screen"><img src="img/07-mixers.jpg" alt="The Add mixers dialog with Lime Cordial and Lemonade Dash ticked" loading="lazy"></div><figcaption><b>Mixers.</b> Pick Single or Double, then tick as many mixers as wanted and tap <b>Add</b>. "No mixer (neat)" clears the others.</figcaption></figure>
+    <figure><div class="screen"><img src="img/08-pint-extras.jpg" alt="The pint extras dialog with Lime Cordial and Lemonade Top ticked" loading="lazy"></div><figcaption><b>Pints.</b> Pick the size, then tick any cordials and Lemonade Top in one list. They're free.</figcaption></figure>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>Drink</th><th>Questions</th><th>Price</th></tr></thead>
+    <tbody>
+      <tr><td>Spirits</td><td>Single or Double, then any mixers</td><td>Spirit price plus each mixer. Doubles use the double price set for that spirit.</td></tr>
+      <tr><td>Draught</td><td>Size (Pint, Half Pint, Shandy, Half Pint Shandy, Two Pint Cup, Pitcher), then cordials and Lemonade Top</td><td>Size price. Cordials and Lemonade Top are free.</td></tr>
+      <tr><td>Wine</td><td>125ml, 175ml, 250ml or Bottle</td><td>Size price</td></tr>
+      <tr><td>Soft drinks</td><td>Kids, Small or Regular where there's a choice</td><td>Size price</td></tr>
+    </tbody>
+  </table></div>
+  <p>The dash mixers are £1.00 each: Diet Pepsi, Lemonade, Pepsi Max, Orange Juice, Apple Juice, Cranberry Juice and Pineapple Juice, plus <b>Lime, Blackcurrant and Orange Cordial</b>. Gins also offer the tonics from the Mixers category. Master settings › Drink options can replace these lists.</p>
+  <h4>Example</h4>
+  <p>AU Vodka, Single, then Lime Cordial and Lemonade Dash: <code>AU Vodka (40%) (Single &amp; Lime Cordial &amp; Lemonade Dash)</code> at £4.50 + £1.00 + £1.00 = <b>£6.50</b>. Mixers are listed in the order they were tapped.</p>
+</section>
+
+<!-- 5 -->
+<section id="paying">
+  <h2><span class="n">05</span>Paying, tables and tabs</h2>
+  <figure><div class="screen"><img src="img/09-payment.jpg" alt="The card payment screen with the total and a Confirm button" loading="lazy"></div>
+    <figcaption><b>Taking payment.</b> Tap Cash or Card, check the amount, then confirm. For cash, enter what was handed over and the till works out the change.</figcaption></figure>
+  <ul>
+    <li><b>Table number.</b> Every order needs one before payment. If it's missing, the till asks for it. Table rules in Master settings can limit which numbers are allowed.</li>
+    <li><b>Discounts.</b> The discount buttons (Owner's 10%, Team 50%, Team 20%, Custom) sit above the total. Each deal sets which buttons can be used alongside it. A discount can ask for a manager's PIN.</li>
+    <li><b>Happy Hour and deals.</b> Cocktails: buy 2, the cheaper one half price, 3–6pm and 9:30pm to close. The till applies it automatically during those times and shows it on the customer display.</li>
+    <li><b>Split the bill</b> between several payments, <b>tabs</b> for groups paying at the end, and a <b>note for the bar</b> (no ice, birthday and so on).</li>
+  </ul>
+  <div class="note"><p><b>Deals right now.</b> In Back Office › Discounts, "Deals right now" can force every deal on or off. That now lasts <b>until 6am</b>, then each deal follows its own times again. The old setting never expired, which is why Happy Hour once kept running after 6pm.</p></div>
+</section>
+
+<!-- 6 -->
+<section id="orders">
+  <h2><span class="n">06</span>Open orders and delivery</h2>
+  <figure><div class="screen"><img src="img/10-till-open-orders.jpg" alt="Open orders on the till with a ready order at the top and a Delivered button" loading="lazy"></div>
+    <figcaption><b>Open orders on the till.</b> Orders ready to take out are at the top. <b>Delivered</b> only appears once an order is ready.</figcaption></figure>
+  <ul>
+    <li>Tills don't accept orders; the bar and kitchen do. Tills only take ready orders out.</li>
+    <li>If two tills tap Delivered on the same order, only the first counts. The other sees "Table 12 was already delivered by someone else", so the delivered notice is only sent once.</li>
+    <li>An order with a refund already done can be closed with <b>Already refunded, close it</b>.</li>
+  </ul>
+</section>
+
+<!-- 7 -->
+<section id="orderscreen">
+  <h2><span class="n">07</span>Order screen (bar)</h2>
+  <figure><div class="screen"><img src="img/12-order-screen.jpg" alt="The bar's order screen with four orders: ready, new, and two in progress" loading="lazy"></div>
+    <figcaption><b>The bar's order screen.</b> New orders flash and beep. Each card shows the table, items, payment method and who took it.</figcaption></figure>
+  <ol class="steps">
+    <li><b>Accept order</b> when you start making it. The person who took it gets a quiet "accepted" notice.</li>
+    <li><b>Ready to take out</b> when it's on the bar. If the order also has food, it's ready once the kitchen has finished too.</li>
+    <li><b>Report a problem</b> if something's out of stock, spilt or wrong. Choose a reason and whether to offer a substitute or a refund. The till staff are told straight away.</li>
+  </ol>
+  <ul>
+    <li><b>Products on stop</b> takes items off sale at this venue, optionally until a set time. The tills grey them out within seconds.</li>
+    <li><b>Call for service</b> calls a person or a group to the bar (see <a href="#alerts">Notifications</a>).</li>
+  </ul>
+  <figure><div class="screen"><img src="img/14-call-for-service.jpg" alt="The Call for service dialog listing who's online" loading="lazy"></div>
+    <figcaption><b>Call for service</b> lists only people who are online now, and groups set up in Back Office.</figcaption></figure>
+</section>
+
+<!-- 8 -->
+<section id="kitchen">
+  <h2><span class="n">08</span>Kitchen View</h2>
+  <figure><div class="screen"><img src="img/13-kitchen.jpg" alt="The Kitchen View showing only the food part of orders" loading="lazy"></div>
+    <figcaption><b>Kitchen View.</b> Only the food from each order, for every venue this kitchen cooks for.</figcaption></figure>
+  <ul>
+    <li>Open <code>/kitchen</code> and sign in as the kitchen's account. If there's more than one kitchen, pick which one this screen is. The device remembers it.</li>
+    <li>Kitchens and the venues each one cooks for are set in Back Office › Kitchens (Global Admin).</li>
+    <li>Stopping an item here stops it at every venue the kitchen cooks for.</li>
+    <li>If <b>Kitchen screen</b> is switched off in Master settings, the whole screen is locked, sign-in included. It unlocks by itself within about 15 seconds of being switched back on.</li>
+  </ul>
+</section>
+
+<!-- 9 -->
+<section id="display">
+  <h2><span class="n">09</span>Customer display</h2>
+  <figure><div class="screen"><img src="img/15-customer-display.jpg" alt="The customer display showing the order, a Happy Hour saving and the total" loading="lazy"></div>
+    <figcaption><b>Customer display.</b> The line in italics is still being rung up. Deals and discounts sit between the subtotal and the total, like a receipt.</figcaption></figure>
+  <ul>
+    <li>Updates within about half a second of every tap, so the customer sees "AU Vodka", then "(Single)", then each mixer as it's added.</li>
+    <li>Shows "Thank you!" with the amount paid for 8 seconds after payment.</li>
+    <li>Locked while Customer display is switched off in Master settings, the same way as the Kitchen View.</li>
+  </ul>
+</section>
+
+<!-- 10 -->
+<section id="alerts">
+  <h2><span class="n">10</span>Notifications, alerts and sounds</h2>
+  <div class="grid2">
+    <div class="card"><h4>Call for service</h4><p>Pops up with a beep on the person's screen, and sends a phone push. The message says who and where, for example "Kitchen Team needs you in Functions Kitchen".</p></div>
+    <div class="card"><h4>Notify someone</h4><p>A private message to one person, on their screen and phone.</p></div>
+    <div class="card"><h4>Announce to everyone</h4><p>A banner under the venue name, or an urgent pop-up everyone has to tap Got it on.</p></div>
+    <div class="card"><h4>Order notices</h4><p>New orders, ready to take out, problems reported, refunds needed, delivered.</p></div>
+  </div>
+  <figure><div class="screen"><img src="img/11-notify.jpg" alt="The Notify dialog with Everyone selected and a message typed" loading="lazy"></div>
+    <figcaption><b>Notify.</b> The same pop-up on the till, the order screen and the Back Office.</figcaption></figure>
+  <h3>Service call wording</h3>
+  <p>Set in Master settings › Notifications and messages › Service call wording. <code>{name}</code> is whoever called, <code>{place}</code> or <code>{venue}</code> is the venue's place name, and <code>{kitchen}</code> is the kitchen's name.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Venue</th><th>Place name</th><th>A call from the bar team says</th></tr></thead>
+    <tbody>
+      <tr><td>Starlight Suite</td><td>Starlight Bar</td><td>Starlight Bar Team needs you at Starlight Bar</td></tr>
+      <tr><td>Lounge Bar</td><td>Lounge Bar</td><td>Lounge Bar Team needs you at Lounge Bar</td></tr>
+      <tr><td>Carousel</td><td>Carousel Bar</td><td>Carousel Bar Team needs you at Carousel Bar</td></tr>
+      <tr><td>Kitchen</td><td>Functions Kitchen</td><td>Kitchen Team needs you in Functions Kitchen</td></tr>
+    </tbody>
+  </table></div>
+  <p>The wording is written by the screen that sends the call, so a screen still on an older version sends the old wording until it's reloaded.</p>
+  <h3>Sounds</h3>
+  <ul>
+    <li>Five built-in tones (Classic, Soft bell, Two-tone ding, Urgent buzz, Chirp), plus any uploaded in Back Office › Settings › Notification Sounds. Eight more are ready to upload: Doorbell, Marimba, Rising alert, Pager, Kitchen bell, Siren, Arpeggio and Sonar.</li>
+    <li>Each person picks their own sound in the till's Settings. Managers can set it for their staff in Back Office › Notifications.</li>
+    <li>A screen that can't beep yet shows the amber "Sound is off on this screen" button. Any tap turns sound on.</li>
+  </ul>
+</section>
+
+<!-- 11 -->
+<section id="refunds">
+  <h2><span class="n">11</span>Problems and refunds</h2>
+  <ol class="steps">
+    <li>The bar or kitchen taps <b>Report a problem</b> on the order, picks the item and a reason, and chooses <b>Substitute</b> or <b>Refund</b>.</li>
+    <li>The till that took the order is told. For a substitute, the customer accepts or declines and the till records it.</li>
+    <li>For a refund, someone with the Refunds permission opens the order on the till, taps <b>Refund</b> and confirms. A manager's PIN can be required over a set amount.</li>
+    <li>The refund comes off takings, appears in the Z Read and activity log, and posts to Discord.</li>
+  </ol>
+  <p>Two people can't refund the same item: the first claims it, and the other is told it's already being refunded.</p>
+</section>
+
+<!-- 12 -->
+<section id="backend">
+  <h2><span class="n">12</span>Back Office</h2>
+  <p class="lede">The Back Office is for managers. What each person sees depends on their permissions. A Global Admin sees every venue.</p>
+  <figure><div class="screen"><img src="img/16-backend-takings.jpg" alt="The Takings page with totals, a takings-by-hour chart compared with last week, top sellers and cash and card" loading="lazy"></div>
+    <figcaption><b>Takings.</b> Today, week, month or custom dates, compared with the same day last week. Tick <b>Live</b> to keep it updating; it shows when it last updated.</figcaption></figure>
+  <div class="pair">
+    <figure><div class="screen"><img src="img/17-backend-products.jpg" alt="The Products page" loading="lazy"></div><figcaption><b>Products.</b> Add, edit, price, reorder and stop items, per venue or across all venues.</figcaption></figure>
+    <figure><div class="screen"><img src="img/18-backend-discounts.jpg" alt="The Discounts page with deals and the Deals right now control" loading="lazy"></div><figcaption><b>Discounts.</b> Deals such as Happy Hour, discount buttons, and Deals right now.</figcaption></figure>
+    <figure><div class="screen"><img src="img/19-backend-users.jpg" alt="The Users page listing staff" loading="lazy"></div><figcaption><b>Users.</b> Staff, PINs, venues, groups and permissions. Sign someone out everywhere, or deactivate them.</figcaption></figure>
+    <figure><div class="screen"><img src="img/20-backend-notifications.jpg" alt="The Notifications page with Send, Pause orders and Staff notification sounds" loading="lazy"></div><figcaption><b>Notifications.</b> Notify, Announce, Suspend Orders and Service Break, and each person's sound.</figcaption></figure>
+    <figure><div class="screen"><img src="img/21-backend-zreads.jpg" alt="The Z Reads page" loading="lazy"></div><figcaption><b>Z Reads.</b> Close a shift from here without a till, and look back at past Z Reads.</figcaption></figure>
+    <figure><div class="screen"><img src="img/22-backend-settings.jpg" alt="The Settings page with Lockdown, Session and Notification Sounds" loading="lazy"></div><figcaption><b>Settings</b> (Global Admin). Lockdown for every venue, idle sign-out, and uploading sounds.</figcaption></figure>
+  </div>
+  <h3>Pages</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Page</th><th>What it's for</th><th>Who sees it</th></tr></thead>
+    <tbody>
+      <tr><td>Takings</td><td>Live takings, by hour, top sellers, cash and card</td><td>Back Office access</td></tr>
+      <tr><td>Products</td><td>Menu items, prices, sizes, categories, stops</td><td>Back Office access</td></tr>
+      <tr><td>Discounts</td><td>Deals, discount buttons, Deals right now</td><td>Back Office access</td></tr>
+      <tr><td>Users</td><td>Staff, permissions, PINs, sign-out, private messages</td><td>Back Office access</td></tr>
+      <tr><td>Notifications</td><td>Notify, Announce, Suspend Orders, Service Break, staff sounds</td><td>Back Office access</td></tr>
+      <tr><td>Venues</td><td>Venue details, food on or off, colours</td><td>Global Admin</td></tr>
+      <tr><td>Kitchens</td><td>Kitchens and the venues they cook for</td><td>Global Admin, Kitchen screen on</td></tr>
+      <tr><td>Z Reads</td><td>Close a shift, past Z Reads</td><td>X/Z Read permission</td></tr>
+      <tr><td>Settings</td><td>Lockdown for every venue, idle sign-out, sound uploads</td><td>Global Admin</td></tr>
+      <tr><td>Hours</td><td>Clocked shifts, as a spreadsheet</td><td>Clock in and out on</td></tr>
+      <tr><td>Activity log</td><td>Everything people did, up to 50,000 entries, 100 a page</td><td>View Activity Logs permission</td></tr>
+      <tr><td>Open orders</td><td>Change any order's status</td><td>$YSTEM</td></tr>
+      <tr><td>Master settings</td><td>Every optional feature, themes, layouts</td><td>$YSTEM</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Pausing orders</h3>
+  <p><b>Suspend Orders</b> stops the tills taking new orders. <b>Service Break</b> pauses them with a "back shortly" screen. Both are on the Notifications page for any Back Office user, but only for their own venues. Global Admins also have them in Settings, for every venue.</p>
+  <div class="note warn"><p><b>One-off setup.</b> Regular Back Office users can only pause orders once <code>notifications_backend.sql</code> has been run in Supabase. Until then, they're told to ask $YSTEM to run it.</p></div>
+  <h3>Device health</h3>
+  <p>Lists every screen with its version, who's signed in, when it was last seen, and any sales waiting to save. From here you can <b>Refresh</b> or <b>Sign out</b> one device, or remove old ones. Any screen not on the current version needs reloading.</p>
+</section>
+
+<!-- 13 -->
+<section id="master">
+  <h2><span class="n">13</span>Master settings</h2>
+  <p class="lede">Only $YSTEM, with its password, can open Master settings. Every optional feature starts switched off, so it can be set up before staff see it.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Group</th><th>Features</th></tr></thead>
+    <tbody>
+      <tr><td>Notifications and messages</td><td>Announcements, private messages, alert settings, push on each device, service call wording, Discord</td></tr>
+      <tr><td>Menu and stock</td><td>Scheduled stops, stock counts, scheduled prices, diet tags, quick notes, favourites, drink options, copy a venue</td></tr>
+      <tr><td>Orders and payment</td><td>Discounts, cash and tip buttons, table rules, split bill, tabs, manager approval, reasons, resend order, late orders, opening hours</td></tr>
+      <tr><td>Screens and devices</td><td>Customer display, kitchen screen, receipts, bigger text, remote refresh and sign-out, device health</td></tr>
+      <tr><td>Reports and money</td><td>Takings target, per-person takings, Z Read reminder, daily summary email, report header, export data</td></tr>
+      <tr><td>Staff</td><td>Clock in and out, training mode, session timeouts, role templates</td></tr>
+      <tr><td>Look and feel</td><td>Personal layouts and themes, venue colours, layout groups, sign-in branding, browser tab names, formats</td></tr>
+      <tr><td>System</td><td>Maintenance Mode, activity log, backup and restore</td></tr>
+    </tbody>
+  </table></div>
+  <p>Themes and layouts set the look for every screen: seven themes in light and dark, and the default till layout.</p>
+</section>
+
+<!-- 14 -->
+<section id="reliability">
+  <h2><span class="n">14</span>Reliability and security</h2>
+  <div class="grid2">
+    <div class="card"><h4>Sales are never lost</h4><p>If a till loses its connection, the sale waits on that device and saves as soon as it can. A red "waiting to save" bar shows until it has. Keep that screen open.</p></div>
+    <div class="card"><h4>No hung screens</h4><p>Any request that takes longer than 15 seconds is dropped and tried again, so a bad connection can't freeze a till.</p></div>
+    <div class="card"><h4>Discord queue</h4><p>Posts queue on the server and go out in order, paced to Discord's limits, retried if Discord is busy. Nothing is lost on a busy night.</p></div>
+    <div class="card"><h4>Activity log survives reloads</h4><p>Log entries waiting to send are kept on the device, so reloading straight after a sale doesn't lose its entry.</p></div>
+    <div class="card"><h4>PINs are private</h4><p>No one can read anyone's PIN from the database. Manager approval is checked by the database, and 10 wrong tries in 5 minutes locks that account out for 5 minutes.</p></div>
+    <div class="card"><h4>Remote control</h4><p>Refresh or sign out any device from Device health. A deactivated account is signed out of every screen within about 15 seconds.</p></div>
+  </div>
+  <h3>Stress test results</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Check</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Sales recorded vs. saved</td><td><span class="pill ok">148 = 148</span> £3,298.83 both sides</td></tr>
+      <tr><td>Refunds</td><td><span class="pill ok">3 = 3</span></td></tr>
+      <tr><td>Orders delivered once</td><td><span class="pill ok">146</span> no double deliveries</td></tr>
+      <tr><td>Activity log</td><td><span class="pill warn">144 of 148</span> the 4 lost on reloads are now fixed</td></tr>
+      <tr><td>Service calls</td><td><span class="pill ok">22</span> all reached the right person</td></tr>
+    </tbody>
+  </table></div>
+  <p>The test ran 9 tills, 2 bar screens and the kitchen for 10 minutes, with deliberate reloads, sign-outs, lost connections and mistakes.</p>
+</section>
+
+<!-- 15 -->
+<section id="night">
+  <h2><span class="n">15</span>Running a night</h2>
+  <h3>Before opening</h3>
+  <ul class="check">
+    <li>Reload every screen: tills, order screens, kitchen, customer display, Back Office. Check Device health shows them all on the current version.</li>
+    <li>Sign in on each device as the person or team using it, and tap Turn on alerts.</li>
+    <li>Check no screen shows the amber "Sound is off" button.</li>
+    <li>Check food is on at the venues serving food, and the right items are on stop.</li>
+    <li>Send one service call from the kitchen and one from a bar. Check the pop-up, the beep and the wording.</li>
+    <li>Put one test order through: accept, ready, Delivered on a till. Check one Discord post arrives.</li>
+    <li>Z Read every till so the night starts at zero.</li>
+  </ul>
+  <h3>During service</h3>
+  <ul>
+    <li>Watch Takings in the Back Office with <b>Live</b> ticked.</li>
+    <li>Use Notifications to call people, announce last orders, or pause orders at a venue.</li>
+    <li>A red "waiting to save" bar on a till means it has lost connection. Leave it open and it will catch up on its own.</li>
+  </ul>
+  <h3>Closing</h3>
+  <ul>
+    <li>Make sure every order is delivered or closed (Back Office › Open orders as $YSTEM, or the till's Open orders).</li>
+    <li>Z Read each till, or from Back Office › Z Reads. The Z Read warns you if a till still has sales waiting to save.</li>
+    <li>Declare gratuities before the Z Read.</li>
+  </ul>
+</section>
+
+<!-- 16 -->
+<section id="trouble">
+  <h2><span class="n">16</span>Troubleshooting</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>What you see</th><th>Why</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr><td>No beep, but the push notification arrives</td><td>The screen hasn't been tapped since it loaded, or the iPhone is locked</td><td>Tap the screen, or the amber "Sound is off" button. Keep the app open on the bar.</td></tr>
+      <tr><td>No push notification</td><td>Alerts weren't turned on for that person on that device</td><td>Sign in as them and tap Turn on alerts. On iPhone, open NIPOS from the Home Screen.</td></tr>
+      <tr><td>Service call says the wrong place</td><td>The sending screen is on an older version</td><td>Reload it, or Refresh it from Device health.</td></tr>
+      <tr><td>Red "waiting to save" bar</td><td>The till lost its connection</td><td>Leave the screen open. It saves on its own once it's back online.</td></tr>
+      <tr><td>"Something in this order is no longer on the menu"</td><td>An item was removed or stopped while it was in the order</td><td>Ring it up again or pick something else.</td></tr>
+      <tr><td>Kitchen or customer display says "switched off"</td><td>Its feature is off in Master settings</td><td>Switch it on. The screen unlocks by itself within about 15 seconds.</td></tr>
+      <tr><td>Happy Hour on at the wrong time</td><td>Deals right now is forced on</td><td>Set it to "Follow each deal's times". Forced on now ends at 6am.</td></tr>
+      <tr><td>"Someone signed in as a different person in another tab"</td><td>Two people share one browser</td><td>Use a separate browser or device for each screen, then reload.</td></tr>
+      <tr><td>A screen won't do anything</td><td>It's stuck on an old version or lost its sign-in</td><td>Refresh it from Device health, or reload it on the device.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- 17 -->
+<section id="tech">
+  <h2><span class="n">17</span>Technical reference</h2>
+  <div class="grid2">
+    <div class="card"><h4>Hosting</h4><p>GitHub Pages, from the <code>NIPOS/</code> folder of <code>KeystoneGD/KeystoneGD.github.io</code>. Merging to <code>main</code> goes live in about a minute.</p></div>
+    <div class="card"><h4>Database</h4><p>Supabase project <code>djegigghjeisoyecxeyo</code>: Postgres with row-level security, sign-in, storage for sounds, realtime and scheduled jobs.</p></div>
+    <div class="card"><h4>Server functions</h4><p><code>manage-staff</code> (create staff, change PINs), <code>send-push</code> (phone push), <code>discord-relay</code> (Discord queue), <code>daily-summary</code> (takings email).</p></div>
+    <div class="card"><h4>NIPOS Local</h4><p><code>NIPOS-LOCAL/</code> is a self-hosted copy that runs on a local Supabase. Refresh it with <code>python3 scripts/update-from-nipos.py</code>.</p></div>
+  </div>
+  <h3>Files</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>File</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr><td><code>index.html</code></td><td>The till</td></tr>
+      <tr><td><code>orders.html</code></td><td>Order screen and Kitchen View (<code>kitchen.html</code> redirects to it)</td></tr>
+      <tr><td><code>display.html</code></td><td>Customer display</td></tr>
+      <tr><td><code>backend.html</code></td><td>Back Office</td></tr>
+      <tr><td><code>db.js</code></td><td>Shared code: database, save queue, notifications, sounds, settings, security</td></tr>
+      <tr><td><code>nipos.css</code>, <code>layouts.css</code></td><td>Shared styles and the six till layouts</td></tr>
+      <tr><td><code>products.json</code></td><td>The built-in menu shown until a venue's own menu loads</td></tr>
+      <tr><td><code>sw.js</code></td><td>Service worker that shows phone push notifications</td></tr>
+      <tr><td><code>supabase/*.sql</code></td><td>Database setup scripts, run once in the SQL Editor</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Main tables</h3>
+  <p><code>sales</code>, <code>open_orders</code>, <code>refunds</code>, <code>z_reports</code>, <code>catalogue_items</code>, <code>categories</code>, <code>stops</code>, <code>staff_users</code>, <code>venues</code>, <code>kitchens</code>, <code>notifications</code>, <code>push_subscriptions</code>, <code>activity_log</code>, <code>devices</code>, <code>device_commands</code>, <code>discord_queue</code>, <code>app_settings</code>, <code>app_state</code> and <code>system_theme</code> (Master settings).</p>
+  <h3>SQL scripts</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Script</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td><code>security_and_devices.sql</code>: PIN check, device controls, Discord queue</td><td><span class="pill ok">Run</span></td></tr>
+      <tr><td><code>master_themes.sql</code>: Master settings, themes, kitchens</td><td><span class="pill ok">Run</span></td></tr>
+      <tr><td><code>notifications_backend.sql</code>: lets Back Office users pause their own venues</td><td><span class="pill warn">To run</span></td></tr>
+      <tr><td><code>remove_food_items.sql</code>: removes the 10 discontinued food items</td><td><span class="pill warn">To run</span></td></tr>
+    </tbody>
+  </table></div>
+  <h3>Menu source</h3>
+  <p>Prices are checked against the Buckets Food 2 Go app through its product API (<code>/api/Catalog/Products/{id}</code>). The 22 October check covered 217 products. It corrected 7 spirit prices at all three venues and added 5 Heinz sauces at £0.35 to Sides.</p>
+</section>
+
+<!-- 18 -->
+<section id="changes">
+  <h2><span class="n">18</span>Change history</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Change</th><th>What it did</th></tr></thead>
+    <tbody>
+      <tr><td>#32–#38</td><td>Stress test fixes: shared basket, £0 sales after a menu reload, lost saves (the save queue), report-a-problem, activity log jams, hung requests, ready orders, Delivered</td></tr>
+      <tr><td>#39–#44</td><td>$YSTEM Open orders, till delivery rules, 50k activity log, live Takings, browser tab names, PIN security, clock-change times, Discord queue, device controls</td></tr>
+      <tr><td>#45–#47</td><td>Display and kitchen lock when switched off, Delivered counts once, no replayed notifications, faster service list</td></tr>
+      <tr><td>#48–#51</td><td>Service call wording, log entries survive reloads, tiles from before the menu loads, push on iPhone</td></tr>
+      <tr><td>#52–#54</td><td>Beeps after reloads, multi-select mixers and pint extras, cordial mixers, customer display building each line, Deals right now ends at 6am</td></tr>
+      <tr><td>#55–#58</td><td>Back Office Notifications page, iPhone silent switch, Food as its own menu in every layout, built-in menu prices</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<footer>
+  <hr>
+  NIPOS Handbook, written 22 October 2026 for version 20261023a. Repository: <code>KeystoneGD/KeystoneGD.github.io</code>, folder <code>NIPOS/</code>.
+</footer>
+</main>
+</div>
+</body>
+</html>
