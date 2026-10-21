@@ -134,7 +134,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022o">
+<link rel="stylesheet" href="nipos.css?v=20261022p">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -263,7 +263,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022o"></script>
+<script src="db.js?v=20261022p"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -651,7 +651,7 @@ async function pushNotification(toUserId, message, urgent, kind){
   notifications.unshift(notif);
   notifications = notifications.slice(0, 50);
   await saveNotification(notif);
-  knownNotificationIds = new Set(notifications.map(n => n.id));
+  if (knownNotificationIds) knownNotificationIds.add(notif.id); // add to what's been seen, never rebuild it from the short local list
   sendPushNotification(toUserId, currentUserId, me ? me.name : "Someone", message, urgent);
 }
 
@@ -822,7 +822,7 @@ async function acceptOrder(id){
   if (o) logActivity("Order accepted", orderLabel(o) + (part !== "order" ? ` (${part})` : ""));
   if (o && o.placedById && o.placedById !== currentUserId) {
     const n = await sendQuietNotice(o.placedById, currentUserId, currentUser && currentUser.name, `${orderLabel(o)}: ${part} accepted, in progress`);
-    if (n) { notifications.unshift(n); knownNotificationIds = new Set(notifications.map(x => x.id)); }
+    if (n) { notifications.unshift(n); if (knownNotificationIds) knownNotificationIds.add(n.id); }
   }
   render();
 }

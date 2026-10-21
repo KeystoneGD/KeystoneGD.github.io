@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022o">
-<link rel="stylesheet" href="layouts.css?v=20261022o">
+<link rel="stylesheet" href="nipos.css?v=20261022p">
+<link rel="stylesheet" href="layouts.css?v=20261022p">
 </head>
 <body>
 
@@ -752,7 +752,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022o"></script>
+<script src="db.js?v=20261022p"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -2911,7 +2911,7 @@ async function pushNotification(toUserId, message, urgent){
   notifications = notifications.slice(0, 50);
   saveLocal(LS_NOTIFICATIONS, notifications);
   saveNotification(notif);
-  knownNotificationIds = new Set(notifications.map(n => n.id));
+  if (knownNotificationIds) knownNotificationIds.add(notif.id); // add to what's been seen, never rebuild it from the short local list
   sendPushNotification(toUserId, currentUserId, me ? me.name : "Someone", message, urgent);
 }
 
