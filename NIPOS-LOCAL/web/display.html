@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#101418">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="stylesheet" href="vendor/fonts/fonts.css">
-<link rel="stylesheet" href="nipos.css?v=20261022v">
+<link rel="stylesheet" href="nipos.css?v=20261022w">
 <style>
 /* The screen facing the customer (Master settings "Customer display"): the order and total from one
    till, big enough to read across the bar. */
@@ -24,9 +24,11 @@ body{background:var(--bg);color:var(--text);font-family:'Atkinson Hyperlegible N
 .cd-err{color:var(--danger);font-weight:700;min-height:1.4em;}
 .cd-screen{display:flex;flex-direction:column;min-height:100vh;padding:max(24px, env(safe-area-inset-top)) max(28px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));box-sizing:border-box;}
 .cd-venue{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-weight:800;font-size:clamp(20px,3vw,34px);color:var(--text-muted);}
-.cd-lines{flex:1;margin:18px 0;overflow:hidden;}
+.cd-lines{flex:1;margin:18px 0;overflow-y:auto;scrollbar-width:none;}
 .cd-line{display:flex;justify-content:space-between;gap:20px;font-size:clamp(20px,3.2vw,40px);padding:8px 0;border-bottom:1px solid var(--border);}
 .cd-line .q{color:var(--text-muted);margin-right:10px;}
+.cd-line.building{color:var(--accent);font-style:italic;}
+.cd-off{color:var(--success, #2e7d32);font-weight:700;}
 .cd-sub{display:flex;justify-content:space-between;font-size:clamp(18px,2.4vw,30px);color:var(--text-muted);padding:4px 0;}
 .cd-total{display:flex;justify-content:space-between;align-items:baseline;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-weight:800;font-size:clamp(40px,8vw,110px);border-top:3px solid var(--text);padding-top:12px;}
 .cd-idle{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;}
@@ -64,7 +66,7 @@ body{background:var(--bg);color:var(--text);font-family:'Atkinson Hyperlegible N
 </div>
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022v"></script>
+<script src="db.js?v=20261022w"></script>
 <script>
 const LS_DISPLAY = "nipos.customerDisplay";
 let pairing = null, lastTs = 0, pollTimer = null;
@@ -101,7 +103,7 @@ function startScreen(){
   $("setup").hidden = true; $("screen").hidden = false;
   setCurrentVenueId(pairing.venueId);
   clearInterval(pollTimer);
-  poll(); pollTimer = setInterval(poll, 1000);
+  poll(); pollTimer = setInterval(poll, 500);
 }
 let thanksUntil = 0;
 async function poll(){
@@ -120,8 +122,13 @@ async function poll(){
   lastTs = v.ts;
   if (!v.lines || !v.lines.length) { renderIdle("Welcome", "Your order will show here."); return; }
   $("cdIdle").hidden = true; $("cdLines").hidden = false; $("cdTotals").hidden = false;
-  $("cdLines").innerHTML = v.lines.map(l => `<div class="cd-line"><span><span class="q">${l.qty} ×</span>${esc(l.name)}</span><span class="tabular">${fmt(l.pence * l.qty)}</span></div>`).join("");
-  $("cdTotals").innerHTML = (v.discountAmount ? `<div class="cd-sub"><span>Subtotal</span><span class="tabular">${fmt(v.base)}</span></div><div class="cd-sub"><span>${esc(v.discountLabel || "Discount")}</span><span class="tabular">−${fmt(v.discountAmount)}</span></div>` : "")
+  $("cdLines").innerHTML = v.lines.map(l => `<div class="cd-line${l.building ? " building" : ""}"><span><span class="q">${l.qty} ×</span>${esc(l.name)}</span><span class="tabular">${fmt(l.pence * l.qty)}</span></div>`).join("");
+  // The newest line in view, like a till receipt scrolling up.
+  $("cdLines").scrollTop = $("cdLines").scrollHeight;
+  const subtotal = v.subtotal != null ? v.subtotal : v.base;
+  const offs = [v.dealAmount ? [v.dealLabel || "Deal", v.dealAmount] : null, v.discountAmount ? [v.discountLabel || "Discount", v.discountAmount] : null].filter(Boolean);
+  $("cdTotals").innerHTML = (offs.length ? `<div class="cd-sub"><span>Subtotal</span><span class="tabular">${fmt(subtotal)}</span></div>`
+      + offs.map(([label, amt]) => `<div class="cd-sub cd-off"><span>${esc(label)}</span><span class="tabular">−${fmt(amt)}</span></div>`).join("") : "")
     + `<div class="cd-total"><span>Total</span><span class="tabular">${fmt(v.total)}</span></div>`;
 }
 function renderIdle(title, sub){ $("cdIdle").hidden = false; $("cdLines").hidden = true; $("cdTotals").hidden = true; $("cdIdleTitle").textContent = title; $("cdIdleSub").textContent = sub; }
