@@ -331,7 +331,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022w">
+<link rel="stylesheet" href="nipos.css?v=20261022x">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -378,6 +378,7 @@ table.data-table tr:last-child td{border-bottom:0;}
       <button class="nav-item" data-page="products">Products</button>
       <button class="nav-item" data-page="discounts">Discounts</button>
       <button class="nav-item" data-page="users">Users</button>
+      <button class="nav-item" data-page="notifications" id="navNotifications" hidden>Notifications</button>
       <button class="nav-item" data-page="venues" id="navVenues" hidden>Venues</button>
       <button class="nav-item" data-page="kitchens" id="navKitchens" hidden>Kitchens</button>
       <button class="nav-item" data-page="openorders" id="navOpenOrders" hidden>Open orders</button>
@@ -622,6 +623,32 @@ table.data-table tr:last-child td{border-bottom:0;}
       </div>
     </section>
 
+    <section class="page" id="page-notifications">
+      <div class="page-header"><h1>Notifications</h1></div>
+      <div class="section-title">Send</div>
+      <div class="card">
+        <p class="note">The same Notify as on the till: a message to one person, or to everyone at a venue as a banner or a pop-up.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-accent" id="ntNotifyBtn"><span data-icon="bell"></span>Notify someone</button>
+          <button type="button" class="btn btn-ghost" id="ntAnnounceBtn">Announce to everyone</button>
+        </div>
+        <p class="note" id="ntSendNote" role="status" style="margin-top:10px;"></p>
+      </div>
+      <div class="section-title">Pause orders</div>
+      <div class="card">
+        <p class="note">Stops the tills taking new orders until you turn it back off. You pick which of your venues each time.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-danger" id="ntSuspendBtn">Suspend Orders</button>
+          <button class="btn btn-ghost" id="ntBreakBtn">Service Break</button>
+        </div>
+        <p class="note" id="ntLockStatus" role="status" style="margin-top:10px;"></p>
+      </div>
+      <div class="section-title">Staff notification sounds</div>
+      <p class="note">The sound each person's screens play for calls for service and notices. Changes save straight away and apply the next time their screen beeps.</p>
+      <p class="note" id="ntSoundMsg" role="status"></p>
+      <div class="card" id="ntSoundList"><div class="empty">Loading…</div></div>
+    </section>
+
     <section class="page" id="page-settings">
       <div class="page-header"><h1>Settings</h1></div>
       <div class="section-title">Lockdown</div>
@@ -831,7 +858,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261022w"></script>
+<script src="db.js?v=20261022x"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -954,6 +981,7 @@ async function loadVenueData(){
   const isGlobalAdmin = !!(currentUser && currentUser.perms.globalAdmin);
   document.getElementById("navVenues").hidden = !isGlobalAdmin;
   document.getElementById("navSettings").hidden = !isGlobalAdmin;
+  document.getElementById("navNotifications").hidden = !currentUser || (currentUser.system && !systemPassword);
   document.getElementById("navZReads").hidden = !(currentUser && currentUser.perms.xzRead);
   if (currentUser && currentUser.perms.xzRead) await renderZReads();
 
@@ -989,7 +1017,7 @@ async function loadVenueData(){
     renderVenues();
     await loadAppSettings();
     await renderSoundsList();
-  }
+  } else await loadAppSettings(); // the Notifications page shows (and pauses) orders at their venues
   await loadDashboard();
   refreshCornerIdentity(); // last, after everything that sets the venue identity
   if (currentUser && currentUser.system) renderFeaturesIfIdle(); // now the staff list is loaded
@@ -4104,8 +4132,8 @@ document.getElementById("saveSessionSettingsBtn").addEventListener("click", asyn
 // Suspend Orders and Service Break are per venue: pressing one asks which venues. The old
 // every-venue switches (ordersSuspended / serviceBreak) still count as "every venue".
 const LOCKDOWNS = {
-  suspend: { flag: "ordersSuspended", list: "suspendedVenueIds", name: "Suspend Orders", verb: "Orders suspended", btn: "toggleSuspendBtn" },
-  break: { flag: "serviceBreak", list: "breakVenueIds", name: "Service Break", verb: "On a service break", btn: "toggleServiceBreakBtn" }
+  suspend: { flag: "ordersSuspended", list: "suspendedVenueIds", name: "Suspend Orders", verb: "Orders suspended", btns: ["toggleSuspendBtn", "ntSuspendBtn"] },
+  break: { flag: "serviceBreak", list: "breakVenueIds", name: "Service Break", verb: "On a service break", btns: ["toggleServiceBreakBtn", "ntBreakBtn"] }
 };
 function lockdownVenues(kind){
   const L = LOCKDOWNS[kind];
@@ -4114,12 +4142,13 @@ function lockdownVenues(kind){
 function renderLockdownButtons(){
   const status = [];
   Object.entries(LOCKDOWNS).forEach(([kind, L]) => {
-    const ids = lockdownVenues(kind), btn = document.getElementById(L.btn);
-    btn.textContent = ids.length ? `${L.name} (${ids.length === myVenues.length && myVenues.length > 1 ? "every venue" : ids.length + (ids.length === 1 ? " venue" : " venues")})` : L.name;
-    btn.className = ids.length ? "btn btn-accent" : kind === "suspend" ? "btn btn-danger" : "btn btn-ghost";
+    const ids = lockdownVenues(kind);
+    L.btns.forEach(id => { const btn = document.getElementById(id); if (!btn) return;
+      btn.textContent = ids.length ? `${L.name} (${ids.length === myVenues.length && myVenues.length > 1 ? "every venue" : ids.length + (ids.length === 1 ? " venue" : " venues")})` : L.name;
+      btn.className = ids.length ? "btn btn-accent" : kind === "suspend" ? "btn btn-danger" : "btn btn-ghost"; });
     if (ids.length) status.push(`${L.verb}: ${ids.length === myVenues.length && myVenues.length > 1 ? "every venue" : ids.map(venueName).join(", ")}.`);
   });
-  document.getElementById("lockdownStatus").textContent = status.join(" ") || "Every till is taking orders.";
+  ["lockdownStatus", "ntLockStatus"].forEach(id => { document.getElementById(id).textContent = status.join(" ") || "Every till is taking orders."; });
 }
 function openLockdownPicker(kind){
   const L = LOCKDOWNS[kind], on = new Set(lockdownVenues(kind));
@@ -4146,7 +4175,19 @@ function openLockdownPicker(kind){
     const mine = new Set(myVenues.map(v => v.id));
     const others = appSettings[L.flag] ? venues.map(v => v.id).filter(id => !mine.has(id)) : (appSettings[L.list] || []).filter(id => !mine.has(id));
     const ids = boxes.filter(b => b.checked).map(b => b.dataset.ldVenue).concat(others);
-    const res = await saveAppSettings({ [L.flag]: false, [L.list]: ids });
+    let res;
+    if (isGlobalAdmin) res = await saveAppSettings({ [L.flag]: false, [L.list]: ids });
+    else {
+      // Everyone else changes only their own venues, through a database function that checks that.
+      const before = new Set(lockdownVenues(kind)), changed = boxes.filter(b => b.checked !== before.has(b.dataset.ldVenue));
+      res = { ok: true };
+      for (const b of changed) {
+        const { data, error } = await supabaseClient.rpc("nipos_set_lockdown", { p_kind: kind, p_venue: b.dataset.ldVenue, p_on: b.checked });
+        if (error || (data && data.error)) { res = { error: error && /function|does not exist|schema cache/i.test(error.message) ? "This needs a one-off database update first (notifications_backend.sql). Ask $YSTEM to run it." : (error ? error.message : "You can't pause orders at that venue.") }; break; }
+        logActivity(L.name, `${venueName(b.dataset.ldVenue)}: ${b.checked ? "on" : "off"}`, b.dataset.ldVenue);
+      }
+      await loadAppSettings();
+    }
     if (res.error) { alert(res.error); return; }
     el.hidden = true;
     renderLockdownButtons();
@@ -4156,6 +4197,60 @@ function openLockdownPicker(kind){
 }
 document.getElementById("toggleSuspendBtn").addEventListener("click", () => openLockdownPicker("suspend"));
 document.getElementById("toggleServiceBreakBtn").addEventListener("click", () => openLockdownPicker("break"));
+document.getElementById("ntSuspendBtn").addEventListener("click", () => openLockdownPicker("suspend"));
+document.getElementById("ntBreakBtn").addEventListener("click", () => openLockdownPicker("break"));
+
+/* ---------- Notifications page (every Backend user): Notify, Announce, pause orders, staff sounds ---------- */
+function notifyDialogOpts(){
+  return { user: currentUser, venue: currentVenue, venues: myVenues, toast: notifyToast,
+    fetchStaff: async () => users.filter(u => !u.system && (u.perms.globalAdmin || !currentVenue || (u.venueIds || []).includes(currentVenue.id))) };
+}
+document.getElementById("ntNotifyBtn").addEventListener("click", () => openNotifyDialog(notifyDialogOpts(), "someone"));
+document.getElementById("ntAnnounceBtn").addEventListener("click", () => openNotifyDialog(notifyDialogOpts(), "everyone"));
+let ntPreviewCtx = null;
+async function loadNotificationsPage(){
+  const a = notifyAbilities(currentUser);
+  document.getElementById("ntNotifyBtn").hidden = !a.someone;
+  document.getElementById("ntAnnounceBtn").hidden = !a.everyone;
+  document.getElementById("ntSendNote").textContent = a.someone || a.everyone ? ""
+    : "Sending needs Notify Specific Users or Send Announcements on your account, and Notify switched on in Master settings.";
+  renderLockdownButtons();
+  const wrap = document.getElementById("ntSoundList");
+  wrap.innerHTML = `<div class="empty">Loading…</div>`;
+  const uploaded = await fetchNotificationSounds();
+  const options = Object.entries(CHIME_PRESETS).map(([id, label]) => [id, label]).concat(uploaded.map(f => [f.path, f.label]));
+  const staff = users.filter(u => !u.system && !isHiddenAccount(u.name)).sort((x, y) => x.name.localeCompare(y.name));
+  if (!staff.length) { wrap.innerHTML = `<div class="empty">No staff at your venues yet.</div>`; return; }
+  wrap.innerHTML = "";
+  staff.forEach(u => {
+    const row = document.createElement("div");
+    row.className = "list-row";
+    const current = u.notificationSound || "classic";
+    row.innerHTML = `<div class="info"><div class="name">${esc(u.name)}</div><div class="sub">${esc((u.venueIds || []).map(venueName).filter(Boolean).join(", ") || "Every venue")}</div></div>
+      <div class="actions" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select aria-label="Notification sound for ${esc(u.name)}">${options.map(([id, label]) => `<option value="${esc(id)}" ${id === current ? "selected" : ""}>${esc(label)}</option>`).join("")}</select>
+        <button type="button" class="btn btn-ghost btn-sm">Preview</button></div>`;
+    const sel = row.querySelector("select");
+    row.querySelector("button").addEventListener("click", () => {
+      if (!ntPreviewCtx) { try { ntPreviewCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+      playNotificationSound(ntPreviewCtx, sel.value);
+    });
+    sel.addEventListener("change", async () => {
+      const msg = document.getElementById("ntSoundMsg");
+      // Re-read the row first so anything else on it (their own settings) is kept.
+      const { data: fresh } = await supabaseClient.from("staff_users").select("data").eq("id", u.id).maybeSingle();
+      const merged = { ...(fresh ? fresh.data : u), notificationSound: sel.value };
+      delete merged.pin;
+      const { error } = await supabaseClient.from("staff_users").update({ data: merged }).eq("id", u.id);
+      if (error) { msg.textContent = `Couldn't save ${u.name}'s sound: ${error.message}`; sel.value = u.notificationSound || "classic"; return; }
+      u.notificationSound = sel.value;
+      msg.textContent = `Saved: ${u.name} now hears ${sel.options[sel.selectedIndex].text}.`;
+      logActivity("Changed a notification sound", `${u.name}: ${sel.options[sel.selectedIndex].text}`, null);
+    });
+    wrap.appendChild(row);
+  });
+}
+document.getElementById("navNotifications").addEventListener("click", loadNotificationsPage);
 
 async function renderSoundsList(){
   const wrap = document.getElementById("soundsList");
