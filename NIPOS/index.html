@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Atkinson+Hyperlegible+Next:wght@400;500;600;700;800&display=swap">
 <style>
 :root{
   --bg:#0c1826; --surface:#13212f; --surface-2:#1a2e3f; --border:#253d52;
@@ -35,7 +35,7 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 [hidden]{display:none !important;}
-body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;margin:0;padding-bottom:84px;min-height:100vh;}
+body{background:var(--bg);color:var(--text);font-family:'Atkinson Hyperlegible Next',system-ui,sans-serif;margin:0;padding-bottom:84px;min-height:100vh;}
 h1,h2,h3,.display{font-family:'Plus Jakarta Sans',system-ui,sans-serif;text-wrap:balance;}
 button{font-family:inherit;}
 input{font-family:inherit;}
@@ -353,7 +353,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   <div class="sheet-head">
     <button class="icon-btn" id="cartBack" aria-label="Back to menu" type="button"><span data-icon="back"></span></button>
     <h2>Current order</h2>
-    <button class="btn btn-ghost" id="cartClear" type="button">Clear</button>
+    <button class="btn btn-ghost" id="cartMore" type="button" aria-haspopup="dialog">More</button>
+    <button id="cartClear" type="button" hidden>Clear the order</button>
   </div>
   <div class="sheet-body">
     <div class="hh-status" id="hhStatus" hidden>
@@ -380,7 +381,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
       <button class="btn btn-solid" id="goCash" style="flex:0 0 34%;">Cash</button>
       <button class="btn btn-accent btn-block" id="goCard">Card</button>
     </div>
-    <button class="btn btn-void btn-block" id="cancelOrderBtn" style="margin-top:8px;">Customer left without paying</button>
+    <button id="cancelOrderBtn" type="button" hidden>Customer left without paying</button>
   </div>
 </div>
 
@@ -784,69 +785,46 @@ const PRODUCTS = [
 
 const FOOD_PRODUCTS = [
 ["Deals and Offers", "Table ordering only.", [
-  ["Kids Meal Deal",10.45],["Tots Meal Deal",8.95],["Lunch Meal Deal",12.00]
+  ["Kids Meal Deal",10.45],["Tots Meal Deal",8.95]
 ]],
 ["Lighter Options", "Toasties, ciabattas and wraps.", [
-  ["BLT Ciabatta",9.25],["Triple Cheese Toastie (V)",7.50],["Falafel Wrap (VG)",9.25],
-  ["Tuna Melt",9.25],["Crispy Fried Chicken Wrap",9.25],["Skillet Bacon Mac & Cheese",9.45]
+  ["BLT Ciabatta",9.25],["Triple Cheese Toastie (V)",7.50],["Falafel Wrap (VG)",9.25],["Tuna Melt",9.25],["Crispy Fried Chicken Wrap",9.25],["Tuna Ciabatta",9.25],["Skillet Bacon Mac & Cheese",9.45]
 ]],
 ["Starters & Sharers", "", [
-  ["Cauliflower Wings",7.65],["Soup Of The Day (VG)",5.65],["Garlic Bread (VG)",5.95],
-  ["Nachos",12.50],["Cheesy Garlic Bread (V)",6.95],["Cheese & Bacon Quesadilla",7.95],
-  ["Pork & Apple Bites",9.45]
+  ["Cauliflower Wings", [["Hot & Spicy, Regular",7.65],["Hot & Spicy, Large",9.75],["Axle Jack, Regular",7.65],["Axle Jack, Large",9.75]]],["Soup Of The Day (VG)",5.65],["Garlic Bread (VG)",5.95],["Nachos", [["Cheese (V, GF)",12.50],["Pulled Pork (GF)",16.85],["Chilli Beef",16.85],["Cajun Chicken (GF)",15.95],["Vegan (Vg, GF, DF)",12.50]]],["Cheesy Garlic Bread (V)",6.95],["Cheese & Bacon Quesadilla",7.95],["Pork & Apple Bites",9.45]
 ]],
-["Tacos", "", [ ["2 Tacos",7.95],["3 Tacos",9.75] ]],
 ["Fried Chicken", "", [
   ["Strips Small",9.50],["Strips Large",11.50],["Boneless Bites Small",8.45],["Boneless Bites Large",11.00]
 ]],
 ["Mains", "", [
-  ["Hunters Chicken Stack",14.95],["Sausage & Mash",12.50],["Caesar Salad (V)",10.25],
-  ["Caesar Salad - Chicken",13.35],["Caesar Salad - Vegan Chick'n (V)",13.65],["Balti Pie (VG)",13.65],
-  ["Cajun Chicken Fajitas",16.45],["Chicken Tikka Masala",14.75],["Bang Bang Chilli Chicken Noodles",14.25],
-  ["Steak & Ale Pie",15.75],["Chicken Souvlaki Wrap",14.75]
+  ["Hunters Chicken Stack",14.95],["Sausage & Mash",12.50],["Caesar Salad (V)",10.25],["Caesar Salad - Chicken",13.35],["Caesar Salad - Vegan Chick'n (V)",13.65],["Balti Pie (VG)",13.65],["Bang Bang Chilli Chicken Noodles",14.25],["Steak & Ale Pie",15.75],["Crispy Cauliflower Salad",12.95]
 ]],
 ["Signature Burgers", "Served with chunky chips.", [
-  ["The Big Boi Burger",19.95],["Notorious PIG Burger",19.95],["The Big Bird Burger",18.50],
-  ["Katsu Chicken Burger",15.45],["Double Decker Chicken Club Burger",15.50],["Sombrero Stack Burger",15.45],
-  ["Chicken Strip BLT Burger",14.95]
+  ["The Big Boi Burger",19.95],["Notorious PIG Burger",19.95],["The Big Bird Burger",18.50],["Double Decker Chicken Club Burger",15.50],["Sombrero Stack Burger",15.45],["Chicken Strip BLT Burger",14.95]
 ]],
 ["Burgers", "Served with lettuce, tomato, red onion, coleslaw and chunky chips.", [
-  ["Classic Double",13.25],["Classic Triple",14.25],["Cheese Double",13.95],["Cheese Triple",14.95],
-  ["Bacon Cheese Double",14.95],["Bacon Cheese Triple",15.95],["Chilli Cheese Double",14.95],["Chilli Cheese Triple",15.95]
+  ["Classic Double",13.25],["Classic Triple",14.25],["Cheese Double",13.95],["Cheese Triple",14.95],["Bacon Cheese Double",14.95],["Bacon Cheese Triple",15.95]
 ]],
 ["Pizzas", "", [
-  ["Margherita Pizza (V)",14.95],["Vegan Margherita Pizza (VG)",14.95],["Spicy Meatball Jalapeno Pizza",16.50],
-  ["Pepperoni Pizza",16.50],["BBQ Chicken & Bacon Pizza",16.50],["Hawaiian Pizza",16.50]
+  ["Margherita Pizza (V)",14.95],["Vegan Margherita Pizza (VG)",14.95],["Pepperoni Pizza",16.50],["BBQ Chicken & Bacon Pizza",16.50]
 ]],
 ["Sides - Filthy Fries", "", [
-  ["Dirty Fries - Regular",7.95],["Dirty Fries - Large",9.95],["Hunters BBQ Fries - Regular",8.95],
-  ["Hunters BBQ Fries - Large",10.45],["Fully Loaded Fries - Regular",7.95],["Fully Loaded Fries - Large",9.95],
-  ["Habanero Hot Fries - Regular",7.95],["Habanero Hot Fries - Large",9.95],["Chilli Fries - Regular",8.95],
-  ["Chilli Fries - Large",10.45],["Chicken Katsu Curry Fries - Regular",8.95],["Chicken Katsu Curry Fries - Large",10.45]
+  ["Dirty Fries - Regular",7.95],["Dirty Fries - Large",9.95],["Hunters BBQ Fries - Regular",8.95],["Hunters BBQ Fries - Large",10.45],["Fully Loaded Fries - Regular",7.95],["Fully Loaded Fries - Large",9.95],["Habanero Hot Fries - Regular",7.95],["Habanero Hot Fries - Large",9.95],["Chilli Fries - Regular",8.95],["Chilli Fries - Large",10.45]
 ]],
 ["Sides", "", [
-  ["Skinny Fries (VG)",4.10],["Chunky Chips (VG)",4.10],["Onion Rings (V)",4.10],
-  ["Garlic Bread (VG)",5.95],["Cheesy Garlic Bread (V)",6.95],["Mixed Leaf Salad (VG)",5.00]
+  ["Skinny Fries (VG)",4.10],["Chunky Chips (VG)",4.10],["Onion Rings (V)",4.10],["Garlic Bread (VG)",5.95],["Cheesy Garlic Bread (V)",6.95],["Mixed Leaf Salad (VG)",5.00]
 ]],
 ["Desserts", "", [
-  ["Dubai Style Cookie Ice Cream Sandwich",7.35],["Chocolate Fudge Brownie (V)",7.45],
-  ["Carte Dor Vanilla Ice Cream",4.75],["Carte Dor Triple Chocolate Ice Cream",4.75],
-  ["Sticky Toffee Pudding (VG)",6.50],["Millionaire's Sundae (V)",7.05],["Knickerbocker Sundae (V)",7.45]
+  ["Chocolate Fudge Brownie (V)",7.45],["Carte Dor Vanilla Ice Cream",4.75],["Carte Dor Triple Chocolate Ice Cream",4.75],["Sticky Toffee Pudding (VG)",6.50],["Millionaire's Sundae (V)",7.05],["Knickerbocker Sundae (V)",7.45]
 ]],
 ["Kids - Little Acorns (for 6+)", "", [
-  ["Rainbow Sticks (VG)",1.10],["Crunchy Garlic Bread (VG)",2.15],["Tortilla Chips (VG)",1.10],
-  ["Kickin Chick*n Burger (VG)",7.00],["Gloriously Grilled Chicken Salad",7.00],["Cheeky Cheeseburger",7.00],
-  ["Funky Fried Chicken Strips",7.20],["Nibbly Nutella Pancakes",4.75],["Bear's Chocolate & Oreo Sundae",4.75],
-  ["PIP Organic Rainbow Lolly (VG)",2.50],["Chocolate Ice Cream",3.80],["Vanilla Ice Cream",3.80]
+  ["Rainbow Sticks (VG)",1.10],["Crunchy Garlic Bread (VG)",2.15],["Tortilla Chips (VG)",1.10],["Kickin Chick*n Burger (VG)",7.00],["Gloriously Grilled Chicken Salad",7.00],["Cheeky Cheeseburger",7.00],["Funky Fried Chicken Strips",7.20],["Nibbly Nutella Pancakes",4.75],["Bear's Chocolate & Oreo Sundae",4.75],["Chocolate Ice Cream",3.80],["Vanilla Ice Cream",3.80],["Green Slime & Brown Sludge",4.75]
 ]],
 ["Tots - Tiny Sprouts (up to 6)", "", [
-  ["Fish Fingers & Chips",6.95],["Pastacadabra (VG)",5.90],["Hot Diggety Dog",5.75],
-  ["Chompin' Chicken Chunks",6.95],["Chocolate Ice Cream",3.80],["PIP Organic Rainbow Lolly (VG)",2.50],
-  ["Vanilla Ice Cream",3.80],["Lucy's Mini Donuts",3.75]
+  ["Pastacadabra (VG)",5.90],["Chompin' Chicken Chunks",6.95],["Chocolate Ice Cream",3.80],["Tots Beef Burger",5.75],["Vanilla Ice Cream",3.80],["Lucy's Mini Donuts",3.75]
 ]],
 ["Magical Milkshakes", "", [
-  ["Biscoff Billionaire Milkshake",5.75],["Strawberries & Cream Milkshake",5.75],
-  ["Dubai Style Cookie Milkshake",5.75],["Oreo Chocolate Milkshake",5.75]
+  ["Biscoff Billionaire Milkshake",5.75],["Strawberries & Cream Milkshake",5.75],["Oreo Chocolate Milkshake",5.75]
 ]]
 ];
 
@@ -1289,11 +1267,11 @@ async function addSizedToCart(product){
 }
 
 async function addCustomProduct(){
-  const name = await askText({ title:"Add product", message:"Name of the item you're adding.", placeholder:"e.g. Birthday cake", inputType:"text", inputMode:"text" });
+  const name = await askText({ title:"Add product", message:"Name of the item you're adding.", placeholder:"e.g. Birthday cake", inputType:"text", inputMode:"text", confirmLabel:"Next: set the price" });
   if (name === null) return;
   const trimmedName = name.trim();
   if (!trimmedName) { showToast("Enter a name"); return; }
-  const priceStr = await askText({ title:"Add product", message:`Price for "${trimmedName}".`, placeholder:"e.g. 5.00" });
+  const priceStr = await askText({ title:"Add product", message:`Price for "${trimmedName}".`, placeholder:"e.g. 5.00", confirmLabel:"Add to order" });
   if (priceStr === null) return;
   const pounds = parseFloat(priceStr);
   if (!isFinite(pounds) || pounds < 0) { showToast("Enter a valid price"); return; }
@@ -1570,6 +1548,16 @@ function closeSheet(id){ document.getElementById(id).classList.remove("show"); }
 /* ---------- current order / discounts ---------- */
 document.getElementById("reviewBtn").addEventListener("click", () => { renderCartSheet(); openSheet("cartSheet"); });
 document.getElementById("cartBack").addEventListener("click", () => closeSheet("cartSheet"));
+// Less-used order actions live behind "More", so the panel's own buttons stay to Cash and Card.
+document.getElementById("cartMore").addEventListener("click", async () => {
+  if (cartCount() === 0) { showToast("The order is empty"); return; }
+  const pick = await askChoice({ title: "Current order", choices: [
+    { label: "Clear the order", value: "clear", sub: "Removes every item, nothing is logged" },
+    { label: "Customer left without paying", value: "abandon", sub: "Kept for reference, not counted in takings" }
+  ] });
+  if (pick === "clear") document.getElementById("cartClear").click();
+  else if (pick === "abandon") document.getElementById("cancelOrderBtn").click();
+});
 document.getElementById("cartClear").addEventListener("click", async () => {
   if (cartCount() === 0) return;
   if (!(await askConfirm({ title:"Clear order?", message:"This removes every item from the current order.", confirmLabel:"Clear order", danger:true }))) return;
@@ -1636,14 +1624,14 @@ function renderDiscountChips(){
 async function onDiscountChipClick(d){
   if (discount && discount.id === d.id) { discount = null; renderCartSheet(); return; }
   if (d.id === "customPct") {
-    const val = await askText({ title:"Custom discount", message:"Enter a percentage off the order.", placeholder:"e.g. 15" });
+    const val = await askText({ title:"Custom discount", message:"Enter a percentage off the order.", placeholder:"e.g. 15", confirmLabel:"Take it off the order" });
     if (val === null) return;
     const pct = parseFloat(val);
     if (!isFinite(pct) || pct <= 0 || pct >= 100) { showToast("Enter a % between 0 and 100"); return; }
     discount = { id: d.id, pct, display: `Custom ${pct}%` };
   } else if (d.id === "customOffer") {
     const base = baseTotalPence();
-    const val = await askText({ title:"Custom price", message:`Order subtotal is ${fmt(base)}. Enter the price you're charging.`, placeholder:"e.g. 20.00" });
+    const val = await askText({ title:"Custom price", message:`Order subtotal is ${fmt(base)}. Enter the price you're charging.`, placeholder:"e.g. 20.00", confirmLabel:"Charge this price" });
     if (val === null) return;
     const pounds = parseFloat(val);
     if (!isFinite(pounds) || pounds < 0) { showToast("Enter a valid price"); return; }
@@ -1934,7 +1922,7 @@ async function pushNotification(toUserId, message, urgent){
 
 /* ---------- gratuities ---------- */
 document.getElementById("gratuityBtn").addEventListener("click", async () => {
-  const val = await askText({ title:"Log a gratuity", message:"Cash tip received, kept separate from sales, for declaring at the end of the night.", placeholder:"e.g. 5.00" });
+  const val = await askText({ title:"Log a gratuity", message:"Cash tip received, kept separate from sales, for declaring at the end of the night.", placeholder:"e.g. 5.00", confirmLabel:"Log tip" });
   if (val === null) return;
   const pounds = parseFloat(val);
   if (!isFinite(pounds) || pounds <= 0) { showToast("Enter a valid amount"); return; }

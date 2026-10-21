@@ -356,8 +356,7 @@
       "isBeer": false,
       "items": [
         { "name": "Kids Meal Deal", "pence": 1045 },
-        { "name": "Tots Meal Deal", "pence": 895 },
-        { "name": "Lunch Meal Deal", "pence": 1200 }
+        { "name": "Tots Meal Deal", "pence": 895 }
       ]
     },
     {
@@ -372,6 +371,7 @@
         { "name": "Falafel Wrap (VG)", "pence": 925 },
         { "name": "Tuna Melt", "pence": 925 },
         { "name": "Crispy Fried Chicken Wrap", "pence": 925 },
+        { "name": "Tuna Ciabatta", "pence": 925 },
         { "name": "Skillet Bacon Mac & Cheese", "pence": 945 }
       ]
     },
@@ -382,24 +382,13 @@
       "isSpirit": false,
       "isBeer": false,
       "items": [
-        { "name": "Cauliflower Wings", "pence": 765 },
+        { "name": "Cauliflower Wings", "pence": 765, "sizes": [{ "label": "Hot & Spicy, Regular", "pence": 765 }, { "label": "Hot & Spicy, Large", "pence": 975 }, { "label": "Axle Jack, Regular", "pence": 765 }, { "label": "Axle Jack, Large", "pence": 975 }] },
         { "name": "Soup Of The Day (VG)", "pence": 565 },
         { "name": "Garlic Bread (VG)", "pence": 595 },
-        { "name": "Nachos", "pence": 1250 },
+        { "name": "Nachos", "pence": 1250, "sizes": [{ "label": "Cheese (V, GF)", "pence": 1250 }, { "label": "Pulled Pork (GF)", "pence": 1685 }, { "label": "Chilli Beef", "pence": 1685 }, { "label": "Cajun Chicken (GF)", "pence": 1595 }, { "label": "Vegan (Vg, GF, DF)", "pence": 1250 }] },
         { "name": "Cheesy Garlic Bread (V)", "pence": 695 },
         { "name": "Cheese & Bacon Quesadilla", "pence": 795 },
         { "name": "Pork & Apple Bites", "pence": 945 }
-      ]
-    },
-    {
-      "name": "Tacos",
-      "mode": "food",
-      "note": "",
-      "isSpirit": false,
-      "isBeer": false,
-      "items": [
-        { "name": "2 Tacos", "pence": 795 },
-        { "name": "3 Tacos", "pence": 975 }
       ]
     },
     {
@@ -428,11 +417,9 @@
         { "name": "Caesar Salad - Chicken", "pence": 1335 },
         { "name": "Caesar Salad - Vegan Chick'n (V)", "pence": 1365 },
         { "name": "Balti Pie (VG)", "pence": 1365 },
-        { "name": "Cajun Chicken Fajitas", "pence": 1645 },
-        { "name": "Chicken Tikka Masala", "pence": 1475 },
         { "name": "Bang Bang Chilli Chicken Noodles", "pence": 1425 },
         { "name": "Steak & Ale Pie", "pence": 1575 },
-        { "name": "Chicken Souvlaki Wrap", "pence": 1475 }
+        { "name": "Crispy Cauliflower Salad", "pence": 1295 }
       ]
     },
     {
@@ -445,7 +432,6 @@
         { "name": "The Big Boi Burger", "pence": 1995 },
         { "name": "Notorious PIG Burger", "pence": 1995 },
         { "name": "The Big Bird Burger", "pence": 1850 },
-        { "name": "Katsu Chicken Burger", "pence": 1545 },
         { "name": "Double Decker Chicken Club Burger", "pence": 1550 },
         { "name": "Sombrero Stack Burger", "pence": 1545 },
         { "name": "Chicken Strip BLT Burger", "pence": 1495 }
@@ -463,9 +449,7 @@
         { "name": "Cheese Double", "pence": 1395 },
         { "name": "Cheese Triple", "pence": 1495 },
         { "name": "Bacon Cheese Double", "pence": 1495 },
-        { "name": "Bacon Cheese Triple", "pence": 1595 },
-        { "name": "Chilli Cheese Double", "pence": 1495 },
-        { "name": "Chilli Cheese Triple", "pence": 1595 }
+        { "name": "Bacon Cheese Triple", "pence": 1595 }
       ]
     },
     {
@@ -477,10 +461,8 @@
       "items": [
         { "name": "Margherita Pizza (V)", "pence": 1495 },
         { "name": "Vegan Margherita Pizza (VG)", "pence": 1495 },
-        { "name": "Spicy Meatball Jalapeno Pizza", "pence": 1650 },
         { "name": "Pepperoni Pizza", "pence": 1650 },
-        { "name": "BBQ Chicken & Bacon Pizza", "pence": 1650 },
-        { "name": "Hawaiian Pizza", "pence": 1650 }
+        { "name": "BBQ Chicken & Bacon Pizza", "pence": 1650 }
       ]
     },
     {
@@ -499,9 +481,7 @@
         { "name": "Habanero Hot Fries - Regular", "pence": 795 },
         { "name": "Habanero Hot Fries - Large", "pence": 995 },
         { "name": "Chilli Fries - Regular", "pence": 895 },
-        { "name": "Chilli Fries - Large", "pence": 1045 },
-        { "name": "Chicken Katsu Curry Fries - Regular", "pence": 895 },
-        { "name": "Chicken Katsu Curry Fries - Large", "pence": 1045 }
+        { "name": "Chilli Fries - Large", "pence": 1045 }
       ]
     },
     {
@@ -526,7 +506,6 @@
       "isSpirit": false,
       "isBeer": false,
       "items": [
-        { "name": "Dubai Style Cookie Ice Cream Sandwich", "pence": 735 },
         { "name": "Chocolate Fudge Brownie (V)", "pence": 745 },
         { "name": "Carte Dor Vanilla Ice Cream", "pence": 475 },
         { "name": "Carte Dor Triple Chocolate Ice Cream", "pence": 475 },
@@ -551,9 +530,9 @@
         { "name": "Funky Fried Chicken Strips", "pence": 720 },
         { "name": "Nibbly Nutella Pancakes", "pence": 475 },
         { "name": "Bear's Chocolate & Oreo Sundae", "pence": 475 },
-        { "name": "PIP Organic Rainbow Lolly (VG)", "pence": 250 },
         { "name": "Chocolate Ice Cream", "pence": 380 },
-        { "name": "Vanilla Ice Cream", "pence": 380 }
+        { "name": "Vanilla Ice Cream", "pence": 380 },
+        { "name": "Green Slime & Brown Sludge", "pence": 475 }
       ]
     },
     {
@@ -563,12 +542,10 @@
       "isSpirit": false,
       "isBeer": false,
       "items": [
-        { "name": "Fish Fingers & Chips", "pence": 695 },
         { "name": "Pastacadabra (VG)", "pence": 590 },
-        { "name": "Hot Diggety Dog", "pence": 575 },
         { "name": "Chompin' Chicken Chunks", "pence": 695 },
         { "name": "Chocolate Ice Cream", "pence": 380 },
-        { "name": "PIP Organic Rainbow Lolly (VG)", "pence": 250 },
+        { "name": "Tots Beef Burger", "pence": 575 },
         { "name": "Vanilla Ice Cream", "pence": 380 },
         { "name": "Lucy's Mini Donuts", "pence": 375 }
       ]
@@ -582,7 +559,6 @@
       "items": [
         { "name": "Biscoff Billionaire Milkshake", "pence": 575 },
         { "name": "Strawberries & Cream Milkshake", "pence": 575 },
-        { "name": "Dubai Style Cookie Milkshake", "pence": 575 },
         { "name": "Oreo Chocolate Milkshake", "pence": 575 }
       ]
     }
