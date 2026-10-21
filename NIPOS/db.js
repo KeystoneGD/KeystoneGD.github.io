@@ -875,7 +875,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261022f";
+const NIPOS_VERSION = "20261022g";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -1562,6 +1562,18 @@ async function markStation(o, st, what, stations, byName) {
   // Both parts can finish at the same moment, so it's the merged row that decides.
   if (fresh && what === "Ready" && !fresh.ready && stations.every(s => stationReady(fresh, s))) fresh = (await mergeOpenOrder(o.id, { ready: true })) || fresh;
   return fresh;
+}
+// Self-healing: if a reply was lost, an order can end up with every part ready but not itself marked
+// ready, and then no screen would offer to finish it. Any till or screen that sees one fixes it.
+const healedOrders = new Map();
+function healReadyOrders(list, isFood) {
+  if (!featureOn("kitchenScreen") || !Array.isArray(list)) return;
+  list.forEach(o => {
+    if (!o || o.ready || o.delivered || !o.stationsUsed || Date.now() - (healedOrders.get(o.id) || 0) < 30000) return;
+    if (!orderStations(o, isFood).every(s => stationReady(o, s))) return;
+    healedOrders.set(o.id, Date.now());
+    mergeOpenOrder(o.id, { ready: true });
+  });
 }
 
 // --- Open order cards, shared by the order screen and the till's Open Orders list.
