@@ -112,6 +112,9 @@ button,.btn,select,input[type="text"],input[type="search"],input[type="password"
 .oc.oc-state-refund,.oc.oc-state-progress{border-left-color:var(--progress-edge);}
 .oc-progress{display:flex;gap:8px;align-items:center;background:var(--progress-soft);border:1px solid var(--progress-edge);border-radius:10px;padding:9px 10px;font-size:14.5px;line-height:1.4;color:var(--text);}
 .oc-progress .ic{color:var(--progress-edge);flex:0 0 auto;}
+/* Ready on the order screen: handed over to the till, locked here. */
+.oc-ready{display:flex;gap:8px;align-items:center;background:var(--success-soft);border:1px solid var(--success);border-radius:10px;padding:9px 10px;font-size:14.5px;line-height:1.4;color:var(--text);}
+.oc-ready .ic{color:var(--text);flex:0 0 auto;}
 
 /* ---------- Type scale (one scale on every page) ----------
    Body: Atkinson Hyperlegible Next, made for low-vision legibility - suits a dim bar at 1am.

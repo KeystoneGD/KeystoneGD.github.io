@@ -91,7 +91,8 @@ const ICON_PATHS = {
   up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
   down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
   clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
-  note: '<path d="M5 4.5h14v15H5z"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4"/>'
+  note: '<path d="M5 4.5h14v15H5z"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4"/>',
+  lock: '<rect x="5" y="10.5" width="14" height="10" rx="1.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>'
 };
 function icon(name) {
   return `<svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICON_PATHS[name] || ""}</svg>`;
@@ -771,6 +772,9 @@ function buildOrderCard(o, opts) {
   const subItem = o.items.find(i => i.substituted);
   const state = orderStage(o), refund = state === "refund" || state === "refunding";
   const known = typeof opts.refundPence === "number";
+  // Once an order is ready, the order screen (no onDeliver) hands it over: only the till that takes it
+  // out can mark it delivered, and nothing else can be done to it here - like a refund in progress.
+  const handedToTill = state === "ready" && !opts.onDeliver;
   const card = document.createElement("article");
   card.className = "oc oc-state-" + (state === "refund" ? "problem" : state === "refunding" ? "refund" : state) + (opts.isNext ? " oc-next" : "");
   card.setAttribute("aria-label", `${orderLabel(o)}, ${{ refund: "needs refund", refunding: "refund in progress", problem: "problem", ready: "ready to take out", progress: "in progress", new: "new order" }[state]}`);
@@ -796,6 +800,7 @@ function buildOrderCard(o, opts) {
     <div class="oc-items">${items}</div>
     ${o.notes ? `<div class="note-box">${icon("note")}<span>${esc(o.notes)}</span></div>` : ""}
     ${flagText}
+    ${handedToTill ? `<div class="oc-ready">${icon("lock")}<span><strong>Waiting to be taken out</strong> · only the till can mark it delivered</span></div>` : ""}
     ${!o.flagged && subItem ? `<div class="oc-muted oc-line">${icon("check")} Customer took ${esc(subItem.name)} instead of ${esc(subItem.subFor)}</div>` : ""}
     ${o.placedBy ? `<div class="oc-muted oc-line">Taken by ${esc(o.placedBy)}${o.accepted && o.acceptedBy ? ` · accepted by ${esc(o.acceptedBy)}` : ""}</div>` : ""}
     <div class="oc-actions"></div>`;
@@ -822,6 +827,8 @@ function buildOrderCard(o, opts) {
     else add("btn btn-solid", "Customer is happy, carry on", opts.onAccept);
     if (opts.canRefund) refundButton();
     else add("btn btn-danger", "Customer wants a refund", opts.onRequestRefund);
+  } else if (handedToTill) {
+    // Locked on the order screen.
   } else {
     if (opts.onFlag) add("btn btn-ghost", "Report a problem", opts.onFlag);
     if (o.ready) add(primary, o.table ? `Delivered to table ${o.table}` : "Delivered", opts.onDeliver);

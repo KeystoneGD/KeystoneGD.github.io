@@ -622,17 +622,19 @@ function render(){
     : "";
   if (!list.length) { wrap.innerHTML = `<div class="empty">Nothing open right now.</div>`; return; }
   const canRefund = !!(currentUser && currentUser.perms.processRefunds);
-  list.forEach((o, i) => {
+  // "Next" is the next order the bar has to deal with - not one that's ready and waiting for the till.
+  const next = list.find(o => orderStage(o) !== "ready");
+  list.forEach(o => {
     if (o.flagged && canRefund) loadRefundFor(o);
     const r = flaggedSaleCache.get(o.id);
     wrap.appendChild(buildOrderCard(o, {
-      isNext: i === 0,
+      isNext: o === next,
       myId: currentUserId,
       canRefund,
       refundPence: r ? (r.missing ? undefined : r.pence) : null,
       onAcceptOrder: () => acceptOrder(o.id),
       onReady: () => markReady(o.id),
-      onDeliver: () => markDelivered(o.id),
+      // No onDeliver: once it's ready, only the till can mark it delivered (see buildOrderCard).
       onFlag: () => openFlagModal(o.id),
       onAccept: () => resolveFlag(o.id, "accepted"),
       onRequestRefund: () => requestRefund(o.id),
@@ -641,13 +643,6 @@ function render(){
   });
 }
 
-async function markDelivered(id){
-  const o = openOrders.find(x => x.id === id);
-  if (o && o.placedById) await pushNotification(o.placedById, `Table ${o.table || "?"}: order delivered`);
-  openOrders = openOrders.filter(x => x.id !== id);
-  await ordersStore.remove(id);
-  render();
-}
 // Accepting tells the bar this order is being made, and quietly lets whoever took it know.
 async function acceptOrder(id){
   const o = openOrders.find(x => x.id === id);
