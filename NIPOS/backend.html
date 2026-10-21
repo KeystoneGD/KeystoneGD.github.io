@@ -113,6 +113,17 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .theme-venues{display:flex;gap:6px;flex-wrap:wrap;}
 .layout-title{font-size:20px;margin:34px 0 6px;}
 .wipe-card{max-width:560px;}
+.feature-crumbs{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px;}
+.feature-search{width:100%;max-width:420px;box-sizing:border-box;min-height:44px;padding:0 14px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font:inherit;font-size:15px;margin:4px 0 10px;}
+.feature-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;max-width:860px;}
+.feature-cats[hidden],.feature-list:empty{display:none;}
+.feature-cat{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:14px 16px;font:inherit;cursor:pointer;min-height:44px;}
+.feature-cat:hover{border-color:var(--text-muted);}
+.feature-cat .fc-name{font-weight:800;font-size:17px;}
+.feature-cat .fc-about{color:var(--text-muted);font-size:13.5px;line-height:1.45;}
+.feature-cat .fc-count{font-size:13px;font-weight:700;color:var(--text-muted);margin-top:4px;}
+.feature-cat .fc-count.some{color:var(--success);}
+.feature-cat-label{font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 4px;}
 .feature-list{display:flex;flex-direction:column;gap:12px;max-width:860px;}
 .feature{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;}
 .feature.on{border-left:6px solid var(--success);}
@@ -155,6 +166,8 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .feature-table{width:100%;border-collapse:collapse;margin:6px 0 10px;}
 .feature-table th,.feature-table td{text-align:left;padding:6px 8px 6px 0;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle;}
 .feature-table select{min-width:150px;}
+.feature-body{overflow-x:auto;}
+@media (max-width:600px){.feature-table select{min-width:0;width:100%;}.feature-table th,.feature-table td{padding-right:6px;}}
 .colour-row{border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:10px;}
 .colour-shades{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:8px;}
 .colour-shade{display:flex;align-items:center;gap:8px;font-size:13px;}
@@ -295,7 +308,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021n">
+<link rel="stylesheet" href="nipos.css?v=20261021o">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -622,15 +635,22 @@ table.data-table tr:last-child td{border-bottom:0;}
         </div>
       </div>
       <div class="tab-panel active" id="tab-ms-features" role="tabpanel">
-      <h2 class="layout-title" style="margin-top:0;">Features</h2>
-      <p class="note">Every feature here starts switched off, so you can set it up first. Nothing changes on the tills until you switch it on.</p>
+      <div class="feature-crumbs" id="featureCrumbs">
+        <button type="button" class="btn btn-ghost" id="featureBackBtn" hidden><span data-icon="back"></span>All features</button>
+        <h2 class="layout-title" id="featureTitle" style="margin:0;">Features</h2>
+      </div>
+      <p class="note" id="featureIntro">Every feature here starts switched off, so you can set it up first. Nothing changes on the tills until you switch it on.</p>
+      <input type="search" id="featureSearch" class="feature-search" aria-label="Find a feature" placeholder="Find a feature" autocomplete="off">
       <p class="note" id="featureMsg" role="status"></p>
+      <div class="feature-cats" id="featureCats"></div>
       <div class="feature-list" id="featureList"></div>
+      <div id="notifyResetArea" hidden>
       <h2 class="layout-title">Reset notifications</h2>
       <p class="note">Removes every device's push alerts. Each till and order screen then shows Turn on alerts again, and nobody gets push alerts until they tap it on their device.</p>
       <div class="card wipe-card">
         <button type="button" class="btn btn-danger-solid" id="notifyResetBtn">Reset notifications for everyone</button>
         <p class="note" id="notifyResetMsg" role="status" style="margin-top:10px;"></p>
+      </div>
       </div>
       </div>
       <div class="tab-panel" id="tab-ms-looks" role="tabpanel">
@@ -764,7 +784,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021n"></script>
+<script src="db.js?v=20261021o"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -2139,14 +2159,54 @@ function featureBody(key, cfg){
   }
   return "";
 }
+/* Master settings is a menu of categories; each one opens just its own features. Search looks
+   through all of them. Every feature key must be in exactly one category (others land in System). */
+const FEATURE_CATS = [
+  { id: "notify", name: "Notifications and messages", about: "Notify, alerts, push on each device, Discord.", keys: ["announcements", "privateMessages", "alertSettings", "pushChoice", "discordSettings"] },
+  { id: "menu", name: "Menu and stock", about: "Stops, stock, prices, tags, notes, favourites, drink options.", keys: ["scheduledStops", "stockCounts", "scheduledPrices", "dietTags", "quickNotes", "favourites", "drinkOptions", "copyVenue"] },
+  { id: "orders", name: "Orders and payment", about: "Discounts, cash buttons, tables, splitting, tabs, approvals, reasons.", keys: ["discounts", "cashButtons", "tableRules", "splitBill", "tabs", "managerApproval", "reasons", "resendOrder", "lateOrders", "openingHours"] },
+  { id: "screens", name: "Screens and devices", about: "Customer display, kitchen screen, receipts, device health, remote refresh.", keys: ["customerDisplay", "kitchenScreen", "receipts", "bigText", "remote", "deviceHealth"] },
+  { id: "reports", name: "Reports and money", about: "Takings targets, per-person takings, Z Read reminder, emails, exports.", keys: ["takingsTarget", "staffTakings", "zReminder", "dailySummary", "reportHeader", "exportData"] },
+  { id: "staff", name: "Staff", about: "Clock in and out, training mode, timeouts, role templates.", keys: ["clockInOut", "training", "sessionTimeouts", "roleTemplates"] },
+  { id: "looks", name: "Look and feel", about: "Own layouts per person, venue colours, layout groups, sign-in branding, formats.", keys: ["personal", "venueColours", "layoutGroups", "loginBranding", "formats"] },
+  { id: "system", name: "System", about: "Maintenance Mode, the activity log, backup and restore.", keys: ["maintenance", "activityLog", "backup"] }
+];
+(() => { const placed = new Set(FEATURE_CATS.flatMap(c => c.keys)); FEATURES.forEach(f => { if (!placed.has(f.key)) FEATURE_CATS[FEATURE_CATS.length - 1].keys.push(f.key); }); })();
+let featureCat = null; // the open category, or null for the menu
+function featureCatOf(key){ return FEATURE_CATS.find(c => c.keys.includes(key)); }
+function openFeatureCat(id){
+  keepTypedEdits();
+  featureCat = id; document.getElementById("featureSearch").value = "";
+  document.getElementById("featureMsg").textContent = "";
+  renderFeatures();
+  document.getElementById(id ? "featureBackBtn" : "featureSearch").focus();
+}
+document.getElementById("featureBackBtn").addEventListener("click", () => openFeatureCat(null));
+document.getElementById("featureSearch").addEventListener("input", () => { keepTypedEdits(); renderFeatures(); });
 function renderFeatures(){
   setTimeout(loadDevices, 0); // fills Device health, if it is open
   const wrap = document.getElementById("featureList");
   if (!wrap) return;
-  wrap.innerHTML = FEATURES.map(f => {
+  const q = document.getElementById("featureSearch").value.trim().toLowerCase();
+  const cat = FEATURE_CATS.find(c => c.id === featureCat);
+  const shown = q ? FEATURES.filter(f => (f.name + " " + f.about).toLowerCase().includes(q))
+    : cat ? cat.keys.map(k => FEATURES.find(f => f.key === k)).filter(Boolean) : [];
+  document.getElementById("featureBackBtn").hidden = !cat;
+  document.getElementById("featureTitle").textContent = cat ? cat.name : "Features";
+  document.getElementById("featureIntro").hidden = !!cat;
+  document.getElementById("notifyResetArea").hidden = !(cat && cat.id === "notify" && !q);
+  const cats = document.getElementById("featureCats");
+  cats.hidden = !!(cat || q);
+  cats.innerHTML = FEATURE_CATS.map(c => {
+    const on = c.keys.filter(k => featureView(k).enabled).length;
+    return `<button type="button" class="feature-cat" data-cat="${c.id}"><span class="fc-name">${esc(c.name)}</span><span class="fc-about">${esc(c.about)}</span><span class="fc-count${on ? " some" : ""}">${on} of ${c.keys.length} on</span></button>`;
+  }).join("");
+  cats.querySelectorAll("[data-cat]").forEach(b => b.addEventListener("click", () => openFeatureCat(b.dataset.cat)));
+  if (q && !shown.length) { wrap.innerHTML = `<p class="note">No feature matches "${esc(q)}".</p>`; return; }
+  wrap.innerHTML = shown.map(f => {
     const cfg = featureView(f.key);
     return `<div class="feature${cfg.enabled ? " on" : ""}" data-feature="${f.key}">
-      <div class="feature-head"><div class="info"><h3>${esc(f.name)}</h3><p>${esc(f.about)}</p></div>
+      <div class="feature-head"><div class="info">${q ? `<p class="feature-cat-label">${esc(featureCatOf(f.key).name)}</p>` : ""}<h3>${esc(f.name)}</h3><p>${esc(f.about)}</p></div>
         <label class="feature-toggle"><span>${cfg.enabled ? "On" : "Off"}</span><span class="switch"><input type="checkbox" data-feature-toggle="${f.key}" aria-label="${esc(f.name)}" ${cfg.enabled ? "checked" : ""}><span class="slider"></span></span></label></div>
       <div class="feature-body">${featureBody(f.key, cfg)}</div></div>`;
   }).join("");
