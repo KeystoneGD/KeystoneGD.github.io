@@ -110,13 +110,18 @@ function hydrateIcons(root) {
   });
 }
 
-// --- Times: always 24-hour, UK format, whatever the device's own locale is set to.
-function fmtTime(ts) { return new Date(ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }); }
+// --- Times and money: 24-hour UK format and £, whatever the device's own locale - unless $YSTEM picks
+// other formats (Master settings "formats": currency symbol, date style, 12 or 24-hour).
+function fmtCfg() { return typeof systemSettings !== "undefined" && systemSettings.formats && systemSettings.formats.enabled ? systemSettings.formats : {}; }
+function fmtLocale() { const d = fmtCfg().dateStyle; return d === "us" ? "en-US" : d === "iso" ? "sv-SE" : "en-GB"; }
+function fmtTime(ts) { const h12 = !!fmtCfg().hour12; return new Date(ts).toLocaleTimeString(fmtLocale() === "sv-SE" ? "en-GB" : fmtLocale(), { hour: h12 ? "numeric" : "2-digit", minute: "2-digit", hour12: h12 }); }
 function fmtDayTime(ts) {
   const d = new Date(ts);
-  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) + " · " + fmtTime(ts);
+  if (fmtCfg().dateStyle === "iso") return d.toLocaleDateString("sv-SE") + " · " + fmtTime(ts);
+  return d.toLocaleDateString(fmtLocale(), { weekday: "short", day: "numeric", month: "short" }) + " · " + fmtTime(ts);
 }
-function fmtDateTime(ts) { return new Date(ts).toLocaleString("en-GB", { hour12: false }); }
+function fmtDateTime(ts) { const d = new Date(ts); return d.toLocaleDateString(fmtLocale()) + ", " + fmtTime(ts); }
+function moneySymbol() { return fmtCfg().currency || "£"; }
 function minutesAgo(ts) {
   const m = Math.max(0, Math.floor((Date.now() - ts) / 60000));
   return m < 1 ? "just now" : m === 1 ? "1 min ago" : m < 60 ? `${m} min ago` : `${Math.floor(m / 60)} h ${m % 60} min ago`;
@@ -818,7 +823,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261021l";
+const NIPOS_VERSION = "20261021m";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -1056,6 +1061,24 @@ async function syncMasterTheme() {
     runRemoteCommands(currentVenueId);
   } catch (e) {}
 }
+// Login screen branding (feature "loginBranding"): a logo, the app name and a short message on every
+// sign-in screen. Kept on the device too, so it shows before the settings have loaded.
+function applyLoginBranding() {
+  let b = null;
+  try {
+    if (typeof systemSettings !== "undefined" && systemSettings && Object.keys(systemSettings).length) {
+      b = systemSettings.loginBranding && systemSettings.loginBranding.enabled ? systemSettings.loginBranding : null;
+      localStorage.setItem("nipos.loginBranding", JSON.stringify(b));
+    } else b = JSON.parse(localStorage.getItem("nipos.loginBranding") || "null");
+  } catch (e) {}
+  document.querySelectorAll("#loginGate .login-card").forEach(card => {
+    let el = card.querySelector(".login-brand");
+    if (!b) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement("div"); el.className = "login-brand"; card.prepend(el); }
+    el.innerHTML = `${b.logo ? `<img src="${esc(b.logo)}" alt="">` : ""}${b.appName ? `<div class="lb-name">${esc(b.appName)}</div>` : ""}${b.message ? `<p class="lb-msg">${esc(b.message)}</p>` : ""}`;
+  });
+}
+try { document.addEventListener("DOMContentLoaded", applyLoginBranding); document.addEventListener("nipos:settingschange", applyLoginBranding); } catch (e) {}
 let masterThemeTimer = null;
 function startMasterThemeSync() {
   if (masterThemeTimer) return;
@@ -1441,7 +1464,7 @@ function sortOrdersByPriority(list) {
   return list.slice().sort((a, b) => (rank(a) - rank(b)) || (a.ts - b.ts));
 }
 function orderLabel(o) { return o.table ? "Table " + o.table : "No table"; }
-function poundsText(pence) { return "£" + (pence / 100).toFixed(2); }
+function poundsText(pence) { const neg = pence < 0; return (neg ? "-" : "") + moneySymbol() + (Math.abs(pence) / 100).toFixed(2); }
 // A flagged order needs a refund if whoever reported it chose "Refund it", or someone later said the
 // customer wants their money back. Only staff with Process Refunds can then close it - by refunding.
 function needsRefund(o) { return !!(o && o.flagged && (o.flagIntent === "refund" || o.refundRequested)); }

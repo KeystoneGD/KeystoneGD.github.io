@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021l">
-<link rel="stylesheet" href="layouts.css?v=20261021l">
+<link rel="stylesheet" href="nipos.css?v=20261021m">
+<link rel="stylesheet" href="layouts.css?v=20261021m">
 </head>
 <body>
 
@@ -744,7 +744,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021l"></script>
+<script src="db.js?v=20261021m"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -1198,7 +1198,7 @@ const DISCOUNTS = [
   { id:"customOffer", label:"Custom price" }
 ];
 
-function fmt(pence){ return "£" + (pence/100).toFixed(2); }
+function fmt(pence){ return poundsText(pence); } // £ unless Master settings › Formats says otherwise
 
 function findMixer(mixerId){
   if (!mixerId || mixerId === "none") return null;
