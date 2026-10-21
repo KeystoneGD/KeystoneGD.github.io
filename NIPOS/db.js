@@ -864,7 +864,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261022d";
+const NIPOS_VERSION = "20261022e";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -1019,14 +1019,46 @@ function activityRow(action, detail, venueId, type) {
   if (backend && venue && type !== "taps") data.venueId = venue;
   return { id: "a" + ts + Math.random().toString(36).slice(2, 8), ts, venue_id: backend ? null : venue, user_id: signedInUserId, data };
 }
+// If a send got through but its reply was lost, the resend fails as a duplicate; then the rows are
+// sent one at a time and the ones already saved are skipped, instead of jamming the queue. Rows can only be
+// saved by the account that's signed in; if this browser's sign-in changed under this screen (another
+// tab signed in as someone else), rows in the old name can never save, so they're dropped and the
+// screen says so instead of retrying them for ever.
 async function flushActivity() {
   if (activityFlushing) await activityFlushing;
   if (!activityQueue.length || !supabaseClient) return;
   const batch = activityQueue.splice(0, 200);
-  const putBack = () => { if (activityQueue.length < 2000) activityQueue.unshift(...batch.filter(r => r.user_id === signedInUserId)); };
-  activityFlushing = (async () => { try { const { error } = await supabaseClient.from("activity_log").insert(batch); if (error) putBack(); } catch (e) { putBack(); } })();
+  let failed = false;
+  activityFlushing = (async () => {
+    let error = null;
+    try { ({ error } = await supabaseClient.from("activity_log").insert(batch)); } catch (e) { error = e; }
+    if (error && error.code === "23505") {
+      const left = [];
+      for (const r of batch) {
+        let e1 = null; try { ({ error: e1 } = await supabaseClient.from("activity_log").insert([r])); } catch (e) { e1 = e; }
+        if (e1 && e1.code !== "23505") left.push(r);
+      }
+      if (!left.length) return;
+      batch.length = 0; batch.push(...left); error = { code: "retry" };
+    }
+    if (!error) return;
+    failed = true;
+    let keep = batch.filter(r => r.user_id === signedInUserId);
+    if (error.code === "42501") {
+      let uid = null; try { const { data } = await supabaseClient.auth.getSession(); uid = data && data.session ? data.session.user.id : null; } catch (e) {}
+      keep = keep.filter(r => r.user_id === uid);
+      if (uid !== signedInUserId) showSessionMismatch();
+    }
+    if (activityQueue.length < 2000) activityQueue.unshift(...keep);
+  })();
   await activityFlushing; activityFlushing = null;
-  if (activityQueue.length && !(activityQueue[0] === batch[0])) return flushActivity(); // stop for now if it failed; the timer tries again
+  if (!failed && activityQueue.length) return flushActivity(); // after a failure the 3-second timer tries again
+}
+function showSessionMismatch() {
+  if (typeof document === "undefined" || !document.body || document.getElementById("sessionNote")) return;
+  const el = document.createElement("div"); el.id = "sessionNote"; el.className = "outbox-note"; el.setAttribute("role", "alert");
+  el.textContent = "Someone signed in as a different person in another tab of this browser. Reload this screen and sign in again. Use a separate browser or device for each screen.";
+  document.body.appendChild(el);
 }
 async function logActivity(action, detail, venueId, now) {
   if (!featureOn("activityLog") || !supabaseClient || !signedInUserId) return;
