@@ -131,9 +131,20 @@ function minutesAgo(ts) {
   return m < 1 ? "just now" : m === 1 ? "1 min ago" : m < 60 ? `${m} min ago` : `${Math.floor(m / 60)} h ${m % 60} min ago`;
 }
 
+// Every request to the database gives up after 15 seconds without a reply. A request that never gets
+// an answer (a dropped connection on venue Wi-Fi) used to wait for ever, and everything queued behind
+// it (the outbox, the activity log) stopped with it while the till still said "Sale logged".
+const REQUEST_TIMEOUT_MS = 15000;
+function fetchWithTimeout(input, init) {
+  const ctl = new AbortController(), opts = { ...(init || {}) };
+  if (opts.signal) { if (opts.signal.aborted) ctl.abort(); else opts.signal.addEventListener("abort", () => ctl.abort(), { once: true }); }
+  const timer = setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS);
+  return fetch(input, { ...opts, signal: ctl.signal }).finally(() => clearTimeout(timer));
+}
 function connectAuthClient() {
   supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true }
+    auth: { persistSession: true, autoRefreshToken: true },
+    global: { fetch: fetchWithTimeout }
   });
   // The SDK's own auto-refresh timer only runs while the tab is visible - most mobile/tablet browsers
   // (and desktop ones after a while) freeze JS timers in a backgrounded tab, so a till left on another
@@ -868,7 +879,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261022e";
+const NIPOS_VERSION = "20261022f";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
