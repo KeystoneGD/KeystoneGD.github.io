@@ -133,7 +133,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022f">
+<link rel="stylesheet" href="nipos.css?v=20261022g">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -261,7 +261,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261022f"></script>
+<script src="db.js?v=20261022g"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -655,7 +655,7 @@ async function pushNotification(toUserId, message, urgent, kind){
 async function pullOrders(){
   if (!dbNs || !currentVenueId) return;
   const fetchedOrders = kitchenVenueIds().length > 1 ? await fetchKitchenOrders() : await ordersStore.fetchAll();
-  if (fetchedOrders) openOrders = fetchedOrders;
+  if (fetchedOrders) { openOrders = fetchedOrders; healReadyOrders(openOrders, isFoodLine); }
   setConnectionProblem(fetchedOrders === null && !!currentUser);
   venueStaff = await fetchVenueStaff();
   if (featureOn("kitchenScreen") && !foodNames.size) await loadFoodNames();

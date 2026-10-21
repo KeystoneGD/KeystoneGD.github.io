@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022f">
-<link rel="stylesheet" href="layouts.css?v=20261022f">
+<link rel="stylesheet" href="nipos.css?v=20261022g">
+<link rel="stylesheet" href="layouts.css?v=20261022g">
 </head>
 <body>
 
@@ -751,7 +751,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261022f"></script>
+<script src="db.js?v=20261022g"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -1044,7 +1044,7 @@ const stockStore = rowStore("stock_counts", 2000);
 const tabsStore = rowStore("tabs", 500);
 async function pullRowStores(){
   const orders = await ordersStore.fetchAll();
-  if (orders) { openOrders = orders; renderOpenOrdersBadge(); if (adminView === "openOrders") renderOpenOrdersList(); }
+  if (orders) { openOrders = orders; healReadyOrders(openOrders, isFoodName); renderOpenOrdersBadge(); if (adminView === "openOrders") renderOpenOrdersList(); }
   const notifs = await fetchMyNotifications(currentUserId);
   if (notifs) { checkPersonalNotifications(notifs); notifications = notifs; }
   const stopRows = await stopsStore.fetchAll();
