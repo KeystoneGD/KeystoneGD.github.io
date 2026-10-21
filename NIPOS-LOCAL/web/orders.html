@@ -134,7 +134,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022m">
+<link rel="stylesheet" href="nipos.css?v=20261022n">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -263,7 +263,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022m"></script>
+<script src="db.js?v=20261022n"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -535,14 +535,16 @@ async function enablePush(){
     await savePushSubscription(sub);
   } catch(e){}
 }
+// The push server sometimes fails under load (500/503 in the stress test): try once more after 3 seconds.
 async function sendPushNotification(toUserId, fromUserId, fromName, message, urgent){
-  try {
-    await fetch(SEND_PUSH_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY },
-      body: JSON.stringify({ toUserId, fromUserId, title: fromName ? `${fromName} says` : "Notification", body: message, urgent: !!urgent })
-    });
-  } catch(e){}
+  const body = JSON.stringify({ toUserId, fromUserId, title: fromName ? `${fromName} says` : "Notification", body: message, urgent: !!urgent });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(SEND_PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY }, body });
+      if (res.ok || (res.status >= 400 && res.status < 500)) return;
+    } catch(e){}
+    if (!attempt) await new Promise(r => setTimeout(r, 3000));
+  }
 }
 // The banner needs one tap per device: the browser remembers the permission after that. It comes back
 // after a reset in Master settings, and stays away on a device where alerts were switched off.
@@ -727,7 +729,8 @@ async function loadRefundFor(o){
   flaggedSaleCache.set(o.id, null);
   const sale = await fetchSaleForOrder(o);
   const itemIdx = sale ? sale.items.findIndex(i => i.name === o.flagItem && !i.refunded) : -1;
-  flaggedSaleCache.set(o.id, itemIdx === -1 ? { missing: true } : { sale, itemIdx, pence: refundAmountFor(sale, sale.items[itemIdx]) });
+  // Already refunded (e.g. from Past Orders): nothing left to refund, so the card offers to close it.
+  flaggedSaleCache.set(o.id, itemIdx === -1 ? { missing: true, alreadyRefunded: !!(sale && sale.items.some(i => i.name === o.flagItem && i.refunded)) } : { sale, itemIdx, pence: refundAmountFor(sale, sale.items[itemIdx]) });
   render();
 }
 // Kitchen screen (feature "kitchenScreen"): this page is the bar's screen (drinks), or the kitchen's
@@ -780,7 +783,7 @@ function render(){
   // "Next" is the next order the bar has to deal with - not one that's ready and waiting for the till.
   const next = list.find(o => orderStage(o) !== "ready");
   list.forEach(o => {
-    if (o.flagged && canRefund) loadRefundFor(o);
+    if (o.flagged) loadRefundFor(o);
     const r = flaggedSaleCache.get(o.id);
     wrap.appendChild(buildOrderCard(o, {
       isNext: o === next,
@@ -797,7 +800,9 @@ function render(){
       onFlag: () => openFlagModal(o.id),
       onAccept: () => resolveFlag(o.id, "accepted"),
       onRequestRefund: () => requestRefund(o.id),
-      onRefund: () => startRefund(o.id)
+      onRefund: () => startRefund(o.id),
+      alreadyRefunded: !!(r && r.alreadyRefunded),
+      onCloseRefunded: () => closeRefundedOrder(o.id)
     }));
   });
 }
@@ -834,6 +839,14 @@ async function requestRefund(id){
   logActivity("Refund requested", orderLabel(o));
   if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
   knownOrderStates = new Map(openOrders.map(x => [x.id, orderAlertState(x)]));
+  render();
+}
+async function closeRefundedOrder(id){
+  const o = openOrders.find(x => x.id === id);
+  if (!o) return;
+  logActivity("Closed an already-refunded order", `${orderLabel(o)}: ${o.flagItem || ""}`);
+  openOrders = openOrders.filter(x => x.id !== id); flaggedSaleCache.delete(id);
+  await ordersStore.remove(id);
   render();
 }
 async function startRefund(id){

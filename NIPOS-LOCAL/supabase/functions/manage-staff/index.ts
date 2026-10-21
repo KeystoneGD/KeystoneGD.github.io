@@ -64,7 +64,8 @@ Deno.serve(async (req: Request) => {
     const { error: rowErr } = await admin.from("staff_users").insert({
       id: created.user.id,
       ts: Date.now(),
-      data: { name: name.trim(), pin, perms: safePerms, venueIds: targetVenueIds, groupIds: targetGroupIds, notifyVenueIds: [] }
+      // No copy of the PIN here: staff can read each other's rows, and the sign-in system already keeps it safely.
+      data: { name: name.trim(), perms: safePerms, venueIds: targetVenueIds, groupIds: targetGroupIds, notifyVenueIds: [] }
     });
     if (rowErr) {
       await admin.auth.admin.deleteUser(created.user.id); // roll back the orphaned auth account
@@ -89,7 +90,8 @@ Deno.serve(async (req: Request) => {
       if (typeof newPin !== "string" || !PIN_RE.test(newPin)) return json({ error: "PIN must be 6+ digits" }, 400);
       const { error: updErr } = await admin.auth.admin.updateUserById(userId, { email: emailFor(newPin), password: newPin, email_confirm: true });
       if (updErr) return json({ error: /already/i.test(updErr.message) ? "That PIN is already in use" : updErr.message }, 400);
-      await admin.from("staff_users").update({ data: { ...targetRow.data, pin: newPin } }).eq("id", userId);
+      const { pin: _old, ...rest } = targetRow.data || {};
+      await admin.from("staff_users").update({ data: rest }).eq("id", userId); // drop any old readable copy
       return json({ ok: true });
     }
 
@@ -117,7 +119,7 @@ Deno.serve(async (req: Request) => {
     const { data, error } = await admin.from("staff_users").select("id,data");
     if (error) return json({ error: error.message }, 400);
     const subscribers = (data || [])
-      .filter(r => Array.isArray(r.data?.notifyVenueIds) && r.data.notifyVenueIds.includes(venueId))
+      .filter(r => !r.data?.system && Array.isArray(r.data?.notifyVenueIds) && r.data.notifyVenueIds.includes(venueId))
       .map(r => ({ id: r.id, name: r.data.name }));
     return json({ ok: true, subscribers });
   }

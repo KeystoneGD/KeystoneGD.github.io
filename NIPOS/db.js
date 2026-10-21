@@ -114,7 +114,16 @@ function hydrateIcons(root) {
 // other formats (Master settings "formats": currency symbol, date style, 12 or 24-hour).
 function fmtCfg() { return typeof systemSettings !== "undefined" && systemSettings.formats && systemSettings.formats.enabled ? systemSettings.formats : {}; }
 function fmtLocale() { const d = fmtCfg().dateStyle; return d === "us" ? "en-US" : d === "iso" ? "sv-SE" : "en-GB"; }
-function fmtTime(ts) { const h12 = !!fmtCfg().hour12; return new Date(ts).toLocaleTimeString(fmtLocale() === "sv-SE" ? "en-GB" : fmtLocale(), { hour: h12 ? "numeric" : "2-digit", minute: "2-digit", hour12: h12 }); }
+function fmtClock(ts) { const h12 = !!fmtCfg().hour12; return new Date(ts).toLocaleTimeString(fmtLocale() === "sv-SE" ? "en-GB" : fmtLocale(), { hour: h12 ? "numeric" : "2-digit", minute: "2-digit", hour12: h12 }); }
+// The night the clocks go back, 01:00-01:59 happens twice. Those times say which: 01:43 (1) is the
+// first time round (summer time), 01:43 (2) the second. Lists are always in true time order anyway.
+function clockRepeat(ts) {
+  const wall = t => { const d = new Date(t); return d.getHours() * 60 + d.getMinutes(); };
+  if (wall(ts - 3600000) === wall(ts)) return 2;
+  if (wall(ts + 3600000) === wall(ts)) return 1;
+  return 0;
+}
+function fmtTime(ts) { const r = clockRepeat(ts); return fmtClock(ts) + (r ? ` (${r})` : ""); }
 function fmtDayTime(ts) {
   const d = new Date(ts);
   if (fmtCfg().dateStyle === "iso") return d.toLocaleDateString("sv-SE") + " · " + fmtTime(ts);
@@ -810,9 +819,19 @@ function askManagerApproval(title, why, staff) {
     el.querySelector("#apWhy").textContent = why || "";
     pin.value = ""; err.hidden = true;
     const done = v => { el.hidden = true; el.querySelector("#apOk").onclick = el.querySelector("#apCancel").onclick = null; pin.onkeydown = null; resolve(v); };
-    const check = () => {
-      const who = (staff || []).find(u => u.pin && u.pin === pin.value.trim() && u.perms && u.perms.active !== false && (u.perms.approveRequests || u.perms.globalAdmin));
-      if (!who) { err.textContent = "That PIN isn't a manager's. Try again."; err.hidden = false; pin.select(); return; }
+    // The PIN is checked by the database (nipos_check_approval_pin): staff can't read anyone's PIN.
+    let checking = false;
+    const check = async () => {
+      if (checking) return;
+      checking = true; err.hidden = true;
+      let res = null;
+      try { const r = await supabaseClient.rpc("nipos_check_approval_pin", { p_pin: pin.value.trim(), p_venue: currentVenueId }); res = r.error ? { error: "offline" } : r.data; } catch (e) { res = { error: "offline" }; }
+      checking = false;
+      const who = res && res.id ? { id: res.id, name: res.name } : null;
+      if (!who) {
+        err.textContent = res && res.error === "locked" ? "Too many wrong PINs. Wait 5 minutes and try again." : res && res.error === "offline" ? "Couldn't check the PIN. Check the connection and try again." : "That PIN isn't a manager's. Try again.";
+        err.hidden = false; pin.select(); return;
+      }
       logActivity("Manager approved", `${title}${why ? ": " + why : ""} (by ${who.name})`);
       done(who);
     };
@@ -897,7 +916,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261022m";
+const NIPOS_VERSION = "20261022n";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -909,9 +928,57 @@ function startDeviceReports(getInfo) {
     if (!featureOn("deviceHealth") || !supabaseClient || !signedInUserId) return;
     const info = getInfo() || {}, ua = navigator.userAgent;
     const kind = /iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && "ontouchend" in document) ? "Tablet" : /iPhone|Android.*Mobile/i.test(ua) ? "Phone" : "Computer";
-    try { await supabaseClient.from("devices").upsert({ id: deviceId(), ts: Date.now(), venue_id: currentVenueId || null, data: { who: signedInUserName || "", screen: activityScreenName(), venue: info.venue || "", version: NIPOS_VERSION, kind, browser: /Edg\//.test(ua) ? "Edge" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : /Firefox\//.test(ua) ? "Firefox" : "Browser", standalone: !!(window.matchMedia && matchMedia("(display-mode: standalone)").matches) || !!navigator.standalone, online: navigator.onLine } }); } catch (e) {}
+    try { await supabaseClient.from("devices").upsert({ id: deviceId(), ts: Date.now(), venue_id: currentVenueId || null, data: { who: signedInUserName || "", userId: signedInUserId, screen: activityScreenName(), venue: info.venue || "", version: NIPOS_VERSION, kind, waiting: outbox.length, waitingSales: outbox.filter(o => o.table === "sales").length, browser: /Edg\//.test(ua) ? "Edge" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : /Firefox\//.test(ua) ? "Firefox" : "Browser", standalone: !!(window.matchMedia && matchMedia("(display-mode: standalone)").matches) || !!navigator.standalone, online: navigator.onLine } }); } catch (e) {}
   };
-  clearInterval(deviceTimer); deviceTimer = setInterval(send, 60000); setTimeout(send, 3000);
+  clearInterval(deviceTimer); deviceTimer = setInterval(send, 15000); setTimeout(send, 3000);
+  startCommandWatch();
+}
+// Backend can refresh or sign out one device, or sign one person out everywhere (device_commands);
+// and if someone's account is switched off (or deleted) while they're signed in, they're signed out.
+const handledCommands = new Set(), commandsSince = Date.now();
+let commandTimer = null, accountChecks = 0;
+function startCommandWatch() {
+  if (commandTimer) return;
+  commandTimer = setInterval(async () => {
+    if (!supabaseClient || !signedInUserId || document.visibilityState === "hidden") return;
+    try {
+      const { data } = await supabaseClient.from("device_commands").select("id,ts,target_type,target_id,action")
+        .gt("ts", commandsSince).or(`and(target_type.eq.device,target_id.eq.${deviceId()}),and(target_type.eq.user,target_id.eq.${signedInUserId})`).order("ts");
+      for (const c of data || []) {
+        if (handledCommands.has(c.id)) continue;
+        handledCommands.add(c.id);
+        const fn = remoteHandlers[c.action];
+        if (fn) { if (c.action === "signout") notifyToast("You were signed out from Backend."); fn(); }
+      }
+    } catch (e) {}
+    if (++accountChecks % 3 === 0) { // every 15 seconds
+      try {
+        const { data, error } = await supabaseClient.from("staff_users").select("data").eq("id", signedInUserId).maybeSingle();
+        if (!error && (!data || (data.data && data.data.perms && data.data.perms.active === false)) && remoteHandlers.signout) {
+          notifyToast("This account has been switched off, so it was signed out.");
+          remoteHandlers.signout();
+        }
+      } catch (e) {}
+    }
+  }, 5000);
+}
+// Before a Z Read: tills at this venue (this one included) with sales still waiting to save. Those
+// sales aren't in the database yet, so they'd be missing from the Z Read.
+async function salesWaitingAt(venueId) {
+  const out = [], mine = outbox.filter(o => o.table === "sales" && o.rec.venue_id === venueId).length;
+  if (mine) out.push(`This device: ${mine} sale${mine === 1 ? "" : "s"}`);
+  try {
+    const { data } = await supabaseClient.from("devices").select("id,ts,venue_id,data").eq("venue_id", venueId).gt("ts", Date.now() - 6 * 3600000);
+    (data || []).forEach(r => { const n = Number(r.data && r.data.waitingSales) || 0; if (n && r.id !== deviceId()) out.push(`${r.data.screen || "Till"}${r.data.who ? " (" + r.data.who + ")" : ""}: ${n} sale${n === 1 ? "" : "s"}${Date.now() - r.ts > 45000 ? ", offline since " + fmtTime(r.ts) : ""}`); });
+  } catch (e) {}
+  return out;
+}
+async function sendDeviceCommand(targetType, targetId, action) {
+  if (!supabaseClient) return false;
+  try {
+    const { error } = await supabaseClient.from("device_commands").insert({ id: "cmd" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ts: Date.now(), target_type: targetType, target_id: targetId, action, data: { by: signedInUserName || "" } });
+    return !error;
+  } catch (e) { return false; }
 }
 
 // Allergen and diet tags (feature "dietTags"): the tags items can have; "filter" ones get a till filter.
@@ -1230,8 +1297,20 @@ function maintenanceModeOn() { return maintenanceMode || featureOn("maintenance"
 // is on (so testing never pages real staff or spams a real channel).
 // Discord settings (feature "discordSettings"): which events go to Discord. kind: orders | refunds | stops | zreads.
 function discordOn(kind) { return !kind || !featureOn("discordSettings") || (featureConfig("discordSettings").events || {})[kind] !== false; }
+// Posts without a file go through the database queue (discord_queue + the discord-relay function), which
+// sends them in order, batched and paced, and retries, so a busy night with many tills doesn't lose any.
+// If the queue can't be reached, the till posts directly as before.
+let discordNudgeAt = 0;
 async function postDiscordEmbed(webhook, embed, file, kind){
   if (!webhook || maintenanceMode || !discordOn(kind)) return;
+  if (!file && supabaseClient) {
+    let queued = false;
+    try { const { error } = await supabaseClient.from("discord_queue").insert({ id: "dq" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), ts: Date.now(), webhook, embed }); queued = !error; } catch (e) {}
+    if (queued) {
+      if (Date.now() - discordNudgeAt > 3000) { discordNudgeAt = Date.now(); try { supabaseClient.functions.invoke("discord-relay", { body: {} }).catch(() => {}); } catch (e) {} }
+      return;
+    }
+  }
   const opts = file ? (() => {
     const form = new FormData();
     form.append("payload_json", JSON.stringify({ embeds: [embed] }));
@@ -1655,7 +1734,8 @@ async function claimRefund(o, byName, byId) {
 // onReady, onDeliver, onFlag, onAccept (customer took the substitute), onRequestRefund, onRefund,
 // partsNote (how the order's other parts are getting on), readyNote (text once this part is ready),
 // venueName / venueColor (a kitchen cooking for several venues),
-// tillView (the till's Open Orders: no Accept or Ready, only Delivered once it's ready) }
+// tillView (the till's Open Orders: no Accept or Ready, only Delivered once it's ready),
+// alreadyRefunded / onCloseRefunded (the flagged item was refunded already) }
 function buildOrderCard(o, opts) {
   const subItem = o.items.find(i => i.substituted);
   const state = orderStage(o), refund = state === "refund" || state === "refunding";
@@ -1708,7 +1788,10 @@ function buildOrderCard(o, opts) {
     if (opts.refundPence === undefined) add("btn btn-danger-solid", "Refund from Past Orders", opts.onRefund);
     else add("btn btn-danger-solid", known ? `Refund ${poundsText(opts.refundPence)}` : "Working out refund…", known ? opts.onRefund : null, !known);
   };
-  if (refund) {
+  if (o.flagged && opts.alreadyRefunded && opts.onCloseRefunded) {
+    // The item was refunded already (e.g. from Past Orders): there's nothing left to refund.
+    add(primary, "Already refunded, close it", opts.onCloseRefunded);
+  } else if (refund) {
     // Nothing here closes or removes the order: it only goes once the refund has actually been given.
     // And while someone else is mid-refund, nobody else gets a Refund button.
     if (opts.canRefund && !refundLockedByOther(o, opts.myId)) refundButton();

@@ -139,6 +139,10 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .oo-actions select{min-height:44px;width:auto;min-width:200px;flex:0 0 auto;}
 .act-pager{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin:12px 0;}
 .act-pager span{font-weight:700;font-size:14px;margin:0 6px;}
+.device-table td{vertical-align:middle;}
+.dev-actions{white-space:nowrap;display:flex;gap:6px;}
+.dev-waiting{color:var(--danger);}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
 .kitchen-card label.check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;cursor:pointer;}
 .kitchen-venues{border:0;padding:0;margin:12px 0 0;display:flex;flex-direction:column;gap:4px;}
 .feature-list{display:flex;flex-direction:column;gap:12px;max-width:860px;}
@@ -222,12 +226,8 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .section-title:first-child{margin-top:0;}
 
 /* ---------- dashboard ---------- */
-.dash-live{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--text-muted);min-height:44px;cursor:pointer;margin-right:auto;margin-left:12px;}
-.dash-live input{width:18px;height:18px;margin:0;accent-color:var(--success);}
-.dash-live .dot{width:9px;height:9px;border-radius:50%;background:var(--success);box-shadow:0 0 0 0 var(--success);animation:dashPulse 2s infinite;}
-.dash-live.off .dot{background:var(--text-muted);animation:none;}
-@keyframes dashPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--success) 60%, transparent);}70%{box-shadow:0 0 0 8px transparent;}100%{box-shadow:0 0 0 0 transparent;}}
-@media (prefers-reduced-motion: reduce){.dash-live .dot{animation:none;}}
+.dash-live{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--text);min-height:44px;cursor:pointer;margin-right:auto;margin-left:14px;}
+.dash-live input{width:18px;height:18px;margin:0;}
 .range-picker{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
 .range-btn{background:var(--surface-2);border:1px solid var(--border);color:var(--text);font-size:14px;font-weight:700;padding:0 16px;min-height:44px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;}
 .range-btn.active{background:var(--sel-bg);color:var(--sel-ink);border-color:var(--sel-bg);}
@@ -331,7 +331,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022m">
+<link rel="stylesheet" href="nipos.css?v=20261022n">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -405,7 +405,7 @@ table.data-table tr:last-child td{border-bottom:0;}
     <section class="page active" id="page-dashboard">
       <div class="page-header">
         <h1>Takings</h1>
-        <label class="dash-live" title="Takings update by themselves every few seconds while this is on"><input type="checkbox" id="dashLive" checked><span class="dot" aria-hidden="true"></span><span id="dashLiveText">Live</span></label>
+        <label class="dash-live"><input type="checkbox" id="dashLive" checked> <span id="dashLiveText">Live</span></label>
         <label class="page-venue" id="dashVenueWrap" hidden><span>Venue</span><select id="dashVenue" aria-label="Venue for Takings"></select></label>
         <div class="range-picker">
           <button class="range-btn active" data-range="today">Today</button>
@@ -831,7 +831,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261022m"></script>
+<script src="db.js?v=20261022n"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -1181,12 +1181,49 @@ function readProductExtras(panel, it, cat){
   return out;
 }
 // Device health: the devices table, newest first. Online = checked in within 2 minutes.
+// Device health: live (every 5 seconds while it's open). Devices report every 15 seconds, so one
+// that's missed 3 reports shows as offline. Refresh / Sign out reach the device within ~5 seconds.
+let devicesTimer = null, deviceRows = [];
+const agoShort = ts => { const s = Math.max(0, Math.round((Date.now() - ts) / 1000)); return s < 60 ? `${s} s ago` : minutesAgo(ts); };
 async function loadDevices(){
   const el = document.getElementById("deviceList"); if (!el) return;
-  let rows = [];
-  try { const { data } = await supabaseClient.from("devices").select("id,ts,venue_id,data").order("ts", { ascending: false }).limit(200); rows = data || []; } catch (e) {}
-  if (!featureOn("deviceHealth")) { el.innerHTML = `<p class="note">Switch it on to start collecting. Devices report in once a minute while someone's signed in.</p>`; return; }
-  el.innerHTML = rows.length ? `<div class="table-scroll"><table class="feature-table"><thead><tr><th scope="col">Status</th><th scope="col">Screen</th><th scope="col">Venue</th><th scope="col">Signed in</th><th scope="col">Device</th><th scope="col">Version</th><th scope="col">Last checked in</th></tr></thead><tbody>${rows.map(r => { const on = Date.now() - r.ts < 120000; const old = r.data.version && r.data.version !== NIPOS_VERSION; return `<tr><td><span class="pill ${on ? "pill-cash" : ""}">${on ? "Online" : "Offline"}</span></td><td>${esc(r.data.screen || "")}</td><td>${esc(r.data.venue || (r.venue_id ? venueName(r.venue_id) : ""))}</td><td>${esc(r.data.who || "")}</td><td>${esc((r.data.kind || "") + " · " + (r.data.browser || ""))}${r.data.standalone ? " · app" : ""}</td><td>${esc(r.data.version || "?")}${old ? ` <span class="note">(old, refresh it)</span>` : ""}</td><td>${minutesAgo(r.ts)}</td></tr>`; }).join("")}</tbody></table></div>` : `<p class="note">No devices have reported in yet.</p>`;
+  if (!featureOn("deviceHealth")) { el.innerHTML = `<p class="note">Switch it on to start collecting. Devices report in every 15 seconds while someone's signed in.</p>`; return; }
+  try { const { data, error } = await supabaseClient.from("devices").select("id,ts,venue_id,data").order("ts", { ascending: false }).limit(200); if (!error) deviceRows = data || []; } catch (e) {}
+  if (el.contains(document.activeElement) && document.activeElement.tagName === "BUTTON" && el.dataset.drawn) { refreshDeviceAges(); return; }
+  const rows = deviceRows, canRemove = !!(currentUser && (currentUser.system || currentUser.perms.globalAdmin));
+  const offline = rows.filter(r => Date.now() - r.ts >= 45000);
+  el.dataset.drawn = "1";
+  el.innerHTML = rows.length ? `<div class="table-scroll"><table class="feature-table device-table"><thead><tr><th scope="col">Status</th><th scope="col">Screen</th><th scope="col">Venue</th><th scope="col">Signed in</th><th scope="col">Device</th><th scope="col">Version</th><th scope="col">Waiting to save</th><th scope="col">Last checked in</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead><tbody>${rows.map(r => {
+      const on = Date.now() - r.ts < 45000, old = r.data.version && r.data.version !== NIPOS_VERSION, waiting = Number(r.data.waiting) || 0, ws = Number(r.data.waitingSales) || 0;
+      const isMe = r.id === deviceId(), sys = /^\$YSTEM/.test(r.data.who || "");
+      return `<tr data-dev="${esc(r.id)}"><td><span class="pill ${on ? "pill-cash" : ""}">${on ? "Online" : "Offline"}</span></td><td>${esc(r.data.screen || "")}</td><td>${esc(r.data.venue || (r.venue_id ? venueName(r.venue_id) : ""))}</td><td>${esc(r.data.who || "")}${isMe ? " <span class=\"note\">(this one)</span>" : ""}</td><td>${esc((r.data.kind || "") + " · " + (r.data.browser || ""))}${r.data.standalone ? " · app" : ""}</td><td>${esc(r.data.version || "?")}${old ? ` <span class="note">(old)</span>` : ""}</td><td>${waiting ? `<strong class="dev-waiting">${waiting}${ws ? ` (${ws} sale${ws === 1 ? "" : "s"})` : ""}</strong>` : "None"}</td><td data-dev-ago="${r.ts}">${agoShort(r.ts)}</td>
+        <td class="dev-actions">${on && !isMe ? `<button type="button" class="btn btn-ghost btn-sm" data-dev-act="refresh">Refresh</button>${!sys && r.data.who ? `<button type="button" class="btn btn-ghost btn-sm" data-dev-act="signout">Sign out</button>` : ""}` : ""}${!on && canRemove ? `<button type="button" class="btn btn-ghost btn-sm" data-dev-act="remove">Remove</button>` : ""}</td></tr>`; }).join("")}</tbody></table></div>
+      ${canRemove && offline.length ? `<div class="feature-actions"><button type="button" class="btn btn-ghost" data-dev-act="remove-offline">Remove all ${offline.length} offline device${offline.length === 1 ? "" : "s"}</button></div>` : ""}
+      <p class="note" id="deviceMsg" role="status"></p>` : `<p class="note">No devices have reported in yet.</p>`;
+  el.querySelectorAll("[data-dev-act]").forEach(b => b.addEventListener("click", () => deviceAction(b.dataset.devAct, b.closest("[data-dev]") ? b.closest("[data-dev]").dataset.dev : null)));
+  clearInterval(devicesTimer);
+  devicesTimer = setInterval(() => { if (document.getElementById("deviceList") && document.visibilityState === "visible") loadDevices(); else if (!document.getElementById("deviceList")) clearInterval(devicesTimer); }, 5000);
+}
+function refreshDeviceAges(){ document.querySelectorAll("[data-dev-ago]").forEach(td => { td.textContent = agoShort(Number(td.dataset.devAgo)); }); }
+async function deviceAction(act, id){
+  const r = deviceRows.find(x => x.id === id), label = r ? `${r.data.screen || "Device"}${r.data.who ? " (" + r.data.who + ")" : ""}` : "";
+  const say = t => { const m = document.getElementById("deviceMsg"); if (m) m.textContent = t; };
+  if (act === "remove-offline") {
+    const gone = deviceRows.filter(x => Date.now() - x.ts >= 45000);
+    if (!confirm(`Remove ${gone.length} offline device${gone.length === 1 ? "" : "s"} from the list? They come back if they report in again.`)) return;
+    let ok = true; try { const { error } = await supabaseClient.from("devices").delete().in("id", gone.map(x => x.id)); ok = !error; } catch (e) { ok = false; }
+    if (ok) logActivity("Removed devices", `${gone.length} offline`, null);
+    await loadDevices(); say(ok ? `Removed ${gone.length}.` : "Couldn't remove them. The database may need the latest security SQL."); return;
+  }
+  if (act === "remove") {
+    let ok = true; try { const { error } = await supabaseClient.from("devices").delete().eq("id", id); ok = !error; } catch (e) { ok = false; }
+    if (ok) logActivity("Removed a device", label, null);
+    await loadDevices(); say(ok ? `Removed ${label}.` : "Couldn't remove it. The database may need the latest security SQL."); return;
+  }
+  if (act === "signout" && !confirm(`Sign ${r && r.data.who ? r.data.who : "this device"} out on this ${r ? (r.data.screen || "device").toLowerCase() : "device"}?`)) return;
+  const ok = await sendDeviceCommand("device", id, act);
+  if (ok) logActivity(act === "refresh" ? "Refreshed a device" : "Signed out a device", label, null);
+  say(ok ? `${act === "refresh" ? "Refreshing" : "Signing out"} ${label}. It happens within about 5 seconds.` : "Couldn't send that. The database may need the latest security SQL.");
 }
 
 // Backup and restore (feature "backup"). Read in pages of 1,000 rows; restore upserts in chunks.
@@ -2669,7 +2706,8 @@ function comparisonFor(range, startMs, endMs){
 function localDayKey(ts){ const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
 function bucketTotals(sales, refunds, bucket, shiftMs){
   const out = {};
-  const key = ts => bucket === "hour" ? new Date(ts + shiftMs).getHours() : localDayKey(ts + shiftMs);
+  // The night the clocks go back, the second 01:00-01:59 gets a bar of its own (key 1.5).
+  const key = ts => bucket === "hour" ? new Date(ts + shiftMs).getHours() + (clockRepeat(ts + shiftMs) === 2 ? 0.5 : 0) : localDayKey(ts + shiftMs);
   sales.forEach(x => { const k = key(x.ts); out[k] = (out[k] || 0) + x.total; });
   (refunds || []).forEach(r => { const k = key(r.ts); out[k] = (out[k] || 0) - r.pence; });
   return out;
@@ -2681,7 +2719,11 @@ function bucketAxis(startMs, endMs, bucket, cur, prev){
     const hours = Object.keys(cur).concat(Object.keys(prev)).map(Number);
     if (!hours.length) return [];
     const lo = Math.min(...hours), hi = Math.max(...hours, ...(Object.keys(cur).length && endMs >= Date.now() - 60000 ? [new Date(endMs).getHours()] : []));
-    return Array.from({ length: hi - lo + 1 }, (_, i) => lo + i).map(h => ({ key: h, label: String(h).padStart(2, "0") + ":00" }));
+    const lo2 = Math.floor(lo), hi2 = Math.floor(hi), twice = new Set(hours.filter(h => h % 1).map(Math.floor));
+    return Array.from({ length: hi2 - lo2 + 1 }, (_, i) => lo2 + i).flatMap(h => {
+      const label = String(h).padStart(2, "0") + ":00";
+      return twice.has(h) ? [{ key: h, label: label + " (1)" }, { key: h + 0.5, label: label + " (2)" }] : [{ key: h, label }];
+    });
   }
   const out = [];
   for (let t = new Date(startMs).setHours(12, 0, 0, 0); t <= endMs; t += 24 * 3600 * 1000) {
@@ -3500,7 +3542,7 @@ function listDiff(label, before, after, nameOf){
 function staffChanges(before, after){
   const out = [];
   if (before.name !== after.name) out.push(`name: ${before.name} → ${after.name}`);
-  if (before.pin !== after.pin) out.push("PIN changed");
+  if (after.pinChanged) out.push("PIN changed");
   const bp = before.perms || {}, ap = after.perms || {};
   const keys = ["active", "globalAdmin", ...PERM_KEYS_ORDERED];
   const label = k => k === "active" ? "Active" : PERM_LABELS[k] || k;
@@ -3536,12 +3578,20 @@ function renderUserList(){
       <div class="actions">
         ${featureOn("privateMessages") && u.id !== currentUserId ? `<button class="btn btn-ghost btn-sm msg-user-btn" type="button" aria-label="Message ${esc(u.name)}">Message</button>` : ""}
         <button class="btn btn-ghost btn-sm edit-user-btn" type="button">Edit</button>
+        ${u.id !== currentUserId && !u.system ? `<button class="btn btn-ghost btn-sm signout-user-btn" type="button" aria-label="Sign ${esc(u.name)} out everywhere">Sign out</button>` : ""}
         <button class="btn btn-danger btn-sm del-user-btn" type="button">Delete</button>
       </div>`;
     row.querySelector(".edit-user-btn").addEventListener("click", () => openUserModal("edit", u));
     const msgBtn = row.querySelector(".msg-user-btn");
     if (msgBtn) msgBtn.addEventListener("click", () => openMessageBox(u));
     row.querySelector(".del-user-btn").addEventListener("click", () => deleteUser(u.id));
+    const soBtn = row.querySelector(".signout-user-btn");
+    if (soBtn) soBtn.addEventListener("click", async () => {
+      if (!confirm(`Sign ${u.name} out of every till, order screen and Backend they're signed in to?`)) return;
+      const ok = await sendDeviceCommand("user", u.id, "signout");
+      if (ok) logActivity("Signed someone out", `${u.name}, everywhere`, null);
+      alert(ok ? `${u.name} will be signed out everywhere within about 5 seconds.` : "Couldn't send that. The database may need the latest security SQL.");
+    });
     wrap.appendChild(row);
   });
 }
@@ -3574,7 +3624,9 @@ function openUserModal(mode, user){
   const canGrantGlobalAdmin = !!(currentUser && currentUser.perms.globalAdmin);
   document.getElementById("userModalTitle").textContent = mode === "edit" ? "Edit user" : "Add a user";
   document.getElementById("umName").value = user ? user.name : "";
-  document.getElementById("umPin").value = user ? (user.pin || "") : "";
+  // PINs aren't kept where anyone can read them: type a new one to change it, or leave it empty.
+  const pinEl = document.getElementById("umPin");
+  pinEl.value = ""; pinEl.placeholder = user ? "Leave empty to keep their PIN" : "6 or more numbers";
   document.getElementById("umVenues").innerHTML = myVenues.map(v => `
     <label class="row" style="border:0;padding:8px 0;"><span class="info"><span class="name">${v.name}</span></span><span class="switch"><input type="checkbox" data-venue="${v.id}" ${(user ? (user.venueIds||[]).includes(v.id) : myVenues.length===1) ? "checked" : ""}><span class="slider"></span></span></label>`).join("");
   document.getElementById("umGroups").innerHTML = allGroups.length ? allGroups.map(g => `
@@ -3594,7 +3646,7 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
   const name = document.getElementById("umName").value.trim();
   const pin = document.getElementById("umPin").value.trim();
   if (!name) { alert("Enter a name."); return; }
-  if (!/^[0-9]{6,}$/.test(pin)) { alert("PIN must be 6+ digits."); return; }
+  if ((userModalMode === "add" || pin) && !/^[0-9]{6,}$/.test(pin)) { alert("PIN must be 6+ digits."); return; }
   const venueIds = [...document.querySelectorAll("#umVenues [data-venue]:checked")].map(inp => inp.dataset.venue);
   if (!venueIds.length) { alert("Pick at least one venue."); return; }
   const groupIds = [...document.querySelectorAll("#umGroups [data-group]:checked")].map(inp => inp.dataset.group);
@@ -3608,15 +3660,18 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
     if (res.error) { alert(res.error); return; }
   } else {
     const u = editingUser;
-    if (pin !== u.pin) { const res = await callManageStaff("changePin", { userId: u.id, newPin: pin }); if (res.error) { alert(res.error); return; } }
+    if (pin) { const res = await callManageStaff("changePin", { userId: u.id, newPin: pin }); if (res.error) { alert(res.error); return; } }
     // Re-fetch right before writing and merge on top of it, so fields this form doesn't manage
     // (notificationSound, notifyVenueIds, ...) - which the user may have changed themselves in the
     // meantime - survive instead of being silently wiped by this write.
     const { data: freshRow } = await supabaseClient.from("staff_users").select("data").eq("id", u.id).maybeSingle();
-    const merged = { ...(freshRow ? freshRow.data : u), name, pin, perms, venueIds, groupIds };
+    const merged = { ...(freshRow ? freshRow.data : u), name, perms, venueIds, groupIds };
+    delete merged.pin;
     const { error } = await supabaseClient.from("staff_users").update({ data: merged }).eq("id", u.id);
     if (error) { alert(error.message); return; }
-    logActivity("Changed a staff member", `${u.name}: ${staffChanges(u, { name, pin, perms, venueIds, groupIds })}`, null);
+    logActivity("Changed a staff member", `${u.name}: ${staffChanges(u, { name, pinChanged: !!pin, perms, venueIds, groupIds })}`, null);
+    // Switched off: signed out of every screen straight away (the screens also check every 15 seconds).
+    if (u.perms.active !== false && perms.active === false) sendDeviceCommand("user", u.id, "signout");
   }
   if (userModalMode === "add") logActivity("Added a staff member", `${name}: permissions ${["globalAdmin", ...PERM_KEYS_ORDERED].filter(k => perms[k]).map(k => PERM_LABELS[k] || k).join(", ") || "none"}; venues ${venueIds.map(venueName).join(", ")}${groupIds.length ? "; groups " + groupIds.map(groupName).join(", ") : ""}`, null);
   users = await fetchAllVisibleStaff();
@@ -3966,6 +4021,8 @@ async function renderZReads(){
 document.getElementById("backendZReadBtn").addEventListener("click", async () => {
   if (!currentUser.perms.xzRead) { alert("You don't have permission to Z Read."); return; }
   if (!currentVenue) return;
+  const waiting = await salesWaitingAt(currentVenue.id);
+  if (waiting.length && !confirm(`Sales still waiting to save at ${currentVenue.name}:\n${waiting.join("\n")}\n\nThey aren't in the database yet, so they'd be missing from this Z Read. Z Read anyway?`)) return;
   if (!confirm(`Close out ${currentVenue.name}'s current shift and archive it as a Z Read? This can't be undone.`)) return;
   const result = await performZRead(currentVenue, currentUser.name);
   if (result.error) { alert("Z Read failed: " + result.error); return; }
@@ -4121,7 +4178,7 @@ function dashShowsNow(){ const { endMs } = rangeToMs(currentRange); return endMs
 function markDashUpdated(){
   const t = document.getElementById("dashLiveText"); if (!t) return;
   const on = document.getElementById("dashLive").checked;
-  t.textContent = !on ? "Live paused" : dashShowsNow() ? `Live · updated ${new Date().toLocaleTimeString("en-GB")}` : "Past dates (not live)";
+  t.textContent = !on ? "Live: paused" : dashShowsNow() ? `Live: updated ${new Date().toLocaleTimeString("en-GB")}` : "Live: past dates don't change";
   document.querySelector(".dash-live").classList.toggle("off", !on || !dashShowsNow());
 }
 document.getElementById("dashLive").addEventListener("change", () => { markDashUpdated(); if (document.getElementById("dashLive").checked) loadDashboard(true); });
