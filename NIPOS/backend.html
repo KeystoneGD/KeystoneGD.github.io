@@ -111,6 +111,11 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .theme-preview .tp-btn{border-radius:8px;padding:6px 8px;font-size:13px;font-weight:800;text-align:center;}
 .theme-venues{display:flex;gap:6px;flex-wrap:wrap;}
 .layout-title{font-size:20px;margin:34px 0 6px;}
+.wipe-card{max-width:560px;}
+.wipe-summary{margin-top:14px;border:1px solid var(--border);border-left:6px solid var(--danger);padding:12px 14px;background:var(--surface-2);line-height:1.6;}
+.wipe-summary table{border-collapse:collapse;width:100%;}
+.wipe-summary td{padding:3px 0;}
+.wipe-summary td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;}
 .layout-shot{display:block;width:100%;height:auto;aspect-ratio:1180/820;object-fit:cover;border:1px solid var(--border);background:var(--surface-2);}
 .layout-about{margin:0;color:var(--text-muted);font-size:14px;line-height:1.45;}
 .theme-venues span{width:26px;height:26px;border-radius:7px;border:2px solid rgba(127,127,127,.4);}
@@ -272,7 +277,7 @@ table.data-table tr:last-child td{border-bottom:0;}
       <button class="nav-item" data-page="zreads" id="navZReads" hidden>Z Reads</button>
       <button class="nav-item" data-page="testdata" id="navTestData" hidden>Test Data</button>
       <button class="nav-item" data-page="settings" id="navSettings" hidden>Settings</button>
-      <button class="nav-item" data-page="themes" id="navThemes" hidden>Master themes</button>
+      <button class="nav-item" data-page="themes" id="navThemes" hidden>Master settings</button>
     </nav>
     <div class="sidebar-footer">
       <div class="venue-switcher" id="venueSwitcherWrap" hidden>
@@ -500,7 +505,8 @@ table.data-table tr:last-child td{border-bottom:0;}
     </section>
 
     <section class="page" id="page-themes">
-      <div class="page-header"><h1>Master themes</h1></div>
+      <div class="page-header"><h1>Master settings</h1></div>
+      <h2 class="layout-title" style="margin-top:0;">Master theme</h2>
       <p class="note">Changes the colours on every till, order screen and Backend. Devices that are open switch within a minute. Each device's own switch still flips between the theme's normal colours and its dark mode. Green (ready), red (problem or refund) and yellow (in progress) keep their meaning in every theme.</p>
       <p class="note" id="themeMsg" role="status"></p>
       <div class="theme-grid" id="themeGrid"></div>
@@ -509,6 +515,23 @@ table.data-table tr:last-child td{border-bottom:0;}
       <p class="note">How the menu looks on every till. Each layout has a phone and a tablet version, and each device picks the right one by itself. Taking payment, the order panel and every option picker stay the same in all of them.</p>
       <p class="note" id="layoutMsg" role="status"></p>
       <div class="theme-grid" id="layoutGrid"></div>
+
+      <h2 class="layout-title">Remove sales</h2>
+      <p class="note">Clears out test transactions. Removes every sale, refund, tip, abandoned order, open order and Z Read for the venue you pick. Takings, Past Orders and the charts start again from nothing. This can't be undone.</p>
+      <div class="card wipe-card">
+        <label class="field" for="wipeVenue">Venue</label>
+        <select id="wipeVenue"></select>
+        <button type="button" class="btn btn-solid" id="wipeCheckBtn" style="margin-top:12px;">Check what would be removed</button>
+        <div id="wipeSummary" class="wipe-summary" role="status" hidden></div>
+        <div id="wipeConfirmArea" hidden>
+          <label class="field" for="wipeConfirm">Type DELETE to confirm</label>
+          <input type="text" id="wipeConfirm" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <label class="field" for="wipePassword">$YSTEM password</label>
+          <input type="password" id="wipePassword" autocomplete="current-password">
+          <button type="button" class="btn btn-danger-solid btn-block" id="wipeBtn" style="margin-top:12px;" disabled>Remove these sales</button>
+        </div>
+        <p class="note" id="wipeMsg" role="alert" style="margin-top:10px;"></p>
+      </div>
     </section>
   </main>
 </div>
@@ -760,7 +783,7 @@ function applyLoginState(){
     shell.hidden = true; hamburger.hidden = true;
     return;
   }
-  if (currentUser && currentUser.system) { renderThemes(); renderLayouts(); }
+  if (currentUser && currentUser.system) { renderThemes(); renderLayouts(); renderWipeVenues(); }
   if (currentUser && currentUser.perms.backendAccess) {
     document.getElementById("loginGate").hidden = true;
     shell.hidden = false; hamburger.hidden = false;
@@ -898,6 +921,53 @@ function renderThemes(){
   }).join("");
   grid.querySelectorAll("[data-use-theme]").forEach(b => b.addEventListener("click", () => chooseMasterTheme(b.dataset.useTheme)));
 }
+/* ---------- $YSTEM: remove sales ---------- */
+function renderWipeVenues(){
+  const sel = document.getElementById("wipeVenue"), keep = sel.value;
+  sel.innerHTML = `<option value="">Every venue</option>` + myVenues.map(v => `<option value="${esc(v.id)}">${esc(v.name)}${v.active === false ? " (closed)" : ""}</option>`).join("");
+  if ([...sel.options].some(o => o.value === keep)) sel.value = keep;
+}
+function wipeReset(){
+  document.getElementById("wipeSummary").hidden = true;
+  document.getElementById("wipeConfirmArea").hidden = true;
+  document.getElementById("wipeConfirm").value = ""; document.getElementById("wipePassword").value = "";
+  document.getElementById("wipeBtn").disabled = true;
+}
+const WIPE_ROWS = [["sales", "Sales"], ["refunds", "Refunds"], ["gratuities", "Tips"], ["abandoned", "Abandoned orders"], ["open_orders", "Open orders"], ["z_reports", "Z Reads"]];
+document.getElementById("wipeVenue").addEventListener("change", () => { wipeReset(); document.getElementById("wipeMsg").textContent = ""; });
+document.getElementById("wipeCheckBtn").addEventListener("click", async () => {
+  const msg = document.getElementById("wipeMsg"), venue = document.getElementById("wipeVenue").value || null;
+  msg.textContent = ""; wipeReset();
+  let data = null;
+  try { const res = await supabaseClient.rpc("nipos_sales_summary", { p_password: systemPassword, p_venue: venue }); if (!res.error) data = res.data; } catch (e) {}
+  if (!data) { msg.textContent = "Couldn't check. If this is the first time, the remove-sales SQL may not have been run in Supabase yet."; return; }
+  if (data.error) { msg.textContent = SYSTEM_PASSWORD_MESSAGES[data.error] || "Couldn't check. Try again."; return; }
+  const total = WIPE_ROWS.reduce((n, [k]) => n + (data[k] ? data[k].count : 0), 0);
+  const name = venue ? (myVenues.find(v => v.id === venue) || {}).name : "every venue";
+  const box = document.getElementById("wipeSummary");
+  box.innerHTML = `<strong>${total ? "This would remove, for " + esc(name) + ":" : "Nothing to remove for " + esc(name) + "."}</strong>` + (total ? `<table>${WIPE_ROWS.map(([k, label]) => `<tr><td>${label}</td><td class="num">${data[k].count}${data[k].pence != null && data[k].count ? " · " + fmt(data[k].pence) : ""}</td></tr>`).join("")}</table>` : "");
+  box.hidden = false;
+  document.getElementById("wipeConfirmArea").hidden = !total;
+});
+function wipeReady(){ document.getElementById("wipeBtn").disabled = !(document.getElementById("wipeConfirm").value.trim() === "DELETE" && document.getElementById("wipePassword").value); }
+document.getElementById("wipeConfirm").addEventListener("input", wipeReady);
+document.getElementById("wipePassword").addEventListener("input", wipeReady);
+document.getElementById("wipeBtn").addEventListener("click", async () => {
+  const msg = document.getElementById("wipeMsg"), venue = document.getElementById("wipeVenue").value || null, btn = document.getElementById("wipeBtn");
+  btn.disabled = true;
+  let data = null;
+  try {
+    const res = await supabaseClient.rpc("nipos_wipe_sales", { p_password: document.getElementById("wipePassword").value, p_venue: venue, p_confirm: document.getElementById("wipeConfirm").value.trim() });
+    if (!res.error) data = res.data;
+  } catch (e) {}
+  document.getElementById("wipePassword").value = "";
+  if (!data) { msg.textContent = "Couldn't remove them. Try again."; wipeReady(); return; }
+  if (data.error) { msg.textContent = data.error === "not_confirmed" ? "Type DELETE to confirm." : (SYSTEM_PASSWORD_MESSAGES[data.error] || "Couldn't remove them."); wipeReady(); return; }
+  wipeReset();
+  msg.textContent = "Removed " + WIPE_ROWS.map(([k, label]) => `${data[k] || 0} ${label.toLowerCase()}`).join(", ") + ". Tills clear their own copies on their next refresh.";
+  if (typeof loadDashboard === "function") loadDashboard();
+});
+
 function renderLayouts(){
   const grid = document.getElementById("layoutGrid");
   const current = getPosLayout();
