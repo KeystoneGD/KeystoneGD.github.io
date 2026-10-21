@@ -249,6 +249,9 @@ async function callManageStaff(action, payload) {
   } catch (e) { return { error: "Network error" }; }
 }
 
+// A stop belongs to one venue: the same drink can be on stop at one venue and selling at another.
+function stopRowId(name) { return currentVenueId + ":" + name; }
+
 function makeSupabaseDb(client) {
   return { doc(path) { return {
     async set(body) {
@@ -800,7 +803,7 @@ function buildOrderCard(o, opts) {
     <div class="oc-items">${items}</div>
     ${o.notes ? `<div class="note-box">${icon("note")}<span>${esc(o.notes)}</span></div>` : ""}
     ${flagText}
-    ${handedToTill ? `<div class="oc-ready">${icon("lock")}<span><strong>Waiting to be taken out</strong> · only the till can mark it delivered</span></div>` : ""}
+    ${handedToTill ? `<div class="oc-ready">${icon("lock")}<span><strong>Waiting to be delivered.</strong> Only table service staff can mark it delivered</span></div>` : ""}
     ${!o.flagged && subItem ? `<div class="oc-muted oc-line">${icon("check")} Customer took ${esc(subItem.name)} instead of ${esc(subItem.subFor)}</div>` : ""}
     ${o.placedBy ? `<div class="oc-muted oc-line">Taken by ${esc(o.placedBy)}${o.accepted && o.acceptedBy ? ` · accepted by ${esc(o.acceptedBy)}` : ""}</div>` : ""}
     <div class="oc-actions"></div>`;

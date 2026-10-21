@@ -167,7 +167,12 @@ table.data-table tr:last-child td{border-bottom:0;}
 .toolbar select{max-width:220px;}
 .product-row{padding:12px 0;border-bottom:1px solid var(--border);}
 .product-row:last-child{border-bottom:0;}
-.product-row-head{display:flex;align-items:center;gap:10px;}
+.product-row-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.mixer-label{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;color:var(--text);cursor:pointer;min-height:44px;}
+.stop-btn{min-height:44px;min-width:120px;padding:0 12px;font-weight:800;font-size:13.5px;border-radius:10px;cursor:pointer;background:var(--surface-2);color:var(--text);border:2px solid var(--text-muted);}
+.stop-btn.on{background:transparent;border-color:var(--danger);}
+.stop-tag{display:inline-block;margin-left:6px;font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--danger);color:#2a0703;vertical-align:1px;}
+:root[data-theme="light"] .stop-tag{background:#b3261e;color:#fff;}
 .product-edit-panel{padding:12px 0 4px;display:none;}
 .product-edit-panel.open{display:block;}
 .size-edit-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
@@ -331,7 +336,7 @@ table.data-table tr:last-child td{border-bottom:0;}
       </div>
 
       <div class="card" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-        <div style="font-weight:700;font-size:13.5px;">Happy Hour cocktail pricing</div>
+        <label for="hhMode" style="font-weight:700;font-size:13.5px;">Happy Hour cocktail pricing</label>
         <select id="hhMode" style="max-width:280px;">
           <option value="auto">Automatic (3-6pm &amp; 9.30pm onwards)</option>
           <option value="on">Force ON</option>
@@ -341,8 +346,8 @@ table.data-table tr:last-child td{border-bottom:0;}
 
       <div class="tab-panel active" id="tab-catalogue">
         <div class="toolbar">
-          <input type="text" id="productSearch" placeholder="Search products…">
-          <select id="productCategoryFilter"><option value="">All categories</option></select>
+          <input type="text" id="productSearch" placeholder="Search products…" aria-label="Search products">
+          <select id="productCategoryFilter" aria-label="Show one category"><option value="">All categories</option></select>
           <button class="btn btn-accent" id="toggleAddProductBtn">+ Add product</button>
         </div>
         <div class="card" id="addProductCard" hidden>
@@ -400,7 +405,7 @@ table.data-table tr:last-child td{border-bottom:0;}
         <div class="card">
           <label class="field">Name</label>
           <input type="text" id="newCategoryName" placeholder="e.g. Botanical Gins">
-          <label class="field">Menu</label>
+          <label class="field" for="newCategoryMode">Menu</label>
           <select id="newCategoryMode"><option value="drink">Drinks</option><option value="food">Food</option></select>
           <label class="row" style="border:0;padding:8px 0 0;"><span class="info"><span class="name">Spirit (single/double pricing)</span></span><span class="switch"><input type="checkbox" id="newCategoryIsSpirit"><span class="slider"></span></span></label>
           <label class="row" style="border:0;padding:8px 0 0;"><span class="info"><span class="name">Draught-style</span></span><span class="switch"><input type="checkbox" id="newCategoryIsBeer"><span class="slider"></span></span></label>
@@ -612,6 +617,7 @@ let realCategories = [];
 let realItems = [];
 let customDiscounts = [];
 let mixerOverrides = new Set();
+let stops = new Set(); // product names on stop at the current venue
 let hhOverride = null;
 let currentPage = "dashboard";
 let systemPassword = null; // $YSTEM only - see "$YSTEM: password, then Master themes" below
@@ -636,6 +642,7 @@ const LS_HH_OVERRIDE = "starlightTill.hhOverride.v1";
 const LS_CUSTOM_DISCOUNTS = "starlightTill.customDiscounts.v1";
 
 const mixerOverridesStore = rowStore("mixer_overrides", 1000);
+const stopsStore = rowStore("stops", 1000); // the same stop list the till uses (Products on Stop)
 const customDiscountsStore = rowStore("custom_discounts", 500);
 const categoriesStore = rowStore("categories", 200);
 const catalogueItemsStore = rowStore("catalogue_items", 2000);
@@ -717,6 +724,7 @@ async function loadVenueData(){
 
   const mixerRows = await mixerOverridesStore.fetchAll();
   mixerOverrides = new Set((mixerRows || []).map(r => r.name));
+  stops = new Set(((await stopsStore.fetchAll()) || []).map(r => r.name));
   customDiscounts = await customDiscountsStore.fetchAll() || [];
   users = await fetchAllVisibleStaff();
   allGroups = await fetchAllGroups();
@@ -1276,6 +1284,22 @@ async function copyCatalogueFrom(sourceVenueId){
   }
 }
 
+// Puts products on stop (or back on sale) at the current venue - the same list every till reads.
+async function setStopsForNames(names, on){
+  const changed = names.filter(n => on !== stops.has(n));
+  for (const name of changed) {
+    if (on) { stops.add(name); await stopsStore.save({ id: stopRowId(name), ts: Date.now(), name }); }
+    else { stops.delete(name); await stopsStore.remove(stopRowId(name)); }
+  }
+  if (!changed.length) return;
+  postDiscordEmbed(currentVenue && currentVenue.discordWebhooks && currentVenue.discordWebhooks.stop, {
+    title: on ? "🛑 Product Stopped" : "✅ Product Back In Stock",
+    color: on ? 0xff7a68 : 0x49c98d,
+    fields: [{ name: changed.length === 1 ? "Product" : "Products", value: changed.join(", ").slice(0, 1000), inline: true }, { name: "By", value: currentUser ? currentUser.name + " (Backend)" : "Backend", inline: true }],
+    timestamp: new Date().toISOString()
+  });
+}
+
 function renderProductRow(it, cat){
   const row = document.createElement("div");
   row.className = "product-row";
@@ -1283,13 +1307,18 @@ function renderProductRow(it, cat){
   const summary = it.sizes && it.sizes.length ? sizes.map(s => `${s.label} ${fmt(s.pence)}`).join(" · ") : (cat.isSpirit ? `Single ${fmt(it.pence)} · Double ${fmt(it.doublePence != null ? it.doublePence : it.pence*2)}` : fmt(it.pence));
   row.innerHTML = `
     <div class="product-row-head">
-      <div class="info"><div class="name">${it.name}</div><div class="price">${summary}</div></div>
-      <label class="switch" title="Usable as a mixer"><input type="checkbox" class="mixer-toggle" ${mixerOverrides.has(it.name) ? "checked" : ""}><span class="slider"></span></label>
+      <div class="info"><div class="name">${esc(it.name)}${stops.has(it.name) ? `<span class="stop-tag">On stop</span>` : ""}</div><div class="price">${summary}</div></div>
+      <button type="button" class="stop-btn${stops.has(it.name) ? " on" : ""}" aria-label="${stops.has(it.name) ? "Put " + esc(it.name) + " back on sale" : "Put " + esc(it.name) + " on stop"}">${stops.has(it.name) ? "Back on sale" : "Put on stop"}</button>
+      <label class="mixer-label" title="Offer this as a mixer when someone orders a spirit"><span>Mixer</span><span class="switch"><input type="checkbox" class="mixer-toggle" aria-label="${esc(it.name)} can be a mixer" ${mixerOverrides.has(it.name) ? "checked" : ""}><span class="slider"></span></span></label>
       <button type="button" class="btn btn-ghost btn-sm edit-product-btn">Edit</button>
       <button type="button" class="btn btn-danger btn-sm delete-product-btn">Delete</button>
     </div>
     <div class="product-edit-panel"></div>`;
 
+  row.querySelector(".stop-btn").addEventListener("click", async () => {
+    await setStopsForNames([it.name], !stops.has(it.name));
+    renderProductsList(); renderCategoriesList();
+  });
   row.querySelector(".mixer-toggle").addEventListener("change", async e => {
     if (e.target.checked) { mixerOverrides.add(it.name); await mixerOverridesStore.save({ id: it.name, ts: Date.now(), name: it.name }); }
     else { mixerOverrides.delete(it.name); await mixerOverridesStore.remove(it.name); }
@@ -1485,14 +1514,18 @@ function renderCategoriesList(){
   const cats = realCategories.slice().sort((a,b)=>a.order-b.order);
   if (!cats.length) { wrap.innerHTML = `<div class="empty">None yet.</div>`; return; }
   cats.forEach((cat, idx) => {
-    const itemCount = realItems.filter(it => it.categoryId === cat.id).length;
+    const catItems = realItems.filter(it => it.categoryId === cat.id);
+    const itemCount = catItems.length;
+    const allStopped = itemCount > 0 && catItems.every(it => stops.has(it.name));
+    const someStopped = catItems.filter(it => stops.has(it.name)).length;
     const row = document.createElement("div");
     row.className = "row";
     row.innerHTML = `
       <div class="info">
-        <div class="name"><input type="text" class="cat-name-input" value="${cat.name.replace(/"/g,"&quot;")}" style="width:auto;display:inline-block;padding:4px 8px;font-size:13.5px;font-weight:600;"></div>
-        <div class="sub">${itemCount} item${itemCount===1?"":"s"} · ${cat.mode === "food" ? "Food" : "Drinks"}${cat.isSpirit ? " · Spirit" : ""}${cat.isBeer ? " · Draught" : ""}</div>
+        <div class="name"><input type="text" class="cat-name-input" aria-label="Category name" value="${cat.name.replace(/"/g,"&quot;")}" style="width:auto;display:inline-block;padding:4px 8px;font-size:13.5px;font-weight:600;"></div>
+        <div class="sub">${itemCount} item${itemCount===1?"":"s"} · ${cat.mode === "food" ? "Food" : "Drinks"}${cat.isSpirit ? " · Spirit" : ""}${cat.isBeer ? " · Draught" : ""}${allStopped ? ` <span class="stop-tag">On stop</span>` : someStopped ? ` · ${someStopped} on stop` : ""}</div>
       </div>
+      ${itemCount ? `<button type="button" class="stop-btn cat-stop-btn${allStopped ? " on" : ""}" aria-label="${allStopped ? "Put all of " + esc(cat.name) + " back on sale" : "Put all of " + esc(cat.name) + " on stop"}">${allStopped ? "Back on sale" : "Stop all"}</button>` : ""}
       <button type="button" class="btn btn-ghost btn-sm move-up-btn" aria-label="Move ${esc(cat.name)} up" ${idx===0?"disabled":""}>${icon("up")}</button>
       <button type="button" class="btn btn-ghost btn-sm move-down-btn" aria-label="Move ${esc(cat.name)} down" ${idx===cats.length-1?"disabled":""}>${icon("down")}</button>
       <button type="button" class="btn btn-danger btn-sm del-cat-btn">Delete</button>`;
@@ -1500,6 +1533,12 @@ function renderCategoriesList(){
       cat.name = e.target.value.trim() || cat.name;
       await categoriesStore.save(cat);
       renderCategoryFilterOptions(); renderNewProductCategoryOptions(); renderProductsList();
+    });
+    const catStop = row.querySelector(".cat-stop-btn");
+    if (catStop) catStop.addEventListener("click", async () => {
+      catStop.disabled = true;
+      await setStopsForNames(catItems.map(it => it.name), !allStopped);
+      renderCategoriesList(); renderProductsList();
     });
     row.querySelector(".move-up-btn").addEventListener("click", async () => { await swapCategoryOrder(cats, idx, idx-1); });
     row.querySelector(".move-down-btn").addEventListener("click", async () => { await swapCategoryOrder(cats, idx, idx+1); });

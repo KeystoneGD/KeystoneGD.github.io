@@ -108,7 +108,9 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .toolbar-row[hidden]{display:none;}
 .placed-by{font-size:11.5px;color:var(--text-muted);margin-bottom:6px;}
 .order-notes{font-size:13px;font-weight:700;color:var(--accent-text,var(--accent));margin-bottom:10px;}
-.stock-cat{font-size:15px;color:var(--text);font-weight:800;margin:16px 0 4px;}
+.stock-cat{font-size:15px;color:var(--text);font-weight:800;margin:16px 0 4px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.stock-cat-btn{min-height:48px;min-width:124px;padding:0 12px;border-radius:10px;font:inherit;font-size:14px;font-weight:800;cursor:pointer;background:var(--surface-2);color:var(--text);border:2px solid var(--text-muted);}
+.stock-cat-btn.on{background:transparent;border-color:var(--danger);}
 .stock-cat:first-child{margin-top:0;}
 .stock-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:14px;}
 .stock-row:last-child{border-bottom:0;}
@@ -972,11 +974,27 @@ function renderStockList(){
   const wrap = document.getElementById("stockList");
   const q = document.getElementById("stockSearch").value.trim().toLowerCase();
   wrap.innerHTML = "";
-  productCategories.forEach(cat => {
+  // A venue that isn't selling food doesn't need its food in the stop list.
+  const foodOff = !!(currentVenue && currentVenue.foodEnabled === false);
+  productCategories.filter(cat => !(foodOff && cat.mode === "food")).forEach(cat => {
     const items = cat.items.filter(i => i.name.toLowerCase().includes(q));
     if (!items.length) return;
     const h = document.createElement("div");
-    h.className = "stock-cat"; h.textContent = cat.name;
+    const allStopped = cat.items.length > 0 && cat.items.every(i => stops.has(i.name));
+    h.className = "stock-cat";
+    h.innerHTML = `<span>${esc(cat.name)}</span><button type="button" class="stock-cat-btn${allStopped ? " on" : ""}" aria-label="${allStopped ? "Put all of " + esc(cat.name) + " back on sale" : "Put all of " + esc(cat.name) + " on stop"}">${allStopped ? "Back on sale" : "Stop all"}</button>`;
+    h.querySelector("button").addEventListener("click", async e => {
+      e.currentTarget.disabled = true;
+      const on = !allStopped;
+      for (const p of cat.items) {
+        if (on === stops.has(p.name)) continue;
+        if (on) { stops.add(p.name); await stopsStore.save({ id: stopRowId(p.name), ts: Date.now(), name: p.name }); }
+        else { stops.delete(p.name); await stopsStore.remove(stopRowId(p.name)); }
+      }
+      knownStops = new Set(stops);
+      logStopToDiscord(cat.name + " (whole category)", on);
+      renderStockList();
+    });
     wrap.appendChild(h);
     items.forEach(p => {
       const row = document.createElement("label");
@@ -986,8 +1004,8 @@ function renderStockList(){
       row.querySelector('input[type="checkbox"]').addEventListener("change", async e => {
         row.classList.toggle("on", e.target.checked);
         row.querySelector(".stock-state").textContent = e.target.checked ? "On stop" : "Available";
-        if (e.target.checked) { stops.add(p.name); await stopsStore.save({ id: p.name, ts: Date.now(), name: p.name }); }
-        else { stops.delete(p.name); await stopsStore.remove(p.name); }
+        if (e.target.checked) { stops.add(p.name); await stopsStore.save({ id: stopRowId(p.name), ts: Date.now(), name: p.name }); }
+        else { stops.delete(p.name); await stopsStore.remove(stopRowId(p.name)); }
         knownStops = new Set(stops);
         logStopToDiscord(p.name, e.target.checked);
       });
