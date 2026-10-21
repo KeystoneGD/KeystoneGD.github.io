@@ -24,7 +24,8 @@ const PERM_LABELS = {
   processRefunds: "Process Refunds",
   sendAnnouncements: "Send Announcements",
   notifySpecificUsers: "Notify Specific Users",
-  viewActivityLogs: "View Activity Logs"
+  viewActivityLogs: "View Activity Logs",
+  approveRequests: "Manager approval"
 };
 
 let supabaseClient = null;
@@ -186,9 +187,12 @@ async function getSession() {
 // sign-in, so the well-known name on its own gets nobody anywhere. Backend only.
 const SYSTEM_SIGN_IN = "$YSTEM";
 const SYSTEM_EMAIL = "system@nipos.local";
-function isSystemSignIn(code) { return String(code || "").trim().toUpperCase() === SYSTEM_SIGN_IN; }
-async function signInSystem(password) {
-  const { error } = await supabaseClient.auth.signInWithPassword({ email: SYSTEM_EMAIL, password });
+// Extra $YSTEM sign-ins: each has its own password (set with nipos_setup_system_login in the SQL Editor).
+const SYSTEM_LOGIN_IDS = ["07466707188"];
+function isSystemSignIn(code) { const c = String(code || "").trim(); return c.toUpperCase() === SYSTEM_SIGN_IN || SYSTEM_LOGIN_IDS.includes(c); }
+function systemEmailFor(code) { const c = String(code || "").trim(); return SYSTEM_LOGIN_IDS.includes(c) ? "system-" + c + "@nipos.local" : SYSTEM_EMAIL; }
+async function signInSystem(password, code) {
+  const { error } = await supabaseClient.auth.signInWithPassword({ email: systemEmailFor(code), password });
   if (error) return { error: /rate|too many/i.test(error.message || "") ? "Too many tries. Wait a few minutes and try again." : "That password isn't right." };
   return { ok: true };
 }
@@ -700,6 +704,82 @@ function showPrivateMessage(n) {
   el.querySelector("#pmTime").textContent = fmtTime(n.ts);
   el.hidden = false;
   el.querySelector("#pmOk").focus();
+}
+
+// Manager approval (feature "managerApproval", and opening hours): someone with Manager approval (or a
+// Global Admin) types their PIN on this screen to allow it. Resolves to that person, or null.
+// staff: the people who can be asked (this venue's staff).
+function askManagerApproval(title, why, staff) {
+  return new Promise(resolve => {
+    let el = document.getElementById("approvalModal");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "approvalModal"; el.className = "modal-overlay notify-overlay"; el.hidden = true; el.dataset.noLog = "";
+      el.innerHTML = `<div class="modal-card notify-card" role="dialog" aria-modal="true" aria-labelledby="apTitle" data-no-log><h3 id="apTitle"></h3><p class="nfy-intro" id="apWhy"></p>
+        <label class="field" for="apPin">Manager's PIN</label><input type="password" id="apPin" inputmode="numeric" autocomplete="off" data-no-log>
+        <p class="send-error nfy-error" id="apErr" role="alert" hidden></p>
+        <div class="modal-actions"><button type="button" class="btn btn-ghost" id="apCancel">Cancel</button><button type="button" class="btn btn-accent" id="apOk">Allow it</button></div></div>`;
+      document.body.appendChild(el);
+    }
+    const pin = el.querySelector("#apPin"), err = el.querySelector("#apErr");
+    el.querySelector("#apTitle").textContent = title || "Needs a manager";
+    el.querySelector("#apWhy").textContent = why || "";
+    pin.value = ""; err.hidden = true;
+    const done = v => { el.hidden = true; el.querySelector("#apOk").onclick = el.querySelector("#apCancel").onclick = null; pin.onkeydown = null; resolve(v); };
+    const check = () => {
+      const who = (staff || []).find(u => u.pin && u.pin === pin.value.trim() && u.perms && u.perms.active !== false && (u.perms.approveRequests || u.perms.globalAdmin));
+      if (!who) { err.textContent = "That PIN isn't a manager's. Try again."; err.hidden = false; pin.select(); return; }
+      logActivity("Manager approved", `${title}${why ? ": " + why : ""} (by ${who.name})`);
+      done(who);
+    };
+    el.querySelector("#apOk").onclick = check;
+    el.querySelector("#apCancel").onclick = () => done(null);
+    pin.onkeydown = e => { if (e.key === "Enter") check(); if (e.key === "Escape") done(null); };
+    el.hidden = false; pin.focus();
+  });
+}
+async function fetchStaffForVenue(venueId) {
+  if (!supabaseClient || !venueId) return [];
+  try { const { data } = await supabaseClient.from("staff_users").select("id,data"); return (data || []).map(r => ({ id: r.id, ...r.data })).filter(u => (u.venueIds || []).includes(venueId) || (u.perms && u.perms.globalAdmin && !u.system)); } catch (e) { return []; }
+}
+function approvalRules() { return featureOn("managerApproval") ? featureConfig("managerApproval") : null; }
+
+// Editable reasons (feature "reasons"): Report a problem, refund and void reasons.
+const DEFAULT_REASONS = { problem: ["Out of stock", "Wrong item", "Damaged/spilled", "Other"], refund: ["Customer didn't like it", "Wrong item", "Took too long", "Spilled", "Other"], void: ["Customer changed their mind", "Rung up by mistake", "Customer left", "Other"] };
+function reasonList(kind) { const c = featureOn("reasons") ? (featureConfig("reasons")[kind] || []) : []; return c.length ? c : DEFAULT_REASONS[kind]; }
+function askReason(title, kind) {
+  return new Promise(resolve => {
+    let el = document.getElementById("reasonModal");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "reasonModal"; el.className = "modal-overlay notify-overlay"; el.hidden = true;
+      el.innerHTML = `<div class="modal-card notify-card" role="dialog" aria-modal="true" aria-labelledby="rsTitle"><h3 id="rsTitle"></h3><div class="su-choices" id="rsList" role="group" aria-label="Reasons"></div>
+        <div class="modal-actions"><button type="button" class="btn btn-ghost" id="rsCancel">Cancel</button></div></div>`;
+      document.body.appendChild(el);
+    }
+    el.querySelector("#rsTitle").textContent = title;
+    el.querySelector("#rsList").innerHTML = reasonList(kind).map(r => `<button type="button" class="btn btn-ghost btn-block" data-reason="${esc(r)}">${esc(r)}</button>`).join("");
+    const done = v => { el.hidden = true; resolve(v); };
+    el.querySelectorAll("[data-reason]").forEach(b => { b.onclick = () => done(b.dataset.reason); });
+    el.querySelector("#rsCancel").onclick = () => done(null);
+    el.onkeydown = e => { if (e.key === "Escape") done(null); };
+    el.hidden = false; el.querySelector("[data-reason]").focus();
+  });
+}
+
+// Opening hours (feature "openingHours"): per venue, per day. Outside them, taking an order needs a
+// manager. A day's close earlier than its open runs past midnight.
+function openingHoursFor(venueId) { const c = featureOn("openingHours") ? featureConfig("openingHours") : null; return c && c.venues ? c.venues[venueId] || null : null; }
+function isOpenNow(venueId, at) {
+  const hours = openingHoursFor(venueId);
+  if (!hours) return true;
+  const d = new Date(at || Date.now()), mins = d.getHours() * 60 + d.getMinutes();
+  const toM = t => { const [h, m] = String(t || "0:0").split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+  const day = hours[d.getDay()], prev = hours[(d.getDay() + 6) % 7];
+  if (prev && !prev.closed && toM(prev.close) <= toM(prev.open) && mins < toM(prev.close)) return true; // yesterday's late night
+  if (!day || day.closed) return false;
+  const o = toM(day.open), c = toM(day.close);
+  return c > o ? mins >= o && mins < c : mins >= o;
 }
 
 // Allergen and diet tags (feature "dietTags"): the tags items can have; "filter" ones get a till filter.
@@ -1231,7 +1311,20 @@ async function fetchSaleForOrder(order) {
 // Marks one line of a sale refunded and logs the refund row. Re-reads the sale first so two devices
 // refunding different lines of the same sale can't overwrite each other. Returns { refundRow, sale }
 // or { error }.
-async function refundSaleLine(saleId, itemIdx) {
+// Before a refund: the reason (feature "reasons") and, over the limit, a manager (feature
+// "managerApproval"). Resolves to { reason, approvedBy } or null if someone cancelled.
+async function refundPreChecks(pence, venueId) {
+  let reason = null, approvedBy = null;
+  if (featureOn("reasons")) { reason = await askReason("Why the refund?", "refund"); if (!reason) return null; }
+  const rules = approvalRules(), limit = rules ? Math.round(Number(rules.refundOver) * 100) : 0;
+  if (limit > 0 && pence > limit) {
+    const who = await askManagerApproval("Big refund", `${poundsText(pence)} is over the ${poundsText(limit)} limit.`, await fetchStaffForVenue(venueId || currentVenueId));
+    if (!who) return null;
+    approvedBy = who.name;
+  }
+  return { reason, approvedBy };
+}
+async function refundSaleLine(saleId, itemIdx, extra) {
   const sales = rowStore("sales"), refundsTable = rowStore("refunds");
   let already = false;
   const fresh = await sales.mutate(saleId, s => {
@@ -1243,9 +1336,11 @@ async function refundSaleLine(saleId, itemIdx) {
   if (already) return { error: "That item has already been refunded." };
   const item = fresh.items[itemIdx];
   const refundRow = { id: "r" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), saleTs: fresh.ts, itemName: item.name, qty: item.qty, pence: refundAmountFor(fresh, item), method: fresh.method || "card" };
+  if (extra && extra.reason) refundRow.reason = extra.reason;
+  if (extra && extra.approvedBy) refundRow.approvedBy = extra.approvedBy;
   if (maintenanceMode) refundRow.isTest = true;
   await refundsTable.save(refundRow);
-  logActivity("Refund", `${item.qty}× ${item.name}, ${poundsText(refundRow.pence)} by ${refundRow.method}${fresh.table ? ", table " + fresh.table : ""}`);
+  logActivity("Refund", `${item.qty}× ${item.name}, ${poundsText(refundRow.pence)} by ${refundRow.method}${fresh.table ? ", table " + fresh.table : ""}${refundRow.reason ? ", reason: " + refundRow.reason : ""}${refundRow.approvedBy ? ", approved by " + refundRow.approvedBy : ""}`);
   return { refundRow, sale: fresh };
 }
 function logRefundToDiscordFor(venue, byName, refundRow, sale) {

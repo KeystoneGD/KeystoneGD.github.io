@@ -288,7 +288,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021h">
+<link rel="stylesheet" href="nipos.css?v=20261021j">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -727,7 +727,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021h"></script>
+<script src="db.js?v=20261021j"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -1199,7 +1199,7 @@ document.getElementById("loginSubmitBtn").addEventListener("click", async () => 
   const pin = document.getElementById("loginPinInput").value.trim();
   if (isSystemSignIn(pin)) {
     document.getElementById("loginPinInput").value = "";
-    systemSignInPending = true;
+    systemSignInPending = true; systemSignInCode = pin;
     applyLoginState();
     document.getElementById("systemPasswordInput").focus();
     return;
@@ -1237,6 +1237,7 @@ document.getElementById("systemGateSignOut").addEventListener("click", signOutBa
 // The password is checked by the database (nipos_check_system_password) against a hash the browser
 // can never read. It's kept in memory for this page load only, because changing the theme checks it
 // again - reloading the page asks for it again.
+let systemSignInCode = "$YSTEM"; // which $YSTEM sign-in was typed ($YSTEM, or an extra one like 07466707188)
 const SYSTEM_PASSWORD_MESSAGES = {
   wrong: "That password isn't right.",
   locked: "Too many wrong passwords. Try again in 15 minutes.",
@@ -1251,7 +1252,7 @@ document.getElementById("systemPasswordBtn").addEventListener("click", async () 
   btn.disabled = true;
   if (systemSignInPending) {
     // First sign-in: the password is what signs $YSTEM in.
-    const res = await signInSystem(pw);
+    const res = await signInSystem(pw, systemSignInCode);
     btn.disabled = false;
     if (res.error) { msg.textContent = res.error; input.select(); return; }
     systemSignInPending = false;
@@ -1337,7 +1338,16 @@ const FEATURES = [
   { key: "dietTags", name: "Allergen and diet tags", about: "Tag items V, VG, GF and so on, on the Products page. The tags show on the till buttons, and the till gets a filter to show only items with a tag." },
   { key: "quickNotes", name: "Quick item notes", about: "One-tap notes like \"No ice\" or \"Extra shot\" on the till's order, per category." },
   { key: "favourites", name: "Favourites tab", about: "Star the drinks a venue sells most on the Products page. They get a Favourites tab of their own at the front of the till." },
-  { key: "copyVenue", name: "Copy a venue's setup", about: "Copy one venue's menu, offers, mixer settings, deals, favourites and colour to another venue, e.g. when opening a new one." }
+  { key: "copyVenue", name: "Copy a venue's setup", about: "Copy one venue's menu, offers, mixer settings, deals, favourites and colour to another venue, e.g. when opening a new one." },
+  { key: "splitBill", name: "Split the bill", about: "A Split the bill button on the till's order: equal parts or different amounts, each paid by cash or card." },
+  { key: "tabs", name: "Tabs", about: "Put an order on a tab for a table or a name. It goes to the bar straight away; add more through the night and pay at the end (Settings › Tabs on the till)." },
+  { key: "managerApproval", name: "Manager approval", about: "A manager's PIN for big refunds and discounts, and for clearing an order or logging a walk-out. Give people the Manager approval permission on the Users page." },
+  { key: "reasons", name: "Editable reasons", about: "The reasons for Report a problem (order screen), refunds and clearing an order, so they match how you work. Refund and clear reasons are asked for while this is on." },
+  { key: "resendOrder", name: "Resend to the bar", about: "Send a past order to the order screen again (Past Orders and Receipts on the till), if it went missing." },
+  { key: "customerDisplay", name: "Customer display", about: "A screen facing the customer showing their order and total. Open display.html on it and enter the till's code (shown in the till's Settings)." },
+  { key: "kitchenScreen", name: "Kitchen screen", about: "Order screens get Bar and Kitchen views: the kitchen sees only food, and the bar can be set to see only drinks." },
+  { key: "receipts", name: "Receipts", about: "A Receipts option in the till's menu to find any sale and show or print its receipt (with your report header details)." },
+  { key: "openingHours", name: "Opening hours", about: "Each venue's opening hours. Outside them, taking an order needs a manager's PIN (Manager approval permission)." }
 ];
 /* Batch 2 editors. Each one opens filled in with what the till does today (the built-in values), so
    switching a feature on changes nothing until something is edited. render(cfg) draws it; read()
@@ -1483,6 +1493,49 @@ const FEATURE_EDITORS = {
         <div class="feature-actions"><button type="button" class="btn btn-danger" data-act="copy-venue">Copy</button></div>`;
     },
     read(){ return {}; }
+  },
+  splitBill: { render(){ return `<p class="note">Nothing to set up. Each part is logged as its own sale, so cash and card totals stay right.</p>`; }, read(){ return {}; } },
+  tabs: { render(){ return `<p class="note">Nothing to set up. Open tabs show on every till at the venue.</p>`; }, read(){ return {}; } },
+  managerApproval: {
+    render(cfg){
+      return `<div class="edit-row"><label>Discounts over (%) <input type="number" id="maDisc" min="0" max="100" value="${cfg.discountOver != null ? esc(cfg.discountOver) : 25}" style="max-width:110px;"></label>
+        <label>Refunds over (£) <input type="number" id="maRef" min="0" step="0.01" value="${cfg.refundOver != null ? esc(cfg.refundOver) : 20}" style="max-width:120px;"></label></div>
+        <label class="check"><input type="checkbox" id="maVoid" ${cfg.voids !== false ? "checked" : ""}>Clearing an order and "Customer left without paying" need a manager too</label>
+        <p class="note">0 means never. Managers are anyone with the Manager approval permission, or a Global Admin.</p>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="managerApproval">Save</button></div>`;
+    },
+    read(){ return { discountOver: Number(document.getElementById("maDisc").value) || 0, refundOver: Number(document.getElementById("maRef").value) || 0, voids: document.getElementById("maVoid").checked }; }
+  },
+  reasons: {
+    render(cfg){
+      const row = (k, label) => `<label class="field" for="rs_${k}">${label} <span class="note">(separate with commas)</span></label><input type="text" id="rs_${k}" value="${esc((cfg[k] && cfg[k].length ? cfg[k] : DEFAULT_REASONS[k]).join(", "))}" style="width:100%;">`;
+      return row("problem", "Report a problem") + row("refund", "Refunds") + row("void", "Clearing an order") + `<div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="reasons">Save reasons</button></div>`;
+    },
+    read(){ const out = {}; ["problem", "refund", "void"].forEach(k => { out[k] = document.getElementById("rs_" + k).value.split(",").map(x => x.trim()).filter(Boolean); }); return out; }
+  },
+  resendOrder: { render(){ return `<p class="note">Nothing to set up.</p>`; }, read(){ return {}; } },
+  customerDisplay: { render(){ return `<p class="note">On the customer's screen open <strong>${esc(location.origin + location.pathname.replace(/backend\.html$/, "display.html"))}</strong>, sign in with any PIN once, pick the venue and enter the till's 4-number code.</p>`; }, read(){ return {}; } },
+  kitchenScreen: {
+    render(cfg){ return `<label class="check"><input type="checkbox" id="ksBar" ${cfg.barHidesFood ? "checked" : ""}>The Bar view hides food</label><div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="kitchenScreen">Save</button></div>`; },
+    read(){ return { barHidesFood: document.getElementById("ksBar").checked }; }
+  },
+  receipts: { render(){ return `<p class="note">Receipts use the venue's details from Report header details, if that's on.</p>`; }, read(){ return {}; } },
+  openingHours: {
+    render(cfg){
+      const venues = cfg.venues || {};
+      return myVenues.map(v => { const h = venues[v.id] || {}; return `<fieldset class="deal-choice" data-oh-venue="${esc(v.id)}"><legend>${esc(v.name)}</legend>
+        <label class="check"><input type="checkbox" data-oh-on ${venues[v.id] ? "checked" : ""}>Use opening hours here</label>
+        <table class="feature-table"><tbody>${DAY_NAMES.map((dn, d) => { const x = h[d] || { open: "12:00", close: "00:00" }; return `<tr><th scope="row">${dn}</th>
+          <td><label class="check"><input type="checkbox" data-oh-closed="${d}" ${x.closed ? "checked" : ""}>Closed</label></td>
+          <td><label>Open <input type="time" data-oh-open="${d}" value="${esc(x.open || "12:00")}"></label></td>
+          <td><label>Close <input type="time" data-oh-close="${d}" value="${esc(x.close || "00:00")}"></label></td></tr>`; }).join("")}</tbody></table></fieldset>`; }).join("")
+        + `<p class="note">A close time earlier than the open time runs past midnight (e.g. 18:00 to 02:00).</p><div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="openingHours">Save opening hours</button></div>`;
+    },
+    read(){
+      const venues = {};
+      F("[data-oh-venue]").forEach(fs => { if (!fs.querySelector("[data-oh-on]").checked) return; const days = {}; DAY_NAMES.forEach((_, d) => { days[d] = { closed: fs.querySelector(`[data-oh-closed="${d}"]`).checked, open: fs.querySelector(`[data-oh-open="${d}"]`).value || "12:00", close: fs.querySelector(`[data-oh-close="${d}"]`).value || "00:00" }; }); venues[fs.dataset.ohVenue] = days; });
+      return { venues };
+    }
   },
   activityLog: {
     render(cfg){
@@ -2914,7 +2967,7 @@ document.getElementById("addOfferBtn").addEventListener("click", async () => {
 /* ---------- Users ---------- */
 const PERM_KEYS_ORDERED = Object.keys(PERM_LABELS).filter(k => k !== "globalAdmin" && k !== "active");
 // Permissions that belong to a Master settings feature only show once that feature is switched on.
-function permVisible(k){ return k === "sendAnnouncements" ? featureOn("announcements") : k === "notifySpecificUsers" ? (featureOn("privateMessages") || featureOn("announcements")) : k === "viewActivityLogs" ? featureOn("activityLog") : true; }
+function permVisible(k){ return k === "sendAnnouncements" ? featureOn("announcements") : k === "notifySpecificUsers" ? (featureOn("privateMessages") || featureOn("announcements")) : k === "viewActivityLogs" ? featureOn("activityLog") : k === "approveRequests" ? (featureOn("managerApproval") || featureOn("openingHours")) : true; }
 function venueName(id){ const v = myVenues.find(x => x.id === id) || venues.find(x => x.id === id); return v ? v.name : id; }
 // Activity log: what exactly changed, as "field: before → after" pieces.
 function shortValue(v){

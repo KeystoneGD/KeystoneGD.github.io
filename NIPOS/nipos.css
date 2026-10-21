@@ -164,7 +164,7 @@ button,.btn,.tag,.state-badge,.stepper,.nav-item,.drawer-list button,.product .n
 .state-badge.late{background:transparent;border:2px solid var(--danger);color:var(--text);}
 
 /* Notify pop-up (db.js), shared by the till menu, the order screen and Backend */
-.notify-overlay{z-index:85;align-items:center;padding:16px;}
+.notify-overlay{z-index:120;align-items:center;padding:16px;}
 .notify-overlay[hidden]{display:none;}
 .notify-card{max-width:480px;width:100%;border-radius:16px;max-height:calc(100vh - 32px);overflow-y:auto;}
 .notify-card h3{margin:0 0 10px;}
@@ -200,3 +200,38 @@ button,.btn,.tag,.state-badge,.stepper,.nav-item,.drawer-list button,.product .n
 .quick-notes[hidden]{display:none;}
 .su-choices{display:grid;gap:8px;margin:6px 0 10px;}
 .su-choices .btn{min-height:48px;justify-content:flex-start;}
+
+/* Section B: orders and payment */
+.view-switch{display:flex;gap:6px;}
+.view-switch[hidden]{display:none;}
+.view-switch .btn[aria-pressed="true"],.split-mode .btn[aria-pressed="true"]{background:var(--sel-bg);color:var(--sel-ink);border-color:var(--sel-bg);}
+.pay-extras{display:flex;gap:8px;margin-top:8px;}
+.pay-extras[hidden]{display:none;}
+.pay-extras .btn{flex:1;}
+.paying-tab{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--surface-2);border:1px solid var(--accent);font-weight:700;font-size:14px;}
+.paying-tab[hidden]{display:none;}
+.split-card{max-width:520px;}
+.split-total{font-size:22px;font-weight:800;margin:4px 0 10px;}
+.split-mode{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+.split-even{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-weight:700;}
+.split-even[hidden]{display:none;}
+.split-even .btn{min-width:48px;font-size:20px;}
+#splitN{font-size:22px;min-width:28px;text-align:center;}
+.split-parts{display:grid;gap:8px;}
+.split-part{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--border);border-radius:10px;}
+.split-part.paid{border-color:var(--success);}
+.split-part .sp-name{font-weight:800;min-width:56px;}
+.split-part .sp-amt{flex:1;font-weight:800;font-size:17px;}
+.split-part .sp-amount{flex:1;min-height:44px;padding:0 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font:inherit;font-size:16px;max-width:140px;}
+.receipt-search{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.receipt-search label{display:grid;gap:4px;font-weight:700;font-size:13.5px;}
+.receipt-search input{min-height:44px;padding:0 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font:inherit;font-size:16px;}
+.receipt-row{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;min-height:56px;padding:10px 12px;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;}
+.receipt-row .sub{display:block;font-size:13px;color:var(--text-muted);font-weight:600;}
+.receipt{background:#fff;color:#000;border-radius:10px;padding:14px;font-size:14px;}
+.receipt .r-head{text-align:center;margin-bottom:8px;}
+.receipt .r-meta{text-align:center;font-size:13px;margin-bottom:8px;}
+.receipt .r-line{display:flex;justify-content:space-between;gap:10px;padding:3px 0;}
+.receipt .r-total{border-top:1px dashed #000;margin-top:6px;padding-top:6px;font-weight:800;font-size:16px;}
+.receipt .r-foot{text-align:center;margin-top:10px;font-size:13px;}
+.hist-actions{display:flex;gap:8px;justify-content:flex-start;}
