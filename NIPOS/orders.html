@@ -134,7 +134,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022q">
+<link rel="stylesheet" href="nipos.css?v=20261022r">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -262,7 +262,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261022q"></script>
+<script src="db.js?v=20261022r"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -535,8 +535,8 @@ async function enablePush(){
   } catch(e){}
 }
 // The push server sometimes fails under load (500/503 in the stress test): try once more after 3 seconds.
-async function sendPushNotification(toUserId, fromUserId, fromName, message, urgent){
-  const body = JSON.stringify({ toUserId, fromUserId, title: fromName ? `${fromName} says` : "Notification", body: message, urgent: !!urgent });
+async function sendPushNotification(toUserId, fromUserId, fromName, message, urgent, title){
+  const body = JSON.stringify({ toUserId, fromUserId, title: title || (fromName ? `${fromName} says` : "Notification"), body: message, urgent: !!urgent });
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const res = await fetch(SEND_PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY }, body });
@@ -651,7 +651,7 @@ async function pushNotification(toUserId, message, urgent, kind){
   notifications = notifications.slice(0, 50);
   await saveNotification(notif);
   if (knownNotificationIds) knownNotificationIds.add(notif.id); // add to what's been seen, never rebuild it from the short local list
-  sendPushNotification(toUserId, currentUserId, me ? me.name : "Someone", message, urgent);
+  sendPushNotification(toUserId, currentUserId, me ? me.name : "Someone", message, urgent, kind === "service" ? "Service call" : null);
 }
 
 async function pullOrders(){
@@ -1091,12 +1091,16 @@ function renderServicePeople(){
       <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex:0 0 auto;"></span>${label}
     </span>`;
     b.addEventListener("click", async () => {
-      await pushNotification(u.id, `needs you at the bar`, true, "service");
+      await pushNotification(u.id, serviceText(), true, "service");
       closeServiceModal();
       showToast(`Notified ${u.name}`);
     });
     wrap.appendChild(b);
   });
+}
+function serviceText(){
+  return serviceCallText({ name: currentUser ? currentUser.name : null, venueId: currentVenueId, venueName: currentVenue ? currentVenue.name : "",
+    kitchen: KITCHEN_PAGE ? (activeKitchen ? activeKitchen.name : "the kitchen") : null });
 }
 function renderServiceGroups(){
   const wrap = document.getElementById("serviceGroupList");
@@ -1111,7 +1115,8 @@ function renderServiceGroups(){
     b.innerHTML = `<span>${g.name}</span><span class="pill">${members.length}</span>`;
     b.addEventListener("click", async () => {
       if (!members.length) return;
-      await Promise.all(members.map(u => pushNotification(u.id, `needs you at the bar`, true, "service")));
+      const text = serviceText();
+      await Promise.all(members.map(u => pushNotification(u.id, text, true, "service")));
       closeServiceModal();
       showToast(`Notified ${g.name} (${members.length})`);
     });

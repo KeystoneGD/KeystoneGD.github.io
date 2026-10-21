@@ -485,6 +485,23 @@ const TAB_TITLES = {
   display: "NIPOS - Customer View",
   backend: "NIPOS Back Office - {venue}"
 };
+// Call for service wording: says who called and where they need you, e.g. "Kitchen Team need you in
+// Functions Kitchen" or "Starlight Bar Team need you at Starlight Bar". {name} is whoever called,
+// {place} the venue (or the name set for it in Master settings > Service call wording), {kitchen} the kitchen.
+const SERVICE_WORDING = { bar: "{name} need you at {place}", kitchen: "{name} need you in {kitchen}" };
+function servicePlaceName(venueId, venueName) {
+  const own = featureOn("serviceWording") ? ((featureConfig("serviceWording").places || {})[venueId] || "").trim() : "";
+  return own || venueName || "the bar";
+}
+function serviceCallText({ name, venueId, venueName, kitchen }) {
+  const kind = kitchen ? "kitchen" : "bar";
+  const own = featureOn("serviceWording") ? ((featureConfig("serviceWording").text || {})[kind] || "").trim() : "";
+  const tpl = own || SERVICE_WORDING[kind];
+  return tpl.replace(/\{name\}/gi, name || "Someone").replace(/\{place\}/gi, servicePlaceName(venueId, venueName))
+    .replace(/\{kitchen\}/gi, kitchen || "the kitchen").replace(/\{venue\}/gi, venueName || "").replace(/\s{2,}/g, " ").trim();
+}
+// What a service call says on the screen it reaches: its own wording, or the old fixed one.
+function serviceCallMessage(n) { return n.message && n.message !== "needs you at the bar" ? n.message : `${n.fromName || "Someone"} needs you at the bar`; }
 let tabTitleNow = null;
 function tabTitle(kind, name) {
   const own = featureOn("tabTitles") ? ((featureConfig("tabTitles").titles || {})[kind] || "").trim() : "";
@@ -938,7 +955,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261022q";
+const NIPOS_VERSION = "20261022r";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -1063,9 +1080,9 @@ function showServiceCall(n, sound) {
   else if (typeof playChime === "function") { try { playChime(); } catch (e) {} }
   if (navigator.vibrate) { try { navigator.vibrate([300, 150, 300, 150, 300]); } catch (e) {} }
   if ("Notification" in window && Notification.permission === "granted" && document.visibilityState !== "visible") {
-    try { new Notification("Service call", { body: `${n.fromName || "Someone"} needs you at the bar`, requireInteraction: true, tag: "service-" + n.id }); } catch (e) {}
+    try { new Notification("Service call", { body: serviceCallMessage(n), requireInteraction: true, tag: "service-" + n.id }); } catch (e) {}
   }
-  showPrivateMessage({ ...n, title: "Service call", message: `${n.fromName || "Someone"} needs you at the bar` });
+  showPrivateMessage({ ...n, title: "Service call", message: serviceCallMessage(n) });
 }
 
 // Refresh or sign out tills (feature "remote"): $YSTEM adds a command and every till, order screen and

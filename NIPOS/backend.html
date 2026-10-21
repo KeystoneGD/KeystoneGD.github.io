@@ -331,7 +331,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022q">
+<link rel="stylesheet" href="nipos.css?v=20261022r">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -831,7 +831,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261022q"></script>
+<script src="db.js?v=20261022r"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -1607,6 +1607,7 @@ const FEATURES = [
   { key: "sessionTimeouts", name: "Session timeouts by role", about: "Sign people out after a while without touching the screen: one time for managers (Backend access), another for everyone else." },
   { key: "deviceHealth", name: "Device health", about: "Which tills, order screens and Backends are online, when they last checked in, and which version they're running." },
   { key: "backup", name: "Backup and restore", about: "Download the whole system as one file, and put it back from one. Works whether this is on or off; the switch just shows it here." },
+  { key: "serviceWording", name: "Service call wording", about: "What a Call for service says on the screen it reaches. {name} is whoever called, {place} where they are (set a name for each venue below) and {kitchen} the kitchen's name. Without this, a call says e.g. \"Kitchen Team need you in Functions Kitchen\" or \"Starlight Bar Team need you at Starlight Suite\"." },
   { key: "tabTitles", name: "Browser tab names", about: "What each screen's browser tab says. {venue} is replaced with the venue's name and {kitchen} with the kitchen's. Leave one empty to use the standard name." },
   { key: "loginBranding", name: "Login screen branding", about: "Your logo, the app name and a short message on the sign-in screen of every till, order screen and Backend." },
   { key: "formats", name: "Formats", about: "The currency symbol, how dates are written, and 12 or 24-hour time, everywhere." }
@@ -1882,6 +1883,24 @@ const FEATURE_EDITORS = {
         </div>`;
     },
     read(){ return {}; }
+  },
+  serviceWording: {
+    render(cfg){
+      const t = cfg.text || {}, places = cfg.places || {};
+      const kitchenName = (kitchens[0] && kitchens[0].name) || "Functions Kitchen";
+      return `<label class="field" for="sw-bar">From a bar's order screen</label><input type="text" id="sw-bar" data-sw="bar" maxlength="120" value="${esc(t.bar || "")}" placeholder="${esc(SERVICE_WORDING.bar)}">
+        <label class="field" for="sw-kitchen">From the kitchen screen</label><input type="text" id="sw-kitchen" data-sw="kitchen" maxlength="120" value="${esc(t.kitchen || "")}" placeholder="${esc(SERVICE_WORDING.kitchen)}">
+        <p class="note" style="margin:14px 0 4px;">Where each venue's calls say you're needed ({place}). Leave one empty to use the venue's name.</p>
+        ${myVenues.map(v => `<label class="field" for="sw-p-${esc(v.id)}">${esc(v.name)}</label><input type="text" id="sw-p-${esc(v.id)}" data-sw-place="${esc(v.id)}" maxlength="60" value="${esc(places[v.id] || "")}" placeholder="${esc(v.name)}">`).join("")}
+        <p class="note" style="margin-top:8px;">Example: ${esc(serviceCallText({ name: "Kitchen Team", kitchen: kitchenName }))} · ${esc(serviceCallText({ name: (myVenues[0] ? myVenues[0].name : "Bar") + " Team", venueId: myVenues[0] && myVenues[0].id, venueName: myVenues[0] && myVenues[0].name }))}</p>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="serviceWording">Save</button></div>`;
+    },
+    read(){
+      const text = {}, places = {};
+      document.querySelectorAll("#featureList [data-sw]").forEach(i => { if (i.value.trim()) text[i.dataset.sw] = i.value.trim(); });
+      document.querySelectorAll("#featureList [data-sw-place]").forEach(i => { if (i.value.trim()) places[i.dataset.swPlace] = i.value.trim(); });
+      return { text, places };
+    }
   },
   tabTitles: {
     render(cfg){
@@ -2278,7 +2297,7 @@ function featureBody(key, cfg){
 /* Master settings is a menu of categories; each one opens just its own features. Search looks
    through all of them. Every feature key must be in exactly one category (others land in System). */
 const FEATURE_CATS = [
-  { id: "notify", name: "Notifications and messages", about: "Notify, alerts, push on each device, Discord.", keys: ["announcements", "privateMessages", "alertSettings", "pushChoice", "discordSettings"] },
+  { id: "notify", name: "Notifications and messages", about: "Notify, alerts, push on each device, Discord.", keys: ["announcements", "privateMessages", "alertSettings", "pushChoice", "serviceWording", "discordSettings"] },
   { id: "menu", name: "Menu and stock", about: "Stops, stock, prices, tags, notes, favourites, drink options.", keys: ["scheduledStops", "stockCounts", "scheduledPrices", "dietTags", "quickNotes", "favourites", "drinkOptions", "copyVenue"] },
   { id: "orders", name: "Orders and payment", about: "Discounts, cash buttons, tables, splitting, tabs, approvals, reasons.", keys: ["discounts", "cashButtons", "tableRules", "splitBill", "tabs", "managerApproval", "reasons", "resendOrder", "lateOrders", "openingHours"] },
   { id: "screens", name: "Screens and devices", about: "Customer display, kitchen screen, receipts, device health, remote refresh.", keys: ["customerDisplay", "kitchenScreen", "receipts", "bigText", "remote", "deviceHealth"] },
