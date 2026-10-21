@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022a">
-<link rel="stylesheet" href="layouts.css?v=20261022a">
+<link rel="stylesheet" href="nipos.css?v=20261022b">
+<link rel="stylesheet" href="layouts.css?v=20261022b">
 </head>
 <body>
 
@@ -752,7 +752,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022a"></script>
+<script src="db.js?v=20261022b"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -1017,9 +1017,12 @@ let allVenuesCache = [];
 let notifications = loadJSON(LS_NOTIFICATIONS, []);
 function loadJSON(key, fallback){ try{ const v = JSON.parse(localStorage.getItem(key)); return v || fallback; }catch(e){ return fallback; } }
 let dbNs = null; // Supabase-backed doc() shim, or null if unavailable. Every db call is best-effort on top of localStorage
+// The order being rung up and the Drinks/Food switch belong to this device only. They used to be saved
+// for the whole venue too, so every till there picked up (and added to) another till's order.
+const DEVICE_ONLY_KEYS = new Set([LS_CART, LS_MODE]);
 function saveJSON(key, val){
   try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
-  if (dbNs) { dbNs.doc("state/" + key).set({ value: val }).catch(() => {}); }
+  if (dbNs && !DEVICE_ONLY_KEYS.has(key)) { dbNs.doc("state/" + key).set({ value: val }).catch(() => {}); }
 }
 function saveLocal(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
 function saveLocalHistory(){ saveLocal(LS_HIST, history); }
@@ -1087,12 +1090,10 @@ let favNames = [], stockLeft = new Map(), dietFilterSet = new Set();
 let displayTimer = null, openTabs = [], payingTab = null, staffCache = { at: 0, list: [] }, afterHoursAllowedUntil = 0;
 let splitMode = "even", splitN = 2, splitParts = [];
 const PERSISTED_KEYS = [
-  { key: LS_CART, set: v => { cart = v; renderQtys(); renderCartBar(); } },
   { key: LS_CUSTOM, set: v => { customProducts = v; customProducts.forEach(p => { BY_ID[p.id] = hydrateCustomProduct(p); }); renderCustomCategories(); }, live: true },
   { key: LS_HH_OVERRIDE, set: v => { hhOverride = v; }, live: true },
   { key: LS_DEALS, set: v => { dealsDoc = v; }, live: true },
   { key: LS_FAVS, set: v => { const next = Array.isArray(v) ? v : []; if (JSON.stringify(next) !== JSON.stringify(favNames)) { favNames = next; renderMenuSections(); renderQtys(); applyVisibility(); } }, live: true },
-  { key: LS_MODE, set: v => { menuMode = v; applyVisibility(); } }
 ];
 
 async function pullState(items){
@@ -1608,6 +1609,7 @@ async function loadCatalogueFromDb(){
   CAT = catalogueFromDb(catRows, itemRows);
   ALL_ITEMS = CAT.flatMap(c => c.items);
   BY_ID = Object.fromEntries(ALL_ITEMS.map(p => [p.id, p]));
+  pruneUnknownCartLines();
   const cocktailCat = CAT.find(c => c.name.startsWith("Cocktails"));
   COCKTAIL_IDS = new Set(cocktailCat ? cocktailCat.items.map(i => i.id) : []);
   renderMenuSections();
@@ -2280,7 +2282,19 @@ function tableProblem(t){
   if (!/^\d+$/.test(t) || n < min || n > max) return `There's no table ${t}. Tables here are ${min}${isFinite(max) ? "–" + max : " and up"}.`;
   return null;
 }
+// A line whose product isn't on this till's menu any more has no name or price, so it can't be sold.
+function pruneUnknownCartLines(){
+  customProducts.forEach(p => { if (!BY_ID[p.id]) BY_ID[p.id] = hydrateCustomProduct(p); }); // the menu reload rebuilds BY_ID
+  const gone = Object.keys(cart).filter(k => !BY_ID[k.split("::")[0]]);
+  if (!gone.length) return false;
+  gone.forEach(k => { delete cart[k]; });
+  saveJSON(LS_CART, cart); renderQtys(); renderCartBar();
+  if (document.getElementById("cartSheet").classList.contains("show")) renderCartSheet();
+  showToast("Something in this order is no longer on the menu, so it was taken off");
+  return true;
+}
 async function startCharge(method){
+  if (pruneUnknownCartLines()) return;
   if (cartCount() === 0) return;
   const tableEl = document.getElementById("tableInput");
   currentTable = tableEl.value.trim();
