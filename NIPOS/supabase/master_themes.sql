@@ -147,6 +147,23 @@ end $$;
 revoke all on function public.nipos_set_announcement(text, text) from public, anon;
 grant execute on function public.nipos_set_announcement(text, text) to authenticated, service_role;
 
+-- Activity log (Master settings feature): staff add entries about themselves; only $YSTEM reads it.
+create table if not exists public.activity_log (
+  id text primary key,
+  ts bigint not null,
+  venue_id text,
+  user_id text,
+  data jsonb not null default '{}'::jsonb
+);
+create index if not exists activity_log_ts on public.activity_log (ts desc);
+alter table public.activity_log enable row level security;
+drop policy if exists "staff log their own actions" on public.activity_log;
+create policy "staff log their own actions" on public.activity_log for insert to authenticated with check (user_id = auth.uid()::text);
+drop policy if exists "only $YSTEM reads the activity log" on public.activity_log;
+create policy "only $YSTEM reads the activity log" on public.activity_log for select to authenticated using (public.is_system_user());
+grant select, insert on public.activity_log to authenticated;
+revoke update, delete on public.activity_log from anon, authenticated;
+
 -- $YSTEM: remove sales and everything tied to them for one venue (or every venue).
 -- Backend > Master settings > Remove sales. Needs the $YSTEM password and the word DELETE every time.
 create or replace function public.nipos_sales_summary(p_password text, p_venue text) returns jsonb
