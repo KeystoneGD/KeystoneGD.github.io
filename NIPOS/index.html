@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021h">
-<link rel="stylesheet" href="layouts.css?v=20261021h">
+<link rel="stylesheet" href="nipos.css?v=20261021j">
+<link rel="stylesheet" href="layouts.css?v=20261021j">
 </head>
 <body>
 
@@ -394,9 +394,14 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     <div class="table-error" id="tableError" role="alert" hidden>Enter the table number before taking payment.</div>
     <div class="chips" id="discountChips"></div>
     <div class="totalsbreak" id="totalsBreak"></div>
+    <div class="paying-tab" id="payingTabNote" role="status" hidden></div>
     <div style="display:flex;gap:8px;margin-top:12px;">
       <button class="btn btn-solid" id="goCash" style="flex:0 0 34%;">Cash</button>
       <button class="btn btn-accent btn-block" id="goCard">Card</button>
+    </div>
+    <div class="pay-extras" id="payExtras" hidden>
+      <button class="btn btn-ghost" id="splitBtn" type="button" hidden>Split the bill</button>
+      <button class="btn btn-ghost" id="tabBtn" type="button" hidden>Put on a tab</button>
     </div>
     <button id="cancelOrderBtn" type="button" hidden>Customer left without paying</button>
   </div>
@@ -505,6 +510,28 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
         <span class="chevron" data-icon="chevron"></span>
       </div>
 
+      <div class="admin-row special" id="tabsRow" hidden>
+        <button class="admin-row-main" type="button">
+          <span class="name">Tabs</span>
+          <span class="sub">Open tabs: pay one, or see what's on it</span>
+        </button>
+        <span class="count-badge" id="tabsCountBadge">0</span>
+        <span class="chevron" data-icon="chevron"></span>
+      </div>
+      <div class="admin-row special" id="receiptsRow" hidden>
+        <button class="admin-row-main" type="button">
+          <span class="name">Receipts</span>
+          <span class="sub">Find a sale and show or print its receipt</span>
+        </button>
+        <span class="chevron" data-icon="chevron"></span>
+      </div>
+      <div class="admin-row" id="displayRow" hidden>
+        <div class="admin-row-main" style="cursor:default;">
+          <span class="name">Customer display</span>
+          <span class="sub" id="displayRowSub"></span>
+        </div>
+      </div>
+
       <div class="section-title">Reports</div>
       <div class="admin-row special" id="adminHistoryRow">
         <button class="admin-row-main" type="button">
@@ -532,6 +559,37 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     <div id="adminOpenOrders" hidden>
       <p class="admin-note">Orders placed but not yet delivered to the table.</p>
       <div id="adminOpenOrdersList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="receiptsSheet">
+  <div class="sheet-head">
+    <button class="icon-btn" id="receiptsBack" aria-label="Back" type="button"><span data-icon="back"></span></button>
+    <h2>Receipts</h2>
+  </div>
+  <div class="sheet-body">
+    <div class="receipt-search">
+      <label>Day <input type="date" id="receiptDay"></label>
+      <label>Table or amount <input type="search" id="receiptQuery" placeholder="e.g. 12 or 23.50" autocomplete="off"></label>
+    </div>
+    <div id="receiptList"></div>
+  </div>
+</div>
+<div class="modal-overlay" id="splitModal" hidden>
+  <div class="modal-card split-card" role="dialog" aria-modal="true" aria-labelledby="splitTitle">
+    <h3 id="splitTitle">Split the bill</h3>
+    <p class="split-total" id="splitTotal"></p>
+    <div class="split-mode" role="group" aria-label="How to split">
+      <button type="button" class="btn btn-ghost" data-split-mode="even" aria-pressed="true">Equal parts</button>
+      <button type="button" class="btn btn-ghost" data-split-mode="amounts" aria-pressed="false">Different amounts</button>
+    </div>
+    <div id="splitEven" class="split-even"><span>Between</span><button type="button" class="btn btn-ghost" id="splitLess" aria-label="One fewer person">−</button><span class="tabular" id="splitN" aria-live="polite">2</span><button type="button" class="btn btn-ghost" id="splitMore" aria-label="One more person">+</button><span>people</span></div>
+    <div id="splitParts" class="split-parts"></div>
+    <p class="send-error" id="splitError" role="alert" hidden></p>
+    <div class="modal-actions" style="display:flex;gap:8px;margin-top:10px;">
+      <button type="button" class="btn btn-ghost" id="splitCancel">Cancel</button>
+      <button type="button" class="btn btn-accent btn-block" id="splitDone" disabled>Log the sale</button>
     </div>
   </div>
 </div>
@@ -678,7 +736,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021h"></script>
+<script src="db.js?v=20261021j"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -965,6 +1023,7 @@ const stopsStore = rowStore("stops", 1000);
 const mixerOverridesStore = rowStore("mixer_overrides", 1000);
 const customDiscountsStore = rowStore("custom_discounts", 500);
 const stockStore = rowStore("stock_counts", 2000);
+const tabsStore = rowStore("tabs", 500);
 async function pullRowStores(){
   const orders = await ordersStore.fetchAll();
   if (orders) { openOrders = orders; renderOpenOrdersBadge(); if (adminView === "openOrders") renderOpenOrdersList(); }
@@ -992,6 +1051,7 @@ async function pullRowStores(){
   if (mixerRows) mixerOverrides = new Set(mixerRows.map(r => r.name));
   const discountRows = await customDiscountsStore.fetchAll();
   if (discountRows) { customDiscounts = discountRows; renderDiscountChips(); }
+  if (featureOn("tabs")) await pullTabs();
   if (featureOn("stockCounts")) {
     const stockRows = await stockStore.fetchAll();
     if (stockRows) {
@@ -1008,6 +1068,8 @@ let dealsDoc = null;
 const LS_FAVS = "starlightTill.favourites.v1";
 const FAV_GROUP = { key: "favourites", name: "Favourites", colour: "#a0531c" };
 let favNames = [], stockLeft = new Map(), dietFilterSet = new Set();
+let displayTimer = null, openTabs = [], payingTab = null, staffCache = { at: 0, list: [] }, afterHoursAllowedUntil = 0;
+let splitMode = "even", splitN = 2, splitParts = [];
 const PERSISTED_KEYS = [
   { key: LS_CART, set: v => { cart = v; renderQtys(); renderCartBar(); } },
   { key: LS_CUSTOM, set: v => { customProducts = v; customProducts.forEach(p => { BY_ID[p.id] = hydrateCustomProduct(p); }); renderCustomCategories(); }, live: true },
@@ -1686,6 +1748,7 @@ document.getElementById("modeFoodBtn").addEventListener("click", () => setMode("
 
 const wideLayout = window.matchMedia("(min-width:1024px)");
 function renderCartBar(){
+  publishDisplay();
   const n = cartCount(), total = cartTotalPence();
   const bar = document.getElementById("cartbar");
   bar.classList.toggle("show", n > 0);
@@ -2047,12 +2110,18 @@ document.getElementById("cartMore").addEventListener("click", async () => {
 document.getElementById("cartClear").addEventListener("click", async () => {
   if (cartCount() === 0) return;
   if (!(await askConfirm({ title:"Clear order?", message:"This removes every item from the current order.", confirmLabel:"Clear order", danger:true }))) return;
-  logActivity("Cleared an order", `${cartCount()} items, ${fmt(computeTotals().total)}`);
-  cart = {}; discount = null; currentTable = ""; document.getElementById("tableInput").value = ""; saveJSON(LS_CART, cart); renderQtys(); renderCartBar(); renderCartSheet();
+  const reason = featureOn("reasons") ? await askReason("Why is the order being cleared?", "void") : null;
+  if (featureOn("reasons") && !reason) return;
+  const rules = approvalRules();
+  const who = rules && rules.voids ? await needManager("Clear the order", `${cartCount()} items, ${fmt(computeTotals().total)}`) : null;
+  if (rules && rules.voids && !who) return;
+  logActivity("Cleared an order", `${cartCount()} items, ${fmt(computeTotals().total)}${reason ? ", reason: " + reason : ""}${who ? ", approved by " + who.name : ""}`);
+  cart = {}; discount = null; currentTable = ""; payingTab = null; document.getElementById("tableInput").value = ""; saveJSON(LS_CART, cart); renderQtys(); renderCartBar(); renderCartSheet();
 });
 
 function renderCartSheet(){
   renderQuickNotes();
+  renderPayingTab();
   const notesEl = document.getElementById("notesInput"), tableEl = document.getElementById("tableInput");
   if (document.activeElement !== notesEl) notesEl.value = currentNotes;
   if (currentNotes) document.getElementById("notesToggle").open = true;
@@ -2132,6 +2201,18 @@ async function onDiscountChipClick(d){
   } else {
     discount = { id: d.id, pct: d.pct };
   }
+  // Manager approval for big discounts (feature "managerApproval").
+  const rules = approvalRules(), limit = rules ? Number(rules.discountOver) : 0;
+  if (limit > 0) {
+    const base = baseTotalPence();
+    const pct = discount.id === "customOffer" ? (base ? (base - Math.min(discount.offerPence, base)) / base * 100 : 0) : Number(discount.pct) || 0;
+    if (pct > limit) {
+      const keep = discount; discount = null;
+      const who = await needManager("Big discount", `${keep.display || d.label} is more than ${limit}% off.`);
+      if (!who) { renderCartSheet(); return; }
+      discount = { ...keep, approvedBy: who.name };
+    }
+  }
   renderCartSheet();
 }
 
@@ -2187,7 +2268,7 @@ async function startCharge(method){
   if (cartCount() === 0) return;
   const tableEl = document.getElementById("tableInput");
   currentTable = tableEl.value.trim();
-  const problem = tableProblem(currentTable);
+  const problem = payingTab ? null : tableProblem(currentTable); // a tab's orders already went to the bar
   if (problem) {
     // On a phone the order sheet may be closed (tablet: always open), so make sure the field is visible.
     if (!wideLayout.matches && !document.getElementById("cartSheet").classList.contains("show")) { renderCartSheet(); openSheet("cartSheet"); }
@@ -2197,6 +2278,7 @@ async function startCharge(method){
     tableEl.focus();
     return;
   }
+  if (!(await checkOpeningHours())) return;
   openCharge(method);
 }
 document.getElementById("goCash").addEventListener("click", () => startCharge("cash"));
@@ -2248,37 +2330,267 @@ function updateChangeDisplay(){
 }
 
 document.getElementById("chargeConfirm").addEventListener("click", async () => {
-  const { base, discountAmount, discountLabel, total } = computeTotals();
+  const { total } = computeTotals();
   if (pendingMethod === "cash" && cashGivenPence < total) {
     const ok = await askConfirm({ title:"Amount given is short", message:`Given ${fmt(cashGivenPence)}, total is ${fmt(total)}. Log the sale anyway?`, confirmLabel:"Log anyway", danger:true });
     if (!ok) return;
   }
+  completeSale([{ method: pendingMethod, pence: total, cashGiven: pendingMethod === "cash" ? cashGivenPence : null }]);
+  closeSheet("chargeSheet");
+});
+
+// Logs the current order as a sale. One payment is the normal case. A split bill (feature "splitBill")
+// is several payments: each is logged as its own sale (so cash and card totals stay right), the first
+// carrying the items and the rest marked as parts of it. Paying a tab doesn't send the order to the bar
+// again - that happened as it went on the tab.
+function completeSale(payments){
+  const { base, discountAmount, discountLabel, total } = computeTotals();
   const items = Object.entries(cart).map(([key, qty]) => { const info = lineInfo(key); return { name: info.name, pence: info.pence, qty }; });
-  const sale = { id: "s"+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), items, base, discountAmount, discountLabel, happyHour: isHappyHourNow(), method: pendingMethod, total, table: currentTable.trim() || null, notes: currentNotes.trim() || null };
-  if (pendingMethod === "cash") { sale.cashGiven = cashGivenPence; sale.change = Math.max(0, cashGivenPence - total); }
-  if (maintenanceMode) sale.isTest = true;
-  if (!sale.isTest) { history.unshift(sale); saveLocalHistory(); }
-  salesStore.save(sale);
-  const newOrder = { id: "o"+Date.now(), ts: Date.now(), saleTs: sale.ts, table: sale.table, method: pendingMethod, items: items.map(i => ({ name: i.name, qty: i.qty })), notes: sale.notes, delivered: false, ready: false, flagged: false, flagItem: null, flagReason: null, flagSubstitute: null, flagOutcome: null, placedBy: currentUser ? currentUser.name : null, placedById: currentUser ? currentUser.id : null };
-  if (sale.isTest) newOrder.isTest = true;
+  const now = Date.now(), group = payments.length > 1 ? "split" + now.toString(36) : null, tab = payingTab;
+  const share = (x, p, i) => i === payments.length - 1 ? x - payments.slice(0, -1).reduce((n, q) => n + Math.round(x * q.pence / (total || 1)), 0) : Math.round(x * p.pence / (total || 1));
+  const sales = payments.map((p, i) => {
+    const sale = { id: "s" + (now + i) + Math.random().toString(36).slice(2, 6), ts: now + i, items: i === 0 ? items : [], base: group ? share(base, p, i) : base, discountAmount: group ? share(discountAmount, p, i) : discountAmount, discountLabel, happyHour: isHappyHourNow(), method: p.method, total: p.pence, table: currentTable.trim() || null, notes: currentNotes.trim() || null };
+    if (p.method === "cash" && p.cashGiven != null) { sale.cashGiven = p.cashGiven; sale.change = Math.max(0, p.cashGiven - p.pence); }
+    if (group) { sale.splitGroup = group; sale.splitPart = i + 1; sale.splitOf = payments.length; }
+    if (tab) sale.tabId = tab.id;
+    if (discount && discount.approvedBy) sale.discountApprovedBy = discount.approvedBy;
+    if (maintenanceMode) sale.isTest = true;
+    return sale;
+  });
+  const first = sales[0], isTest = !!first.isTest;
+  sales.forEach(sale => { if (!isTest) history.unshift(sale); salesStore.save(sale); });
+  if (!isTest) saveLocalHistory();
+  if (!tab) {
+    const newOrder = { id: "o"+now, ts: now, saleTs: first.ts, table: first.table, method: group ? "split" : first.method, items: items.map(i => ({ name: i.name, qty: i.qty })), notes: first.notes, delivered: false, ready: false, flagged: false, flagItem: null, flagReason: null, flagSubstitute: null, flagOutcome: null, placedBy: currentUser ? currentUser.name : null, placedById: currentUser ? currentUser.id : null };
+    if (isTest) newOrder.isTest = true;
+    if (!newOrder.isTest) openOrders.unshift(newOrder);
+    ordersStore.save(newOrder);
+  } else {
+    tabsStore.remove(tab.id); openTabs = openTabs.filter(t => t.id !== tab.id); renderTabsBadge();
+    logActivity("Tab paid", `${tab.name}: ${fmt(total)}`);
+  }
+  logOrderToDiscord({ ...first, total, base, discountAmount, method: group ? payments.map(p => `${p.method} ${fmt(p.pence)}`).join(" + ") : first.method });
+  if (!isTest) takeStock(items);
+  logActivity(isTest ? "Sale (test)" : "Sale", `${fmt(total)} by ${group ? "split bill (" + payments.map(p => `${p.method} ${fmt(p.pence)}`).join(", ") + ")" : first.method}, ${items.reduce((n, i) => n + i.qty, 0)} items${first.table ? ", table " + first.table : ""}${tab ? ", tab " + tab.name : ""}`);
+  if (discountAmount > 0) logActivity("Discount given", `${discountLabel || "Discount"} −${fmt(discountAmount)} on ${fmt(base)}${first.table ? ", table " + first.table : ""}${discount && discount.approvedBy ? ", approved by " + discount.approvedBy : ""}`);
+  saveLocal(LS_LAST_ORDER, cart); // for the Dock layout's "Last order again"
+  cart = {}; discount = null; currentNotes = ""; currentTable = ""; payingTab = null; document.getElementById("notesInput").value = ""; document.getElementById("tableInput").value = ""; saveJSON(LS_CART, cart);
+  renderQtys(); renderCartBar();
+  publishDisplay({ thanks: true, total });
+  showToast((isTest ? "Test sale logged (Maintenance Mode): " : "Sale logged: ") + fmt(total));
+}
+
+/* ---------- Section B: orders and payment ---------- */
+// Staff at this venue, for manager approval (cached for a minute).
+async function venueStaffList(){ if (Date.now() - staffCache.at > 60000) staffCache = { at: Date.now(), list: await fetchStaffForVenue(currentVenueId) }; return staffCache.list; }
+async function needManager(title, why){ return await askManagerApproval(title, why, await venueStaffList()); }
+
+// Opening hours: outside them a manager has to allow orders (for the next 30 minutes on this till).
+async function checkOpeningHours(){
+  if (!featureOn("openingHours") || isOpenNow(currentVenueId) || Date.now() < afterHoursAllowedUntil) return true;
+  const who = await needManager("We're closed", `${currentVenue ? currentVenue.name : "This venue"} is outside its opening hours. A manager can allow orders for the next 30 minutes.`);
+  if (!who) return false;
+  afterHoursAllowedUntil = Date.now() + 30 * 60000;
+  return true;
+}
+
+// Split the bill (feature "splitBill").
+function openSplit(){
+  const { total } = computeTotals();
+  splitMode = "even"; splitN = 2; splitParts = evenParts(total, 2);
+  renderSplit();
+  closeSheet("cartSheet");
+  document.getElementById("splitModal").hidden = false;
+}
+function evenParts(total, n){ const each = Math.floor(total / n); return Array.from({ length: n }, (_, i) => ({ pence: i === 0 ? total - each * (n - 1) : each, method: null, paid: false })); }
+function renderSplit(){
+  const { total } = computeTotals();
+  document.getElementById("splitTotal").textContent = `Total ${fmt(total)}`;
+  document.querySelectorAll("[data-split-mode]").forEach(b => b.setAttribute("aria-pressed", b.dataset.splitMode === splitMode));
+  document.getElementById("splitEven").hidden = splitMode !== "even";
+  document.getElementById("splitN").textContent = splitN;
+  const sum = splitParts.reduce((n, p) => n + p.pence, 0), err = document.getElementById("splitError");
+  document.getElementById("splitParts").innerHTML = splitParts.map((p, i) => `<div class="split-part${p.paid ? " paid" : ""}" data-i="${i}">
+      <span class="sp-name">Part ${i + 1}</span>
+      ${splitMode === "amounts" && !p.paid ? `<input type="number" step="0.01" min="0" class="sp-amount" data-i="${i}" aria-label="Part ${i + 1} amount (£)" value="${(p.pence / 100).toFixed(2)}">` : `<span class="sp-amt tabular">${fmt(p.pence)}</span>`}
+      ${p.paid ? `<span class="pill pill-${p.method}">${p.method === "cash" ? "Cash" : "Card"} paid</span><button type="button" class="btn btn-ghost btn-sm" data-sp-undo="${i}">Undo</button>`
+        : `<button type="button" class="btn btn-solid btn-sm" data-sp-pay="cash" data-i="${i}">Cash</button><button type="button" class="btn btn-accent btn-sm" data-sp-pay="card" data-i="${i}">Card</button>`}
+    </div>`).join("") + (splitMode === "amounts" ? `<button type="button" class="btn btn-ghost btn-sm" id="splitAddPart">Add a part</button>` : "");
+  const off = total - sum;
+  err.hidden = off === 0; err.textContent = off > 0 ? `${fmt(off)} still to split.` : `That's ${fmt(-off)} more than the total.`;
+  document.getElementById("splitDone").disabled = off !== 0 || !splitParts.every(p => p.paid);
+  document.getElementById("splitDone").textContent = splitParts.every(p => p.paid) ? `Log the ${fmt(total)} sale` : `Mark each part paid`;
+}
+document.querySelectorAll("[data-split-mode]").forEach(b => b.addEventListener("click", () => { splitMode = b.dataset.splitMode; if (splitMode === "even") splitParts = evenParts(computeTotals().total, splitN); renderSplit(); }));
+document.getElementById("splitLess").addEventListener("click", () => { if (splitN > 2) { splitN--; splitParts = evenParts(computeTotals().total, splitN); renderSplit(); } });
+document.getElementById("splitMore").addEventListener("click", () => { if (splitN < 20) { splitN++; splitParts = evenParts(computeTotals().total, splitN); renderSplit(); } });
+document.getElementById("splitParts").addEventListener("change", e => { const inp = e.target.closest(".sp-amount"); if (!inp) return; splitParts[Number(inp.dataset.i)].pence = Math.max(0, Math.round(parseFloat(inp.value || "0") * 100)); renderSplit(); });
+document.getElementById("splitParts").addEventListener("click", e => {
+  const pay = e.target.closest("[data-sp-pay]"), undo = e.target.closest("[data-sp-undo]");
+  if (e.target.id === "splitAddPart") { splitParts.push({ pence: 0, method: null, paid: false }); renderSplit(); return; }
+  if (pay) { const p = splitParts[Number(pay.dataset.i)]; if (!p.pence) return; p.method = pay.dataset.spPay; p.paid = true; renderSplit(); }
+  if (undo) { const p = splitParts[Number(undo.dataset.spUndo)]; p.paid = false; p.method = null; renderSplit(); }
+});
+document.getElementById("splitCancel").addEventListener("click", () => { document.getElementById("splitModal").hidden = true; openSheet("cartSheet"); });
+document.getElementById("splitDone").addEventListener("click", () => {
+  document.getElementById("splitModal").hidden = true;
+  completeSale(splitParts.filter(p => p.pence > 0).map(p => ({ method: p.method, pence: p.pence })));
+});
+document.getElementById("splitBtn").addEventListener("click", async () => {
+  if (!cartCount()) return;
+  const tableEl = document.getElementById("tableInput"); currentTable = tableEl.value.trim();
+  const problem = payingTab ? null : tableProblem(currentTable);
+  if (problem) { document.getElementById("tableError").textContent = problem; document.getElementById("tableError").hidden = false; tableEl.focus(); return; }
+  if (!(await checkOpeningHours())) return;
+  openSplit();
+});
+
+// Tabs (feature "tabs"): put the order on a tab (it goes to the bar now), add more later, pay at the end.
+function cartLines(c){ return Object.entries(c || {}).map(([key, qty]) => { const info = lineInfo(key); return { name: info.name, pence: info.pence, qty }; }); }
+function tabTotal(tab){ return (tab.lines || []).reduce((n, l) => n + l.pence * l.qty, 0); }
+function renderTabsBadge(){ const b = document.getElementById("tabsCountBadge"); if (b) b.textContent = openTabs.length; }
+async function pullTabs(){ if (!featureOn("tabs")) return; const rows = await tabsStore.fetchAll(); if (rows) { openTabs = rows.sort((a, b) => a.ts - b.ts); renderTabsBadge(); } }
+document.getElementById("tabBtn").addEventListener("click", async () => {
+  if (!cartCount() || payingTab) return;
+  if (!(await checkOpeningHours())) return;
+  await pullTabs();
+  const pick = openTabs.length ? await askChoice({ title: "Put on a tab", message: "Add this order to an open tab, or start a new one.", choices: openTabs.map(t => ({ label: esc(t.name), value: t.id, sub: `${t.table ? "Table " + esc(t.table) + " · " : ""}${fmt(tabTotal(t))} so far` })).concat([{ label: "Start a new tab", value: "__new" }]) }) : "__new";
+  if (!pick) return;
+  let tab = openTabs.find(t => t.id === pick);
+  if (!tab) {
+    const name = await askText({ title: "New tab", message: "Whose tab is it? (a name, or the table)", placeholder: "e.g. Sam, or Table 12", value: document.getElementById("tableInput").value.trim() ? "Table " + document.getElementById("tableInput").value.trim() : "", inputMode: "text", confirmLabel: "Open the tab" });
+    if (!name || !name.trim()) return;
+    tab = { id: "tab" + Date.now().toString(36), ts: Date.now(), name: name.trim(), table: document.getElementById("tableInput").value.trim() || null, cart: {}, lines: [], openedBy: currentUser ? currentUser.name : null };
+  }
+  const items = cartLines(cart);
+  Object.entries(cart).forEach(([k, q]) => { tab.cart[k] = (tab.cart[k] || 0) + q; });
+  tab.lines = cartLines(tab.cart); tab.updated = Date.now();
+  await tabsStore.save(tab);
+  if (!openTabs.some(t => t.id === tab.id)) openTabs.push(tab);
+  renderTabsBadge();
+  const newOrder = { id: "o"+Date.now(), ts: Date.now(), table: tab.table || document.getElementById("tableInput").value.trim() || null, method: "tab", items: items.map(i => ({ name: i.name, qty: i.qty })), notes: [`Tab: ${tab.name}`, currentNotes.trim()].filter(Boolean).join(" · "), delivered: false, ready: false, flagged: false, placedBy: currentUser ? currentUser.name : null, placedById: currentUser ? currentUser.id : null };
+  if (maintenanceMode) newOrder.isTest = true;
   if (!newOrder.isTest) openOrders.unshift(newOrder);
   ordersStore.save(newOrder);
-  logOrderToDiscord(sale);
-  if (!sale.isTest) takeStock(items);
-  logActivity(sale.isTest ? "Sale (test)" : "Sale", `${fmt(sale.total)} by ${sale.method}, ${items.reduce((n, i) => n + i.qty, 0)} items${sale.table ? ", table " + sale.table : ""}`);
-  if (sale.discountAmount > 0) logActivity("Discount given", `${sale.discountLabel || "Discount"} −${fmt(sale.discountAmount)} on ${fmt(sale.base)}${sale.table ? ", table " + sale.table : ""}`);
-  saveLocal(LS_LAST_ORDER, cart); // for the Dock layout's "Last order again"
+  logActivity("Put on a tab", `${tab.name}: ${items.reduce((n, i) => n + i.qty, 0)} items, ${fmt(items.reduce((n, i) => n + i.pence * i.qty, 0))} (tab now ${fmt(tabTotal(tab))})`);
   cart = {}; discount = null; currentNotes = ""; currentTable = ""; document.getElementById("notesInput").value = ""; document.getElementById("tableInput").value = ""; saveJSON(LS_CART, cart);
-  renderQtys(); renderCartBar();
-  closeSheet("chargeSheet");
-  showToast((sale.isTest ? "Test sale logged (Maintenance Mode): " : "Sale logged: ") + fmt(total));
+  renderQtys(); renderCartBar(); closeSheet("cartSheet");
+  showToast(`On ${tab.name}'s tab. Sent to the bar.`);
 });
+document.getElementById("tabsRow").querySelector(".admin-row-main").addEventListener("click", async () => {
+  await pullTabs();
+  if (!openTabs.length) { showInfo({ title: "Tabs", message: "No tabs are open." }); return; }
+  const id = await askChoice({ title: "Open tabs", message: "Pick a tab to pay it.", choices: openTabs.map(t => ({ label: esc(t.name), value: t.id, sub: `${t.table ? "Table " + esc(t.table) + " · " : ""}${fmt(tabTotal(t))} · ${(t.lines || []).reduce((n, l) => n + l.qty, 0)} items · opened ${formatTime(t.ts)}${t.openedBy ? " by " + esc(t.openedBy) : ""}` })) });
+  const tab = openTabs.find(t => t.id === id);
+  if (!tab) return;
+  if (cartCount()) { showInfo({ title: "Finish this order first", message: "Take payment for, or clear, the order on the till before paying a tab." }); return; }
+  payingTab = tab;
+  cart = { ...tab.cart }; currentTable = tab.table || ""; document.getElementById("tableInput").value = currentTable; saveJSON(LS_CART, cart);
+  renderQtys(); renderCartBar(); closeSheet("adminSheet"); renderCartSheet(); openSheet("cartSheet");
+});
+function renderPayingTab(){
+  const el = document.getElementById("payingTabNote");
+  if (payingTab && !cartCount()) payingTab = null;
+  el.hidden = !payingTab;
+  if (payingTab) el.textContent = `Paying ${payingTab.name}'s tab. Change the order here if you need to; it's already been made.`;
+  const x = document.getElementById("payExtras");
+  document.getElementById("splitBtn").hidden = !featureOn("splitBill");
+  document.getElementById("tabBtn").hidden = !featureOn("tabs") || !!payingTab;
+  x.hidden = document.getElementById("splitBtn").hidden && document.getElementById("tabBtn").hidden;
+}
+
+// Resend to the bar (feature "resendOrder"): send a past order to the order screen again.
+function resendSale(sale){
+  const o = { id: "o"+Date.now(), ts: Date.now(), saleTs: sale.ts, table: sale.table, method: sale.method, items: (sale.items || []).map(i => ({ name: i.name, qty: i.qty })), notes: ["Sent again", sale.notes].filter(Boolean).join(" · "), delivered: false, ready: false, flagged: false, placedBy: currentUser ? currentUser.name : null, placedById: currentUser ? currentUser.id : null, resent: true };
+  openOrders.unshift(o); ordersStore.save(o);
+  logActivity("Sent an order to the bar again", `${sale.table ? "Table " + sale.table + ", " : ""}${itemCount(sale)} items from ${formatTime(sale.ts)}`);
+  showToast("Sent to the bar again");
+}
+
+// Receipts (feature "receipts"): find a sale and show or print its receipt.
+async function renderReceipts(){
+  const day = document.getElementById("receiptDay").value || new Date().toLocaleDateString("en-CA");
+  const q = document.getElementById("receiptQuery").value.trim().toLowerCase();
+  const start = new Date(day + "T00:00:00").getTime(), end = start + 864e5 + 6 * 36e5; // the day, plus the night after midnight
+  const list = document.getElementById("receiptList");
+  list.innerHTML = `<div class="empty-state">Loading…</div>`;
+  const sales = (await fetchSalesInRange(start, end, [currentVenueId])) || [];
+  const shown = sales.filter(sale => !q || String(sale.table || "").toLowerCase() === q.replace(/^table\s*/, "") || fmt(sale.total).includes(q) || (sale.items || []).some(i => i.name.toLowerCase().includes(q))).sort((a, b) => b.ts - a.ts);
+  list.innerHTML = shown.length ? shown.map(sale => `<button type="button" class="receipt-row" data-receipt="${sale.ts}"><span><strong>${formatTime(sale.ts)}${sale.table ? " · Table " + esc(sale.table) : ""}</strong><span class="sub">${itemCount(sale)} item${itemCount(sale) === 1 ? "" : "s"} · ${sale.method === "cash" ? "Cash" : "Card"}${sale.splitOf ? ` · part ${sale.splitPart} of ${sale.splitOf}` : ""}</span></span><span class="tabular">${fmt(sale.total)}</span></button>`).join("") : `<div class="empty-state">No sales${q ? " match that" : " that day"}.</div>`;
+  list.querySelectorAll("[data-receipt]").forEach(b => b.addEventListener("click", () => showReceipt(shown.find(x => String(x.ts) === b.dataset.receipt))));
+}
+function receiptHTML(sale){
+  const h = featureOn("reportHeader") ? ((featureConfig("reportHeader").venues || {})[currentVenueId] || {}) : {};
+  return `<div class="receipt">
+    <div class="r-head"><strong>${esc(h.name || (currentVenue ? currentVenue.name : ""))}</strong>${h.address ? `<div>${esc(h.address).replace(/\n/g, "<br>")}</div>` : ""}${h.phone ? `<div>${esc(h.phone)}</div>` : ""}</div>
+    <div class="r-meta">${new Date(sale.ts).toLocaleDateString("en-GB")} ${fmtTime(sale.ts)}${sale.table ? " · Table " + esc(sale.table) : ""}</div>
+    ${(sale.items || []).map(i => `<div class="r-line"><span>${i.qty} × ${esc(i.name)}</span><span>${fmt(i.pence * i.qty)}</span></div>`).join("")}
+    ${sale.discountAmount ? `<div class="r-line"><span>Subtotal</span><span>${fmt(sale.base)}</span></div><div class="r-line"><span>${esc(sale.discountLabel || "Discount")}</span><span>−${fmt(sale.discountAmount)}</span></div>` : ""}
+    <div class="r-line r-total"><span>Total${sale.splitOf ? ` (part ${sale.splitPart} of ${sale.splitOf})` : ""}</span><span>${fmt(sale.total)}</span></div>
+    <div class="r-line"><span>Paid by ${sale.method === "cash" ? "cash" : "card"}</span><span></span></div>
+    ${sale.method === "cash" && sale.cashGiven != null ? `<div class="r-line"><span>Cash given</span><span>${fmt(sale.cashGiven)}</span></div><div class="r-line"><span>Change</span><span>${fmt(sale.change || 0)}</span></div>` : ""}
+    ${h.footer ? `<div class="r-foot">${esc(h.footer)}</div>` : ""}
+  </div>`;
+}
+function showReceipt(sale){
+  if (!sale) return;
+  let el = document.getElementById("receiptModal");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "receiptModal"; el.className = "modal-overlay"; el.hidden = true;
+    el.innerHTML = `<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="rcTitle"><h3 id="rcTitle">Receipt</h3><div id="rcBody"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"><button type="button" class="btn btn-ghost" id="rcClose">Close</button><button type="button" class="btn btn-ghost" id="rcResend" hidden>Send to the bar again</button><button type="button" class="btn btn-accent btn-block" id="rcPrint">Print</button></div></div>`;
+    document.body.appendChild(el);
+    el.querySelector("#rcClose").addEventListener("click", () => { el.hidden = true; });
+    el.addEventListener("keydown", e => { if (e.key === "Escape") el.hidden = true; });
+  }
+  el.querySelector("#rcBody").innerHTML = receiptHTML(sale);
+  el.querySelector("#rcPrint").onclick = () => printReceipt(sale);
+  el.querySelector("#rcResend").hidden = !featureOn("resendOrder") || !(sale.items || []).length;
+  el.querySelector("#rcResend").onclick = () => { el.hidden = true; resendSale(sale); };
+  el.hidden = false; el.querySelector("#rcPrint").focus();
+  logActivity("Opened a receipt", `${formatTime(sale.ts)}${sale.table ? ", table " + sale.table : ""}, ${fmt(sale.total)}`);
+}
+function printReceipt(sale){
+  const w = window.open("", "_blank");
+  if (!w) { showToast("Allow pop-ups to print receipts"); return; }
+  w.document.write(`<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><title>Receipt</title><style>body{font-family:system-ui,sans-serif;max-width:320px;margin:16px auto;color:#000;}.r-head{text-align:center;margin-bottom:10px;}.r-meta{text-align:center;font-size:13px;margin-bottom:10px;}.r-line{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:14px;}.r-total{border-top:1px dashed #000;margin-top:6px;padding-top:6px;font-weight:700;font-size:16px;}.r-foot{text-align:center;margin-top:12px;font-size:13px;}</style></head><body>${receiptHTML(sale)}<script>window.onload=()=>{window.print();}<\/script></body></html>`);
+  w.document.close();
+  logActivity("Printed a receipt", `${formatTime(sale.ts)}${sale.table ? ", table " + sale.table : ""}, ${fmt(sale.total)}`);
+}
+document.getElementById("receiptsRow").querySelector(".admin-row-main").addEventListener("click", () => {
+  document.getElementById("receiptDay").value = new Date().toLocaleDateString("en-CA");
+  document.getElementById("receiptQuery").value = "";
+  openSheet("receiptsSheet"); renderReceipts();
+});
+document.getElementById("receiptsBack").addEventListener("click", () => closeSheet("receiptsSheet"));
+document.getElementById("receiptDay").addEventListener("change", renderReceipts);
+document.getElementById("receiptQuery").addEventListener("input", () => { clearTimeout(window.__rq); window.__rq = setTimeout(renderReceipts, 250); });
+
+// Customer display (feature "customerDisplay"): this till shares its order with display.html.
+function displayCode(){
+  let c = null; try { c = localStorage.getItem("nipos.displayCode"); } catch (e) {}
+  if (!c) { c = String(Math.floor(1000 + Math.random() * 9000)); try { localStorage.setItem("nipos.displayCode", c); } catch (e) {} }
+  return c;
+}
+function publishDisplay(extra){
+  if (!featureOn("customerDisplay") || !supabaseClient || !currentVenueId) return;
+  clearTimeout(displayTimer);
+  displayTimer = setTimeout(async () => {
+    const t = computeTotals();
+    const value = extra && extra.thanks ? { thanks: true, total: extra.total, ts: Date.now(), venue: currentVenue ? currentVenue.name : "" }
+      : { lines: cartLines(cart), base: t.base, discountLabel: t.discountLabel, discountAmount: t.discountAmount, total: t.total, table: currentTable || null, ts: Date.now(), venue: currentVenue ? currentVenue.name : "" };
+    try { await supabaseClient.from("app_state").upsert({ key: currentVenueId + ":display/" + displayCode(), value }); } catch (e) {}
+  }, extra && extra.thanks ? 0 : 400);
+}
 
 document.getElementById("cancelOrderBtn").addEventListener("click", async () => {
   if (cartCount() === 0) return;
   const { base, discountAmount, discountLabel, total } = computeTotals();
   const ok = await askConfirm({ title:"Log as abandoned order?", message:`This order was worth ${fmt(total)}. It'll be kept for reference but won't count toward your takings.`, confirmLabel:"Log as abandoned" });
   if (!ok) return;
+  const rulesA = approvalRules();
+  if (rulesA && rulesA.voids && !(await needManager("Customer left without paying", fmt(total)))) return;
   const items = Object.entries(cart).map(([key, qty]) => { const info = lineInfo(key); return { name: info.name, pence: info.pence, qty }; });
   const abandonedOrder = { id: "a"+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), items, base, discountAmount, discountLabel, happyHour: isHappyHourNow(), total, table: currentTable.trim() || null, notes: currentNotes.trim() || null };
   if (maintenanceMode) abandonedOrder.isTest = true;
@@ -2769,7 +3081,9 @@ async function startOrderRefund(id){
   { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = claim.order; }
   const item = r.sale.items[r.itemIdx];
   const done = await openRefundScreen({ order: o, sale: r.sale, item, pence: r.pence, onConfirm: async () => {
-    const res = await refundSaleLine(r.sale.id, r.itemIdx);
+    const pre = await refundPreChecks(r.pence);
+    if (!pre) return { error: "Not refunded. A reason or a manager's OK is needed first." };
+    const res = await refundSaleLine(r.sale.id, r.itemIdx, pre);
     if (res.error) return res;
     const hIdx = history.findIndex(sl => sl.ts === res.sale.ts);
     if (hIdx !== -1) { history[hIdx] = res.sale; saveLocalHistory(); }
@@ -2836,6 +3150,11 @@ function renderStoppedCategories(){
 
 function renderAdminHome(){
   document.getElementById("stoppedCountBadge").textContent = stops.size;
+  document.getElementById("tabsRow").hidden = !featureOn("tabs");
+  document.getElementById("receiptsRow").hidden = !featureOn("receipts");
+  document.getElementById("displayRow").hidden = !featureOn("customerDisplay");
+  if (featureOn("customerDisplay")) document.getElementById("displayRowSub").textContent = `On the customer's screen, open display.html and enter this till's code: ${displayCode()}`;
+  renderTabsBadge();
   renderOpenOrdersBadge();
 }
 
@@ -2943,7 +3262,7 @@ function renderHistory(){
       <summary>
         <div>
           <div class="htime">${formatTime(sale.ts)}${sale.table ? " · Table " + sale.table : ""}</div>
-          <div class="hcount">${itemCount(sale)} item${itemCount(sale)===1?"":"s"} <span class="pill pill-${method}">${method === "cash" ? "Cash" : "Card"}</span></div>
+          <div class="hcount">${itemCount(sale)} item${itemCount(sale)===1?"":"s"} <span class="pill pill-${method}">${method === "cash" ? "Cash" : "Card"}</span>${sale.splitOf ? ` <span class="pill">Split ${sale.splitPart}/${sale.splitOf}</span>` : ""}</div>
         </div>
         <div class="htotal tabular">${fmt(sale.total)}</div>
       </summary>
@@ -2953,7 +3272,11 @@ function renderHistory(){
         ${sale.happyHour ? `<div class="row"><span>Happy Hour applied</span><span></span></div>` : ""}
         ${sale.method === "cash" && sale.cashGiven != null ? `<div class="row"><span>Cash given</span><span class="tabular">${fmt(sale.cashGiven)}</span></div><div class="row"><span>Change given</span><span class="tabular">${fmt(sale.change||0)}</span></div>` : ""}
         ${sale.notes ? `<div class="row"><span>Notes: ${sale.notes}</span><span></span></div>` : ""}
+        ${featureOn("receipts") || (featureOn("resendOrder") && (sale.items || []).length) ? `<div class="row hist-actions">${featureOn("receipts") ? `<button type="button" class="btn btn-ghost btn-sm" data-hist-receipt="${sale.ts}">Receipt</button>` : ""}${featureOn("resendOrder") && (sale.items || []).length ? `<button type="button" class="btn btn-ghost btn-sm" data-hist-resend="${sale.ts}">Send to the bar again</button>` : ""}</div>` : ""}
       </div>`;
+    const rb = details.querySelector("[data-hist-receipt]"), sb = details.querySelector("[data-hist-resend]");
+    if (rb) rb.addEventListener("click", () => showReceipt(sale));
+    if (sb) sb.addEventListener("click", async () => { if (await askConfirm({ title: "Send to the bar again?", message: `${itemCount(sale)} items${sale.table ? " for table " + sale.table : ""} go to the order screen again, marked "Sent again". Nothing is charged.`, confirmLabel: "Send it" })) resendSale(sale); });
     list.appendChild(details);
   });
   document.getElementById("histGrandTotal").textContent = fmt(grand);

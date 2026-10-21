@@ -122,7 +122,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021h">
+<link rel="stylesheet" href="nipos.css?v=20261021j">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -156,6 +156,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
     <button class="btn btn-solid" id="stockBtn" type="button" hidden><span data-icon="stop"></span>Products on stop</button>
     <button class="btn btn-solid" id="serviceBtn" type="button"><span data-icon="bell"></span>Call for service</button>
     <button class="btn btn-solid" id="notifyBtn" type="button" hidden><span data-icon="bell"></span>Notify</button>
+    <div class="view-switch" id="viewSwitch" role="group" aria-label="Show orders for" hidden><button type="button" class="btn btn-ghost" data-view="bar" aria-pressed="true">Bar</button><button type="button" class="btn btn-ghost" data-view="kitchen" aria-pressed="false">Kitchen</button></div>
   </div>
   <div class="alerts-banner" id="alertsRow">
     <div class="msg"><span data-icon="bell"></span><span id="alertsStatus">Turn on alerts to hear new orders</span></div>
@@ -248,7 +249,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021h"></script>
+<script src="db.js?v=20261021j"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -318,6 +319,12 @@ document.addEventListener("nipos:settingschange", () => applyLoginState());
 onRemoteCommand("refresh", () => location.reload());
 onRemoteCommand("signout", () => { if (!currentUser) return false; if (!currentUser.system) signOutOrders(); });
 
+document.getElementById("viewSwitch").addEventListener("click", e => {
+  const b = e.target.closest("[data-view]"); if (!b) return;
+  try { localStorage.setItem("nipos.orderScreenView", b.dataset.view); } catch (err) {}
+  loadFoodNames().then(render);
+});
+document.addEventListener("nipos:settingschange", () => { if (featureOn("kitchenScreen") && !foodNames.size) loadFoodNames().then(render); else render(); });
 // Notify: everyone (banner or pop-up) or one person - the shared pop-up in db.js.
 document.getElementById("notifyBtn").addEventListener("click", () => {
   openNotifyDialog({ user: currentUser, venue: currentVenue, venues: myVenues, fetchStaff: fetchVenueStaff, toast: showToast });
@@ -592,6 +599,7 @@ async function pullOrders(){
   if (fetchedOrders) openOrders = fetchedOrders;
   setConnectionProblem(fetchedOrders === null && !!currentUser);
   venueStaff = await fetchVenueStaff();
+  if (featureOn("kitchenScreen") && !foodNames.size) await loadFoodNames();
   const stopRows = await stopsStore.fetchAll();
   const pulledStops = stopRows ? stopRows.map(r => r.name) : [...stops];
   const pulledNotifications = await fetchMyNotifications(currentUserId) || notifications;
@@ -653,10 +661,37 @@ async function loadRefundFor(o){
   flaggedSaleCache.set(o.id, itemIdx === -1 ? { missing: true } : { sale, itemIdx, pence: refundAmountFor(sale, sale.items[itemIdx]) });
   render();
 }
+// Kitchen screen (feature "kitchenScreen"): this order screen can show the bar's view (drinks) or the
+// kitchen's (food only). Each device remembers its own choice.
+let foodNames = new Set();
+function screenView(){ if (!featureOn("kitchenScreen")) return "all"; try { return localStorage.getItem("nipos.orderScreenView") || "bar"; } catch (e) { return "bar"; } }
+async function loadFoodNames(){
+  if (!featureOn("kitchenScreen") || !supabaseClient || !currentVenueId) return;
+  try {
+    const [{ data: cats }, { data: items }] = await Promise.all([supabaseClient.from("categories").select("data").eq("venue_id", currentVenueId), supabaseClient.from("catalogue_items").select("data").eq("venue_id", currentVenueId)]);
+    const foodCats = new Set((cats || []).filter(c => c.data.mode === "food").map(c => c.data.id));
+    foodNames = new Set((items || []).filter(i => foodCats.has(i.data.categoryId)).map(i => i.data.name));
+    flatCatalogue.filter(p => p.mode === "food").forEach(p => foodNames.add(p.name));
+  } catch (e) {}
+}
+function isFoodLine(name){ const base = String(name || "").replace(/ \+ .*$/, "").replace(/ \([^)]*\)$/, ""); return foodNames.has(base) || foodNames.has(name) || modeOf(base) === "food"; }
+function forThisScreen(o){
+  const view = screenView();
+  if (view === "all") return o;
+  const lines = (o.items || []).filter(i => view === "kitchen" ? isFoodLine(i.name) : (!featureConfig("kitchenScreen").barHidesFood || !isFoodLine(i.name)));
+  return lines.length ? { ...o, items: lines } : null;
+}
+function renderViewSwitch(){
+  const el = document.getElementById("viewSwitch");
+  if (!el) return;
+  el.hidden = !featureOn("kitchenScreen");
+  el.querySelectorAll("[data-view]").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === screenView()));
+}
 function render(){
   const wrap = document.getElementById("grid");
   wrap.innerHTML = "";
-  const list = sortOrdersByPriority(openOrders.filter(o => !o.delivered));
+  renderViewSwitch();
+  const list = sortOrdersByPriority(openOrders.filter(o => !o.delivered).map(forThisScreen).filter(Boolean));
   const count = st => list.filter(o => orderStage(o) === st).length;
   const problems = count("problem") + count("refund"), fresh = count("new"), ready = count("ready");
   document.getElementById("orderCount").textContent = list.length
@@ -725,7 +760,9 @@ async function startRefund(id){
   knownOrderStates = new Map(openOrders.map(x => [x.id, orderAlertState(x)]));
   const item = r.sale.items[r.itemIdx];
   const done = await openRefundScreen({ order: o, sale: r.sale, item, pence: r.pence, onConfirm: async () => {
-    const res = await refundSaleLine(r.sale.id, r.itemIdx);
+    const pre = await refundPreChecks(r.pence);
+    if (!pre) return { error: "Not refunded. A reason or a manager's OK is needed first." };
+    const res = await refundSaleLine(r.sale.id, r.itemIdx, pre);
     if (res.error) return res;
     logRefundToDiscordFor(currentVenue, currentUser ? currentUser.name : null, res.refundRow, res.sale);
     flaggedSaleCache.delete(id);
@@ -868,7 +905,7 @@ document.getElementById("flagSubClear").addEventListener("click", () => {
 function renderReasonChips(){
   const wrap = document.getElementById("flagReasonChips");
   wrap.innerHTML = "";
-  FLAG_REASONS.forEach(r => {
+  (featureOn("reasons") ? reasonList("problem") : FLAG_REASONS).forEach(r => {
     const chip = document.createElement("button");
     chip.type = "button"; chip.className = "chip" + (flagReason === r ? " active" : "");
     chip.textContent = r;

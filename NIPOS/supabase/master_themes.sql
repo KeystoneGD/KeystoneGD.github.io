@@ -44,21 +44,24 @@ $$;
 -- 'ok' | 'wrong' | 'locked' | 'not_set' | 'not_system'. Five wrong passwords lock it for 15 minutes.
 create or replace function public.nipos_check_system_password(p_password text) returns text
 language plpgsql volatile security definer set search_path = public, extensions as $$
-declare s public.system_secrets;
+declare s public.system_secrets; sid text;
 begin
   if not public.is_system_user() then return 'not_system'; end if;
-  select * into s from public.system_secrets where id = 'system_password' for update;
+  -- Each $YSTEM sign-in has its own password: the original uses 'system_password', extra ones
+  -- (nipos_setup_system_login) use 'system_password:<their login>'.
+  select coalesce('system_password:' || (data->>'loginId'), 'system_password') into sid from public.staff_users where id = auth.uid()::text;
+  select * into s from public.system_secrets where id = sid for update;
   if not found or s.hash is null then return 'not_set'; end if;
   if s.locked_until is not null and s.locked_until > now() then return 'locked'; end if;
   if s.hash = extensions.crypt(coalesce(p_password, ''), s.hash) then
-    update public.system_secrets set failed = 0, locked_until = null where id = 'system_password';
+    update public.system_secrets set failed = 0, locked_until = null where id = sid;
     return 'ok';
   end if;
   if s.failed + 1 >= 5 then
-    update public.system_secrets set failed = 0, locked_until = now() + interval '15 minutes' where id = 'system_password';
+    update public.system_secrets set failed = 0, locked_until = now() + interval '15 minutes' where id = sid;
     return 'locked';
   end if;
-  update public.system_secrets set failed = s.failed + 1 where id = 'system_password';
+  update public.system_secrets set failed = s.failed + 1 where id = sid;
   return 'wrong';
 end $$;
 
@@ -262,7 +265,7 @@ declare
 begin
   if p_password is null or length(p_password) < 10 then raise exception 'The password must be at least 10 characters'; end if;
   pw_hash := extensions.crypt(p_password, extensions.gen_salt('bf', 10));
-  select id into existing from public.staff_users where coalesce((data->>'system')::boolean, false) limit 1;
+  select id into existing from public.staff_users where coalesce((data->>'system')::boolean, false) and data->>'loginId' is null limit 1;
   if existing is null then
     uid := gen_random_uuid();
     insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -289,6 +292,52 @@ begin
   return 'Done. In Backend, type $YSTEM in the PIN box, then your password.';
 end $$;
 revoke all on function public.nipos_setup_system_account(text) from public, anon, authenticated;
+
+
+-- An extra $YSTEM sign-in with its own login (typed in Backend's PIN box instead of $YSTEM) and its own
+-- password. Same powers as $YSTEM; the activity log shows which one did what. Run in the SQL Editor:
+--   select public.nipos_setup_system_login('07466707188', 'YOUR-PASSWORD');
+-- Running it again changes that login's password.
+create or replace function public.nipos_setup_system_login(p_login text, p_password text) returns text
+language plpgsql volatile security definer set search_path = public, extensions, auth as $$
+declare
+  uid      uuid;
+  existing text;
+  lg       text := btrim(coalesce(p_login, ''));
+  em       text;
+  pw_hash  text;
+begin
+  if lg !~ '^[0-9]{6,}$' then raise exception 'The login must be 6 or more numbers'; end if;
+  if p_password is null or length(p_password) < 10 then raise exception 'The password must be at least 10 characters'; end if;
+  em := 'system-' || lg || '@nipos.local';
+  pw_hash := extensions.crypt(p_password, extensions.gen_salt('bf', 10));
+  select id into existing from public.staff_users where coalesce((data->>'system')::boolean, false) and data->>'loginId' = lg limit 1;
+  if existing is null then
+    uid := gen_random_uuid();
+    insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+                            raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+                            confirmation_token, recovery_token, email_change, email_change_token_new)
+    values ('00000000-0000-0000-0000-000000000000', uid, 'authenticated', 'authenticated', em, pw_hash, now(),
+            '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now(), '', '', '', '');
+    insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+    values (gen_random_uuid(), uid, uid::text,
+            jsonb_build_object('sub', uid::text, 'email', em, 'email_verified', true), 'email', now(), now(), now());
+    insert into public.staff_users (id, ts, data) values (uid::text, (extract(epoch from now()) * 1000)::bigint,
+      jsonb_build_object('name', '$YSTEM (' || lg || ')', 'system', true, 'loginId', lg, 'venueIds', '[]'::jsonb, 'groupIds', '[]'::jsonb, 'notifyVenueIds', '[]'::jsonb,
+        'perms', jsonb_build_object('globalAdmin', true, 'active', true, 'backendAccess', true, 'xzRead', true,
+                                    'placeOrders', false, 'productsOnStop', false, 'recoveryTool', false, 'callToService', false,
+                                    'clearHistory', false, 'endOfDay', false, 'orderScreen', false, 'viewOpenOrders', false,
+                                    'processRefunds', false)));
+  else
+    update auth.users set email = em, encrypted_password = pw_hash, updated_at = now() where id = existing::uuid;
+    update auth.identities set identity_data = identity_data || jsonb_build_object('email', em), updated_at = now()
+     where user_id = existing::uuid and provider = 'email';
+  end if;
+  insert into public.system_secrets (id, hash) values ('system_password:' || lg, pw_hash)
+  on conflict (id) do update set hash = excluded.hash, failed = 0, locked_until = null;
+  return 'Done. In Backend, type ' || lg || ' in the PIN box, then this password.';
+end $$;
+revoke all on function public.nipos_setup_system_login(text, text) from public, anon, authenticated;
 
 -- =====================================================================================================
 -- TO CREATE $YSTEM (or change its password later), run this on its own in the SQL Editor with your
@@ -333,3 +382,16 @@ begin
 end $$;
 revoke all on function public.nipos_take_stock(text, jsonb) from public, anon;
 grant execute on function public.nipos_take_stock(text, jsonb) to authenticated, service_role;
+
+-- Tabs (Master settings feature "tabs"): an open tab for a table, added to through the night and paid at the end.
+create table if not exists public.tabs (
+  id text primary key,
+  ts bigint not null default 0,
+  venue_id text,
+  data jsonb not null default '{}'::jsonb   -- { id, ts, name, table, cart, lines, notes, openedBy, total }
+);
+alter table public.tabs enable row level security;
+drop policy if exists "venue members full access" on public.tabs;
+create policy "venue members full access" on public.tabs for all to authenticated
+  using (is_global_admin() or is_member_of_venue(venue_id)) with check (is_global_admin() or is_member_of_venue(venue_id));
+grant select, insert, update, delete on public.tabs to authenticated;
