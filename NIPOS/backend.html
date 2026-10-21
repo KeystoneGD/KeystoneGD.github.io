@@ -110,6 +110,9 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .theme-preview .tp-panel{border-radius:8px;padding:7px 8px;font-size:13px;font-weight:700;}
 .theme-preview .tp-btn{border-radius:8px;padding:6px 8px;font-size:13px;font-weight:800;text-align:center;}
 .theme-venues{display:flex;gap:6px;flex-wrap:wrap;}
+.layout-title{font-size:20px;margin:34px 0 6px;}
+.layout-shot{display:block;width:100%;height:auto;aspect-ratio:1180/820;object-fit:cover;border:1px solid var(--border);background:var(--surface-2);}
+.layout-about{margin:0;color:var(--text-muted);font-size:14px;line-height:1.45;}
 .theme-venues span{width:26px;height:26px;border-radius:7px;border:2px solid rgba(127,127,127,.4);}
 .section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin:24px 0 10px;}
 .section-title:first-child{margin-top:0;}
@@ -496,6 +499,11 @@ table.data-table tr:last-child td{border-bottom:0;}
       <p class="note">Changes the colours on every till, order screen and Backend. Devices that are open switch within a minute. Each device's own switch still flips between the theme's normal colours and its dark mode. Green (ready), red (problem or refund) and yellow (in progress) keep their meaning in every theme.</p>
       <p class="note" id="themeMsg" role="status"></p>
       <div class="theme-grid" id="themeGrid"></div>
+
+      <h2 class="layout-title">Till layout</h2>
+      <p class="note">How the menu looks on every till. Each layout has a phone and a tablet version, and each device picks the right one by itself. Taking payment, the order panel and every option picker stay the same in all of them.</p>
+      <p class="note" id="layoutMsg" role="status"></p>
+      <div class="theme-grid" id="layoutGrid"></div>
     </section>
   </main>
 </div>
@@ -744,7 +752,7 @@ function applyLoginState(){
     shell.hidden = true; hamburger.hidden = true;
     return;
   }
-  if (currentUser && currentUser.system) renderThemes();
+  if (currentUser && currentUser.system) { renderThemes(); renderLayouts(); }
   if (currentUser && currentUser.perms.backendAccess) {
     document.getElementById("loginGate").hidden = true;
     shell.hidden = false; hamburger.hidden = false;
@@ -882,6 +890,40 @@ function renderThemes(){
   }).join("");
   grid.querySelectorAll("[data-use-theme]").forEach(b => b.addEventListener("click", () => chooseMasterTheme(b.dataset.useTheme)));
 }
+function renderLayouts(){
+  const grid = document.getElementById("layoutGrid");
+  const current = getPosLayout();
+  grid.innerHTML = Object.entries(POS_LAYOUTS).map(([key, l]) => {
+    const inUse = key === current;
+    return `<div class="theme-card${inUse ? " in-use" : ""}">
+      <div class="theme-card-head"><h2>${esc(l.name)}</h2>${inUse ? `<span class="state-badge next">${icon("check")}In use</span>` : ""}</div>
+      <img class="layout-shot" src="layouts/${key}.png" alt="" loading="lazy">
+      <p class="layout-about">${esc(l.about)}</p>
+      ${inUse ? "" : `<button class="btn btn-solid" data-use-layout="${key}">Use ${esc(l.name)}</button>`}
+    </div>`;
+  }).join("");
+  grid.querySelectorAll("[data-use-layout]").forEach(b => b.addEventListener("click", () => choosePosLayout(b.dataset.useLayout)));
+}
+async function choosePosLayout(key){
+  const l = POS_LAYOUTS[key], msg = document.getElementById("layoutMsg");
+  if (!l || !systemPassword) return;
+  if (!confirm(`Switch every till to ${l.name}?`)) return;
+  let result = "error";
+  try {
+    const { data, error } = await supabaseClient.rpc("nipos_set_pos_layout", { p_password: systemPassword, p_layout: key });
+    if (!error) result = data;
+  } catch (e) {}
+  if (result === "wrong" || result === "locked" || result === "not_system") {
+    systemPassword = null;
+    document.getElementById("systemGateMsg").textContent = SYSTEM_PASSWORD_MESSAGES[result];
+    applyLoginState();
+    return;
+  }
+  if (result !== "ok") { msg.textContent = "Couldn't change the layout. Try again."; return; }
+  setPosLayoutLocal(key);
+  renderLayouts();
+  msg.textContent = `${l.name} is now the till layout. Tills switch within a minute.`;
+}
 async function chooseMasterTheme(key){
   const t = MASTER_THEMES[key], msg = document.getElementById("themeMsg");
   if (!t || !systemPassword) return;
@@ -930,7 +972,7 @@ function updateThemeBtn(){
 document.getElementById("themeToggleBtn").addEventListener("click", toggleTheme);
 document.addEventListener("nipos:themechange", () => {
   updateThemeBtn();
-  if (currentUser && currentUser.system && systemPassword) renderThemes();
+  if (currentUser && currentUser.system && systemPassword) { renderThemes(); renderLayouts(); }
   renderCharts(); // re-theme chart colors
 });
 updateThemeBtn();

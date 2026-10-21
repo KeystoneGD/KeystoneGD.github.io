@@ -1,0 +1,134 @@
+/* Till layouts other than the original ("classic"), chosen by $YSTEM in Backend > Master themes.
+   html[data-layout] is set by db.js. Every layout shows all categories at once (groups, then the
+   categories in that group) so nothing needs a long scroll, and uses square corners throughout.
+   Each has a phone version (default) and a tablet version (min-width:1024px). The order panel, payment
+   and every option picker are the till's own; only the menu is drawn differently. */
+
+html:not([data-layout="classic"]) body *:not(.switch):not(.switch *){border-radius:0 !important;}
+html:not([data-layout="classic"]) #menu,
+html:not([data-layout="classic"]) #drawer,
+html:not([data-layout="classic"]) #drawerOverlay,
+html:not([data-layout="classic"]) #hamburgerBtn{display:none !important;}
+html:not([data-layout="classic"]) body{padding-bottom:0;}
+html[data-layout="classic"] #posMenu{display:none !important;}
+
+.pos-menu{position:fixed;left:0;right:0;top:var(--header-h,112px);bottom:var(--cartbar-h,0px);display:flex;flex-direction:column;min-height:0;background:var(--bg);z-index:5;}
+.pos-menu[hidden]{display:none;}
+.pm-row{display:flex;min-height:0;flex:1;}
+.pm-col{display:flex;flex-direction:column;min-width:0;min-height:0;flex:1;}
+.pm-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+
+/* Group and category buttons. The chosen one is shown by a filled bar and outline, not colour alone. */
+.pm-groups{display:grid;gap:1px;background:var(--border);flex:0 0 auto;border-bottom:1px solid var(--border);}
+.pm-groups button,.pm-cats button{border:0;font:inherit;cursor:pointer;color:var(--text);background:var(--surface);min-height:52px;padding:6px 8px;font-weight:800;font-size:15px;line-height:1.2;}
+.pm-groups button[aria-current="true"]{background:var(--sel-bg);color:var(--sel-ink);}
+.pm-cats{display:flex;flex-wrap:wrap;gap:1px;background:var(--border);flex:0 0 auto;border-bottom:1px solid var(--border);}
+.pm-cats button{flex:1 1 auto;min-height:46px;padding:0 14px;font-weight:700;font-size:14px;background:var(--surface-2);}
+.pm-cats button[aria-current="true"]{background:var(--bg);box-shadow:inset 0 -5px 0 var(--accent);font-weight:800;}
+.pm-groups button.pm-coloured,.pm-cats button.pm-coloured{background:var(--gc);color:#fff;}
+.pm-groups button.pm-coloured[aria-current="true"],.pm-cats button.pm-coloured[aria-current="true"]{background:var(--gc);color:#fff;box-shadow:inset 0 0 0 4px #fff;}
+
+/* Drink buttons */
+.pm-tiles{display:grid;gap:1px;background:var(--border);align-content:start;grid-auto-rows:minmax(92px,auto);}
+.pm-tile{position:relative;border:0;font:inherit;color:var(--text);background:var(--surface);cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;gap:8px;padding:10px 11px;text-align:left;min-width:0;}
+.pm-tile .n{font-weight:700;font-size:15px;line-height:1.25;padding-right:26px;overflow-wrap:anywhere;}
+.pm-tile .p{font-weight:600;font-size:14px;color:var(--text-muted);font-variant-numeric:tabular-nums;}
+.pm-tile .qb,.pm-rowi .qb,.pm-dtile .qb{background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:14px;min-width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;}
+.pm-tile .qb{position:absolute;top:0;right:0;}
+.pm-tile.in{box-shadow:inset 0 0 0 3px var(--accent);}
+.pm-tile:active,.pm-rowi:active,.pm-dtile:active{filter:brightness(1.15);}
+.pm-tile.pm-coloured{background:var(--gc);color:#fff;}
+.pm-tile.pm-coloured .p{color:#fff;}
+.pm-tile.pm-coloured.in{box-shadow:inset 0 0 0 4px #fff;}
+.pm-tile.pm-coloured .qb{background:#fff;color:#000;}
+.pm-empty{padding:28px 18px;color:var(--text-muted);font-size:15px;line-height:1.5;}
+.pm-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:12px 16px 10px;border-bottom:1px solid var(--border);}
+.pm-head h2{margin:0;font-size:20px;}
+.pm-head span{color:var(--text-muted);font-size:13.5px;}
+.pm-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+
+/* ---------- Big tiles ---------- */
+html[data-layout="tiles"] .pm-tiles{grid-template-columns:repeat(3,minmax(0,1fr));}
+html[data-layout="tiles"] .pm-groups{grid-template-columns:repeat(4,1fr);}
+
+/* ---------- Colour-coded tiles ---------- */
+html[data-layout="colour"] .pm-tiles{grid-template-columns:repeat(3,minmax(0,1fr));background:#000;}
+html[data-layout="colour"] .pm-groups{grid-template-columns:repeat(4,1fr);background:#000;}
+html[data-layout="colour"] .pm-cats{background:#000;}
+.pm-rail{display:flex;flex-direction:column;gap:1px;background:#000;flex:0 0 auto;width:160px;}
+.pm-rail button{flex:1 1 0;min-height:52px;border:0;font:inherit;font-weight:800;font-size:15px;text-align:left;padding:0 14px;color:#fff;background:var(--gc);cursor:pointer;}
+.pm-rail button[aria-current="true"]{box-shadow:inset 8px 0 0 #fff;}
+
+/* ---------- Restyled list ---------- */
+.pm-rows{display:grid;grid-template-columns:1fr;align-content:start;}
+.pm-rowi{border:0;border-bottom:1px solid var(--border);font:inherit;color:var(--text);background:var(--bg);cursor:pointer;display:flex;align-items:center;gap:10px;min-height:58px;padding:6px 14px;text-align:left;}
+.pm-rowi .n{flex:1;font-weight:700;font-size:15px;line-height:1.25;min-width:0;}
+.pm-rowi .p{font-weight:700;color:var(--text-muted);font-variant-numeric:tabular-nums;}
+.pm-rowi .plus{border:2px solid var(--text-muted);width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.pm-rowi .plus .ic{width:18px;height:18px;}
+.pm-rowi .qb{min-width:36px;height:36px;}
+html[data-layout="list"] .pm-groups{grid-template-columns:repeat(4,1fr);}
+.pm-lrail{width:220px;flex:0 0 auto;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;}
+.pm-lrail button{display:flex;align-items:center;width:100%;border:0;border-bottom:1px solid var(--border);font:inherit;color:var(--text);background:none;text-align:left;cursor:pointer;min-height:48px;padding:0 14px;font-weight:800;font-size:15px;}
+.pm-lrail button.sub{min-height:44px;padding-left:28px;font-weight:600;font-size:14px;background:var(--surface-2);}
+.pm-lrail button[aria-current="true"]{background:var(--sel-bg);color:var(--sel-ink);}
+.pm-lrail button.sub[aria-current="true"]{background:var(--bg);color:var(--text);box-shadow:inset 5px 0 0 var(--accent);font-weight:800;}
+
+/* ---------- Pub till (WRS-style) ---------- */
+html[data-layout="pubtill"] .header-tools{display:none;}
+html[data-layout="pubtill"].pt-search .header-tools{display:block;}
+html[data-layout="pubtill"] .pos-menu{background:#000;gap:2px;padding:2px;}
+html[data-layout="pubtill"] .cartbar{display:none !important;}
+.pt-depts{display:grid;gap:2px;flex:0 0 auto;}
+.pt-depts button{border:0;font:inherit;cursor:pointer;color:#fff;background:var(--gc,#2a3a4a);min-height:50px;padding:4px 6px;font-weight:800;font-size:13.5px;line-height:1.15;}
+.pt-depts button[aria-current="true"]{box-shadow:inset 0 0 0 4px #fff;}
+.pt-plu{display:grid;gap:2px;flex:1;min-height:0;align-content:start;grid-auto-rows:minmax(84px,auto);overflow-y:auto;}
+.pt-plu .pm-tile{background:var(--gc);color:#fff;}
+.pt-plu .pm-tile .p{color:#fff;}
+.pt-plu .pm-tile .qb{background:#fff;color:#000;}
+.pt-plu .pm-tile.in{box-shadow:inset 0 0 0 4px #fff;}
+.pt-fkeys{display:grid;gap:2px;flex:0 0 auto;}
+.pt-fkeys button{border:0;font:inherit;cursor:pointer;min-height:62px;font-weight:800;font-size:15px;background:#2a3a4a;color:#fff;padding:4px 6px;}
+.pt-fkeys button.pt-card{background:var(--accent);color:var(--accent-ink);}
+.pt-fkeys button.pt-cash{background:#3a5068;}
+.pt-fkeys button:disabled{opacity:.55;cursor:default;}
+.pt-lcd{background:#0f2a1f;color:#c9f7d6;font-family:'Plus Jakarta Sans',system-ui,sans-serif;padding:10px 14px;border:0;width:100%;text-align:left;font-variant-numeric:tabular-nums;cursor:default;}
+.pt-lcd .l1{display:flex;justify-content:space-between;gap:10px;font-size:14px;font-weight:700;text-transform:uppercase;min-height:20px;}
+.pt-lcd .l1 span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pt-lcd .l2{font-size:40px;font-weight:800;text-align:right;line-height:1.1;}
+button.pt-lcd{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+button.pt-lcd .l2{font-size:32px;}
+#ptDisplay{display:none;}
+html[data-layout="pubtill"] #ptDisplay{display:block;}
+html[data-layout="pubtill"] #cartSheet .line{border-bottom-style:dashed;}
+
+/* ---------- Dock ---------- */
+.pm-dtiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;}
+.pm-dtile{border:0;border-bottom:1px solid var(--border);border-right:1px solid var(--border);border-left:5px solid var(--gc,var(--border));font:inherit;color:var(--text);background:var(--bg);cursor:pointer;display:flex;align-items:center;gap:8px;min-height:66px;padding:8px 12px;text-align:left;min-width:0;}
+.pm-dtile .n{flex:1;font-weight:700;font-size:14.5px;line-height:1.25;min-width:0;overflow-wrap:anywhere;}
+.pm-dtile .n small{display:block;font-weight:600;font-size:12.5px;color:var(--text-muted);margin-top:2px;}
+.pm-dtile .p{font-weight:800;font-size:14.5px;font-variant-numeric:tabular-nums;}
+.pm-dtile.in{background:var(--surface-2);}
+.pm-dock{flex:0 0 auto;border-top:1px solid var(--border);background:var(--surface);}
+.pm-dock .pm-cats{border-bottom:1px solid var(--border);}
+.pm-dock .pm-cats button[aria-current="true"]{box-shadow:inset 0 5px 0 var(--accent);}
+.pm-dock .pm-groups{grid-template-columns:repeat(4,1fr);border-bottom:0;}
+.pm-dock .pm-groups button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:56px;}
+.pm-dock .pm-groups button i{display:block;width:24px;height:4px;background:var(--gc);}
+.pm-dock-tools{display:flex;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;}
+.pm-dock-tools .btn{min-height:46px;}
+
+@media (min-width:1024px){
+  .pos-menu{right:var(--order);bottom:0;}
+  html[data-layout="tiles"] .pm-tiles,html[data-layout="colour"] .pm-tiles{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));grid-auto-rows:minmax(110px,auto);}
+  html[data-layout="tiles"] .pm-groups{grid-template-columns:repeat(var(--gcount,7),1fr);}
+  html[data-layout="list"] .pm-rows{grid-template-columns:1fr 1fr;}
+  html[data-layout="list"] .pm-rowi:nth-child(odd){border-right:1px solid var(--border);}
+  .pm-dtiles{grid-template-columns:repeat(3,minmax(0,1fr));}
+  .pm-dock .pm-groups{grid-template-columns:repeat(var(--gcount,8),1fr);}
+  /* Pub till: the receipt moves to the left, function keys along the bottom of the buttons. */
+  html[data-layout="pubtill"] .pos-menu{left:var(--order);right:0;}
+  html[data-layout="pubtill"] #cartSheet{left:0;right:auto;border-left:0;border-right:2px solid #000;}
+  html[data-layout="pubtill"] #goCash,html[data-layout="pubtill"] #goCard{display:none;}
+  .pt-plu{grid-auto-rows:minmax(100px,auto);}
+}
