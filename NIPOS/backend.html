@@ -331,7 +331,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022u">
+<link rel="stylesheet" href="nipos.css?v=20261022v">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -831,7 +831,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261022u"></script>
+<script src="db.js?v=20261022v"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -1615,7 +1615,7 @@ const FEATURES = [
 /* Batch 2 editors. Each one opens filled in with what the till does today (the built-in values), so
    switching a feature on changes nothing until something is edited. render(cfg) draws it; read()
    collects it for saving. */
-const BUILTIN_DASHES = [["pepsi", "Diet Pepsi Dash"], ["lemonade", "Lemonade Dash"], ["pepsimax", "Pepsi Max Dash"], ["orange", "Orange Juice Dash"], ["apple", "Apple Juice Dash"], ["cranberry", "Cranberry Juice Dash"], ["pineapple", "Pineapple Juice Dash"]].map(([id, name]) => ({ id, name, pence: 100 }));
+const BUILTIN_DASHES = [["pepsi", "Diet Pepsi Dash"], ["lemonade", "Lemonade Dash"], ["pepsimax", "Pepsi Max Dash"], ["orange", "Orange Juice Dash"], ["apple", "Apple Juice Dash"], ["cranberry", "Cranberry Juice Dash"], ["pineapple", "Pineapple Juice Dash"], ["limecordial", "Lime Cordial"], ["blackcurrantcordial", "Blackcurrant Cordial"], ["orangecordial", "Orange Cordial"]].map(([id, name]) => ({ id, name, pence: 100 }));
 const BUILTIN_CORDIALS = [["blackcurrant", "Blackcurrant Cordial"], ["lime", "Lime Cordial"], ["orange", "Orange Cordial"]].map(([id, name]) => ({ id, name }));
 const BUILTIN_GROUPS = [["cocktails", "Cocktails", "#8a2f6b"], ["softs", "Softs", "#17696d"], ["beer", "Beer & Cider", "#6e4b12"], ["wine", "Wine", "#7a1f33"], ["spirits", "Spirits", "#34458a"], ["hot", "Hot drinks", "#5a3d2b"], ["other", "Other drinks", "#3d4a57"], ["food", "Food", "#3f5e1f"]].map(([key, name, colour]) => ({ key, name, colour }));
 const BUILTIN_DISCOUNTS = [{ id: "owner10", label: "Owner's 10%", pct: 10, notOnHappyHour: true }, { id: "team50", label: "Team 50%", pct: 50 }, { id: "team20", label: "Team 20%", pct: 20 }];

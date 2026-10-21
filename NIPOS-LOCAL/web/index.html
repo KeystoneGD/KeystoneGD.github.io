@@ -234,6 +234,14 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 .modal-choices{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;max-height:50vh;overflow-y:auto;}
 .modal-choices button{padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-weight:700;font-size:15px;text-align:left;cursor:pointer;}
 .modal-choices button:active{background:var(--accent-soft);}
+.modal-choices button[aria-pressed]{display:flex;align-items:center;gap:12px;}
+.modal-choices .tick{flex:0 0 22px;width:22px;height:22px;border:2px solid var(--text-muted);border-radius:6px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;}
+.modal-choices .tick svg{width:14px;height:14px;visibility:hidden;}
+.modal-choices button[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.modal-choices button[aria-pressed="true"] .tick{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
+.modal-choices button[aria-pressed="true"] .tick svg{visibility:visible;}
+.modal-choices .lbl{flex:1;}
+.modal-choices button[aria-pressed]::before,.modal-choices button[aria-pressed]::after{content:none !important;display:none !important;}
 .modal-choices button .sub{display:block;font-size:12px;font-weight:500;color:var(--text-muted);margin-top:2px;}
 .modal-actions{display:flex;gap:10px;}
 
@@ -315,8 +323,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022u">
-<link rel="stylesheet" href="layouts.css?v=20261022u">
+<link rel="stylesheet" href="nipos.css?v=20261022v">
+<link rel="stylesheet" href="layouts.css?v=20261022v">
 </head>
 <body>
 
@@ -752,7 +760,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022u"></script>
+<script src="db.js?v=20261022v"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -939,7 +947,10 @@ const DASH_MIXERS = [
   { id:"orange", name:"Orange Juice Dash", pence:100 },
   { id:"apple", name:"Apple Juice Dash", pence:100 },
   { id:"cranberry", name:"Cranberry Juice Dash", pence:100 },
-  { id:"pineapple", name:"Pineapple Juice Dash", pence:100 }
+  { id:"pineapple", name:"Pineapple Juice Dash", pence:100 },
+  { id:"limecordial", name:"Lime Cordial", pence:100 },
+  { id:"blackcurrantcordial", name:"Blackcurrant Cordial", pence:100 },
+  { id:"orangecordial", name:"Orange Cordial", pence:100 }
 ];
 // Master settings > Drink options can replace these lists (and switch off the lemonade-top question).
 // While it's off - or before it's set up - the till uses the built-in lists below.
@@ -1213,6 +1224,8 @@ function findMixer(mixerId){
   if (!mixerId || mixerId === "none") return null;
   return dashMixers().find(m => m.id === mixerId) || DASH_MIXERS.find(m => m.id === mixerId) || BY_ID[mixerId] || null;
 }
+// A line can carry several mixers (or cordials), joined with "+" in its key: "p12::single::lemonade+lime".
+function findMixers(ids){ return String(ids || "").split("+").map(findMixer).filter(Boolean); }
 function lineInfo(key){
   const parts = key.split("::");
   const product = BY_ID[parts[0]];
@@ -1220,10 +1233,13 @@ function lineInfo(key){
   if (parts.length === 1) return { name: product.name, pence: product.pence };
   if (parts[1] === "beer") {
     const size = product.sizes ? product.sizes[Number(parts[2])] : null;
-    const cordial = cordialOptions().find(c => c.id === parts[3]) || CORDIAL_OPTIONS.find(c => c.id === parts[3]);
     const extras = [];
-    if (cordial && cordial.id !== "none") extras.push(cordial.name);
-    if (parts[4] === "top") extras.push("Lemonade Top");
+    String(parts[3] || "").split("+").forEach(id => {
+      if (id === "top") { extras.push("Lemonade Top"); return; }
+      const cordial = cordialOptions().find(c => c.id === id) || CORDIAL_OPTIONS.find(c => c.id === id);
+      if (cordial && cordial.id !== "none") extras.push(cordial.name);
+    });
+    if (parts[4] === "top" && !extras.includes("Lemonade Top")) extras.push("Lemonade Top"); // lines rung up before cordials were multi-select
     const sizeLabel = size ? size.label : "";
     const name = `${product.name}${sizeLabel ? ` (${sizeLabel})` : ""}${extras.length ? ` + ${extras.join(" & ")}` : ""}`;
     return { name, pence: size ? size.pence : product.pence };
@@ -1232,10 +1248,10 @@ function lineInfo(key){
     const size = product.sizes[Number(parts[2])];
     return { name: `${product.name} (${size.label})`, pence: size.pence };
   }
-  const measure = parts[1], mixer = findMixer(parts[2]);
+  const measure = parts[1], mixers = findMixers(parts[2]);
   const doublePence = product.doublePence != null ? product.doublePence : product.pence * 2;
-  const pence = (measure === "double" ? doublePence : product.pence) + (mixer ? mixer.pence : 0);
-  const name = `${product.name} (${measure === "double" ? "Double" : "Single"}${mixer ? " & " + mixer.name : ""})`;
+  const pence = (measure === "double" ? doublePence : product.pence) + mixers.reduce((t, m) => t + (m.pence || 0), 0);
+  const name = `${product.name} (${measure === "double" ? "Double" : "Single"}${mixers.length ? " & " + mixers.map(m => m.name).join(" & ") : ""})`;
   return { name, pence };
 }
 function qtyForProduct(id){
@@ -1391,8 +1407,8 @@ function computeTotals(){
 }
 
 /* ---------- modal (replaces prompt/confirm/alert, which don't work in iOS home-screen apps) ---------- */
-let modalResolve = null;
-function openModal({ title, message, withInput, placeholder, value, confirmLabel, danger, hideCancel, inputType, inputMode, choices }){
+let modalResolve = null, modalMulti = false;
+function openModal({ title, message, withInput, placeholder, value, confirmLabel, danger, hideCancel, inputType, inputMode, choices, multi }){
   return new Promise(resolve => {
     modalResolve = resolve;
     document.getElementById("modalTitle").textContent = title;
@@ -1408,17 +1424,30 @@ function openModal({ title, message, withInput, placeholder, value, confirmLabel
     const choicesEl = document.getElementById("modalChoices");
     choicesEl.hidden = !choices;
     choicesEl.innerHTML = "";
+    modalMulti = !!(choices && multi);
     if (choices) {
       choices.forEach(c => {
         const b = document.createElement("button");
         b.type = "button";
-        b.innerHTML = c.label + (c.sub ? `<span class="sub">${c.sub}</span>` : "");
-        b.addEventListener("click", () => closeModal(c.value));
+        b.innerHTML = multi
+          ? `<span class="tick" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg></span><span class="lbl">${c.label}${c.sub ? `<span class="sub">${c.sub}</span>` : ""}</span>`
+          : c.label + (c.sub ? `<span class="sub">${c.sub}</span>` : "");
+        b.dataset.value = c.value;
+        if (modalMulti) {
+          // Tick as many as wanted; the "none" choice (e.g. No mixer) clears the others and vice versa.
+          b.setAttribute("aria-pressed", "false");
+          b.addEventListener("click", () => {
+            const on = b.getAttribute("aria-pressed") !== "true";
+            if (on) choicesEl.querySelectorAll("button").forEach(o => { if ((c.exclusive || o.dataset.exclusive) && o !== b) o.setAttribute("aria-pressed", "false"); });
+            b.setAttribute("aria-pressed", on ? "true" : "false");
+          });
+          if (c.exclusive) b.dataset.exclusive = "1";
+        } else b.addEventListener("click", () => closeModal(c.value));
         choicesEl.appendChild(b);
       });
     }
     const confirmBtn = document.getElementById("modalConfirm");
-    confirmBtn.hidden = !!choices;
+    confirmBtn.hidden = !!choices && !modalMulti;
     confirmBtn.textContent = confirmLabel || "OK";
     confirmBtn.className = "btn btn-block " + (danger ? "btn-danger" : "btn-accent");
     document.getElementById("modalCancel").hidden = !!hideCancel;
@@ -1434,6 +1463,7 @@ function closeModal(result){
 document.getElementById("modalCancel").addEventListener("click", () => closeModal(null));
 document.getElementById("modalConfirm").addEventListener("click", () => {
   const inputEl = document.getElementById("modalInput");
+  if (modalMulti) { closeModal([...document.querySelectorAll('#modalChoices button[aria-pressed="true"]')].map(b => b.dataset.value)); return; }
   closeModal(inputEl.hidden ? true : inputEl.value);
 });
 document.getElementById("modalInput").addEventListener("keydown", e => {
@@ -1443,6 +1473,8 @@ function askText(opts){ return openModal({ ...opts, withInput: true, confirmLabe
 async function askConfirm(opts){ return (await openModal({ ...opts, withInput: false })) === true; }
 function showInfo(opts){ return openModal({ ...opts, withInput: false, hideCancel: true, confirmLabel: opts.confirmLabel || "Close" }); }
 function askChoice(opts){ return openModal({ ...opts, withInput: false }); }
+// Several choices at once: resolves to the ticked values (an empty list if none), or null on Cancel.
+function askMultiChoice(opts){ return openModal({ ...opts, withInput: false, multi: true, confirmLabel: opts.confirmLabel || "Add" }); }
 
 async function addSpiritToCart(product){
   const doublePence = product.doublePence != null ? product.doublePence : product.pence * 2;
@@ -1457,12 +1489,14 @@ async function addSpiritToCart(product){
     const mixerList = product.mixerType === "both" ? tonicItems.concat(dashMixers()) : dashMixers();
     const usedIds = new Set(mixerList.map(m => m.id));
     const extraMixers = ALL_ITEMS.concat(customProducts).filter(p => (mixerOverrides.has(p.name) || p.isMixer) && !usedIds.has(p.id) && !stops.has(p.name));
-    const mixerChoices = [{ label: "No mixer (neat)", value: "none" }].concat(
+    const mixerChoices = [{ label: "No mixer (neat)", value: "none", exclusive: true }].concat(
       mixerList.map(m => ({ label: m.name, value: m.id, sub: fmt(m.pence) })),
       extraMixers.map(m => ({ label: m.name, value: m.id, sub: fmt(m.pence) }))
     );
-    mixerId = await askChoice({ title: "Add a mixer?", message: `For the ${product.name}.`, choices: mixerChoices });
-    if (mixerId === null) return;
+    const picked = await askMultiChoice({ title: "Add mixers?", message: `For the ${product.name}. Tick as many as wanted, then Add.`, choices: mixerChoices });
+    if (picked === null) return;
+    const ids = picked.filter(id => id !== "none");
+    mixerId = ids.length ? ids.join("+") : "none";
   }
   const key = `${product.id}::${measure}::${mixerId}`;
   cart[key] = (cart[key] || 0) + 1;
@@ -1480,14 +1514,13 @@ async function addBeerToCart(product){
     if (chosen === null) return;
     sizeIndex = Number(chosen);
   }
-  const cordialId = await askChoice({ title: product.name, message: "Add a cordial? (free)", choices: cordialOptions().map(c => ({ label: c.name, value: c.id })) });
-  if (cordialId === null) return;
-  const top = !lemonadeTopOffered() ? "notop" : await askChoice({ title: product.name, message: "Lemonade top?", choices: [
-    { label: "No", value: "notop" },
-    { label: "Yes, lemonade top", value: "top" }
-  ]});
-  if (top === null) return;
-  const key = `${product.id}::beer::${sizeIndex}::${cordialId}::${top}`;
+  // Cordials and the lemonade top in one list: tick any (or none), then Add.
+  const extraChoices = cordialOptions().map(c => c.id === "none" ? { label: "Nothing extra", value: "none", exclusive: true } : { label: c.name, value: c.id, sub: "Free" })
+    .concat(lemonadeTopOffered() ? [{ label: "Lemonade Top", value: "top", sub: "Free" }] : []);
+  const picked = await askMultiChoice({ title: product.name, message: "Add cordials or a lemonade top? Tick as many as wanted, then Add.", choices: extraChoices });
+  if (picked === null) return;
+  const extras = picked.filter(id => id !== "none");
+  const key = `${product.id}::beer::${sizeIndex}::${extras.length ? extras.join("+") : "none"}::notop`;
   cart[key] = (cart[key] || 0) + 1;
   saveJSON(LS_CART, cart); renderQtys(); renderCartBar();
 }
