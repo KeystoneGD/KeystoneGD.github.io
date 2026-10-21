@@ -308,7 +308,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021o">
+<link rel="stylesheet" href="nipos.css?v=20261021p">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -784,7 +784,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021o"></script>
+<script src="db.js?v=20261021p"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -1500,7 +1500,7 @@ const FEATURES = [
   { key: "reasons", name: "Editable reasons", about: "The reasons for Report a problem (order screen), refunds and clearing an order, so they match how you work. Refund and clear reasons are asked for while this is on." },
   { key: "resendOrder", name: "Resend to the bar", about: "Send a past order to the order screen again (Past Orders and Receipts on the till), if it went missing." },
   { key: "customerDisplay", name: "Customer display", about: "A screen facing the customer showing their order and total. Open display.html on it and enter the till's code (shown in the till's Settings)." },
-  { key: "kitchenScreen", name: "Kitchen screen", about: "Order screens get Bar and Kitchen views: the kitchen sees only food, and the bar can be set to see only drinks." },
+  { key: "kitchenScreen", name: "Kitchen screen", about: "A screen for the kitchen at /kitchen (keystonegd.github.io/NIPOS/kitchen) showing only food. The bar and the kitchen each accept and finish their own part of an order; the order is ready to take out once every part is done. The order screen can also be set to show only drinks." },
   { key: "receipts", name: "Receipts", about: "A Receipts option in the till's menu to find any sale and show or print its receipt (with your report header details)." },
   { key: "openingHours", name: "Opening hours", about: "Each venue's opening hours. Outside them, taking an order needs a manager's PIN (Manager approval permission)." },
   { key: "takingsTarget", name: "Takings target", about: "A daily target per venue, with progress on the Takings page (a week or month is the daily target times the days)." },
@@ -1684,7 +1684,7 @@ const FEATURE_EDITORS = {
   resendOrder: { render(){ return `<p class="note">Nothing to set up.</p>`; }, read(){ return {}; } },
   customerDisplay: { render(){ return `<p class="note">On the customer's screen open <strong>${esc(location.origin + location.pathname.replace(/backend\.html$/, "display.html"))}</strong>, sign in with any PIN once, pick the venue and enter the till's 4-number code.</p>`; }, read(){ return {}; } },
   kitchenScreen: {
-    render(cfg){ return `<label class="check"><input type="checkbox" id="ksBar" ${cfg.barHidesFood ? "checked" : ""}>The Bar view hides food</label><div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="kitchenScreen">Save</button></div>`; },
+    render(cfg){ return `<label class="check"><input type="checkbox" id="ksBar" ${cfg.barHidesFood ? "checked" : ""}>The bar's order screen hides food</label><div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="kitchenScreen">Save</button></div>`; },
     read(){ return { barHidesFood: document.getElementById("ksBar").checked }; }
   },
   receipts: { render(){ return `<p class="note">Receipts use the venue's details from Report header details, if that's on.</p>`; }, read(){ return {}; } },
