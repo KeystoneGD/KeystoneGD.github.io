@@ -134,7 +134,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022p">
+<link rel="stylesheet" href="nipos.css?v=20261022q">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -263,7 +263,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022p"></script>
+<script src="db.js?v=20261022q"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -1131,11 +1131,20 @@ document.getElementById("serviceTabGroups").addEventListener("click", () => {
   document.getElementById("serviceGroupList").hidden = false;
   document.getElementById("serviceUserList").hidden = true;
 });
+// The notify list comes from a server function, so it's reused for 30 seconds rather than asked for
+// every second while the list is open; the roster's presence is fetched alongside it.
+let subscribersAt = 0, subscribersVenue = null;
 async function refreshServiceModal(){
-  notifySubscribers = await fetchNotifySubscribers(currentVenueId);
   const rosterIds = new Set(venueStaff.map(u => u.id));
+  const fresh = subscribersVenue === currentVenueId && Date.now() - subscribersAt < 30000;
+  const [subs, rosterPresence] = await Promise.all([
+    fresh ? notifySubscribers : fetchNotifySubscribers(currentVenueId).then(r => { subscribersAt = Date.now(); subscribersVenue = currentVenueId; return r; }),
+    fetchPresenceMap([...rosterIds])
+  ]);
+  notifySubscribers = subs;
   const candidateIds = [...rosterIds, ...notifySubscribers.map(s => s.id)].filter((id, i, arr) => arr.indexOf(id) === i);
-  presenceMap = await fetchPresenceMap(candidateIds);
+  const extra = candidateIds.filter(id => !rosterIds.has(id));
+  presenceMap = new Map([...rosterPresence, ...(extra.length ? await fetchPresenceMap(extra) : new Map())]);
   onlineIds = new Set(presenceMap.keys());
   const namesById = new Map([...venueStaff.map(u => [u.id, u.name]), ...notifySubscribers.map(s => [s.id, s.name])]);
   const visibleOnline = candidateIds.filter(id => onlineIds.has(id) && !isHiddenAccount(namesById.get(id)));
@@ -1149,8 +1158,10 @@ document.getElementById("serviceBtn").addEventListener("click", async () => {
   document.getElementById("serviceGroupList").innerHTML = "";
   document.getElementById("serviceOnlineCount").textContent = "…";
   document.getElementById("serviceModal").hidden = false;
-  serviceGroups = await fetchAllGroups();
-  if (!allVenuesCache.length) allVenuesCache = await fetchAllVenues();
+  await Promise.all([
+    fetchAllGroups().then(g => { serviceGroups = g; }),
+    allVenuesCache.length ? null : fetchAllVenues().then(v => { allVenuesCache = v; })
+  ]);
   await refreshServiceModal();
   document.getElementById("serviceModal").hidden = false;
   clearInterval(serviceRefreshTimer);
