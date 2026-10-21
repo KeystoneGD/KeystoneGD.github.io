@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021j">
-<link rel="stylesheet" href="layouts.css?v=20261021j">
+<link rel="stylesheet" href="nipos.css?v=20261021k">
+<link rel="stylesheet" href="layouts.css?v=20261021k">
 </head>
 <body>
 
@@ -736,7 +736,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021j"></script>
+<script src="db.js?v=20261021k"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -2353,6 +2353,7 @@ function completeSale(payments){
     if (p.method === "cash" && p.cashGiven != null) { sale.cashGiven = p.cashGiven; sale.change = Math.max(0, p.cashGiven - p.pence); }
     if (group) { sale.splitGroup = group; sale.splitPart = i + 1; sale.splitOf = payments.length; }
     if (tab) sale.tabId = tab.id;
+    if (currentUser) { sale.byId = currentUser.id; sale.by = currentUser.name; } // takings per person
     if (discount && discount.approvedBy) sale.discountApprovedBy = discount.approvedBy;
     if (maintenanceMode) sale.isTest = true;
     return sale;
@@ -2567,6 +2568,24 @@ document.getElementById("receiptsBack").addEventListener("click", () => closeShe
 document.getElementById("receiptDay").addEventListener("change", renderReceipts);
 document.getElementById("receiptQuery").addEventListener("input", () => { clearTimeout(window.__rq); window.__rq = setTimeout(renderReceipts, 250); });
 
+// Z Read reminder (feature "zReminder"): at the set time, if this venue hasn't had a Z Read in the
+// last 20 hours, anyone here who can do one gets a pop-up (once per device per night).
+function checkZReminder(){
+  if (!featureOn("zReminder") || !currentUser || !currentVenue || !(currentUser.perms.xzRead || currentUser.perms.globalAdmin)) return;
+  const [h, m] = String(featureConfig("zReminder").time || "02:30").split(":").map(Number);
+  const due = new Date(); due.setHours(h || 0, m || 0, 0, 0);
+  if (due.getTime() > Date.now()) due.setDate(due.getDate() - 1);
+  if (Date.now() - due.getTime() > 6 * 36e5) return; // only in the few hours after it
+  if (shiftStart && shiftStart > due.getTime() - 20 * 36e5) return; // done recently
+  const key = "nipos.zReminded." + currentVenueId;
+  let last = 0; try { last = Number(localStorage.getItem(key)) || 0; } catch (e) {}
+  if (last >= due.getTime()) return;
+  try { localStorage.setItem(key, String(Date.now())); } catch (e) {}
+  if (typeof playChime === "function") { try { playChime(); } catch (e) {} }
+  showPrivateMessage({ title: "Z Read reminder", fromName: "NIPOS", message: `Nobody has done tonight's Z Read for ${currentVenue.name} yet. Do it from Settings › End of Shift once the till's closed.`, ts: Date.now() });
+}
+setInterval(checkZReminder, 60000);
+
 // Customer display (feature "customerDisplay"): this till shares its order with display.html.
 function displayCode(){
   let c = null; try { c = localStorage.getItem("nipos.displayCode"); } catch (e) {}
@@ -2739,7 +2758,7 @@ async function logOrderToDiscord(sale){
       { name: "Discount", value: discount, inline: true }
     ],
     timestamp: new Date(sale.ts).toISOString()
-  });
+  }, null, "orders");
 }
 async function logRefundToDiscord(refundRow, sale){
   logRefundToDiscordFor(currentVenue, currentUser ? currentUser.name : null, refundRow, sale);
@@ -2753,7 +2772,7 @@ async function logStopToDiscord(name, on){
       { name: "By", value: currentUser ? currentUser.name : "Unknown", inline: true }
     ],
     timestamp: new Date().toISOString()
-  });
+  }, null, "stops");
 }
 async function pushNotification(toUserId, message, urgent){
   const me = currentUser;
@@ -2781,6 +2800,7 @@ document.getElementById("gratuityBtn").addEventListener("click", async () => {
   const pounds = parseFloat(val);
   if (!isFinite(pounds) || pounds <= 0) { showToast("Enter a valid amount"); return; }
   const grat = { id: "g"+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), amount: Math.round(pounds * 100) };
+  if (currentUser) { grat.byId = currentUser.id; grat.by = currentUser.name; }
   if (maintenanceMode) grat.isTest = true;
   if (!grat.isTest) { gratuities.push(grat); saveLocal(LS_GRAT, gratuities); }
   gratuitiesStore.save(grat);

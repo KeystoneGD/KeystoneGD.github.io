@@ -128,6 +128,11 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .feature-people label{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer;}
 .fav-btn{font-size:20px;min-width:44px;line-height:1;}
 .fav-btn.on{color:var(--accent);border-color:var(--accent);}
+.target-card{margin:0 0 16px;}
+.target-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+.target-bar{height:14px;border-radius:999px;background:var(--surface-2);overflow:hidden;border:1px solid var(--border);}
+.target-bar span{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .4s;}
+.target-card.hit .target-bar span{background:var(--success);}
 .act-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:12px 0 4px;}
 .act-group{border:1px solid var(--border);border-radius:12px;padding:8px 12px 10px;margin:0;min-width:0;}
 .act-group legend{font-weight:800;font-size:14px;padding:0 4px;}
@@ -288,7 +293,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021j">
+<link rel="stylesheet" href="nipos.css?v=20261021k">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -376,6 +381,10 @@ table.data-table tr:last-child td{border-bottom:0;}
         <div class="kpi-tile"><div class="label">Orders</div><div class="kpi-value tabular" id="kpiOrders">0</div><div class="kpi-compare" id="kpiOrdersCmp"></div></div>
         <div class="kpi-tile"><div class="label">Average order</div><div class="kpi-value tabular" id="kpiAvg">£0.00</div><div class="kpi-compare" id="kpiAvgCmp"></div></div>
       </div>
+      <div class="card target-card" id="targetCard" hidden>
+        <div class="target-head"><strong>Takings target</strong><span id="targetText"></span></div>
+        <div class="target-bar" role="progressbar" aria-label="Takings against target" aria-valuemin="0" aria-valuemax="100" id="targetBar"><span id="targetFill"></span></div>
+      </div>
       <div class="charts-row">
         <div class="chart-card wide">
           <h3 id="trendTitle">Takings by hour</h3>
@@ -386,6 +395,11 @@ table.data-table tr:last-child td{border-bottom:0;}
         </div>
         <div class="chart-card"><h3>Top sellers</h3><p class="chart-sub">Number sold, and takings from each</p><div class="chart-box" id="topBox"><canvas id="chartTop" role="img" aria-label="Top sellers chart"></canvas></div><div class="chart-empty" id="topEmpty" hidden>No sales in this period yet.</div></div>
         <div class="chart-card"><h3>Cash and card</h3><p class="chart-sub">After refunds</p><div class="split-figures" id="splitFigures"></div></div>
+      </div>
+      <div id="staffBreakdownWrap" hidden>
+        <div class="section-title">By person</div>
+        <div class="card"><div class="table-scroll"><table class="data-table" id="staffBreakdownTable"><thead><tr><th>Person</th><th>Sales</th><th>Orders</th><th>Tips</th><th>Refunds</th></tr></thead><tbody></tbody></table></div>
+        <p class="note" style="margin-top:8px;">Counts sales from when Takings per person was switched on. Earlier ones show as "Not recorded".</p></div>
       </div>
       <div id="venueBreakdownWrap" hidden>
         <div class="section-title">By venue</div>
@@ -727,7 +741,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021j"></script>
+<script src="db.js?v=20261021k"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -1347,7 +1361,12 @@ const FEATURES = [
   { key: "customerDisplay", name: "Customer display", about: "A screen facing the customer showing their order and total. Open display.html on it and enter the till's code (shown in the till's Settings)." },
   { key: "kitchenScreen", name: "Kitchen screen", about: "Order screens get Bar and Kitchen views: the kitchen sees only food, and the bar can be set to see only drinks." },
   { key: "receipts", name: "Receipts", about: "A Receipts option in the till's menu to find any sale and show or print its receipt (with your report header details)." },
-  { key: "openingHours", name: "Opening hours", about: "Each venue's opening hours. Outside them, taking an order needs a manager's PIN (Manager approval permission)." }
+  { key: "openingHours", name: "Opening hours", about: "Each venue's opening hours. Outside them, taking an order needs a manager's PIN (Manager approval permission)." },
+  { key: "takingsTarget", name: "Takings target", about: "A daily target per venue, with progress on the Takings page (a week or month is the daily target times the days)." },
+  { key: "staffTakings", name: "Takings per person", about: "Sales, tips and refunds by staff member, on the Takings page. Counts from when it's switched on." },
+  { key: "zReminder", name: "Z Read reminder", about: "If nobody has done the Z Read by a set time, the tills of people who can do it pop up a reminder." },
+  { key: "dailySummary", name: "Daily summary by email", about: "Each night's takings for every venue, emailed to the people you choose at a set time. Needs a Resend email key in Supabase (see below)." },
+  { key: "discordSettings", name: "Discord settings", about: "Choose which events go to Discord (orders, refunds, stops, Z Reads), and test each venue's webhooks." }
 ];
 /* Batch 2 editors. Each one opens filled in with what the till does today (the built-in values), so
    switching a feature on changes nothing until something is edited. render(cfg) draws it; read()
@@ -1536,6 +1555,41 @@ const FEATURE_EDITORS = {
       F("[data-oh-venue]").forEach(fs => { if (!fs.querySelector("[data-oh-on]").checked) return; const days = {}; DAY_NAMES.forEach((_, d) => { days[d] = { closed: fs.querySelector(`[data-oh-closed="${d}"]`).checked, open: fs.querySelector(`[data-oh-open="${d}"]`).value || "12:00", close: fs.querySelector(`[data-oh-close="${d}"]`).value || "00:00" }; }); venues[fs.dataset.ohVenue] = days; });
       return { venues };
     }
+  },
+  takingsTarget: {
+    render(cfg){
+      const t = cfg.venues || {};
+      return `<table class="feature-table"><tbody>${myVenues.map(v => `<tr><th scope="row"><label for="tt_${esc(v.id)}">${esc(v.name)}</label></th><td>£ <input type="number" id="tt_${esc(v.id)}" data-tt="${esc(v.id)}" min="0" step="10" value="${t[v.id] != null ? esc(t[v.id]) : ""}" placeholder="No target" style="max-width:140px;"> a day</td></tr>`).join("")}</tbody></table>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="takingsTarget">Save targets</button></div>`;
+    },
+    read(){ const venues = {}; F("[data-tt]").forEach(i => { if (i.value !== "") venues[i.dataset.tt] = Number(i.value); }); return { venues }; }
+  },
+  staffTakings: { render(){ return `<p class="note">Nothing to set up. Shows under the charts on the Takings page.</p>`; }, read(){ return {}; } },
+  zReminder: {
+    render(cfg){ return `<label class="field" for="zrTime">Remind at</label><input type="time" id="zrTime" value="${esc(cfg.time || "02:30")}" style="max-width:160px;"><p class="note">At this time, if the venue hasn't had a Z Read in the last 20 hours, anyone signed in on a till with Z Read permission gets a pop-up.</p>
+      <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="zReminder">Save</button></div>`; },
+    read(){ return { time: document.getElementById("zrTime").value || "02:30" }; }
+  },
+  dailySummary: {
+    render(cfg){
+      return `<label class="field" for="dsTo">Send to (email addresses, separated by commas)</label><input type="text" id="dsTo" value="${esc((cfg.recipients || []).join(", "))}" style="width:100%;">
+        <label class="field" for="dsTime">Send at (UK time)</label><input type="time" id="dsTime" value="${esc(cfg.time || "09:00")}" style="max-width:160px;">
+        <p class="note">It covers the 24 hours up to 6am that morning, for every venue. It sends through Resend: add your Resend key and from-address in Supabase once (the SQL is in master_themes.sql, "Daily summary"). Until then nothing is sent.</p>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="dailySummary">Save</button><button type="button" class="btn btn-ghost" data-act="ds-test">Send one now</button></div>`;
+    },
+    read(){ return { recipients: document.getElementById("dsTo").value.split(",").map(x => x.trim()).filter(x => /.+@.+\..+/.test(x)), time: document.getElementById("dsTime").value || "09:00" }; }
+  },
+  discordSettings: {
+    render(cfg){
+      const ev = cfg.events || {};
+      const kinds = [["orders", "New orders"], ["refunds", "Refunds"], ["stops", "Stops"], ["zreads", "Z Reads"]];
+      const hooks = [["order", "Orders and refunds"], ["zread", "Z Reads"], ["stop", "Stops"]];
+      return `<span class="field">Send these to Discord</span><div class="feature-people">${kinds.map(([k, l]) => `<label><input type="checkbox" data-dc-ev="${k}" ${ev[k] !== false ? "checked" : ""}>${l}</label>`).join("")}</div>
+        <span class="field">Test each venue's webhooks</span>
+        <table class="feature-table"><tbody>${(venues.length ? venues : myVenues).map(v => `<tr><th scope="row">${esc(v.name)}</th><td>${hooks.map(([h, l]) => v.discordWebhooks && v.discordWebhooks[h] ? `<button type="button" class="btn btn-ghost btn-sm" data-act="dc-test" data-venue="${esc(v.id)}" data-hook="${h}">Test ${esc(l)}</button>` : `<span class="note">${esc(l)}: not set</span>`).join(" ")}</td></tr>`).join("")}</tbody></table>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="discordSettings">Save</button></div>`;
+    },
+    read(){ const events = {}; F("[data-dc-ev]").forEach(c => { events[c.dataset.dcEv] = c.checked; }); return { events }; }
   },
   activityLog: {
     render(cfg){
@@ -1904,6 +1958,25 @@ async function runFeatureAction(act, btn){
   if (act === "tag-add") return editorRowChange("dietTags", "tags", l => (l.length ? l : DEFAULT_DIET_TAGS).concat([{ code: "", name: "", filter: true }]));
   if (act === "tag-remove") { const i = Number(btn.dataset.i); return editorRowChange("dietTags", "tags", l => l.filter((_, j) => j !== i)); }
   if (act === "copy-venue") return copyVenueSetup();
+  if (act === "dc-test") {
+    const v = (venues.length ? venues : myVenues).find(x => x.id === btn.dataset.venue), url = v && v.discordWebhooks && v.discordWebhooks[btn.dataset.hook];
+    if (!url) return;
+    try { const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ embeds: [{ title: "NIPOS test message", description: `Testing the ${btn.dataset.hook} webhook for ${v.name}. If you can read this, it works.`, color: 0x3cc0c8, timestamp: new Date().toISOString() }] }) });
+      document.getElementById("featureMsg").textContent = r.ok ? `Sent. Check the Discord channel for ${v.name}.` : `Discord said no (${r.status}). Check the webhook link.`; }
+    catch (e) { document.getElementById("featureMsg").textContent = "Couldn't reach Discord. Check the webhook link."; }
+    logActivity("Tested a Discord webhook", `${v.name}: ${btn.dataset.hook}`, null);
+    return;
+  }
+  if (act === "ds-test") {
+    document.getElementById("featureMsg").textContent = "Sending…";
+    try {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      const r = await fetch(SUPABASE_URL + "/functions/v1/daily-summary", { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY, Authorization: "Bearer " + (session ? session.access_token : "") }, body: JSON.stringify({ test: true }) });
+      const j = await r.json().catch(() => ({}));
+      document.getElementById("featureMsg").textContent = j.sent ? `Sent to ${j.sent} ${j.sent === 1 ? "person" : "people"}.` : j.error === "no_key" ? "No Resend key in Supabase yet, so nothing was sent. See the note above." : j.error === "no_recipients" ? "Add someone to send it to, and save, first." : "Couldn't send it: " + (j.error || r.status);
+    } catch (e) { document.getElementById("featureMsg").textContent = "Couldn't reach the email service."; }
+    return;
+  }
   if (act === "disc-add") return editorRowChange("discounts", "buttons", l => l.concat([{ id: uid("d"), label: "New discount", pct: 10 }]));
   if (act === "disc-remove") return editorRowChange("discounts", "buttons", removeAt(btn.dataset.i));
   if (act === "dash-add") return editorRowChange("drinkOptions", "dashes", l => l.concat([{ id: uid("x"), name: "", pence: 100 }]));
@@ -2264,12 +2337,43 @@ async function loadDashboard(){
     document.querySelector("#venueBreakdownTable tbody").innerHTML = rows.map(r => `<tr><td>${esc(r.name)}</td><td>${fmt(r.total)}</td><td>${r.txCount}</td></tr>`).join("") || `<tr><td colspan="3" style="color:var(--text-muted);">No sales in this range.</td></tr>`;
   }
 
+  renderTarget(summary.grandTotal, startMs, endMs, venueIds);
+  renderStaffBreakdown(sales, refunds, startMs, endMs, venueIds);
   const cur = bucketTotals(sales, refunds, bucket, 0);
   const before = bucketTotals(prevSales, prevRefunds, bucket, startMs - cmp.startMs);
   lastDash = { bucket, axis: bucketAxis(startMs, endMs, bucket, cur, before), cur, before, cmp, best: computeBestSellers(sales, 8, refunds), summary };
   renderCharts();
 }
 
+// Takings target (feature "takingsTarget"): each venue's daily target, times the days shown.
+function renderTarget(taken, startMs, endMs, venueIds){
+  const card = document.getElementById("targetCard");
+  const targets = featureOn("takingsTarget") ? (featureConfig("takingsTarget").venues || {}) : {};
+  const daily = venueIds.reduce((n, v) => n + (Math.round(Number(targets[v]) * 100) || 0), 0);
+  card.hidden = !daily;
+  if (!daily) return;
+  const days = Math.max(1, Math.round((Math.min(endMs, Date.now()) - startMs) / 864e5 + 0.49));
+  const target = daily * days, pct = Math.round(taken / target * 100);
+  document.getElementById("targetText").textContent = `${fmt(taken)} of ${fmt(target)} (${pct}%)${days > 1 ? ` · ${days} days` : ""}${taken >= target ? " · target hit" : ` · ${fmt(target - taken)} to go`}`;
+  document.getElementById("targetFill").style.width = Math.min(100, pct) + "%";
+  document.getElementById("targetBar").setAttribute("aria-valuenow", String(Math.min(100, pct)));
+  card.classList.toggle("hit", taken >= target);
+}
+// Takings per person (feature "staffTakings"): sales, tips and refunds by who took them.
+async function renderStaffBreakdown(sales, refunds, startMs, endMs, venueIds){
+  const wrap = document.getElementById("staffBreakdownWrap");
+  wrap.hidden = !featureOn("staffTakings");
+  if (wrap.hidden) return;
+  let tips = [];
+  try { const { data } = await supabaseClient.from("gratuities").select("data").in("venue_id", venueIds).gte("ts", startMs).lte("ts", endMs).limit(20000); tips = (data || []).map(r => r.data).filter(g => !g.isTest); } catch (e) {}
+  const rows = new Map();
+  const row = (id, name) => { const k = id || "__none"; if (!rows.has(k)) rows.set(k, { name: id ? (name || (users.find(u => u.id === id) || {}).name || "Someone") : "Not recorded", sales: 0, orders: 0, tips: 0, refunds: 0 }); return rows.get(k); };
+  sales.forEach(s => { const r = row(s.byId, s.by); r.sales += s.total || 0; if (!s.splitPart || s.splitPart === 1) r.orders++; });
+  tips.forEach(g => { row(g.byId, g.by).tips += g.amount || 0; });
+  refunds.forEach(x => { row(x.byId, x.by).refunds += x.pence || 0; });
+  const list = [...rows.values()].sort((a, b) => b.sales - a.sales);
+  document.querySelector("#staffBreakdownTable tbody").innerHTML = list.map(r => `<tr><td>${esc(r.name)}</td><td>${fmt(r.sales)}</td><td>${r.orders}</td><td>${fmt(r.tips)}</td><td>${r.refunds ? "−" + fmt(r.refunds) : fmt(0)}</td></tr>`).join("") || `<tr><td colspan="5" style="color:var(--text-muted);">No sales in this range.</td></tr>`;
+}
 function chartColors(){
   const style = getComputedStyle(document.documentElement);
   const v = n => style.getPropertyValue(n).trim();
@@ -2476,7 +2580,7 @@ async function setStopsForNames(names, on){
     color: on ? 0xff7a68 : 0x49c98d,
     fields: [{ name: changed.length === 1 ? "Product" : "Products", value: changed.join(", ").slice(0, 1000), inline: true }, { name: "By", value: currentUser ? currentUser.name + " (Backend)" : "Backend", inline: true }],
     timestamp: new Date().toISOString()
-  });
+  }, null, "stops");
 }
 
 function renderProductRow(it, cat){

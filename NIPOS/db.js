@@ -1044,8 +1044,10 @@ function maintenanceModeOn() { return maintenanceMode || featureOn("maintenance"
 // Each venue configures its own Discord webhooks in Backend (Venues section), no more one hardcoded
 // channel for every site. Silently no-ops if the current venue hasn't set one, or Maintenance Mode
 // is on (so testing never pages real staff or spams a real channel).
-async function postDiscordEmbed(webhook, embed, file){
-  if (!webhook || maintenanceMode) return;
+// Discord settings (feature "discordSettings"): which events go to Discord. kind: orders | refunds | stops | zreads.
+function discordOn(kind) { return !kind || !featureOn("discordSettings") || (featureConfig("discordSettings").events || {})[kind] !== false; }
+async function postDiscordEmbed(webhook, embed, file, kind){
+  if (!webhook || maintenanceMode || !discordOn(kind)) return;
   const opts = file ? (() => {
     const form = new FormData();
     form.append("payload_json", JSON.stringify({ embeds: [embed] }));
@@ -1218,7 +1220,7 @@ async function performZRead(venue, closedByName) {
         { name: "Closed by", value: closedByName || "Unknown", inline: true }
       ],
       timestamp: new Date(closedAt).toISOString()
-    }, { blob: new Blob([reportHtml], { type: "text/html" }), name: `z-read-${closedAt}.html` });
+    }, { blob: new Blob([reportHtml], { type: "text/html" }), name: `z-read-${closedAt}.html` }, "zreads");
   }
   return { zId, closedAt, summary: fullSummary, transactions, sales, refunds, gratuities, abandoned };
 }
@@ -1336,6 +1338,7 @@ async function refundSaleLine(saleId, itemIdx, extra) {
   if (already) return { error: "That item has already been refunded." };
   const item = fresh.items[itemIdx];
   const refundRow = { id: "r" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), saleTs: fresh.ts, itemName: item.name, qty: item.qty, pence: refundAmountFor(fresh, item), method: fresh.method || "card" };
+  if (signedInUserId) { refundRow.byId = signedInUserId; refundRow.by = signedInUserName || null; } // takings per person
   if (extra && extra.reason) refundRow.reason = extra.reason;
   if (extra && extra.approvedBy) refundRow.approvedBy = extra.approvedBy;
   if (maintenanceMode) refundRow.isTest = true;
@@ -1354,7 +1357,7 @@ function logRefundToDiscordFor(venue, byName, refundRow, sale) {
       { name: "By", value: byName || "Unknown", inline: true }
     ],
     timestamp: new Date(refundRow.ts).toISOString()
-  });
+  }, null, "refunds");
 }
 
 function esc(s) {

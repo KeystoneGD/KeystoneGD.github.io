@@ -395,3 +395,18 @@ drop policy if exists "venue members full access" on public.tabs;
 create policy "venue members full access" on public.tabs for all to authenticated
   using (is_global_admin() or is_member_of_venue(venue_id)) with check (is_global_admin() or is_member_of_venue(venue_id));
 grant select, insert, update, delete on public.tabs to authenticated;
+
+-- Daily summary (Master settings feature "dailySummary"): the daily-summary Edge Function, called every
+-- hour by pg_cron with a random secret, emails each night's takings through Resend.
+create extension if not exists pg_net;
+create extension if not exists pg_cron;
+insert into public.app_secrets (key, value) values ('cron_secret', encode(extensions.gen_random_bytes(24), 'hex')) on conflict (key) do nothing;
+-- select cron.schedule('nipos-daily-summary', '2 * * * *', $cron$ select net.http_post(
+--   url := 'https://djegigghjeisoyecxeyo.supabase.co/functions/v1/daily-summary',
+--   headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', (select value from public.app_secrets where key = 'cron_secret')),
+--   body := '{}'::jsonb); $cron$);
+--
+-- TO TURN ON THE EMAILS: make a free account at resend.com, verify your domain (or use their test
+-- address), create an API key, then run this once with your own values:
+--   insert into public.app_secrets (key, value) values ('resend_api_key', 'YOUR-RESEND-KEY'), ('resend_from', 'NIPOS <takings@yourdomain.com>')
+--   on conflict (key) do update set value = excluded.value;
