@@ -197,6 +197,10 @@ drop policy if exists "staff log their own actions" on public.activity_log;
 create policy "staff log their own actions" on public.activity_log for insert to authenticated with check (user_id = auth.uid()::text);
 drop policy if exists "only $YSTEM reads the activity log" on public.activity_log;
 create policy "only $YSTEM reads the activity log" on public.activity_log for select to authenticated using (public.is_system_user());
+-- Staff with View Activity Logs read it too (Backend > Activity log).
+drop policy if exists "View Activity Logs reads the activity log" on public.activity_log;
+create policy "View Activity Logs reads the activity log" on public.activity_log for select to authenticated using (
+  exists (select 1 from public.staff_users su where su.id = auth.uid()::text and coalesce((su.data->'perms'->>'viewActivityLogs')::boolean, false) and coalesce((su.data->'perms'->>'active')::boolean, true)));
 grant select, insert on public.activity_log to authenticated;
 revoke update, delete on public.activity_log from anon, authenticated;
 

@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021d">
-<link rel="stylesheet" href="layouts.css?v=20261021d">
+<link rel="stylesheet" href="nipos.css?v=20261021e">
+<link rel="stylesheet" href="layouts.css?v=20261021e">
 </head>
 <body>
 
@@ -676,7 +676,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021d"></script>
+<script src="db.js?v=20261021e"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -2165,6 +2165,7 @@ document.getElementById("chargeConfirm").addEventListener("click", async () => {
   if (!newOrder.isTest) openOrders.unshift(newOrder);
   ordersStore.save(newOrder);
   logOrderToDiscord(sale);
+  logActivity(sale.isTest ? "Sale (test)" : "Sale", `${fmt(sale.total)} by ${sale.method}, ${items.reduce((n, i) => n + i.qty, 0)} items${sale.table ? ", table " + sale.table : ""}`);
   if (sale.discountAmount > 0) logActivity("Discount given", `${sale.discountLabel || "Discount"} −${fmt(sale.discountAmount)} on ${fmt(sale.base)}${sale.table ? ", table " + sale.table : ""}`);
   saveLocal(LS_LAST_ORDER, cart); // for the Dock layout's "Last order again"
   cart = {}; discount = null; currentNotes = ""; currentTable = ""; document.getElementById("notesInput").value = ""; document.getElementById("tableInput").value = ""; saveJSON(LS_CART, cart);
@@ -2212,6 +2213,7 @@ function ensureAudioCtx(){
 }
 ["pointerdown", "keydown"].forEach(evt => document.addEventListener(evt, ensureAudioCtx, { once: true, passive: true }));
 function alertUser(title, body, urgent){
+  logNotificationReceived(title, body);
   showToast(`${title}${body ? ": " + body : ""}`);
   playChime();
   if (urgent && navigator.vibrate) { try { navigator.vibrate([300, 150, 300, 150, 300]); } catch(e){} }
@@ -2285,7 +2287,7 @@ function checkPersonalNotifications(list){
   list.filter(n => !knownNotificationIds.has(n.id) && (n.toUserId === "all" || n.toUserId === currentUserId) && n.fromUserId !== currentUserId)
     .forEach(n => {
       if (n.kind === "message") { playChime(); if (navigator.vibrate) { try { navigator.vibrate([300, 150, 300]); } catch (e) {} } showPrivateMessage(n); }
-      else if (n.quiet) showToast(n.message);
+      else if (n.quiet) { showToast(n.message); logNotificationReceived("Notice", n.message, n.fromName); }
       else alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent);
     });
   knownNotificationIds = ids;
@@ -2356,6 +2358,7 @@ document.getElementById("gratuityBtn").addEventListener("click", async () => {
   if (!grat.isTest) { gratuities.push(grat); saveLocal(LS_GRAT, gratuities); }
   gratuitiesStore.save(grat);
   showToast("Gratuity logged: " + fmt(Math.round(pounds * 100)));
+  logActivity("Tip logged", fmt(Math.round(pounds * 100)));
 });
 
 /* ---------- login / permissions ---------- */
@@ -2615,6 +2618,7 @@ function renderOpenOrdersList(){
 async function markOrderDelivered(id){
   const o = openOrders.find(x => x.id === id);
   if (o && o.placedById) pushNotification(o.placedById, `Table ${o.table || "?"}: order delivered`);
+  if (o) logActivity("Order delivered", orderLabel(o));
   openOrders = openOrders.filter(x => x.id !== id);
   await ordersStore.remove(id);
   renderOpenOrdersList(); renderOpenOrdersBadge();
@@ -2624,6 +2628,7 @@ async function acceptOpenOrder(id){
   const fresh = await mergeOpenOrder(id, { accepted: true, acceptedBy: currentUser ? currentUser.name : null, acceptedAt: Date.now() });
   if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
   if (o && o.placedById && o.placedById !== currentUserId) sendQuietNotice(o.placedById, currentUserId, currentUser && currentUser.name, `${orderLabel(o)}: order accepted, in progress`);
+  if (o) logActivity("Order accepted", orderLabel(o));
   renderOpenOrdersList(); renderOpenOrdersBadge();
 }
 async function markOrderReady(id){
@@ -2994,6 +2999,7 @@ document.getElementById("zReadBtn").addEventListener("click", async () => {
   if (!ok) return;
   const result = await performZRead(currentVenue, currentUser ? currentUser.name : null);
   if (result.error) { showToast("Z Read failed: " + result.error); return; }
+  logActivity("Z Read", `${currentVenue.name}, closed by ${currentUser ? currentUser.name : "?"}`);
   const zRows = zReportRows(result.summary);
   shiftStart = result.closedAt;
   history = []; abandoned = []; gratuities = []; refunds = [];

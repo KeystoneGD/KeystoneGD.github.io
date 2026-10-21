@@ -23,7 +23,8 @@ const PERM_LABELS = {
   viewOpenOrders: "View Open Orders",
   processRefunds: "Process Refunds",
   sendAnnouncements: "Send Announcements",
-  notifySpecificUsers: "Notify Specific Users"
+  notifySpecificUsers: "Notify Specific Users",
+  viewActivityLogs: "View Activity Logs"
 };
 
 let supabaseClient = null;
@@ -208,6 +209,7 @@ async function signInWithPin(pin) {
 }
 
 async function signOutAuth() {
+  await logActivity("Signed out", activityScreenName(), undefined, true);
   try { await supabaseClient.auth.signOut(); } catch (e) {}
   clearCurrentVenueId();
 }
@@ -693,6 +695,7 @@ function showPrivateMessage(n) {
     el.querySelector("#pmOk").addEventListener("click", () => { el.hidden = true; });
   }
   el.querySelector("#pmTitle").textContent = n.title || `Message from ${n.fromName || "someone"}`;
+  logNotificationReceived(n.title ? "Urgent pop-up" : "Private message", n.message, n.fromName);
   el.querySelector("#pmText").textContent = n.message;
   el.querySelector("#pmTime").textContent = fmtTime(n.ts);
   el.hidden = false;
@@ -722,16 +725,115 @@ function runRemoteCommands(venueId) {
   });
 }
 
-// Activity log (feature "activityLog"): who did what, and when. Only $YSTEM can read it. Nothing is
-// written while the feature is off.
-async function logActivity(action, detail, venueId) {
-  if (!featureOn("activityLog") || !supabaseClient || !signedInUserId) return;
+// Activity log (feature "activityLog"): who did what, and when. $YSTEM and staff with View Activity
+// Logs can read it. Nothing is written while the feature is off. Each entry gets a type, used by the
+// filters in Backend.
+const ACTIVITY_TYPES = [
+  { key: "signin", name: "Signing in and out" },
+  { key: "money", name: "Sales and money", hint: "Discounts given, walk-outs, cleared orders, tips, Z Reads, removed sales" },
+  { key: "refund", name: "Refunds" },
+  { key: "orders", name: "Orders", hint: "Accepted, delivered, problems, service calls" },
+  { key: "stops", name: "Stops" },
+  { key: "menu", name: "Products and categories" },
+  { key: "deals", name: "Discounts and deals" },
+  { key: "staff", name: "Staff" },
+  { key: "venues", name: "Venues and settings" },
+  { key: "messages", name: "Notify and messages" },
+  { key: "master", name: "Master settings" },
+  { key: "taps", name: "Every button pressed", hint: "Every button, tile, tab, menu, tick box and drop-down" },
+  { key: "notifications", name: "Notifications received" },
+  { key: "other", name: "Everything else" }
+];
+function activityType(action) {
+  const a = String(action || "").toLowerCase();
+  if (/^signed (in|out)/.test(a)) return "signin";
+  if (/refund/.test(a)) return "refund";
+  if (/stop|back on sale/.test(a)) return "stops";
+  if (/master settings|master theme|till layout|removed sales|exported data/.test(a)) return /removed sales/.test(a) ? "money" : "master";
+  if (/discount given|without paying|cleared an order|tip|gratuity|z read|x read|end of shift/.test(a)) return "money";
+  if (/deal|offer|discount/.test(a)) return "deals";
+  if (/accepted|delivered|problem|service|order/.test(a)) return "orders";
+  if (/product|category|categories|catalogue|mixer/.test(a)) return "menu";
+  if (/staff/.test(a)) return "staff";
+  if (/venue|settings|test data/.test(a)) return "venues";
+  if (/banner|pop-up|message/.test(a)) return "messages";
+  return "other";
+}
+function activityScreenName(page) {
+  const p = page || location.pathname.split("/").pop() || "index.html";
+  return /orders/.test(p) ? "Order screen" : /backend/.test(p) ? "Backend" : "Till";
+}
+// Entries are queued and sent together every few seconds (one request, not one per tap). Anything
+// that has to land before the person is signed out (signing out itself) passes now = true.
+let activityQueue = [], activityFlushing = null;
+function activityRow(action, detail, venueId, type) {
   const ts = Date.now();
-  try {
-    await supabaseClient.from("activity_log").insert({ id: "a" + ts + Math.random().toString(36).slice(2, 6), ts,
-      venue_id: venueId === undefined ? (currentVenueId || null) : venueId, user_id: signedInUserId,
-      data: { action, detail: detail || "", by: signedInUserName || "", page: location.pathname.split("/").pop() || "index.html" } });
-  } catch (e) {}
+  return { id: "a" + ts + Math.random().toString(36).slice(2, 8), ts,
+    venue_id: venueId === undefined ? (currentVenueId || null) : venueId, user_id: signedInUserId,
+    data: { action, type: type || activityType(action), detail: String(detail || "").slice(0, 300), by: signedInUserName || "", page: location.pathname.split("/").pop() || "index.html" } };
+}
+async function flushActivity() {
+  if (activityFlushing) await activityFlushing;
+  if (!activityQueue.length || !supabaseClient) return;
+  const batch = activityQueue.splice(0, 200);
+  activityFlushing = (async () => { try { const { error } = await supabaseClient.from("activity_log").insert(batch); if (error && batch.length < 400) activityQueue.unshift(...batch.filter(r => r.user_id === signedInUserId)); } catch (e) {} })();
+  await activityFlushing; activityFlushing = null;
+  if (activityQueue.length) return flushActivity();
+}
+async function logActivity(action, detail, venueId, now) {
+  if (!featureOn("activityLog") || !supabaseClient || !signedInUserId) return;
+  activityQueue.push(activityRow(action, detail, venueId));
+  if (now) await flushActivity();
+}
+setInterval(() => { if (activityQueue.length) flushActivity(); }, 3000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushActivity(); });
+
+// Full logs (Activity log option "Every tap", on unless $YSTEM turns it off): every button, tile, tab,
+// menu item, tick box and drop-down someone presses, with where it was. PIN pads, sign-in screens and
+// password boxes are never logged, and nothing anyone types is.
+function fullActivityLogging() { return featureOn("activityLog") && featureConfig("activityLog").everyTap !== false; }
+function tapLabel(el) {
+  const clean = t => String(t || "").replace(/\s+/g, " ").trim().slice(0, 80);
+  if (el.matches("input[type=checkbox],input[type=radio]")) {
+    const lab = el.closest("label") || (el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`));
+    return `${clean(lab ? lab.textContent : el.getAttribute("aria-label") || el.name || el.id)} ${el.checked ? "(ticked)" : "(unticked)"}`;
+  }
+  if (el.tagName === "SELECT") {
+    const lab = el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
+    return `${clean(lab ? lab.textContent : el.getAttribute("aria-label") || el.id)}: ${clean(el.selectedOptions[0] ? el.selectedOptions[0].textContent : el.value)}`;
+  }
+  return clean(el.getAttribute("aria-label")) || clean(el.textContent) || clean(el.title) || el.id || el.className || "button";
+}
+function tapWhere(el) {
+  const box = el.closest("[role=dialog],[role=alertdialog],.modal-card,.sheet,.drawer,.pm-card,.page.active,.pos-menu,header,.sidebar,.cartbar");
+  if (!box) return "";
+  const h = box.querySelector("h1,h2,h3,legend");
+  const name = h ? h.textContent.replace(/\s+/g, " ").trim().slice(0, 50) : box.id || "";
+  return name;
+}
+function tapIsPrivate(el) {
+  return !!el.closest("#loginGate,#systemGate,#lockedScreen,[data-no-log]") || el.matches("input[type=password]");
+}
+function logTap(el, verb) {
+  if (!fullActivityLogging() || !signedInUserId || tapIsPrivate(el)) return;
+  const where = tapWhere(el), label = tapLabel(el);
+  if (!label) return;
+  activityQueue.push(activityRow(verb || "Pressed", where && where !== label ? `${label} · ${where}` : label, undefined, "taps"));
+}
+document.addEventListener("click", e => {
+  const el = e.target.closest && e.target.closest("button,a[href],[role=button],[role=tab],[role=menuitem],summary,input[type=checkbox],input[type=radio],.pm-tile,.pm-rowi,.pm-dtile");
+  if (!el || el.disabled) return;
+  if (el.matches("input[type=checkbox],input[type=radio]")) return; // logged on change, with the new state
+  logTap(el);
+}, true);
+document.addEventListener("change", e => {
+  const el = e.target;
+  if (el && el.matches && el.matches("input[type=checkbox],input[type=radio],select")) logTap(el, el.tagName === "SELECT" ? "Picked" : "Ticked");
+}, true);
+// Notifications and pop-ups someone gets, logged against them.
+function logNotificationReceived(kind, text, from) {
+  if (!fullActivityLogging() || !signedInUserId) return;
+  activityQueue.push(activityRow("Got a notification", `${kind}${from ? " from " + from : ""}: ${text || ""}`, undefined, "notifications"));
 }
 
 // Every page follows the master theme, till layout and Master settings: read on load, every 15
