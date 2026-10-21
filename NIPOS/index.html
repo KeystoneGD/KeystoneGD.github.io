@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022b">
-<link rel="stylesheet" href="layouts.css?v=20261022b">
+<link rel="stylesheet" href="nipos.css?v=20261022c">
+<link rel="stylesheet" href="layouts.css?v=20261022c">
 </head>
 <body>
 
@@ -751,7 +751,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261022b"></script>
+<script src="db.js?v=20261022c"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -1605,9 +1605,11 @@ async function loadCatalogueFromDb(){
   const catRows = await categoriesStore.fetchAll();
   const itemRows = await catalogueItemsStore.fetchAll();
   if (!catRows || !itemRows || !catRows.length || !itemRows.length) return; // keep the hardcoded fallback
+  const oldById = BY_ID;
   CAT = catalogueFromDb(catRows, itemRows);
   ALL_ITEMS = CAT.flatMap(c => c.items);
   BY_ID = Object.fromEntries(ALL_ITEMS.map(p => [p.id, p]));
+  remapCartToMenu(oldById);
   pruneUnknownCartLines();
   const cocktailCat = CAT.find(c => c.name.startsWith("Cocktails"));
   COCKTAIL_IDS = new Set(cocktailCat ? cocktailCat.items.map(i => i.id) : []);
@@ -2250,10 +2252,12 @@ document.getElementById("cartLines").addEventListener("click", e => {
 });
 
 /* ---------- payment ---------- */
+let chargeShownTotal = null; // the amount on the payment screen, so a changed order is never logged at it
 function openCharge(method){
   if (cartCount() === 0) return;
   pendingMethod = method;
   const { total } = computeTotals();
+  chargeShownTotal = total;
   document.getElementById("chargeAmount").textContent = fmt(total);
   const hint = document.getElementById("chargeHint");
   const confirmBtn = document.getElementById("chargeConfirm");
@@ -2280,6 +2284,21 @@ function tableProblem(t){
   const n = Number(t), min = Number(rules.min) || 1, max = Number(rules.max) || Infinity;
   if (!/^\d+$/.test(t) || n < min || n > max) return `There's no table ${t}. Tables here are ${min}${isFinite(max) ? "–" + max : " and up"}.`;
   return null;
+}
+// The till shows its built-in menu while the venue's own menu loads. Anything rung up in that time is
+// matched to the venue's menu by name (the ids differ), so the order survives the switch.
+function remapCartToMenu(oldById){
+  let changed = false;
+  const byName = new Map(ALL_ITEMS.map(p => [p.name, p]));
+  Object.keys(cart).forEach(key => {
+    const parts = key.split("::");
+    if (BY_ID[parts[0]]) return;
+    const old = oldById[parts[0]], now = old && byName.get(old.name);
+    if (!now) return;
+    const next = [now.id].concat(parts.slice(1)).join("::");
+    cart[next] = (cart[next] || 0) + cart[key]; delete cart[key]; changed = true;
+  });
+  if (changed) { saveJSON(LS_CART, cart); renderQtys(); renderCartBar(); if (document.getElementById("cartSheet").classList.contains("show")) renderCartSheet(); }
 }
 // A line whose product isn't on this till's menu any more has no name or price, so it can't be sold.
 function pruneUnknownCartLines(){
@@ -2360,6 +2379,15 @@ function updateChangeDisplay(){
 
 document.getElementById("chargeConfirm").addEventListener("click", async () => {
   const { total } = computeTotals();
+  // The order changed while the payment screen was up (something went on stop, the menu reloaded):
+  // never log a different amount, or an empty order, than the one the customer was charged.
+  if (cartCount() === 0 || total !== chargeShownTotal) {
+    closeSheet("chargeSheet");
+    if (cartCount()) { renderCartSheet(); openSheet("cartSheet"); }
+    showToast(cartCount() ? `The order changed to ${fmt(total)}. Check it, then take payment again.` : "The order is empty, so nothing was logged.");
+    logActivity("Payment stopped", `Order changed on the payment screen: ${fmt(chargeShownTotal || 0)} shown, now ${fmt(total)}`);
+    return;
+  }
   if (pendingMethod === "cash" && cashGivenPence < total) {
     const ok = await askConfirm({ title:"Amount given is short", message:`Given ${fmt(cashGivenPence)}, total is ${fmt(total)}. Log the sale anyway?`, confirmLabel:"Log anyway", danger:true });
     if (!ok) return;
