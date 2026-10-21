@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021f">
-<link rel="stylesheet" href="layouts.css?v=20261021f">
+<link rel="stylesheet" href="nipos.css?v=20261021g">
+<link rel="stylesheet" href="layouts.css?v=20261021g">
 </head>
 <body>
 
@@ -676,7 +676,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021f"></script>
+<script src="db.js?v=20261021g"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -1034,11 +1034,12 @@ async function checkLockdown(){
     const s = (data && data.data) || {};
     maintenanceMode = !!s.maintenanceMode || featureOn("maintenance");
     const screen = document.getElementById("lockdownScreen");
-    if (s.ordersSuspended) {
+    const here = list => (list || []).includes(currentVenueId); // per venue, from Backend; the old switches mean every venue
+    if (s.ordersSuspended || here(s.suspendedVenueIds)) {
       document.getElementById("lockdownTitle").textContent = "Orders Suspended";
       document.getElementById("lockdownMessage").textContent = "A manager has paused order-taking. Hang tight, this will lift automatically once they turn it back on.";
       screen.hidden = false;
-    } else if (s.serviceBreak) {
+    } else if (s.serviceBreak || here(s.breakVenueIds)) {
       document.getElementById("lockdownTitle").textContent = "On a Service Break";
       document.getElementById("lockdownMessage").textContent = "The till is paused for a service break. Hang tight, this will lift automatically once it ends.";
       screen.hidden = false;

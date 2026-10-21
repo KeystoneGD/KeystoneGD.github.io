@@ -778,11 +778,14 @@ function activityScreenName(page) {
 // Entries are queued and sent together every few seconds (one request, not one per tap). Anything
 // that has to land before the person is signed out (signing out itself) passes now = true.
 let activityQueue = [], activityFlushing = null;
+// Backend works across the whole site, so its entries belong to "NIPOS Backend", not a venue; the venue
+// a Backend change was for (if just one) is kept alongside as data.venueId.
 function activityRow(action, detail, venueId, type) {
-  const ts = Date.now();
-  return { id: "a" + ts + Math.random().toString(36).slice(2, 8), ts,
-    venue_id: venueId === undefined ? (currentVenueId || null) : venueId, user_id: signedInUserId,
-    data: { action, type: type || activityType(action), detail: String(detail || "").slice(0, 300), by: signedInUserName || "", page: location.pathname.split("/").pop() || "index.html" } };
+  const ts = Date.now(), page = location.pathname.split("/").pop() || "index.html", backend = /backend/.test(page);
+  const venue = venueId === undefined ? (currentVenueId || null) : venueId;
+  const data = { action, type: type || activityType(action), detail: String(detail || "").slice(0, 300), by: signedInUserName || "", page };
+  if (backend && venue && type !== "taps") data.venueId = venue;
+  return { id: "a" + ts + Math.random().toString(36).slice(2, 8), ts, venue_id: backend ? null : venue, user_id: signedInUserId, data };
 }
 async function flushActivity() {
   if (activityFlushing) await activityFlushing;
