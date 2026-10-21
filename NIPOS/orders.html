@@ -568,7 +568,7 @@ function checkPersonalNotifications(list){
 }
 async function logStopToDiscord(name, on){
   const webhook = currentVenue && currentVenue.discordWebhooks && currentVenue.discordWebhooks.stop;
-  if (!webhook) return;
+  if (!webhook || !discordOn("stops")) return;
   const me = currentUser;
   try {
     await fetch(webhook, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ embeds: [{

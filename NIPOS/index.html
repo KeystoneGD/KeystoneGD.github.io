@@ -2353,6 +2353,7 @@ function completeSale(payments){
     if (p.method === "cash" && p.cashGiven != null) { sale.cashGiven = p.cashGiven; sale.change = Math.max(0, p.cashGiven - p.pence); }
     if (group) { sale.splitGroup = group; sale.splitPart = i + 1; sale.splitOf = payments.length; }
     if (tab) sale.tabId = tab.id;
+    if (currentUser) { sale.byId = currentUser.id; sale.by = currentUser.name; } // takings per person
     if (discount && discount.approvedBy) sale.discountApprovedBy = discount.approvedBy;
     if (maintenanceMode) sale.isTest = true;
     return sale;
@@ -2739,7 +2740,7 @@ async function logOrderToDiscord(sale){
       { name: "Discount", value: discount, inline: true }
     ],
     timestamp: new Date(sale.ts).toISOString()
-  });
+  }, null, "orders");
 }
 async function logRefundToDiscord(refundRow, sale){
   logRefundToDiscordFor(currentVenue, currentUser ? currentUser.name : null, refundRow, sale);
@@ -2753,7 +2754,7 @@ async function logStopToDiscord(name, on){
       { name: "By", value: currentUser ? currentUser.name : "Unknown", inline: true }
     ],
     timestamp: new Date().toISOString()
-  });
+  }, null, "stops");
 }
 async function pushNotification(toUserId, message, urgent){
   const me = currentUser;
@@ -2781,6 +2782,7 @@ document.getElementById("gratuityBtn").addEventListener("click", async () => {
   const pounds = parseFloat(val);
   if (!isFinite(pounds) || pounds <= 0) { showToast("Enter a valid amount"); return; }
   const grat = { id: "g"+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), amount: Math.round(pounds * 100) };
+  if (currentUser) { grat.byId = currentUser.id; grat.by = currentUser.name; }
   if (maintenanceMode) grat.isTest = true;
   if (!grat.isTest) { gratuities.push(grat); saveLocal(LS_GRAT, gratuities); }
   gratuitiesStore.save(grat);

@@ -2476,7 +2476,7 @@ async function setStopsForNames(names, on){
     color: on ? 0xff7a68 : 0x49c98d,
     fields: [{ name: changed.length === 1 ? "Product" : "Products", value: changed.join(", ").slice(0, 1000), inline: true }, { name: "By", value: currentUser ? currentUser.name + " (Backend)" : "Backend", inline: true }],
     timestamp: new Date().toISOString()
-  });
+  }, null, "stops");
 }
 
 function renderProductRow(it, cat){
