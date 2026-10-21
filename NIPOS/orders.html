@@ -124,7 +124,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css">
+<link rel="stylesheet" href="nipos.css?v=20261021c">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -268,7 +268,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js"></script>
+<script src="db.js?v=20261021c"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -329,12 +329,13 @@ function applyLoginState(){
   setSignedInUser(u);
   maintenanceLockScreen(maintenanceLocksOut(u), signOutOrders);
   renderAnnouncement(currentVenue && currentVenue.id);
+  if (u) setTimeout(() => runRemoteCommands(currentVenueId), 0);
   document.getElementById("announceBtn").hidden = !(u && featureOn("announcements") && (u.perms.sendAnnouncements || u.system));
   document.getElementById("messageBtn").hidden = !(u && featureOn("privateMessages") && (u.perms.notifySpecificUsers || u.system));
 }
 document.addEventListener("nipos:settingschange", () => applyLoginState());
 onRemoteCommand("refresh", () => location.reload());
-onRemoteCommand("signout", () => { if (currentUser && !currentUser.system) signOutOrders(); });
+onRemoteCommand("signout", () => { if (!currentUser) return false; if (!currentUser.system) signOutOrders(); });
 
 // "Message every till" (Send Announcements) and "Message someone" (Notify Specific Users).
 let sendMode = null;

@@ -251,7 +251,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css">
+<link rel="stylesheet" href="nipos.css?v=20261021c">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -482,6 +482,7 @@ table.data-table tr:last-child td{border-bottom:0;}
         </div>
       </div>
       <p class="note">Each user signs in with their PIN. Permissions control what they can do.</p>
+      <p class="note" id="userMsg" role="status"></p>
       <div class="card" id="userList"><div class="empty">Loading…</div></div>
       <button type="button" class="show-hidden-link" id="showHiddenUsersBtn" hidden>Show hidden accounts</button>
     </section>
@@ -543,12 +544,22 @@ table.data-table tr:last-child td{border-bottom:0;}
     </section>
 
     <section class="page" id="page-themes">
-      <div class="page-header"><h1>Master settings</h1></div>
+      <div class="page-header">
+        <h1>Master settings</h1>
+        <div class="tab-row" role="tablist" aria-label="Master settings">
+          <button class="tab-btn active" data-tab="ms-features" role="tab" aria-selected="true" aria-controls="tab-ms-features">Features</button>
+          <button class="tab-btn" data-tab="ms-looks" role="tab" aria-selected="false" aria-controls="tab-ms-looks">Themes and layouts</button>
+          <button class="tab-btn" data-tab="ms-wipe" role="tab" aria-selected="false" aria-controls="tab-ms-wipe">Remove sales</button>
+        </div>
+      </div>
+      <div class="tab-panel active" id="tab-ms-features" role="tabpanel">
       <h2 class="layout-title" style="margin-top:0;">Features</h2>
       <p class="note">Every feature here starts switched off, so you can set it up first. Nothing changes on the tills until you switch it on.</p>
       <p class="note" id="featureMsg" role="status"></p>
       <div class="feature-list" id="featureList"></div>
-      <h2 class="layout-title">Master theme</h2>
+      </div>
+      <div class="tab-panel" id="tab-ms-looks" role="tabpanel">
+      <h2 class="layout-title" style="margin-top:0;">Master theme</h2>
       <p class="note">Changes the colours on every till, order screen and Backend. Devices that are open switch within a minute. Each device's own switch still flips between the theme's normal colours and its dark mode. Green (ready), red (problem or refund) and yellow (in progress) keep their meaning in every theme.</p>
       <p class="note" id="themeMsg" role="status"></p>
       <div class="theme-grid" id="themeGrid"></div>
@@ -557,8 +568,9 @@ table.data-table tr:last-child td{border-bottom:0;}
       <p class="note">How the menu looks on every till. Each layout has a phone and a tablet version, and each device picks the right one by itself. Taking payment, the order panel and every option picker stay the same in all of them.</p>
       <p class="note" id="layoutMsg" role="status"></p>
       <div class="theme-grid" id="layoutGrid"></div>
-
-      <h2 class="layout-title">Remove sales</h2>
+      </div>
+      <div class="tab-panel" id="tab-ms-wipe" role="tabpanel">
+      <h2 class="layout-title" style="margin-top:0;">Remove sales</h2>
       <p class="note">Clears out test transactions. Removes every sale, refund, tip, abandoned order, open order and Z Read for the venue you pick. Takings, Past Orders and the charts start again from nothing. This can't be undone.</p>
       <div class="card wipe-card">
         <label class="field" for="wipeVenue">Venue</label>
@@ -573,6 +585,7 @@ table.data-table tr:last-child td{border-bottom:0;}
           <button type="button" class="btn btn-danger-solid btn-block" id="wipeBtn" style="margin-top:12px;" disabled>Remove these sales</button>
         </div>
         <p class="note" id="wipeMsg" role="alert" style="margin-top:10px;"></p>
+      </div>
       </div>
     </section>
   </main>
@@ -658,7 +671,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js"></script>
+<script src="db.js?v=20261021c"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -830,6 +843,7 @@ function applyLoginState(){
   maintenanceLockScreen(maintenanceLocksOut(currentUser), signOutBackend);
   if (currentUser && currentUser.system) { renderThemes(); renderLayouts(); renderWipeVenues(); renderFeatures(); }
   renderAnnounceCard();
+  if (currentUser && !currentUser.system) setTimeout(() => runRemoteCommands(currentVenueId), 0);
   if (currentUser && currentUser.perms.backendAccess) {
     document.getElementById("loginGate").hidden = true;
     shell.hidden = false; hamburger.hidden = false;
@@ -882,6 +896,7 @@ document.getElementById("loginSubmitBtn").addEventListener("click", async () => 
 });
 document.getElementById("loginPinInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginSubmitBtn").click(); });
 async function signOutBackend(){
+  seenMessageIds = null;
   systemPassword = null; systemSignInPending = false;
   if (currentPage === "themes") showPage("dashboard");
   await signOutAuth();
@@ -1015,7 +1030,7 @@ function featureBody(key, cfg){
     const recent = (cfg.commands || []).slice(-5).reverse().map(c => `<li>${c.action === "refresh" ? "Refresh" : "Sign out"} · ${c.venueId ? esc(venueName(c.venueId)) : "every venue"} · ${fmtDayTime(c.ts)}</li>`).join("");
     return `<label class="field" for="fRemoteVenue">Which tills</label><select id="fRemoteVenue">${venueOptions(true)}</select>
       <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="remote-refresh">Refresh them</button><button type="button" class="btn btn-danger" data-act="remote-signout">Sign everyone out</button></div>
-      <p class="note">Open tills act on it within about 15 seconds. Backend isn't affected.</p>
+      <p class="note">Open tills, order screens and Backend act on it within about 15 seconds. A sign-out also catches any device that was closed or asleep, the moment it's opened again. $YSTEM is never signed out.</p>
       ${recent ? `<span class="field">Recently sent</span><ul style="margin:0 0 0 18px;">${recent}</ul>` : ""}`;
   }
   if (key === "personal") {
@@ -1114,6 +1129,53 @@ async function announceFromCard(text){
 document.getElementById("announcePost").addEventListener("click", () => { const t = document.getElementById("announceText").value.trim(); if (t) announceFromCard(t); });
 document.getElementById("announceClear").addEventListener("click", () => announceFromCard(""));
 document.addEventListener("nipos:settingschange", () => { if (currentUser) applyLoginState(); });
+
+// Backend follows "Refresh or sign out tills" too - except $YSTEM, who's the one sending them.
+onRemoteCommand("refresh", () => { if (currentUser && !currentUser.system) location.reload(); });
+onRemoteCommand("signout", () => { if (!currentUser) return false; if (!currentUser.system) signOutBackend(); });
+
+// Private messages: write one from the Users page, and get them here like on the till.
+function openMessageBox(u){
+  let el = document.getElementById("messageBox");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "messageBox"; el.className = "pm-overlay";
+    el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "mbTitle");
+    el.innerHTML = `<div class="pm-card"><h2 id="mbTitle"></h2><p class="note" style="margin:0 0 8px;">It beeps and pops up on their screen, wherever they're signed in.</p>
+      <label class="field" for="mbText">Message</label><textarea id="mbText" rows="3" maxlength="280" style="width:100%;"></textarea>
+      <p class="note" id="mbErr" role="alert"></p>
+      <div style="display:flex;gap:8px;margin-top:10px;"><button type="button" class="btn btn-ghost" id="mbCancel">Cancel</button><button type="button" class="btn btn-accent" id="mbSend" style="flex:1;">Send</button></div></div>`;
+    document.body.appendChild(el);
+    el.querySelector("#mbCancel").addEventListener("click", () => { el.hidden = true; });
+  }
+  el.querySelector("#mbTitle").textContent = `Message ${u.name}`;
+  el.querySelector("#mbText").value = ""; el.querySelector("#mbErr").textContent = "";
+  el.querySelector("#mbSend").onclick = async () => {
+    const text = el.querySelector("#mbText").value.trim();
+    if (!text) { el.querySelector("#mbErr").textContent = "Type a message first."; return; }
+    await sendPrivateMessage(u.id, currentUser, text);
+    el.hidden = true;
+    const msg = document.getElementById("userMsg"); if (msg) msg.textContent = `Message sent to ${u.name}.`;
+  };
+  el.hidden = false;
+  el.querySelector("#mbText").focus();
+}
+let seenMessageIds = null;
+async function checkMyMessages(){
+  if (!currentUser || currentUser.system || !featureOn("privateMessages")) return;
+  const list = await fetchMyNotifications(currentUserId, 30);
+  if (!list) return;
+  const mine = list.filter(n => n.kind === "message" && n.toUserId === currentUserId);
+  if (seenMessageIds === null) { seenMessageIds = new Set(mine.map(n => n.id)); return; }
+  mine.filter(n => !seenMessageIds.has(n.id)).forEach(n => { seenMessageIds.add(n.id); playBackendChime(); showPrivateMessage(n); });
+}
+function playBackendChime(){
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.25, 0.5].forEach(t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 880; g.gain.value = 0.15; o.connect(g); g.connect(ctx.destination); o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.15); });
+  } catch (e) {}
+}
+setInterval(checkMyMessages, 5000);
 
 /* ---------- $YSTEM: remove sales ---------- */
 function renderWipeVenues(){
@@ -1825,9 +1887,10 @@ async function swapCategoryOrder(cats, i, j){
 }
 
 document.querySelectorAll(".tab-btn").forEach(btn => btn.addEventListener("click", () => {
-  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
-  btn.classList.add("active");
+  const page = btn.closest(".page") || document; // each page's tabs only switch that page's panels
+  page.querySelectorAll(".tab-btn").forEach(b => { b.classList.remove("active"); b.setAttribute("aria-selected", "false"); });
+  page.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  btn.classList.add("active"); btn.setAttribute("aria-selected", "true");
   document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
 }));
 
@@ -1900,12 +1963,7 @@ function renderUserList(){
       </div>`;
     row.querySelector(".edit-user-btn").addEventListener("click", () => openUserModal("edit", u));
     const msgBtn = row.querySelector(".msg-user-btn");
-    if (msgBtn) msgBtn.addEventListener("click", async () => {
-      const text = (prompt(`Message for ${u.name}. It beeps and pops up on their screen.`) || "").trim();
-      if (!text) return;
-      await sendPrivateMessage(u.id, currentUser, text.slice(0, 280));
-      alert(`Sent to ${u.name}.`);
-    });
+    if (msgBtn) msgBtn.addEventListener("click", () => openMessageBox(u));
     row.querySelector(".del-user-btn").addEventListener("click", () => deleteUser(u.id));
     wrap.appendChild(row);
   });

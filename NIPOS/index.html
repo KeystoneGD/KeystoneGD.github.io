@@ -312,8 +312,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css">
-<link rel="stylesheet" href="layouts.css">
+<link rel="stylesheet" href="nipos.css?v=20261021c">
+<link rel="stylesheet" href="layouts.css?v=20261021c">
 </head>
 <body>
 
@@ -663,7 +663,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js"></script>
+<script src="db.js?v=20261021c"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -1057,6 +1057,7 @@ async function resolveVenueSelection(){
   await pullRowStores();
   await loadCatalogueFromDb();
   applyFoodSetting();
+  if (!currentUser) return; // signed out while this was loading (e.g. a "sign everyone out")
   sendHeartbeat(currentUserId, currentUser.name);
   checkLockdown();
 }
@@ -2181,7 +2182,7 @@ function checkPersonalNotifications(list){
 // Master settings: react when $YSTEM changes something, and to "refresh / sign out tills".
 document.addEventListener("nipos:settingschange", () => applyLoginState());
 onRemoteCommand("refresh", () => location.reload());
-onRemoteCommand("signout", () => { if (currentUser && !currentUser.system) signOut(); });
+onRemoteCommand("signout", () => { if (!currentUser) return false; if (!currentUser.system) signOut(); });
 async function logOrderToDiscord(sale){
   const drinks = sale.items.map(i => `${i.qty}x ${i.name}`).join("\n") || "-";
   const discount = sale.discountAmount ? `${sale.discountLabel || "Discount"} -${fmt(sale.discountAmount)}` : "None";
@@ -2244,6 +2245,7 @@ function applyLoginState(){
   setSignedInUser(currentUser);
   maintenanceLockScreen(maintenanceLocksOut(currentUser), signOut);
   renderAnnouncement(currentVenue && currentVenue.id);
+  if (currentUser) setTimeout(() => runRemoteCommands(currentVenueId), 0); // e.g. a sign-out sent while this till was closed
   const venuePicker = document.getElementById("venuePickerScreen");
   if (currentUser && !currentVenue) {
     document.getElementById("loginGate").hidden = true;
