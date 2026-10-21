@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021k">
-<link rel="stylesheet" href="layouts.css?v=20261021k">
+<link rel="stylesheet" href="nipos.css?v=20261021l">
+<link rel="stylesheet" href="layouts.css?v=20261021l">
 </head>
 <body>
 
@@ -473,6 +473,14 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
         <button class="admin-row-main" type="button">
           <span class="name">Notify</span>
           <span class="sub" id="notifyRowSub">Message everyone, or one person</span>
+        </button>
+        <span class="chevron" data-icon="chevron"></span>
+      </div>
+
+      <div class="admin-row special" id="clockRow" hidden>
+        <button class="admin-row-main" type="button">
+          <span class="name" id="clockRowName">Clock in</span>
+          <span class="sub" id="clockRowSub">Not clocked in</span>
         </button>
         <span class="chevron" data-icon="chevron"></span>
       </div>
@@ -736,7 +744,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021k"></script>
+<script src="db.js?v=20261021l"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -1111,7 +1119,7 @@ async function checkLockdown(){
   try {
     const { data } = await supabaseClient.from("app_settings").select("data").eq("id", "global").maybeSingle();
     const s = (data && data.data) || {};
-    maintenanceMode = !!s.maintenanceMode || featureOn("maintenance");
+    maintenanceMode = !!s.maintenanceMode || featureOn("maintenance") || trainingFor(currentUserId); // training: this person's sales are practice
     const screen = document.getElementById("lockdownScreen");
     const here = list => (list || []).includes(currentVenueId); // per venue, from Backend; the old switches mean every venue
     if (s.ordersSuspended || here(s.suspendedVenueIds)) {
@@ -2568,6 +2576,44 @@ document.getElementById("receiptsBack").addEventListener("click", () => closeShe
 document.getElementById("receiptDay").addEventListener("change", renderReceipts);
 document.getElementById("receiptQuery").addEventListener("input", () => { clearTimeout(window.__rq); window.__rq = setTimeout(renderReceipts, 250); });
 
+// Clock in and out (feature "clockInOut"): one row per shift, in clock_events.
+const clockStore = rowStore("clock_events", 1000);
+var myShift = null, clockAskedFor = null; // var: applyLoginState can run before this line on first load
+async function loadMyShift(){
+  if (!featureOn("clockInOut") || !currentUserId || !currentVenueId) { myShift = null; return; }
+  const rows = await clockStore.fetchAll();
+  if (rows) myShift = rows.find(r => r.userId === currentUserId && !r.outAt) || null;
+}
+function renderClockRow(){
+  const row = document.getElementById("clockRow");
+  row.hidden = !featureOn("clockInOut");
+  document.getElementById("clockRowName").textContent = myShift ? "Clock out" : "Clock in";
+  document.getElementById("clockRowSub").textContent = myShift ? `Clocked in since ${fmtTime(myShift.inAt)}` : "Not clocked in";
+}
+async function clockIn(){
+  myShift = { id: "ck" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), ts: Date.now(), userId: currentUserId, name: currentUser ? currentUser.name : "", inAt: Date.now(), outAt: null };
+  await clockStore.save(myShift); logActivity("Clocked in", ""); renderClockRow(); showToast("Clocked in at " + fmtTime(myShift.inAt));
+}
+async function clockOut(){
+  if (!myShift) return;
+  myShift.outAt = Date.now(); myShift.ts = myShift.outAt;
+  const mins = Math.round((myShift.outAt - myShift.inAt) / 60000);
+  await clockStore.save(myShift); logActivity("Clocked out", `${Math.floor(mins / 60)} h ${mins % 60} min`);
+  myShift = null; renderClockRow(); showToast(`Clocked out. ${Math.floor(mins / 60)} h ${mins % 60} min.`);
+}
+document.getElementById("clockRow").querySelector(".admin-row-main").addEventListener("click", async () => { if (myShift) { if (await askConfirm({ title: "Clock out?", message: `In since ${fmtTime(myShift.inAt)}.`, confirmLabel: "Clock out" })) clockOut(); } else clockIn(); });
+// After signing in: ask to clock in (once per sign-in), start the idle timer and device reports.
+async function afterSignInExtras(){
+  const key = currentUserId + "|" + currentVenueId;
+  if (!currentUserId || !currentVenueId || clockAskedFor === key) return;
+  clockAskedFor = key;
+  startIdleWatch(() => currentUser, () => signOut());
+  startDeviceReports(() => ({ venue: currentVenue ? currentVenue.name : "" }));
+  if (!featureOn("clockInOut")) return;
+  await loadMyShift(); renderClockRow();
+  if (!myShift && featureConfig("clockInOut").askOnSignIn !== false && await askConfirm({ title: "Clock in?", message: `Start your shift at ${currentVenue ? currentVenue.name : "this venue"} now (${fmtTime(Date.now())}).`, confirmLabel: "Clock in" })) clockIn();
+}
+
 // Z Read reminder (feature "zReminder"): at the set time, if this venue hasn't had a Z Read in the
 // last 20 hours, anyone here who can do one gets a pop-up (once per device per night).
 function checkZReminder(){
@@ -2643,10 +2689,12 @@ function ensureAudioCtx(){
   try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
 }
 ["pointerdown", "keydown"].forEach(evt => document.addEventListener(evt, ensureAudioCtx, { once: true, passive: true }));
-function alertUser(title, body, urgent){
+function alertUser(title, body, urgent, event){
+  if (event && !alertAllowed(event, currentUser)) return; // Alert settings: this event is off for this person
   logNotificationReceived(title, body);
   showToast(`${title}${body ? ": " + body : ""}`);
-  playChime();
+  const sound = event ? alertSound(event, currentUser) : null;
+  if (sound) playNotificationSound(audioCtx, sound); else playChime();
   if (urgent && navigator.vibrate) { try { navigator.vibrate([300, 150, 300, 150, 300]); } catch(e){} }
   if ("Notification" in window && Notification.permission === "granted") {
     try {
@@ -2730,9 +2778,9 @@ function checkPersonalNotifications(list){
   list.filter(n => !knownNotificationIds.has(n.id) && (n.toUserId === "all" || n.toUserId === currentUserId) && n.fromUserId !== currentUserId)
     .forEach(n => {
       if (n.kind === "message") { playChime(); if (navigator.vibrate) { try { navigator.vibrate([300, 150, 300]); } catch (e) {} } showPrivateMessage(n); }
-      else if (isServiceCall(n)) showServiceCall(n);
+      else if (isServiceCall(n)) { if (alertAllowed("serviceCall", currentUser)) showServiceCall(n, alertSound("serviceCall", currentUser)); }
       else if (n.quiet) { showToast(n.message); logNotificationReceived("Notice", n.message, n.fromName); }
-      else alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent);
+      else alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent, /flagged/.test(n.message || "") ? "problem" : null);
     });
   knownNotificationIds = ids;
 }
@@ -2816,6 +2864,7 @@ function applyLoginState(){
   renderAnnouncement(currentVenue && currentVenue.id);
   renderNotifyRow();
   ensurePushForUser();
+  if (currentUser && currentVenue) setTimeout(afterSignInExtras, 1500); else clockAskedFor = null;
   applyBigText(currentUser, currentVenue && currentVenue.id);
   if (currentUser) setTimeout(() => runRemoteCommands(currentVenueId), 0); // e.g. a sign-out sent while this till was closed
   const venuePicker = document.getElementById("venuePickerScreen");
@@ -2891,7 +2940,10 @@ async function signOut(){
 document.getElementById("loginSubmitBtn").addEventListener("click", () => signIn(document.getElementById("loginPinInput").value.trim()));
 document.getElementById("loginPinInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginSubmitBtn").click(); });
 document.getElementById("lockedLogoutBtn").addEventListener("click", signOut);
-document.getElementById("accountSignOutBtn").addEventListener("click", signOut);
+document.getElementById("accountSignOutBtn").addEventListener("click", async () => {
+  if (featureOn("clockInOut") && myShift && await askConfirm({ title: "Clock out too?", message: `You've been clocked in since ${fmtTime(myShift.inAt)}.`, confirmLabel: "Clock out and sign out" })) await clockOut();
+  signOut();
+});
 function updateThemeBtn(){
   const next = themeSwitchInfo();
   document.getElementById("themeToggleBtn").innerHTML = icon(next.icon) + " " + next.label;
@@ -3173,6 +3225,7 @@ function renderAdminHome(){
   document.getElementById("tabsRow").hidden = !featureOn("tabs");
   document.getElementById("receiptsRow").hidden = !featureOn("receipts");
   document.getElementById("displayRow").hidden = !featureOn("customerDisplay");
+  renderClockRow();
   if (featureOn("customerDisplay")) document.getElementById("displayRowSub").textContent = `On the customer's screen, open display.html and enter this till's code: ${displayCode()}`;
   renderTabsBadge();
   renderOpenOrdersBadge();
