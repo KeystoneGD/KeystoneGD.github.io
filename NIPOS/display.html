@@ -17,6 +17,9 @@ body{background:var(--bg);color:var(--text);font-family:'Atkinson Hyperlegible N
 .cd-setup p{color:var(--text-muted);line-height:1.5;}
 .cd-setup label{display:block;font-weight:700;margin:16px 0 6px;}
 .cd-setup input,.cd-setup select{width:100%;box-sizing:border-box;min-height:52px;padding:0 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font:inherit;font-size:20px;}
+.btn{border:0;border-radius:11px;padding:12px 18px;font:inherit;font-weight:700;font-size:16px;cursor:pointer;}
+.btn-accent{background:var(--accent);color:var(--accent-ink);}
+.btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border);}
 .cd-setup .btn{margin-top:16px;width:100%;min-height:52px;}
 .cd-err{color:var(--danger);font-weight:700;min-height:1.4em;}
 .cd-screen{display:flex;flex-direction:column;min-height:100vh;padding:max(24px, env(safe-area-inset-top)) max(28px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));box-sizing:border-box;}
@@ -27,9 +30,10 @@ body{background:var(--bg);color:var(--text);font-family:'Atkinson Hyperlegible N
 .cd-sub{display:flex;justify-content:space-between;font-size:clamp(18px,2.4vw,30px);color:var(--text-muted);padding:4px 0;}
 .cd-total{display:flex;justify-content:space-between;align-items:baseline;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-weight:800;font-size:clamp(40px,8vw,110px);border-top:3px solid var(--text);padding-top:12px;}
 .cd-idle{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;}
+.cd-idle[hidden],.cd-lines[hidden],#cdTotals[hidden],.cd-setup[hidden],.cd-screen[hidden]{display:none;}
 .cd-idle h2{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:clamp(34px,6vw,80px);margin:0;}
 .cd-idle p{font-size:clamp(18px,2.6vw,32px);color:var(--text-muted);margin:0;}
-.cd-change{position:fixed;right:12px;bottom:max(12px, env(safe-area-inset-bottom));font-size:13px;min-height:44px;}
+.cd-change{position:fixed;right:12px;bottom:max(12px, env(safe-area-inset-bottom));font-size:13px;min-height:44px;padding:8px 14px;opacity:.85;}
 .tabular{font-variant-numeric:tabular-nums;}
 </style>
 </head>
