@@ -1,0 +1,6 @@
+# Per-server state: generated keys, web server pid/log
+.nipos/
+# Written by scripts/start.sh with this server's API key
+web/config.js
+# Data backups - keep these off-device, never in git
+backups/

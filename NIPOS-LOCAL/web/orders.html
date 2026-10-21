@@ -1,0 +1,1113 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NIPOS - Orders</title>
+<link rel="manifest" href="manifest-orders.json">
+<meta name="theme-color" content="#0c1826">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Orders">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<style>
+:root{
+  --bg:#0c1826; --surface:#13212f; --surface-2:#1a2e3f; --border:#253d52;
+  --text:#eef4f8; --text-muted:#8fa5b8;
+  --accent:#f0a13a; --accent-ink:#2b1a02; --accent-soft:rgba(240,161,58,.16);
+  --success:#49c98d; --success-ink:#052018; --success-soft:rgba(73,201,141,.16);
+  --danger:#ff7a68; --danger-soft:rgba(255,122,104,.14);
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 24px -12px rgba(0,0,0,.55);
+}
+:root[data-theme="light"]{
+  --bg:#f5f7fa; --surface:#ffffff; --surface-2:#eef2f6; --border:#dbe3ea;
+  --text:#16232f; --text-muted:#5b6e7f;
+  --accent:#c9791e; --accent-ink:#2b1a02; --accent-soft:rgba(201,121,30,.12);
+  --success:#1f8f5f; --success-ink:#eafff5; --success-soft:rgba(31,143,95,.12);
+  --danger:#c53c2c; --danger-soft:rgba(197,60,44,.1);
+  --shadow: 0 1px 2px rgba(16,30,45,.06), 0 8px 24px -12px rgba(16,30,45,.18);
+}
+*{box-sizing:border-box;}
+[hidden]{display:none !important;}
+body{background:var(--bg);color:var(--text);font-family:'Atkinson Hyperlegible Next',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;margin:0;padding:0 0 40px;}
+.orders-band{position:sticky;top:0;z-index:30;}
+.orders-wrap{padding:12px 16px;max-width:1400px;margin:0 auto;}
+.list-title{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:18px;margin:14px 0 0;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.list-title .count{font-family:'Atkinson Hyperlegible Next',system-ui,sans-serif;font-size:14px;font-weight:600;color:var(--text-muted);}
+.alerts-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px 8px 8px 14px;margin-top:10px;}
+.alerts-banner .msg{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;}
+.alerts-banner .btn{flex:0 0 auto;}
+.stock-state{font-size:13px;font-weight:700;color:var(--text-muted);margin-left:auto;margin-right:10px;}
+.stock-row.on .stock-state{color:var(--danger);}
+h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;}
+.status{font-size:14px;font-weight:700;margin-top:10px;padding:10px 12px;border-radius:10px;}
+.status.bad{color:var(--text);background:var(--danger-soft);border:1px solid var(--danger);}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:12px;align-items:start;}
+.order-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow);}
+.order-card.flagged{border-color:var(--danger);background:var(--danger-soft);}
+.order-card.ready{border-color:var(--success);background:var(--success-soft);}
+.order-card.substituted{border-color:var(--accent);background:var(--accent-soft);}
+.order-sub-note{font-size:13px;font-weight:700;color:var(--accent-text,var(--accent));margin-bottom:10px;}
+.order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;}
+.order-table{font-weight:800;font-size:16px;font-family:inherit;}
+.order-time{font-size:11px;color:var(--text-muted);}
+.pill{display:inline-block;background:var(--surface-2);border:1px solid var(--border);color:var(--text-muted);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:2px 7px;border-radius:999px;flex:0 0 auto;}
+.btn-sm{flex:0 0 auto;padding:7px 12px;font-size:12.5px;}
+.pill-cash{background:var(--success-soft);color:var(--success);}
+.pill-card{background:var(--accent-soft);color:var(--accent-text,var(--accent));}
+.order-items{font-size:13.5px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;}
+.order-flag{font-size:13px;font-weight:700;color:var(--danger);margin-bottom:10px;}
+.order-actions{display:flex;gap:8px;}
+.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;font-size:13.5px;cursor:pointer;flex:1;}
+.btn-accent{background:var(--accent);color:var(--accent-ink);}
+.btn-success{background:var(--success);color:var(--success-ink);}
+.btn-danger{background:var(--danger-soft);color:var(--danger);}
+.btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border);}
+.empty{color:var(--text-muted);font-size:14px;padding:40px 10px;text-align:center;grid-column:1/-1;}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--success);color:var(--success-ink);padding:10px 18px;border-radius:999px;font-weight:700;font-size:14px;box-shadow:var(--shadow);z-index:80;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;text-align:center;max-width:88vw;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+.sound-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.sound-row[hidden]{display:none;}
+.sound-row .btn{width:auto;flex:none;padding:7px 14px;font-size:12.5px;}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(4,10,11,.6);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay[hidden]{display:none;}
+.modal-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;width:100%;max-width:420px;box-shadow:var(--shadow);max-height:86vh;overflow-y:auto;}
+.modal-card h3{margin:0 0 6px;font-size:17px;}
+.modal-card p{margin:0 0 14px;font-size:13.5px;color:var(--text-muted);}
+.modal-card input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:15px;font-family:inherit;margin-bottom:16px;}
+.modal-actions{display:flex;gap:10px;}
+.modal-item-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+.modal-item-list[hidden]{display:none;}
+.modal-item-list .btn{flex:none;text-align:left;}
+.chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.chip{border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-weight:700;font-size:13px;padding:8px 14px;border-radius:999px;cursor:pointer;}
+.chip{min-height:44px;}
+.chip.active{background:var(--sel-bg);border-color:var(--sel-bg);color:var(--sel-ink);}
+.chip.active::before{content:"";display:inline-block;width:.55em;height:.3em;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg) translateY(-.15em);margin-right:.45em;}
+.sub-chosen{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-weight:700;}
+.sub-chosen[hidden]{display:none;}
+.sub-chosen .btn{width:auto;flex:none;padding:6px 12px;font-size:12.5px;}
+
+.login-gate{position:fixed;inset:0;z-index:70;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;}
+.login-gate[hidden]{display:none;}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px 24px;max-width:340px;width:100%;text-align:center;box-shadow:var(--shadow);}
+.login-card h2{margin:0 0 8px;font-size:20px;}
+.login-card p{margin:0 0 18px;font-size:13.5px;color:var(--text-muted);line-height:1.5;}
+.login-card input{width:100%;padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:22px;text-align:center;font-weight:700;letter-spacing:4px;margin-bottom:14px;}
+.account-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.account-row .btn{width:auto;flex:none;padding:9px 14px;font-size:13px;}
+.toolbar-row{display:flex;gap:8px;flex-wrap:wrap;}
+.toolbar-row .btn{flex:1 1 160px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:15px;}
+.toolbar-row[hidden]{display:none;}
+.placed-by{font-size:11.5px;color:var(--text-muted);margin-bottom:6px;}
+.order-notes{font-size:13px;font-weight:700;color:var(--accent-text,var(--accent));margin-bottom:10px;}
+.send-error{color:var(--text);background:var(--danger-soft);border:1px solid var(--danger);border-radius:10px;padding:8px 10px;font-weight:700;margin:8px 0 0;}
+.stock-cat{font-size:15px;color:var(--text);font-weight:800;margin:16px 0 4px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.stock-cat-btn{min-height:48px;min-width:124px;padding:0 12px;border-radius:10px;font:inherit;font-size:14px;font-weight:800;cursor:pointer;background:var(--surface-2);color:var(--text);border:2px solid var(--text-muted);}
+.stock-cat-btn.on{background:transparent;border-color:var(--danger);}
+.stock-cat:first-child{margin-top:0;}
+.stock-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:14px;}
+.stock-row:last-child{border-bottom:0;}
+.switch{position:relative;display:inline-block;width:46px;height:28px;flex:0 0 auto;}
+.switch input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;padding:0;border:0;cursor:pointer;-webkit-appearance:none;appearance:none;}
+.switch .slider{position:absolute;inset:0;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;transition:.15s;pointer-events:none;}
+.switch .slider::before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:var(--text);opacity:.85;border-radius:50%;transition:.15s;}
+.switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
+.switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
+</style>
+<link rel="stylesheet" href="nipos.css?v=20261021m">
+</head>
+<body>
+<div class="login-gate" id="loginGate">
+  <div class="login-card">
+    <h2>Sign in</h2>
+    <p id="loginMessage">Enter your PIN for Order Screen access.</p>
+    <input type="password" inputmode="numeric" id="loginPinInput" placeholder="PIN" autocomplete="off">
+    <button class="btn btn-accent" id="loginSubmitBtn">Sign in</button>
+  </div>
+</div>
+<div class="login-gate" id="venuePickerScreen" hidden>
+  <div class="login-card">
+    <h2>Choose a venue</h2>
+    <p>Signed in as <span id="venuePickerUserName"></span>.</p>
+    <div id="venuePickerList"></div>
+    <button class="btn btn-ghost" id="venuePickerLogoutBtn">Sign out</button>
+  </div>
+</div>
+<header class="venue-band orders-band">
+  <div class="grow">
+    <h1 class="venue-name" data-venue-name>Order screen</h1>
+    <span class="staff-name" data-staff-name></span>
+  </div>
+  <button class="band-btn" id="switchVenueBtn" type="button" hidden>Switch venue</button>
+  <button class="band-btn" id="themeToggleBtn" type="button" aria-label="Switch to light theme"></button>
+  <button class="band-btn" id="accountSignOutBtn" type="button">Sign out</button>
+</header>
+<div id="accountName" hidden></div>
+<main class="orders-wrap">
+  <div class="toolbar-row" id="toolbarRow">
+    <button class="btn btn-solid" id="stockBtn" type="button" hidden><span data-icon="stop"></span>Products on stop</button>
+    <button class="btn btn-solid" id="serviceBtn" type="button"><span data-icon="bell"></span>Call for service</button>
+    <button class="btn btn-solid" id="notifyBtn" type="button" hidden><span data-icon="bell"></span>Notify</button>
+    <div class="view-switch" id="viewSwitch" role="group" aria-label="Show orders for" hidden><button type="button" class="btn btn-ghost" data-view="bar" aria-pressed="true">Bar</button><button type="button" class="btn btn-ghost" data-view="kitchen" aria-pressed="false">Kitchen</button></div>
+  </div>
+  <div class="alerts-banner" id="alertsRow">
+    <div class="msg"><span data-icon="bell"></span><span id="alertsStatus">Turn on alerts to hear new orders</span></div>
+    <button class="btn btn-solid" id="enableAlertsBtn" type="button">Turn on alerts</button>
+  </div>
+  <div class="status" id="dbStatus" role="status" hidden></div>
+  <h2 class="list-title">Open orders <span class="count" id="orderCount"></span></h2>
+  <div class="grid" id="grid"></div>
+</main>
+
+
+
+<div class="modal-overlay" id="stockModal" hidden>
+  <div class="modal-card" style="max-width:480px;">
+    <h3>Products on Stop</h3>
+    <p>Flip an item off to pull it from the till instantly.</p>
+    <input type="text" id="stockSearch" placeholder="Search drinks/food…">
+    <div id="stockList" style="max-height:50vh;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="stockCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+
+
+<div class="modal-overlay" id="serviceModal" hidden>
+  <div class="modal-card">
+    <h3>Call for service</h3>
+    <p><span id="serviceOnlineCount">0</span> online now</p>
+    <div class="chip-row" style="margin-bottom:10px;">
+      <button type="button" class="btn btn-ghost btn-sm" id="serviceTabPeople" aria-pressed="true">People</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="serviceTabGroups" aria-pressed="false">Groups</button>
+    </div>
+    <div class="modal-item-list" id="serviceUserList"></div>
+    <div class="modal-item-list" id="serviceGroupList" hidden></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="serviceCloseBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="flagModal" hidden>
+  <div class="modal-card">
+    <div id="flagStepItem">
+      <h3>Which item?</h3>
+      <p>Select the item that's the issue.</p>
+      <div class="modal-item-list" id="flagItemList"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="flagCancel1">Cancel</button>
+      </div>
+    </div>
+    <div id="flagStepReason" hidden>
+      <h3>Flag <span id="flagItemName"></span></h3>
+      <p>What's wrong?</p>
+      <div class="chip-row" id="flagReasonChips"></div>
+      <input type="text" id="flagOtherInput" placeholder="Describe the issue" hidden>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="flagCancel2">Cancel</button>
+        <button class="btn btn-danger" id="flagNextBtn">Choose how to fix it</button>
+      </div>
+    </div>
+    <div id="flagStepIntent" hidden>
+      <h3>How should this be handled?</h3>
+      <p>Offer a refund, or swap in a substitute at no extra charge.</p>
+      <div class="chip-row" id="flagIntentChips">
+        <button type="button" class="chip" data-intent="refund">Refund it</button>
+        <button type="button" class="chip" data-intent="substitute">Offer something else, free</button>
+      </div>
+      <div id="flagSubPickerWrap" hidden>
+        <input type="text" id="flagSubSearch" placeholder="Search for a substitute…">
+        <div class="modal-item-list" id="flagSubResults" hidden></div>
+        <div id="flagSubSizeWrap" hidden>
+          <p>Pick a size for <strong id="flagSubSizeName"></strong></p>
+          <div class="chip-row" id="flagSubSizeChips"></div>
+        </div>
+        <div class="sub-chosen" id="flagSubChosen" hidden>
+          <span id="flagSubChosenName"></span>
+          <button type="button" class="btn btn-ghost" id="flagSubClear">Change</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="flagCancel3">Cancel</button>
+        <button class="btn btn-danger-solid" id="flagConfirm">Report problem</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script src="db.js?v=20261021m"></script>
+<script>
+initTheme();
+hydrateIcons();
+const LS_ORDERS = "starlightTill.openOrders.v1";
+const LS_STOPS = "starlightTill.stops.v1";
+const LS_NOTIFICATIONS = "starlightTill.notifications.v1";
+let dbNs = null;
+let openOrders = [];
+let venueStaff = []; // staff at the currently selected venue, for the "Call for service" list
+let stops = new Set();
+let notifications = [];
+let currentUser = null;
+let currentUserId = null;
+let myVenues = [];
+let currentVenue = null;
+let flagTargetId = null;
+let flatCatalogue = [];
+let productCategories = [];
+async function loadCatalogue(){
+  try {
+    const res = await fetch("products.json");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    flatCatalogue = data.categories.flatMap(c => c.items.map(i => ({ name: i.name, mode: c.mode, sizes: i.sizes || null })));
+    productCategories = data.categories;
+  } catch(e) { flatCatalogue = []; productCategories = []; }
+}
+function modeOf(name){
+  const hit = flatCatalogue.find(p => p.name === name);
+  return hit ? hit.mode : null;
+}
+
+function applyLoginState(){
+  const venuePicker = document.getElementById("venuePickerScreen");
+  if (currentUser && !currentVenue) {
+    document.getElementById("loginGate").hidden = true;
+    venuePicker.hidden = false;
+    document.getElementById("venuePickerUserName").textContent = currentUser.name;
+    renderVenuePicker();
+    return;
+  }
+  venuePicker.hidden = true;
+  const u = currentUser;
+  if (u && u.perms.orderScreen) {
+    document.getElementById("loginGate").hidden = true;
+    document.getElementById("accountName").textContent = "Signed in as " + u.name + (currentVenue ? " · " + currentVenue.name : "");
+    applyVenueIdentity(currentVenue, u.name);
+    if (currentVenue) document.title = currentVenue.name + " · Orders";
+  } else {
+    applyVenueIdentity(null);
+    document.getElementById("loginGate").hidden = false;
+    document.getElementById("loginMessage").textContent = u ? `Signed in as ${u.name}, but no Order Screen access.` : "Enter your PIN for Order Screen access.";
+  }
+  document.getElementById("switchVenueBtn").hidden = myVenues.length < 2;
+  document.getElementById("stockBtn").hidden = !(u && u.perms.productsOnStop);
+  document.getElementById("serviceBtn").hidden = !(u && u.perms.callToService);
+  // Master settings features: own theme, Maintenance Mode, message on every till, messaging.
+  setSignedInUser(u);
+  maintenanceLockScreen(maintenanceLocksOut(u), signOutOrders);
+  renderAnnouncement(currentVenue && currentVenue.id);
+  applyBigText(currentUser, currentVenue && currentVenue.id);
+  if (u) setTimeout(() => runRemoteCommands(currentVenueId), 0);
+  document.getElementById("notifyBtn").hidden = !canNotify(u);
+  ensurePushForUser();
+  if (u && !idleStarted) { idleStarted = true; startIdleWatch(() => currentUser, () => signOutOrders()); startDeviceReports(() => ({ venue: currentVenue ? currentVenue.name : "" })); }
+}
+document.addEventListener("nipos:settingschange", () => applyLoginState());
+onRemoteCommand("refresh", () => location.reload());
+onRemoteCommand("signout", () => { if (!currentUser) return false; if (!currentUser.system) signOutOrders(); });
+
+document.getElementById("viewSwitch").addEventListener("click", e => {
+  const b = e.target.closest("[data-view]"); if (!b) return;
+  try { localStorage.setItem("nipos.orderScreenView", b.dataset.view); } catch (err) {}
+  loadFoodNames().then(render);
+});
+document.addEventListener("nipos:settingschange", () => { if (featureOn("kitchenScreen") && !foodNames.size) loadFoodNames().then(render); else render(); });
+// Notify: everyone (banner or pop-up) or one person - the shared pop-up in db.js.
+document.getElementById("notifyBtn").addEventListener("click", () => {
+  openNotifyDialog({ user: currentUser, venue: currentVenue, venues: myVenues, fetchStaff: fetchVenueStaff, toast: showToast });
+});
+function renderVenuePicker(){
+  if (!venueCreationOrder) { loadVenueCreationOrder().then(renderVenuePicker); }
+  const wrap = document.getElementById("venuePickerList");
+  wrap.innerHTML = "";
+  myVenues.forEach(v => {
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "btn btn-solid venue-choice"; btn.style.marginBottom = "8px"; btn.style.width = "100%";
+    btn.innerHTML = `<span class="venue-swatch" style="background:${VENUE_ACCENTS[venueAccentKey(v)].color}"></span>${esc(v.name)}`;
+    btn.addEventListener("click", async () => { setCurrentVenueId(v.id); await resolveVenueSelection(); });
+    wrap.appendChild(btn);
+  });
+}
+async function resolveVenueSelection(){
+  if (!myVenues.length) { currentVenue = null; applyLoginState(); return; }
+  let venue = myVenues.find(v => v.id === currentVenueId);
+  if (!venue && myVenues.length === 1) { venue = myVenues[0]; setCurrentVenueId(venue.id); }
+  currentVenue = venue || null;
+  applyLoginState();
+  if (currentVenue) {
+    // rebaseline silently for the new venue instead of alerting on its whole existing history
+    knownOrderStates = null; knownStops = null; knownNotificationIds = null;
+    await pullOrders();
+    sendHeartbeat(currentUserId, currentUser.name);
+  }
+}
+document.getElementById("loginSubmitBtn").addEventListener("click", async () => {
+  const pin = document.getElementById("loginPinInput").value.trim();
+  const res = await signInWithPin(pin);
+  if (res.error) { alert(res.error); return; }
+  document.getElementById("loginPinInput").value = "";
+  currentUser = await fetchMyStaffRow();
+  currentUserId = currentUser ? currentUser.id : null;
+  if (!currentUser || currentUser.perms.active === false || currentUser.system) {
+    alert(!currentUser ? "Account not found." : currentUser.system ? "This account only signs in to Backend." : "This account is disabled.");
+    await signOutAuth();
+    currentUser = null; currentUserId = null;
+    applyLoginState();
+    return;
+  }
+  myVenues = await fetchMyVenues(currentUser);
+  await resolveVenueSelection();
+  logActivity("Signed in", "Order screen");
+  // Notification permission was already granted on this device from a previous login (it's a
+  // browser-level grant, not tied to this account) - re-confirm the push subscription now that we
+  // know who's signed in, rather than waiting on a tap that already happened weeks ago.
+  if ("Notification" in window && Notification.permission === "granted") enablePush();
+});
+document.getElementById("loginPinInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginSubmitBtn").click(); });
+async function signOutOrders(){
+  if (currentUserId) clearHeartbeat(currentUserId);
+  await signOutAuth();
+  currentUser = null; currentUserId = null; currentVenue = null; myVenues = [];
+  applyLoginState();
+}
+document.getElementById("accountSignOutBtn").addEventListener("click", signOutOrders);
+function updateThemeBtn(){
+  const next = themeSwitchInfo(), btn = document.getElementById("themeToggleBtn");
+  btn.innerHTML = icon(next.icon);
+  btn.setAttribute("aria-label", "Switch to " + next.label.toLowerCase());
+}
+document.getElementById("themeToggleBtn").addEventListener("click", toggleTheme);
+document.addEventListener("nipos:themechange", updateThemeBtn);
+updateThemeBtn();
+document.getElementById("venuePickerLogoutBtn").addEventListener("click", signOutOrders);
+document.getElementById("switchVenueBtn").addEventListener("click", () => { currentVenue = null; applyLoginState(); });
+
+function fmt(pence){ return poundsText(pence); } // £ unless Master settings › Formats says otherwise
+function formatTime(ts){ return fmtTime(ts); }
+
+
+async function loadDoc(key, fallback){
+  try {
+    const snap = await dbNs.doc("state/" + key).get();
+    if (snap.exists) { const body = snap.data(); if (body && body.value !== undefined) return body.value; }
+  } catch(e){}
+  return fallback;
+}
+async function saveDoc(key, val){
+  try { await dbNs.doc("state/" + key).set({ value: val }); } catch(e){}
+}
+
+// rowStore()/makeSupabaseDb() now live in db.js, shared with index.html/backend.html, and are venue-aware.
+const ordersStore = rowStore("open_orders", 2000);
+const stopsStore = rowStore("stops", 1000);
+
+// staff_users isn't venue-scoped by a column (RLS decides visibility from data.venueIds instead), so
+// it doesn't go through rowStore. Fetch what's visible, then keep only this venue's members.
+async function fetchVenueStaff(){
+  if (!supabaseClient || !currentVenueId) return [];
+  try {
+    const { data, error } = await supabaseClient.from("staff_users").select("id,data");
+    if (error || !data) return [];
+    return data.map(r => ({ id: r.id, ...r.data })).filter(u => (u.venueIds || []).includes(currentVenueId));
+  } catch(e){ return []; }
+}
+
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove("show"), 3200);
+}
+
+let audioCtx = null;
+function playChime(){
+  playNotificationSound(audioCtx, currentUser && currentUser.notificationSound);
+}
+// Browsers only allow audio to start from a user gesture - rather than making that gesture a dedicated
+// "Enable alerts" tap every single time the app is opened, piggyback on the first tap/key anywhere on
+// the page (typing the PIN to log in already counts), so the chime just works on reload without anyone
+// having to remember a separate step.
+function ensureAudioCtx(){
+  if (audioCtx) return;
+  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+}
+["pointerdown", "keydown"].forEach(evt => document.addEventListener(evt, ensureAudioCtx, { once: true, passive: true }));
+const SEND_PUSH_URL = SUPABASE_URL + "/functions/v1/send-push";
+const VAPID_PUBLIC_KEY = NIPOS_CONFIG.vapidPublicKey;
+function urlBase64ToUint8Array(base64String){
+  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  const arr = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) arr[i] = rawData.charCodeAt(i);
+  return arr;
+}
+async function savePushSubscription(sub){
+  if (!supabaseClient || !sub || !currentVenueId) return;
+  const json = sub.toJSON ? sub.toJSON() : sub;
+  const id = "px" + btoa(json.endpoint).replace(/[^a-zA-Z0-9]/g, "").slice(0, 60);
+  // Only once someone's signed in: a subscription saved before that had no person, so pushes sent
+  // to them (e.g. Call for service) never found this device.
+  if (!currentUserId) return;
+  try { await supabaseClient.from("push_subscriptions").upsert({ id, user_id: currentUserId, venue_id: currentVenueId, endpoint: json.endpoint, subscription: json }); } catch(e){}
+}
+// Called on every sign-in (and venue change), so this device's subscription always belongs to whoever
+// is signed in on it now.
+var pushSavedFor = null, idleStarted = false; // var: applyLoginState can run before this line on first load
+function ensurePushForUser(){
+  const key = currentUserId ? currentUserId + "|" + currentVenueId : null;
+  if (!key || key === pushSavedFor || !("Notification" in window) || Notification.permission !== "granted") return;
+  pushSavedFor = key;
+  enablePush();
+}
+async function enablePush(){
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.register("sw.js");
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
+    await savePushSubscription(sub);
+  } catch(e){}
+}
+async function sendPushNotification(toUserId, fromUserId, fromName, message, urgent){
+  try {
+    await fetch(SEND_PUSH_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY },
+      body: JSON.stringify({ toUserId, fromUserId, title: fromName ? `${fromName} says` : "Notification", body: message, urgent: !!urgent })
+    });
+  } catch(e){}
+}
+// The banner only needs the explicit tap the very first time - once Notification permission is
+// granted, that's a browser-level, per-device grant that persists on its own (it survives reloads,
+// force-closes, reinstalls of the PWA, all of it), so there's nothing left to "remember": every later
+// load just checks the browser's own permission state and skips straight past the banner.
+function refreshAlertsRow(){
+  const granted = ("Notification" in window) && Notification.permission === "granted";
+  const denied = ("Notification" in window) && Notification.permission === "denied";
+  document.getElementById("alertsRow").hidden = granted;
+  document.getElementById("alertsStatus").textContent = denied
+    ? "Alerts are blocked. Turn them on in your browser's site settings."
+    : "Turn on alerts to hear new orders";
+  if (granted) enablePush(); // re-confirm the push subscription's still registered, no prompt shown
+}
+document.getElementById("enableAlertsBtn").addEventListener("click", async () => {
+  ensureAudioCtx(); playChime();
+  if ("Notification" in window) { try { await Notification.requestPermission(); } catch(e){} }
+  await enablePush();
+  refreshAlertsRow();
+});
+refreshAlertsRow();
+
+function alertUser(title, body, urgent, event){
+  if (event && !alertAllowed(event, currentUser)) return; // Alert settings: this event is off for this person
+  logNotificationReceived(title, body);
+  showToast(`${title}${body ? ": " + body : ""}`);
+  const sound = event ? alertSound(event, currentUser) : null;
+  if (sound) playNotificationSound(audioCtx, sound); else playChime();
+  if (urgent && navigator.vibrate) { try { navigator.vibrate([300, 150, 300, 150, 300]); } catch(e){} }
+  if ("Notification" in window && Notification.permission === "granted") {
+    try {
+      new Notification(title, urgent
+        ? { body, requireInteraction: true, tag: "urgent-" + Date.now(), vibrate: [300, 150, 300, 150, 300] }
+        : { body });
+    } catch(e){}
+  }
+}
+
+let knownOrderStates = null;
+function orderAlertState(o){ return { flagged: !!o.flagged, ready: !!o.ready, refund: needsRefund(o) }; }
+function checkOrderChanges(){
+  const stateNow = new Map(openOrders.map(o => [o.id, orderAlertState(o)]));
+  if (knownOrderStates === null) { knownOrderStates = stateNow; return; }
+  openOrders.forEach(o => {
+    const label = o.table ? `Table ${o.table}` : "Order";
+    const prev = knownOrderStates.get(o.id);
+    if (!prev) {
+      if (!o.delivered) alertUser("New order", `${label}: ${o.items.map(i => `${i.qty}× ${i.name}`).join(", ")}`, false, "newOrder");
+      return;
+    }
+    if (!prev.refund && needsRefund(o)) alertUser("Refund needed", `${label}: ${o.flagItem}`, false, "refund");
+    else if (!prev.flagged && o.flagged) alertUser("Problem reported", `${label}: ${o.flagItem}, ${o.flagReason}`, false, "problem");
+    if (!prev.ready && o.ready) alertUser("Ready to take out", label);
+  });
+  knownOrderStates = stateNow;
+}
+
+let knownStops = null;
+function checkStopChanges(newStops){
+  if (knownStops === null) { knownStops = newStops; return; }
+  [...newStops].filter(name => !knownStops.has(name)).forEach(name => alertUser("Now on stop", name));
+  knownStops = newStops;
+}
+
+let knownNotificationIds = null;
+function checkPersonalNotifications(list){
+  const ids = new Set(list.map(n => n.id));
+  if (knownNotificationIds === null) { knownNotificationIds = ids; return; }
+  list.filter(n => !knownNotificationIds.has(n.id) && (n.toUserId === "all" || n.toUserId === currentUserId) && n.fromUserId !== currentUserId)
+    .forEach(n => {
+      if (n.kind === "message") { playChime(); if (navigator.vibrate) { try { navigator.vibrate([300, 150, 300]); } catch (e) {} } showPrivateMessage(n); }
+      else if (isServiceCall(n)) { if (alertAllowed("serviceCall", currentUser)) showServiceCall(n, alertSound("serviceCall", currentUser)); }
+      else if (n.quiet) { showToast(n.message); logNotificationReceived("Notice", n.message, n.fromName); }
+      else alertUser(n.fromName ? `${n.fromName} says` : "Notification", n.message, !!n.urgent);
+    });
+  knownNotificationIds = ids;
+}
+async function logStopToDiscord(name, on){
+  const webhook = currentVenue && currentVenue.discordWebhooks && currentVenue.discordWebhooks.stop;
+  if (!webhook || !discordOn("stops")) return;
+  const me = currentUser;
+  try {
+    await fetch(webhook, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ embeds: [{
+      title: on ? "🛑 Product Stopped" : "✅ Product Back In Stock",
+      color: on ? 0xff7a68 : 0x49c98d,
+      fields: [
+        { name: "Product", value: name, inline: true },
+        { name: "By", value: me ? me.name : "Unknown", inline: true }
+      ],
+      timestamp: new Date().toISOString()
+    }] }) });
+  } catch(e){}
+}
+async function pushNotification(toUserId, message, urgent, kind){
+  const me = currentUser;
+  const notif = { id: "n" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), toUserId, fromUserId: currentUserId, fromName: me ? me.name : "Someone", message, urgent: !!urgent };
+  if (kind) notif.kind = kind;
+  notifications.unshift(notif);
+  notifications = notifications.slice(0, 50);
+  await saveNotification(notif);
+  knownNotificationIds = new Set(notifications.map(n => n.id));
+  sendPushNotification(toUserId, currentUserId, me ? me.name : "Someone", message, urgent);
+}
+
+async function pullOrders(){
+  if (!dbNs || !currentVenueId) return;
+  const fetchedOrders = await ordersStore.fetchAll();
+  if (fetchedOrders) openOrders = fetchedOrders;
+  setConnectionProblem(fetchedOrders === null && !!currentUser);
+  venueStaff = await fetchVenueStaff();
+  if (featureOn("kitchenScreen") && !foodNames.size) await loadFoodNames();
+  const stopRows = await stopsStore.fetchAll();
+  const pulledStops = stopRows ? stopRows.map(r => r.name) : [...stops];
+  const pulledNotifications = await fetchMyNotifications(currentUserId) || notifications;
+  applyLoginState();
+  checkOrderChanges();
+  checkStopChanges(new Set(pulledStops));
+  stops = new Set(pulledStops);
+  checkPersonalNotifications(pulledNotifications);
+  notifications = pulledNotifications;
+  render();
+  if (!document.getElementById("stockModal").hidden) renderStockList();
+}
+
+let connectionFailures = 0;
+function setConnectionProblem(failed){
+  // One missed poll is normal on venue Wi-Fi; say something after a few in a row.
+  connectionFailures = failed ? connectionFailures + 1 : 0;
+  const el = document.getElementById("dbStatus");
+  el.hidden = connectionFailures < 3;
+  if (!el.hidden) { el.textContent = "Can't reach the database. These orders may be out of date."; el.className = "status bad"; }
+}
+async function init(){
+  await loadCatalogue();
+  const statusEl = document.getElementById("dbStatus");
+  try {
+    connectAuthClient();
+    dbNs = makeSupabaseDb(supabaseClient);
+  } catch(e) { dbNs = null; supabaseClient = null; }
+  if (!dbNs) {
+    statusEl.textContent = "Can't reach the database. Orders on this screen won't update.";
+    statusEl.className = "status bad";
+    statusEl.hidden = false;
+    return;
+  }
+  statusEl.hidden = true;
+  const session = await getSession();
+  if (session) {
+    currentUser = await fetchMyStaffRow();
+    currentUserId = currentUser ? currentUser.id : null;
+    if (currentUser && currentUser.perms.active !== false && !currentUser.system) {
+      myVenues = await fetchMyVenues(currentUser);
+      await resolveVenueSelection();
+    } else {
+      await signOutAuth();
+      currentUser = null; currentUserId = null;
+    }
+  }
+  applyLoginState();
+  setInterval(pullOrders, 1000);
+  setInterval(() => { if (currentVenue && currentUser) sendHeartbeat(currentUserId, currentUser.name); }, 45000);
+}
+
+const flaggedSaleCache = new Map(); // order id -> { sale, itemIdx, pence } | { missing: true }
+async function loadRefundFor(o){
+  if (flaggedSaleCache.has(o.id)) return;
+  flaggedSaleCache.set(o.id, null);
+  const sale = await fetchSaleForOrder(o);
+  const itemIdx = sale ? sale.items.findIndex(i => i.name === o.flagItem && !i.refunded) : -1;
+  flaggedSaleCache.set(o.id, itemIdx === -1 ? { missing: true } : { sale, itemIdx, pence: refundAmountFor(sale, sale.items[itemIdx]) });
+  render();
+}
+// Kitchen screen (feature "kitchenScreen"): this order screen can show the bar's view (drinks) or the
+// kitchen's (food only). Each device remembers its own choice.
+let foodNames = new Set();
+function screenView(){ if (!featureOn("kitchenScreen")) return "all"; try { return localStorage.getItem("nipos.orderScreenView") || "bar"; } catch (e) { return "bar"; } }
+async function loadFoodNames(){
+  if (!featureOn("kitchenScreen") || !supabaseClient || !currentVenueId) return;
+  try {
+    const [{ data: cats }, { data: items }] = await Promise.all([supabaseClient.from("categories").select("data").eq("venue_id", currentVenueId), supabaseClient.from("catalogue_items").select("data").eq("venue_id", currentVenueId)]);
+    const foodCats = new Set((cats || []).filter(c => c.data.mode === "food").map(c => c.data.id));
+    foodNames = new Set((items || []).filter(i => foodCats.has(i.data.categoryId)).map(i => i.data.name));
+    flatCatalogue.filter(p => p.mode === "food").forEach(p => foodNames.add(p.name));
+  } catch (e) {}
+}
+function isFoodLine(name){ const base = String(name || "").replace(/ \+ .*$/, "").replace(/ \([^)]*\)$/, ""); return foodNames.has(base) || foodNames.has(name) || modeOf(base) === "food"; }
+function forThisScreen(o){
+  const view = screenView();
+  if (view === "all") return o;
+  const lines = (o.items || []).filter(i => view === "kitchen" ? isFoodLine(i.name) : (!featureConfig("kitchenScreen").barHidesFood || !isFoodLine(i.name)));
+  return lines.length ? { ...o, items: lines } : null;
+}
+function renderViewSwitch(){
+  const el = document.getElementById("viewSwitch");
+  if (!el) return;
+  el.hidden = !featureOn("kitchenScreen");
+  el.querySelectorAll("[data-view]").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === screenView()));
+}
+function render(){
+  const wrap = document.getElementById("grid");
+  wrap.innerHTML = "";
+  renderViewSwitch();
+  const list = sortOrdersByPriority(openOrders.filter(o => !o.delivered).map(forThisScreen).filter(Boolean));
+  const count = st => list.filter(o => orderStage(o) === st).length;
+  const problems = count("problem") + count("refund"), fresh = count("new"), ready = count("ready");
+  document.getElementById("orderCount").textContent = list.length
+    ? [`${list.length} open`, fresh ? `${fresh} new` : "", problems ? `${problems} problem${problems === 1 ? "" : "s"}` : "", ready ? `${ready} ready` : ""].filter(Boolean).join(" · ")
+    : "";
+  if (!list.length) { wrap.innerHTML = `<div class="empty">Nothing open right now.</div>`; return; }
+  const canRefund = !!(currentUser && currentUser.perms.processRefunds);
+  // "Next" is the next order the bar has to deal with - not one that's ready and waiting for the till.
+  const next = list.find(o => orderStage(o) !== "ready");
+  list.forEach(o => {
+    if (o.flagged && canRefund) loadRefundFor(o);
+    const r = flaggedSaleCache.get(o.id);
+    wrap.appendChild(buildOrderCard(o, {
+      isNext: o === next,
+      myId: currentUserId,
+      canRefund,
+      refundPence: r ? (r.missing ? undefined : r.pence) : null,
+      onAcceptOrder: () => acceptOrder(o.id),
+      onReady: () => markReady(o.id),
+      // No onDeliver: once it's ready, only the till can mark it delivered (see buildOrderCard).
+      onFlag: () => openFlagModal(o.id),
+      onAccept: () => resolveFlag(o.id, "accepted"),
+      onRequestRefund: () => requestRefund(o.id),
+      onRefund: () => startRefund(o.id)
+    }));
+  });
+}
+
+// Accepting tells the bar this order is being made, and quietly lets whoever took it know.
+async function acceptOrder(id){
+  const o = openOrders.find(x => x.id === id);
+  const fresh = await mergeOpenOrder(id, { accepted: true, acceptedBy: currentUser ? currentUser.name : null, acceptedAt: Date.now() });
+  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
+  if (o) logActivity("Order accepted", orderLabel(o));
+  if (o && o.placedById && o.placedById !== currentUserId) {
+    const n = await sendQuietNotice(o.placedById, currentUserId, currentUser && currentUser.name, `${orderLabel(o)}: order accepted, in progress`);
+    if (n) { notifications.unshift(n); knownNotificationIds = new Set(notifications.map(x => x.id)); }
+  }
+  render();
+}
+async function markReady(id){
+  const fresh = await mergeOpenOrder(id, { ready: true });
+  if (fresh) logActivity("Order ready to take out", orderLabel(fresh));
+  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
+  render();
+}
+// Anyone can say the customer wants their money back; that turns the order into "Refund in progress"
+// on every screen. Only someone with Process Refunds can then finish it, on the refund screen.
+async function requestRefund(id){
+  const o = openOrders.find(x => x.id === id);
+  if (!o) return;
+  const fresh = await requestRefundForOrder(o, currentUser ? currentUser.name : null);
+  logActivity("Refund requested", orderLabel(o));
+  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
+  knownOrderStates = new Map(openOrders.map(x => [x.id, orderAlertState(x)]));
+  render();
+}
+async function startRefund(id){
+  const o = openOrders.find(x => x.id === id);
+  const r = flaggedSaleCache.get(id);
+  if (!o || !r) return;
+  if (r.missing) { showToast("This sale isn't in today's records on this device. Refund it from the till's Past Orders."); return; }
+  const claim = await claimRefund(o, currentUser ? currentUser.name : null, currentUserId);
+  if (claim.error) { showToast(claim.error); render(); return; }
+  { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = claim.order; }
+  knownOrderStates = new Map(openOrders.map(x => [x.id, orderAlertState(x)]));
+  const item = r.sale.items[r.itemIdx];
+  const done = await openRefundScreen({ order: o, sale: r.sale, item, pence: r.pence, onConfirm: async () => {
+    const pre = await refundPreChecks(r.pence);
+    if (!pre) return { error: "Not refunded. A reason or a manager's OK is needed first." };
+    const res = await refundSaleLine(r.sale.id, r.itemIdx, pre);
+    if (res.error) return res;
+    logRefundToDiscordFor(currentVenue, currentUser ? currentUser.name : null, res.refundRow, res.sale);
+    flaggedSaleCache.delete(id);
+    openOrders = openOrders.filter(x => x.id !== id);
+    await ordersStore.remove(id);
+    return res;
+  } });
+  if (!done) {
+    const back = await setRefundInProgress(o, false);
+    if (back) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = back; }
+  }
+  if (done) showToast(`Refunded ${poundsText(r.pence)}, ${orderLabel(o)} closed`);
+  render();
+}
+async function resolveFlag(id, outcome){
+  const patch = { flagged: false, flagOutcome: outcome };
+  const cached = openOrders.find(x => x.id === id);
+  if (outcome === "accepted" && cached && cached.flagIntent === "substitute" && cached.flagSubstitute) {
+    const { data } = await supabaseClient.from("open_orders").select("data").eq("id", id).maybeSingle();
+    const items = (data && data.data.items) || cached.items || [];
+    patch.items = [...items, { name: cached.flagSubstitute, qty: 1, pence: 0, substituted: true, subFor: cached.flagItem }];
+  }
+  const fresh = await mergeOpenOrder(id, patch);
+  if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
+  render();
+}
+
+const FLAG_REASONS = ["Out of stock", "Wrong item", "Damaged/spilled", "Other"];
+let flagItemIdx = null;
+let flagReason = null;
+let flagTargetMode = null;
+let flagIntent = null;
+let flagSubstituteName = null;
+
+function openFlagModal(id){
+  flagTargetId = id; flagItemIdx = null; flagReason = null; flagIntent = null; flagSubstituteName = null;
+  const o = openOrders.find(x => x.id === id);
+  const list = document.getElementById("flagItemList");
+  list.innerHTML = "";
+  o.items.forEach((item, idx) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "btn btn-ghost";
+    b.textContent = `${item.qty}× ${item.name}`;
+    b.addEventListener("click", () => selectFlagItem(idx));
+    list.appendChild(b);
+  });
+  document.getElementById("flagStepItem").hidden = false;
+  document.getElementById("flagStepReason").hidden = true;
+  document.getElementById("flagStepIntent").hidden = true;
+  document.getElementById("flagModal").hidden = false;
+}
+function selectFlagItem(idx){
+  flagItemIdx = idx; flagReason = null;
+  const o = openOrders.find(x => x.id === flagTargetId);
+  flagTargetMode = modeOf(o.items[idx].name);
+  document.getElementById("flagItemName").textContent = o.items[idx].name;
+  document.getElementById("flagOtherInput").value = "";
+  document.getElementById("flagOtherInput").hidden = true;
+  renderReasonChips();
+  document.getElementById("flagStepItem").hidden = true;
+  document.getElementById("flagStepReason").hidden = false;
+}
+document.getElementById("flagNextBtn").addEventListener("click", () => {
+  if (!flagReason) { alert("Pick a reason."); return; }
+  if (flagReason === "Other" && !document.getElementById("flagOtherInput").value.trim()) { alert("Describe the issue."); return; }
+  flagIntent = null; flagSubstituteName = null;
+  document.querySelectorAll("#flagIntentChips .chip").forEach(b => b.classList.remove("active"));
+  document.getElementById("flagSubPickerWrap").hidden = true;
+  document.getElementById("flagSubSearch").value = "";
+  document.getElementById("flagSubSearch").hidden = false;
+  document.getElementById("flagSubResults").hidden = true;
+  document.getElementById("flagSubSizeWrap").hidden = true;
+  document.getElementById("flagSubChosen").hidden = true;
+  document.getElementById("flagStepReason").hidden = true;
+  document.getElementById("flagStepIntent").hidden = false;
+});
+document.querySelectorAll("#flagIntentChips .chip").forEach(btn => {
+  btn.addEventListener("click", () => {
+    flagIntent = btn.dataset.intent;
+    document.querySelectorAll("#flagIntentChips .chip").forEach(b => b.classList.toggle("active", b === btn));
+    const showPicker = flagIntent === "substitute";
+    document.getElementById("flagSubPickerWrap").hidden = !showPicker;
+  });
+});
+function renderSubResults(query){
+  const wrap = document.getElementById("flagSubResults");
+  const q = query.trim().toLowerCase();
+  if (!q) { wrap.hidden = true; wrap.innerHTML = ""; return; }
+  const foodOff = !!(currentVenue && currentVenue.foodEnabled === false);
+  const matches = flatCatalogue.filter(p => (!flagTargetMode || p.mode === flagTargetMode) && !(foodOff && p.mode === "food") && p.name.toLowerCase().includes(q)).slice(0, 8);
+  wrap.innerHTML = "";
+  matches.forEach(p => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "btn btn-ghost";
+    b.textContent = p.name;
+    b.addEventListener("click", () => chooseSubstitute(p.name));
+    wrap.appendChild(b);
+  });
+  wrap.hidden = matches.length === 0;
+}
+function chooseSubstitute(name){
+  const entry = flatCatalogue.find(p => p.name === name);
+  if (entry && entry.sizes && entry.sizes.length) {
+    document.getElementById("flagSubResults").hidden = true;
+    document.getElementById("flagSubSizeName").textContent = name;
+    renderSubSizeChips(name, entry.sizes);
+    document.getElementById("flagSubSizeWrap").hidden = false;
+    return;
+  }
+  finalizeSubstitute(name);
+}
+function renderSubSizeChips(name, sizes){
+  const wrap = document.getElementById("flagSubSizeChips");
+  wrap.innerHTML = "";
+  sizes.forEach(s => {
+    const chip = document.createElement("button");
+    chip.type = "button"; chip.className = "chip";
+    chip.textContent = s.label;
+    chip.addEventListener("click", () => finalizeSubstitute(`${name} (${s.label})`));
+    wrap.appendChild(chip);
+  });
+}
+function finalizeSubstitute(label){
+  flagSubstituteName = label;
+  document.getElementById("flagSubSearch").hidden = true;
+  document.getElementById("flagSubResults").hidden = true;
+  document.getElementById("flagSubSizeWrap").hidden = true;
+  document.getElementById("flagSubChosenName").textContent = label;
+  document.getElementById("flagSubChosen").hidden = false;
+}
+document.getElementById("flagSubSearch").addEventListener("input", e => renderSubResults(e.target.value));
+document.getElementById("flagSubClear").addEventListener("click", () => {
+  flagSubstituteName = null;
+  document.getElementById("flagSubChosen").hidden = true;
+  document.getElementById("flagSubSizeWrap").hidden = true;
+  document.getElementById("flagSubSearch").hidden = false;
+  document.getElementById("flagSubSearch").value = "";
+  document.getElementById("flagSubSearch").focus();
+});
+function renderReasonChips(){
+  const wrap = document.getElementById("flagReasonChips");
+  wrap.innerHTML = "";
+  (featureOn("reasons") ? reasonList("problem") : FLAG_REASONS).forEach(r => {
+    const chip = document.createElement("button");
+    chip.type = "button"; chip.className = "chip" + (flagReason === r ? " active" : "");
+    chip.textContent = r;
+    chip.addEventListener("click", () => {
+      flagReason = r;
+      document.getElementById("flagOtherInput").hidden = r !== "Other";
+      renderReasonChips();
+      if (r === "Other") setTimeout(() => document.getElementById("flagOtherInput").focus(), 50);
+    });
+    wrap.appendChild(chip);
+  });
+}
+function closeFlagModal(){
+  document.getElementById("flagModal").hidden = true;
+  flagTargetId = null;
+}
+document.getElementById("flagCancel1").addEventListener("click", closeFlagModal);
+document.getElementById("flagCancel2").addEventListener("click", closeFlagModal);
+document.getElementById("flagCancel3").addEventListener("click", closeFlagModal);
+document.getElementById("flagConfirm").addEventListener("click", async () => {
+  if (!flagIntent) { alert("Choose Offer Refund or Substitute."); return; }
+  if (flagIntent === "substitute" && !flagSubstituteName) { alert("Pick a substitute item."); return; }
+  const cached = openOrders.find(x => x.id === flagTargetId);
+  if (cached) {
+    const flagItem = cached.items[flagItemIdx].name;
+    const flagReasonText = flagReason === "Other" ? document.getElementById("flagOtherInput").value.trim() : flagReason;
+    const fresh = await mergeOpenOrder(flagTargetId, {
+      flagged: true,
+      flagItem,
+      flagReason: flagReasonText,
+      flagIntent,
+      flagSubstitute: flagIntent === "substitute" ? flagSubstituteName : null,
+      flagOutcome: null
+    });
+    if (fresh) {
+      const idx = openOrders.findIndex(x => x.id === flagTargetId);
+      if (idx !== -1) openOrders[idx] = fresh;
+      if (fresh.placedById) await pushNotification(fresh.placedById, `Table ${fresh.table || "?"}: ${fresh.flagItem} flagged - ${fresh.flagReason}`, true);
+      logActivity("Reported a problem", `Table ${fresh.table || "?"}: ${fresh.flagItem}, ${fresh.flagReason} (${flagIntent === "substitute" ? "substitute " + flagSubstituteName : "offer refund"})`);
+    }
+  }
+  closeFlagModal();
+  render();
+});
+
+let serviceGroups = [];
+let onlineIds = new Set();
+let presenceMap = new Map(); // userId -> the venue_id they're currently signed into
+let notifySubscribers = []; // people subscribed to this venue's notifications who aren't on its roster
+let allVenuesCache = [];
+let serviceRefreshTimer = null;
+function closeServiceModal(){
+  document.getElementById("serviceModal").hidden = true;
+  clearInterval(serviceRefreshTimer);
+}
+function venueNameFor(venueId){ const v = allVenuesCache.find(x => x.id === venueId); return v ? v.name : "another venue"; }
+
+function renderServicePeople(){
+  const wrap = document.getElementById("serviceUserList");
+  wrap.innerHTML = "";
+  const rosterIds = new Set(venueStaff.map(u => u.id));
+  const roster = venueStaff.filter(u => u.id !== currentUserId && !isHiddenAccount(u.name) && onlineIds.has(u.id))
+    .map(u => ({ id: u.id, name: u.name, onRoster: true }));
+  const subscribers = notifySubscribers.filter(s => s.id !== currentUserId && !rosterIds.has(s.id) && !isHiddenAccount(s.name) && onlineIds.has(s.id))
+    .map(s => ({ id: s.id, name: s.name, onRoster: false }));
+  const others = [...roster, ...subscribers]; // only ever online people, offline staff are hidden entirely
+  if (!others.length) { wrap.innerHTML = `<div class="empty" style="padding:10px 0;">Nobody's online right now.</div>`; return; }
+  others.forEach(u => {
+    const dotColor = u.onRoster ? "var(--success)" : "#f0a13a";
+    const label = u.onRoster ? "Online" : venueNameFor(presenceMap.get(u.id));
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "btn btn-ghost";
+    b.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;";
+    b.innerHTML = `<span>${u.name}</span><span style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:${dotColor};">
+      <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex:0 0 auto;"></span>${label}
+    </span>`;
+    b.addEventListener("click", async () => {
+      await pushNotification(u.id, `needs you at the bar`, true, "service");
+      closeServiceModal();
+      showToast(`Notified ${u.name}`);
+    });
+    wrap.appendChild(b);
+  });
+}
+function renderServiceGroups(){
+  const wrap = document.getElementById("serviceGroupList");
+  wrap.innerHTML = "";
+  if (!serviceGroups.length) { wrap.innerHTML = `<div class="empty" style="padding:10px 0;">No groups set up in Backend yet.</div>`; return; }
+  serviceGroups.forEach(g => {
+    const members = venueStaff.filter(u => (u.groupIds || []).includes(g.id) && u.id !== currentUserId && !isHiddenAccount(u.name));
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "btn btn-ghost";
+    b.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;";
+    b.disabled = !members.length;
+    b.innerHTML = `<span>${g.name}</span><span class="pill">${members.length}</span>`;
+    b.addEventListener("click", async () => {
+      if (!members.length) return;
+      await Promise.all(members.map(u => pushNotification(u.id, `needs you at the bar`, true, "service")));
+      closeServiceModal();
+      showToast(`Notified ${g.name} (${members.length})`);
+    });
+    wrap.appendChild(b);
+  });
+}
+document.getElementById("serviceTabPeople").addEventListener("click", () => {
+  document.getElementById("serviceTabPeople").setAttribute("aria-pressed", "true");
+  document.getElementById("serviceTabGroups").setAttribute("aria-pressed", "false");
+  document.getElementById("serviceUserList").hidden = false;
+  document.getElementById("serviceGroupList").hidden = true;
+});
+document.getElementById("serviceTabGroups").addEventListener("click", () => {
+  document.getElementById("serviceTabGroups").setAttribute("aria-pressed", "true");
+  document.getElementById("serviceTabPeople").setAttribute("aria-pressed", "false");
+  document.getElementById("serviceGroupList").hidden = false;
+  document.getElementById("serviceUserList").hidden = true;
+});
+async function refreshServiceModal(){
+  notifySubscribers = await fetchNotifySubscribers(currentVenueId);
+  const rosterIds = new Set(venueStaff.map(u => u.id));
+  const candidateIds = [...rosterIds, ...notifySubscribers.map(s => s.id)].filter((id, i, arr) => arr.indexOf(id) === i);
+  presenceMap = await fetchPresenceMap(candidateIds);
+  onlineIds = new Set(presenceMap.keys());
+  const namesById = new Map([...venueStaff.map(u => [u.id, u.name]), ...notifySubscribers.map(s => [s.id, s.name])]);
+  const visibleOnline = candidateIds.filter(id => onlineIds.has(id) && !isHiddenAccount(namesById.get(id)));
+  document.getElementById("serviceOnlineCount").textContent = visibleOnline.length;
+  renderServicePeople();
+  renderServiceGroups();
+}
+document.getElementById("serviceBtn").addEventListener("click", async () => {
+  serviceGroups = await fetchAllGroups();
+  if (!allVenuesCache.length) allVenuesCache = await fetchAllVenues();
+  await refreshServiceModal();
+  document.getElementById("serviceModal").hidden = false;
+  clearInterval(serviceRefreshTimer);
+  serviceRefreshTimer = setInterval(refreshServiceModal, 1000);
+});
+document.getElementById("serviceCloseBtn").addEventListener("click", closeServiceModal);
+
+document.getElementById("stockBtn").addEventListener("click", () => {
+  document.getElementById("stockSearch").value = "";
+  renderStockList();
+  document.getElementById("stockModal").hidden = false;
+});
+document.getElementById("stockCloseBtn").addEventListener("click", () => { document.getElementById("stockModal").hidden = true; });
+document.getElementById("stockSearch").addEventListener("input", renderStockList);
+function renderStockList(){
+  const wrap = document.getElementById("stockList");
+  const q = document.getElementById("stockSearch").value.trim().toLowerCase();
+  wrap.innerHTML = "";
+  // A venue that isn't selling food doesn't need its food in the stop list.
+  const foodOff = !!(currentVenue && currentVenue.foodEnabled === false);
+  productCategories.filter(cat => !(foodOff && cat.mode === "food")).forEach(cat => {
+    const items = cat.items.filter(i => i.name.toLowerCase().includes(q));
+    if (!items.length) return;
+    const h = document.createElement("div");
+    const allStopped = cat.items.length > 0 && cat.items.every(i => stops.has(i.name));
+    h.className = "stock-cat";
+    h.innerHTML = `<span>${esc(cat.name)}</span><button type="button" class="stock-cat-btn${allStopped ? " on" : ""}" aria-label="${allStopped ? "Put all of " + esc(cat.name) + " back on sale" : "Put all of " + esc(cat.name) + " on stop"}">${allStopped ? "Back on sale" : "Stop all"}</button>`;
+    h.querySelector("button").addEventListener("click", async e => {
+      const btn = e.currentTarget;
+      const on = !allStopped;
+      const until = on ? await askStopUntil("All of " + cat.name) : null;
+      if (until === false) return;
+      btn.disabled = true;
+      for (const p of cat.items) {
+        if (on === stops.has(p.name)) continue;
+        if (on) { stops.add(p.name); await stopsStore.save({ id: stopRowId(p.name), ts: Date.now(), name: p.name, until }); }
+        else { stops.delete(p.name); await stopsStore.remove(stopRowId(p.name)); }
+      }
+      knownStops = new Set(stops);
+      logStopToDiscord(cat.name + " (whole category)", on);
+      logActivity(on ? "Put on stop" : "Back on sale", `All of ${cat.name}`);
+      renderStockList();
+    });
+    wrap.appendChild(h);
+    items.forEach(p => {
+      const row = document.createElement("label");
+      const on = stops.has(p.name);
+      row.className = "stock-row" + (on ? " on" : "");
+      row.innerHTML = `<span>${esc(p.name)}</span><span class="stock-state">${on ? "On stop" : "Available"}</span><span class="switch"><input type="checkbox" aria-label="${esc(p.name)} on stop" ${on ? "checked" : ""}><span class="slider"></span></span>`;
+      row.querySelector('input[type="checkbox"]').addEventListener("change", async e => {
+        const until = e.target.checked ? await askStopUntil(p.name) : null;
+        if (until === false) { e.target.checked = false; return; }
+        row.classList.toggle("on", e.target.checked);
+        row.querySelector(".stock-state").textContent = e.target.checked ? "On stop" : "Available";
+        logActivity(e.target.checked ? "Put on stop" : "Back on sale", p.name);
+        if (e.target.checked) { stops.add(p.name); await stopsStore.save({ id: stopRowId(p.name), ts: Date.now(), name: p.name, until }); }
+        else { stops.delete(p.name); await stopsStore.remove(stopRowId(p.name)); }
+        knownStops = new Set(stops);
+        logStopToDiscord(p.name, e.target.checked);
+      });
+      wrap.appendChild(row);
+    });
+  });
+  if (!wrap.children.length) wrap.innerHTML = `<div class="empty" style="padding:20px 0;">No matches.</div>`;
+}
+
+init();
+</script>
+</body>
+</html>

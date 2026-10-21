@@ -235,3 +235,9 @@ button,.btn,.tag,.state-badge,.stepper,.nav-item,.drawer-list button,.product .n
 .receipt .r-total{border-top:1px dashed #000;margin-top:6px;padding-top:6px;font-weight:800;font-size:16px;}
 .receipt .r-foot{text-align:center;margin-top:10px;font-size:13px;}
 .hist-actions{display:flex;gap:8px;justify-content:flex-start;}
+
+/* Login screen branding */
+.login-brand{text-align:center;margin-bottom:14px;}
+.login-brand img{max-width:160px;max-height:96px;object-fit:contain;display:block;margin:0 auto 8px;}
+.login-brand .lb-name{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-weight:800;font-size:22px;}
+.login-brand .lb-msg{margin:6px 0 0;color:var(--text-muted);font-size:14px;line-height:1.45;}

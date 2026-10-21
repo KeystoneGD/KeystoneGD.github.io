@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Customer display · NIPOS</title>
+<meta name="theme-color" content="#101418">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<link rel="stylesheet" href="nipos.css?v=20261021m">
+<style>
+/* The screen facing the customer (Master settings "Customer display"): the order and total from one
+   till, big enough to read across the bar. */
+body{background:var(--bg);color:var(--text);font-family:'Atkinson Hyperlegible Next',system-ui,sans-serif;margin:0;min-height:100vh;}
+.cd-setup{max-width:420px;margin:0 auto;padding:max(40px, env(safe-area-inset-top)) 20px 40px;}
+.cd-setup h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:26px;margin:0 0 6px;}
+.cd-setup p{color:var(--text-muted);line-height:1.5;}
+.cd-setup label{display:block;font-weight:700;margin:16px 0 6px;}
+.cd-setup input,.cd-setup select{width:100%;box-sizing:border-box;min-height:52px;padding:0 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font:inherit;font-size:20px;}
+.cd-setup .btn{margin-top:16px;width:100%;min-height:52px;}
+.cd-err{color:var(--danger);font-weight:700;min-height:1.4em;}
+.cd-screen{display:flex;flex-direction:column;min-height:100vh;padding:max(24px, env(safe-area-inset-top)) max(28px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));box-sizing:border-box;}
+.cd-venue{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-weight:800;font-size:clamp(20px,3vw,34px);color:var(--text-muted);}
+.cd-lines{flex:1;margin:18px 0;overflow:hidden;}
+.cd-line{display:flex;justify-content:space-between;gap:20px;font-size:clamp(20px,3.2vw,40px);padding:8px 0;border-bottom:1px solid var(--border);}
+.cd-line .q{color:var(--text-muted);margin-right:10px;}
+.cd-sub{display:flex;justify-content:space-between;font-size:clamp(18px,2.4vw,30px);color:var(--text-muted);padding:4px 0;}
+.cd-total{display:flex;justify-content:space-between;align-items:baseline;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-weight:800;font-size:clamp(40px,8vw,110px);border-top:3px solid var(--text);padding-top:12px;}
+.cd-idle{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;}
+.cd-idle h2{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:clamp(34px,6vw,80px);margin:0;}
+.cd-idle p{font-size:clamp(18px,2.6vw,32px);color:var(--text-muted);margin:0;}
+.cd-change{position:fixed;right:12px;bottom:max(12px, env(safe-area-inset-bottom));font-size:13px;min-height:44px;}
+.tabular{font-variant-numeric:tabular-nums;}
+</style>
+</head>
+<body>
+<div class="cd-setup" id="setup">
+  <h1>Customer display</h1>
+  <p>Shows a till's order and total to the customer. Sign in once, then enter the code shown in that till's Settings (under Customer display).</p>
+  <div id="pinStep">
+    <label for="cdPin">Your PIN</label>
+    <input type="password" id="cdPin" inputmode="numeric" autocomplete="off">
+    <button type="button" class="btn btn-accent" id="cdSignIn">Sign in</button>
+  </div>
+  <div id="codeStep" hidden>
+    <label for="cdVenue">Venue</label>
+    <select id="cdVenue"></select>
+    <label for="cdCode">Till code</label>
+    <input type="text" id="cdCode" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="e.g. 4821">
+    <button type="button" class="btn btn-accent" id="cdStart">Show this till's orders</button>
+  </div>
+  <p class="cd-err" id="cdErr" role="alert"></p>
+</div>
+<div class="cd-screen" id="screen" hidden>
+  <div class="cd-venue" id="cdVenueName"></div>
+  <div class="cd-idle" id="cdIdle"><h2 id="cdIdleTitle">Welcome</h2><p id="cdIdleSub">Your order will show here.</p></div>
+  <div class="cd-lines" id="cdLines" aria-live="polite" hidden></div>
+  <div id="cdTotals" hidden></div>
+  <button type="button" class="btn btn-ghost cd-change" id="cdChange">Change till</button>
+</div>
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script src="db.js?v=20261021m"></script>
+<script>
+const LS_DISPLAY = "nipos.customerDisplay";
+let pairing = null, lastTs = 0, pollTimer = null;
+const fmt = p => poundsText(p);
+try { pairing = JSON.parse(localStorage.getItem(LS_DISPLAY) || "null"); } catch (e) {}
+const $ = id => document.getElementById(id);
+function showSetup(step){ $("setup").hidden = false; $("screen").hidden = true; $("pinStep").hidden = step !== "pin"; $("codeStep").hidden = step !== "code"; }
+async function toCodeStep(){
+  const me = await fetchMyStaffRow();
+  if (!me) { showSetup("pin"); return; }
+  setSignedInUser(me);
+  const venues = await fetchMyVenues(me);
+  $("cdVenue").innerHTML = venues.map(v => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join("");
+  showSetup("code"); $("cdCode").focus();
+}
+$("cdSignIn").addEventListener("click", async () => {
+  const pin = $("cdPin").value.trim();
+  const res = await signInWithPin(pin);
+  if (res.error) { $("cdErr").textContent = res.error; return; }
+  $("cdErr").textContent = ""; $("cdPin").value = "";
+  toCodeStep();
+});
+$("cdPin").addEventListener("keydown", e => { if (e.key === "Enter") $("cdSignIn").click(); });
+$("cdStart").addEventListener("click", () => {
+  const code = $("cdCode").value.trim();
+  if (!/^\d{4}$/.test(code)) { $("cdErr").textContent = "The code is 4 numbers, shown in the till's Settings."; return; }
+  pairing = { venueId: $("cdVenue").value, code };
+  try { localStorage.setItem(LS_DISPLAY, JSON.stringify(pairing)); } catch (e) {}
+  $("cdErr").textContent = "";
+  startScreen();
+});
+$("cdChange").addEventListener("click", () => { pairing = null; try { localStorage.removeItem(LS_DISPLAY); } catch (e) {} clearInterval(pollTimer); toCodeStep(); });
+function startScreen(){
+  $("setup").hidden = true; $("screen").hidden = false;
+  setCurrentVenueId(pairing.venueId);
+  clearInterval(pollTimer);
+  poll(); pollTimer = setInterval(poll, 1000);
+}
+let thanksUntil = 0;
+async function poll(){
+  if (!pairing) return;
+  let v = null;
+  try { const { data } = await supabaseClient.from("app_state").select("value").eq("key", pairing.venueId + ":display/" + pairing.code).maybeSingle(); v = data ? data.value : null; } catch (e) { return; }
+  if (!featureOn("customerDisplay")) { renderIdle("This screen is switched off", "Switch on Customer display in Master settings."); return; }
+  if (!v) { renderIdle("Welcome", "Your order will show here."); return; }
+  $("cdVenueName").textContent = v.venue || "";
+  if (v.thanks) {
+    if (v.ts !== lastTs) thanksUntil = Date.now() + 8000;
+    lastTs = v.ts;
+    if (Date.now() < thanksUntil) renderIdle("Thank you!", `Paid ${fmt(v.total)}. Enjoy your evening.`); else renderIdle("Welcome", "Your order will show here.");
+    return;
+  }
+  lastTs = v.ts;
+  if (!v.lines || !v.lines.length) { renderIdle("Welcome", "Your order will show here."); return; }
+  $("cdIdle").hidden = true; $("cdLines").hidden = false; $("cdTotals").hidden = false;
+  $("cdLines").innerHTML = v.lines.map(l => `<div class="cd-line"><span><span class="q">${l.qty} ×</span>${esc(l.name)}</span><span class="tabular">${fmt(l.pence * l.qty)}</span></div>`).join("");
+  $("cdTotals").innerHTML = (v.discountAmount ? `<div class="cd-sub"><span>Subtotal</span><span class="tabular">${fmt(v.base)}</span></div><div class="cd-sub"><span>${esc(v.discountLabel || "Discount")}</span><span class="tabular">−${fmt(v.discountAmount)}</span></div>` : "")
+    + `<div class="cd-total"><span>Total</span><span class="tabular">${fmt(v.total)}</span></div>`;
+}
+function renderIdle(title, sub){ $("cdIdle").hidden = false; $("cdLines").hidden = true; $("cdTotals").hidden = true; $("cdIdleTitle").textContent = title; $("cdIdleSub").textContent = sub; }
+(async () => {
+  connectAuthClient();
+  startMasterThemeSync();
+  const session = await getSession();
+  if (!session) { showSetup("pin"); return; }
+  if (pairing) { const me = await fetchMyStaffRow(); if (me) { setSignedInUser(me); startScreen(); return; } }
+  toCodeStep();
+})();
+</script>
+</body>
+</html>

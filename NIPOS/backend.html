@@ -133,6 +133,8 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .target-bar{height:14px;border-radius:999px;background:var(--surface-2);overflow:hidden;border:1px solid var(--border);}
 .target-bar span{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .4s;}
 .target-card.hit .target-bar span{background:var(--success);}
+.lb-preview{margin:8px 0;padding:10px;border:1px dashed var(--border);border-radius:10px;min-height:44px;display:flex;align-items:center;}
+.lb-preview img{max-width:160px;max-height:96px;object-fit:contain;}
 .act-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:12px 0 4px;}
 .act-group{border:1px solid var(--border);border-radius:12px;padding:8px 12px 10px;margin:0;min-width:0;}
 .act-group legend{font-weight:800;font-size:14px;padding:0 4px;}
@@ -293,7 +295,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021l">
+<link rel="stylesheet" href="nipos.css?v=20261021m">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -756,7 +758,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021l"></script>
+<script src="db.js?v=20261021m"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -788,7 +790,7 @@ let systemSignInPending = false; // "$YSTEM" typed in the PIN box, waiting for t
 let currentRange = "today";
 let charts = {};
 
-function fmt(pence){ return "£" + (pence/100).toFixed(2); }
+function fmt(pence){ return poundsText(pence); } // £ unless Master settings › Formats says otherwise
 function fmtPoundsFromPence(pence){ return (pence/100).toFixed(2); }
 
 async function loadDoc(key, fallback){
@@ -1112,6 +1114,91 @@ async function loadDevices(){
   el.innerHTML = rows.length ? `<div class="table-scroll"><table class="feature-table"><thead><tr><th scope="col">Status</th><th scope="col">Screen</th><th scope="col">Venue</th><th scope="col">Signed in</th><th scope="col">Device</th><th scope="col">Version</th><th scope="col">Last checked in</th></tr></thead><tbody>${rows.map(r => { const on = Date.now() - r.ts < 120000; const old = r.data.version && r.data.version !== NIPOS_VERSION; return `<tr><td><span class="pill ${on ? "pill-cash" : ""}">${on ? "Online" : "Offline"}</span></td><td>${esc(r.data.screen || "")}</td><td>${esc(r.data.venue || (r.venue_id ? venueName(r.venue_id) : ""))}</td><td>${esc(r.data.who || "")}</td><td>${esc((r.data.kind || "") + " · " + (r.data.browser || ""))}${r.data.standalone ? " · app" : ""}</td><td>${esc(r.data.version || "?")}${old ? ` <span class="note">(old, refresh it)</span>` : ""}</td><td>${minutesAgo(r.ts)}</td></tr>`; }).join("")}</tbody></table></div>` : `<p class="note">No devices have reported in yet.</p>`;
 }
 
+// Backup and restore (feature "backup"). Read in pages of 1,000 rows; restore upserts in chunks.
+const BACKUP_TABLES = ["venues", "staff_users", "staff_groups", "categories", "catalogue_items", "stops", "mixer_overrides", "custom_discounts", "app_state", "app_settings", "system_theme", "stock_counts", "tabs", "open_orders", "clock_events"];
+const BACKUP_MONEY = ["sales", "refunds", "gratuities", "abandoned", "z_reports"];
+async function readAll(table){
+  const out = [];
+  for (let page = 0; page < 200; page++) {
+    const { data, error } = await supabaseClient.from(table).select("*").range(page * 1000, page * 1000 + 999);
+    if (error) return { error: error.message, rows: out };
+    out.push(...(data || []));
+    if (!data || data.length < 1000) break;
+  }
+  return { rows: out };
+}
+async function downloadBackup(){
+  const msg = document.getElementById("featureMsg");
+  const tables = BACKUP_TABLES.concat(document.getElementById("bkSales").checked ? BACKUP_MONEY : []).concat(document.getElementById("bkLog").checked ? ["activity_log"] : []);
+  const backup = { app: "NIPOS", version: NIPOS_VERSION, takenAt: new Date().toISOString(), tables: {} }, skipped = [];
+  for (const [i, t] of tables.entries()) {
+    msg.textContent = `Reading ${t} (${i + 1} of ${tables.length})…`;
+    const res = await readAll(t);
+    if (res.error) skipped.push(t); else backup.tables[t] = res.rows;
+  }
+  const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `nipos-backup-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.json`; document.body.appendChild(a); a.click(); a.remove();
+  const count = Object.values(backup.tables).reduce((n, r) => n + r.length, 0);
+  msg.textContent = `Downloaded: ${count} rows from ${Object.keys(backup.tables).length} tables.${skipped.length ? " Couldn't read: " + skipped.join(", ") + "." : ""}`;
+  logActivity("Downloaded a backup", `${count} rows`, null);
+}
+let pendingBackup = null;
+document.addEventListener("change", e => {
+  if (e.target.id === "bkFile" && e.target.files[0]) {
+    const r = new FileReader();
+    r.onload = () => {
+      const box = document.getElementById("bkSummary");
+      try { pendingBackup = JSON.parse(r.result); if (pendingBackup.app !== "NIPOS" || !pendingBackup.tables) throw new Error(); }
+      catch (err) { pendingBackup = null; box.hidden = false; box.textContent = "That isn't a NIPOS backup file."; document.getElementById("bkConfirm").hidden = true; return; }
+      box.hidden = false;
+      box.innerHTML = `<strong>Backup from ${esc(new Date(pendingBackup.takenAt).toLocaleString("en-GB"))}</strong><table>${Object.entries(pendingBackup.tables).map(([t, rows]) => `<tr><td>${esc(t)}</td><td class="num">${rows.length}</td></tr>`).join("")}</table>`;
+      document.getElementById("bkConfirm").hidden = false;
+    };
+    r.readAsText(e.target.files[0]);
+  }
+  if (e.target.id === "lbLogo" && e.target.files[0]) {
+    const img = new Image(), url = URL.createObjectURL(e.target.files[0]);
+    img.onload = () => {
+      const scale = Math.min(1, 320 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+      c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      const data = c.toDataURL("image/png");
+      document.getElementById("lbLogoData").value = data;
+      document.getElementById("lbPreview").innerHTML = `<img src="${data}" alt="New logo">`;
+      document.getElementById("featureMsg").textContent = "Not saved yet. Press Save.";
+    };
+    img.src = url;
+  }
+});
+async function restoreBackup(){
+  const msg = document.getElementById("featureMsg");
+  if (!pendingBackup) { msg.textContent = "Pick a backup file first."; return; }
+  if (document.getElementById("bkWord").value.trim().toUpperCase() !== "RESTORE") { msg.textContent = "Type RESTORE to confirm."; return; }
+  const { data: ok } = await supabaseClient.rpc("nipos_check_system_password", { p_password: document.getElementById("bkPw").value });
+  if (ok !== "ok") { msg.textContent = ok === "locked" ? "Too many wrong passwords. Try again in 15 minutes." : "That password isn't right."; return; }
+  let done = 0; const problems = [];
+  for (const [t, rows] of Object.entries(pendingBackup.tables)) {
+    if (t === "staff_users") continue; // sign-in accounts can't be made from here
+    if (t === "system_theme") {
+      const cur = rows.find(r => r.id === "current");
+      const pw = document.getElementById("bkPw").value;
+      if (cur && cur.settings) for (const [k, v] of Object.entries(cur.settings)) { await supabaseClient.rpc("nipos_set_system_setting", { p_password: pw, p_key: k, p_value: v }); }
+      if (cur && cur.theme) await supabaseClient.rpc("nipos_set_master_theme", { p_password: pw, p_theme: cur.theme });
+      if (cur && cur.layout) await supabaseClient.rpc("nipos_set_pos_layout", { p_password: pw, p_layout: cur.layout });
+      done += rows.length; continue;
+    }
+    for (let i = 0; i < rows.length; i += 500) {
+      msg.textContent = `Restoring ${t}… (${done} rows so far)`;
+      const { error } = await supabaseClient.from(t).upsert(rows.slice(i, i + 500));
+      if (error) { problems.push(`${t}: ${error.message}`); break; }
+      done += Math.min(500, rows.length - i);
+    }
+  }
+  document.getElementById("bkPw").value = ""; document.getElementById("bkWord").value = "";
+  msg.textContent = `Restored ${done} rows.${problems.length ? " Problems: " + problems.join("; ") : ""} Reload Backend and the tills to see it.`;
+  logActivity("Restored a backup", `${done} rows from ${pendingBackup.takenAt}${problems.length ? ", with problems" : ""}`, null);
+}
+
 // Master settings › Copy a venue's setup.
 async function copyVenueSetup(){
   const from = document.getElementById("cvFrom").value, to = document.getElementById("cvTo").value, msg = document.getElementById("featureMsg");
@@ -1398,7 +1485,10 @@ const FEATURES = [
   { key: "training", name: "Training mode for one person", about: "Like Maintenance Mode, but only for the people you pick: their sales are practice (kept out of takings) and their screens say TRAINING MODE, while everyone else works normally." },
   { key: "alertSettings", name: "Alert settings", about: "Which events alert whom, and with which sound: new orders, problems, service calls and refunds." },
   { key: "sessionTimeouts", name: "Session timeouts by role", about: "Sign people out after a while without touching the screen: one time for managers (Backend access), another for everyone else." },
-  { key: "deviceHealth", name: "Device health", about: "Which tills, order screens and Backends are online, when they last checked in, and which version they're running." }
+  { key: "deviceHealth", name: "Device health", about: "Which tills, order screens and Backends are online, when they last checked in, and which version they're running." },
+  { key: "backup", name: "Backup and restore", about: "Download the whole system as one file, and put it back from one. Works whether this is on or off; the switch just shows it here." },
+  { key: "loginBranding", name: "Login screen branding", about: "Your logo, the app name and a short message on the sign-in screen of every till, order screen and Backend." },
+  { key: "formats", name: "Formats", about: "The currency symbol, how dates are written, and 12 or 24-hour time, everywhere." }
 ];
 /* Batch 2 editors. Each one opens filled in with what the till does today (the built-in values), so
    switching a feature on changes nothing until something is edited. render(cfg) draws it; read()
@@ -1652,6 +1742,46 @@ const FEATURE_EDITORS = {
   deviceHealth: {
     render(){ return `<div id="deviceList"><p class="note">Loading…</p></div><div class="feature-actions"><button type="button" class="btn btn-ghost" data-act="devices-refresh">Refresh</button></div>`; },
     read(){ return {}; }
+  },
+  backup: {
+    render(){
+      return `<span class="field">Download a backup</span>
+        <label class="check"><input type="checkbox" id="bkSales" checked>Include sales, refunds, tips and Z Reads</label>
+        <label class="check"><input type="checkbox" id="bkLog">Include the activity log (can be big)</label>
+        <p class="note">The file holds everything, including staff PINs, so keep it somewhere safe.</p>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="backup-download">Download backup</button></div>
+        <span class="field">Restore from a backup</span>
+        <label class="field" for="bkFile">Backup file</label><input type="file" id="bkFile" accept="application/json,.json">
+        <div id="bkSummary" class="wipe-summary" role="status" hidden></div>
+        <div id="bkConfirm" hidden>
+          <label class="field" for="bkWord">Type RESTORE to confirm</label><input type="text" id="bkWord" autocomplete="off" autocapitalize="characters">
+          <label class="field" for="bkPw">Your $YSTEM password</label><input type="password" id="bkPw" autocomplete="current-password">
+          <p class="note">Restoring puts back every row in the file, overwriting rows with the same id. Rows made since the backup are kept. Staff accounts and passwords aren't restored (they live in Supabase's sign-in system).</p>
+          <div class="feature-actions"><button type="button" class="btn btn-danger" data-act="backup-restore">Restore</button></div>
+        </div>`;
+    },
+    read(){ return {}; }
+  },
+  loginBranding: {
+    render(cfg){
+      return `<label class="field" for="lbName">App name</label><input type="text" id="lbName" maxlength="40" value="${esc(cfg.appName || "")}" placeholder="e.g. Cleethorpes Pearl">
+        <label class="field" for="lbMsg">Message</label><textarea id="lbMsg" rows="2" maxlength="200" style="width:100%;">${esc(cfg.message || "")}</textarea>
+        <label class="field" for="lbLogo">Logo (a picture file; it's shrunk to fit)</label><input type="file" id="lbLogo" accept="image/*">
+        <div class="lb-preview" id="lbPreview">${cfg.logo ? `<img src="${esc(cfg.logo)}" alt="Current logo">` : `<span class="note">No logo yet.</span>`}</div>
+        <input type="hidden" id="lbLogoData" value="${esc(cfg.logo || "")}">
+        <div class="feature-actions"><button type="button" class="btn btn-ghost" data-act="lb-clear-logo">Remove the logo</button><button type="button" class="btn btn-solid" data-act="save-editor" data-key="loginBranding">Save</button></div>`;
+    },
+    read(){ return { appName: document.getElementById("lbName").value.trim(), message: document.getElementById("lbMsg").value.trim(), logo: document.getElementById("lbLogoData").value || "" }; }
+  },
+  formats: {
+    render(cfg){
+      return `<div class="edit-row">
+        <label>Currency symbol <select id="fmCur">${["£", "€", "$"].map(c => `<option ${(cfg.currency || "£") === c ? "selected" : ""}>${c}</option>`).join("")}</select></label>
+        <label>Dates <select id="fmDate"><option value="uk" ${(cfg.dateStyle || "uk") === "uk" ? "selected" : ""}>UK (21/10/2026)</option><option value="us" ${cfg.dateStyle === "us" ? "selected" : ""}>US (10/21/2026)</option><option value="iso" ${cfg.dateStyle === "iso" ? "selected" : ""}>Year first (2026-10-21)</option></select></label>
+        <label>Time <select id="fmTime"><option value="24" ${!cfg.hour12 ? "selected" : ""}>24-hour (21:30)</option><option value="12" ${cfg.hour12 ? "selected" : ""}>12-hour (9:30 pm)</option></select></label></div>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="formats">Save</button></div>`;
+    },
+    read(){ return { currency: document.getElementById("fmCur").value, dateStyle: document.getElementById("fmDate").value, hour12: document.getElementById("fmTime").value === "12" }; }
   },
   activityLog: {
     render(cfg){
@@ -2047,6 +2177,9 @@ async function runFeatureAction(act, btn){
   if (act === "tag-remove") { const i = Number(btn.dataset.i); return editorRowChange("dietTags", "tags", l => l.filter((_, j) => j !== i)); }
   if (act === "copy-venue") return copyVenueSetup();
   if (act === "devices-refresh") return loadDevices();
+  if (act === "backup-download") return downloadBackup();
+  if (act === "backup-restore") return restoreBackup();
+  if (act === "lb-clear-logo") { document.getElementById("lbLogoData").value = ""; document.getElementById("lbPreview").innerHTML = `<span class="note">No logo. Press Save.</span>`; return; }
   if (act === "dc-test") {
     const v = (venues.length ? venues : myVenues).find(x => x.id === btn.dataset.venue), url = v && v.discordWebhooks && v.discordWebhooks[btn.dataset.hook];
     if (!url) return;
