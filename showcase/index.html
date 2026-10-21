@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Every NIPOS theme in light and dark on the till, order screen, kitchen view, customer display, Backend and sign-in screen, on tablet and phone.">
+<link rel="icon" href="../NIPOS/favicon.ico" sizes="any">
+<title>NIPOS Theme Gallery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Atkinson+Hyperlegible+Next:wght@400;600;700&display=swap">
+<style>
+[hidden]{display:none !important;}
+:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
+/* Layout: a till-counter strip of controls (theme, screen, light/dark), then a contact sheet of
+   screenshots, each opening full size. Type and accent come from NIPOS itself. */
+:root{
+  --bg:#f3f4f2; --surface:#ffffff; --surface-2:#e9ebe8; --text:#151917; --muted:#5b625e; --line:#d4d8d4;
+  --accent:#006e69; --accent-ink:#ffffff; --scrim:rgba(14,18,16,.82);
+  --display:'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+  --body:'Atkinson Hyperlegible Next', 'Segoe UI', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#121514; --surface:#1b201e; --surface-2:#252b28; --text:#eef1ef; --muted:#a3aba7; --line:#333a37;
+  --accent:#2fc7bf; --accent-ink:#06201e; --scrim:rgba(0,0,0,.86); color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#121514; --surface:#1b201e; --surface-2:#252b28; --text:#eef1ef; --muted:#a3aba7; --line:#333a37;
+  --accent:#2fc7bf; --accent-ink:#06201e; --scrim:rgba(0,0,0,.86); color-scheme:dark; }
+*{box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.5;margin:0;}
+.wrap{max-width:1320px;margin:0 auto;padding-block:28px 56px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));display:grid;gap:22px;}
+header{display:grid;gap:6px;}
+.eyebrow{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(28px,4.4vw,46px);line-height:1.08;margin:0;text-wrap:balance;letter-spacing:-.02em;}
+.lede{color:var(--muted);margin:0;max-width:62ch;}
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
+.stat{font-variant-numeric:tabular-nums;font-weight:700;font-size:14px;padding:4px 10px;border-radius:999px;background:var(--surface-2);}
+
+.controls{display:grid;gap:12px;position:sticky;top:env(safe-area-inset-top, 0px);z-index:5;background:var(--bg);padding-block:10px;border-bottom:1px solid var(--line);}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:10;background:var(--bg);}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.label{font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);min-width:64px;}
+.chip{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--text);font:inherit;font-weight:700;font-size:14px;cursor:pointer;}
+.chip:hover{border-color:var(--muted);}
+.chip[aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text);}
+.chip:focus-visible,.shot:focus-visible,.lb button:focus-visible{outline:3px solid var(--accent);outline-offset:2px;}
+.sw{display:inline-flex;border-radius:5px;overflow:hidden;border:1px solid rgba(127,127,127,.4);}
+.sw i{display:block;width:12px;height:18px;}
+
+.theme-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;}
+.theme-head h2{font-family:var(--display);font-weight:800;font-size:24px;margin:0;}
+.theme-head p{margin:0;color:var(--muted);font-size:15px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr));gap:18px;}
+.grid.phone{grid-template-columns:repeat(auto-fill,minmax(min(100%,190px),1fr));}
+.grid.phone .frame{aspect-ratio:390/844;border-radius:18px;}
+.shot{display:grid;gap:8px;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:zoom-in;min-width:0;}
+.frame{border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--surface-2);aspect-ratio:1180/820;}
+.frame img{display:block;width:100%;height:100%;object-fit:cover;object-position:top left;transition:transform .25s ease;}
+.shot:hover .frame img{transform:scale(1.015);}
+.cap{display:flex;justify-content:space-between;gap:8px;font-size:14px;}
+.cap b{font-family:var(--display);font-weight:700;}
+.mode{font-weight:700;font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);}
+.empty{color:var(--muted);padding:30px 0;}
+
+.lb{position:fixed;inset:0;z-index:20;background:var(--scrim);display:grid;grid-template-rows:auto 1fr;padding:max(12px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));gap:10px;}
+.lb-bar{display:flex;align-items:center;gap:10px;color:#fff;}
+.lb-bar .t{flex:1;font-family:var(--display);font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lb button{min-height:44px;min-width:44px;border-radius:10px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.08);color:#fff;font:inherit;font-weight:700;cursor:pointer;padding:0 14px;}
+.lb-img{display:flex;align-items:center;justify-content:center;min-height:0;}
+.lb-img img{max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,.5);}
+footer{color:var(--muted);font-size:14px;}
+@media (prefers-reduced-motion: reduce){ .frame img{transition:none;} }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">NIPOS · bar till system</span>
+    <h1>Seven themes, light and dark</h1>
+    <p class="lede">Every master theme on the till, the order screen, the kitchen view, the customer display, Backend and the sign-in screen, on a tablet and a phone. Demo data from Starlight Suite; tap any screen to see it full size.</p>
+    <div class="stats"><span class="stat">7 themes</span><span class="stat">2 modes</span><span class="stat">6 screens</span><span class="stat">Tablet and phone</span><span class="stat">168 screenshots</span></div>
+  </header>
+
+  <div class="controls">
+    <div class="row" role="group" aria-label="Theme"><span class="label">Theme</span><div class="row" id="themes"></div></div>
+    <div class="row" role="group" aria-label="Screen"><span class="label">Screen</span><div class="row" id="screens"></div></div>
+    <div class="row" role="group" aria-label="Light or dark"><span class="label">Mode</span><div class="row" id="modes"></div></div>
+    <div class="row" role="group" aria-label="Device"><span class="label">Device</span><div class="row" id="devices"></div></div>
+  </div>
+
+  <section aria-live="polite">
+    <div class="theme-head"><h2 id="themeName"></h2><p id="themeNote"></p></div>
+    <div class="grid" id="grid" style="margin-top:14px;"></div>
+  </section>
+
+  <footer>Tablet: 1180 × 820 (Backend and customer display 1280 × 800). Phone: 390 × 844. All with the Tiles till layout.</footer>
+</div>
+
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-labelledby="lbTitle" hidden>
+  <div class="lb-bar"><button type="button" id="lbPrev" aria-label="Previous screenshot">‹</button><span class="t" id="lbTitle"></span><button type="button" id="lbNext" aria-label="Next screenshot">›</button><button type="button" id="lbClose">Close</button></div>
+  <div class="lb-img"><img id="lbImg" alt=""></div>
+</div>
+
+<script>
+const THEMES = [
+  { key: "classic", name: "NIPOS Classic", note: "The original look: teal on charcoal, or on soft grey in light mode.", sw: ["#f2f2f7", "#1c1c1e", "#00bfb8"] },
+  { key: "neon-nights", name: "Neon Nights", note: "Deep navy with teal, for late-night bars.", sw: ["#1a1a2e", "#121212", "#008080"] },
+  { key: "classic-pub", name: "Classic Pub", note: "Cream and walnut brown, like a traditional pub.", sw: ["#f5f5dc", "#1c1c1c", "#5c4033"] },
+  { key: "modern-loft", name: "Modern Loft", note: "Cool grey with a primary blue.", sw: ["#f0f2f5", "#1a202c", "#3f51b5"] },
+  { key: "electric-night", name: "Electric Night", note: "Near-black with an electric blue.", sw: ["#1c1c1e", "#121212", "#007aff"] },
+  { key: "lounge-sunset", name: "Lounge Sunset", note: "Dusky plum with a rose accent.", sw: ["#2c2c3a", "#1a1a24", "#e8a0b4"] },
+  { key: "coastal-breeze", name: "Coastal Breeze", note: "Light grey and sea aqua.", sw: ["#f2f2f7", "#1c1c1e", "#00bfb7"] }
+];
+const SCREENS = [["pos", "POS"], ["orders", "Orders"], ["kitchen", "Kitchen"], ["display", "Customer display"], ["backend", "Backend"], ["login", "Login"]];
+const MODES = [["both", "Both"], ["light", "Light"], ["dark", "Dark"]];
+const DEVICES = [["tablet", "Tablet"], ["phone", "Phone"]];
+let theme = "classic", screen = "all", mode = "both", device = "tablet", shown = [], lbIndex = 0;
+const hash = (location.hash || "").slice(1);
+if (THEMES.some(t => t.key === hash)) theme = hash;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function chips(){
+  $("themes").innerHTML = THEMES.map(t => `<button type="button" class="chip" data-theme-key="${t.key}" aria-pressed="${t.key === theme}"><span class="sw" aria-hidden="true">${t.sw.map(c => `<i style="background:${c}"></i>`).join("")}</span>${esc(t.name)}</button>`).join("");
+  $("screens").innerHTML = [["all", "All"]].concat(SCREENS).map(([k, l]) => `<button type="button" class="chip" data-screen="${k}" aria-pressed="${k === screen}">${l}</button>`).join("");
+  $("modes").innerHTML = MODES.map(([k, l]) => `<button type="button" class="chip" data-mode="${k}" aria-pressed="${k === mode}">${l}</button>`).join("");
+  $("devices").innerHTML = DEVICES.map(([k, l]) => `<button type="button" class="chip" data-device="${k}" aria-pressed="${k === device}">${l}</button>`).join("");
+}
+function render(){
+  chips();
+  const t = THEMES.find(x => x.key === theme);
+  $("themeName").textContent = t.name; $("themeNote").textContent = t.note;
+  shown = [];
+  SCREENS.filter(([k]) => screen === "all" || k === screen).forEach(([k, l]) => ["light", "dark"].filter(m => mode === "both" || m === mode).forEach(m => shown.push({ src: `shots/${theme}-${m}-${k}${device === "phone" ? "-phone" : ""}.jpg`, label: l, mode: m })));
+  $("grid").classList.toggle("phone", device === "phone");
+  $("grid").innerHTML = shown.map((s, i) => `<button type="button" class="shot" data-i="${i}" aria-label="${esc(t.name)}, ${esc(s.label)}, ${s.mode} mode, ${device}. Open full size"><span class="frame"><img src="${s.src}" alt="" loading="lazy" width="${device === "phone" ? 390 : 1180}" height="${device === "phone" ? 844 : 820}"></span><span class="cap"><b>${esc(s.label)}</b><span class="mode">${s.mode === "light" ? "Light" : "Dark"}</span></span></button>`).join("") || `<p class="empty">Nothing matches those choices.</p>`;
+}
+document.addEventListener("click", e => {
+  const th = e.target.closest("[data-theme-key]"), sc = e.target.closest("[data-screen]"), md = e.target.closest("[data-mode]"), dv = e.target.closest("[data-device]"), sh = e.target.closest(".shot");
+  if (dv) { device = dv.dataset.device; render(); }
+  if (th) { theme = th.dataset.themeKey; try { history.replaceState(null, "", "#" + theme); } catch (err) {} render(); }
+  if (sc) { screen = sc.dataset.screen; render(); }
+  if (md) { mode = md.dataset.mode; render(); }
+  if (sh) openLb(Number(sh.dataset.i));
+});
+function openLb(i){
+  lbIndex = (i + shown.length) % shown.length;
+  const s = shown[lbIndex], t = THEMES.find(x => x.key === theme);
+  $("lbImg").src = s.src; $("lbImg").alt = `${t.name}, ${s.label}, ${s.mode} mode`;
+  $("lbTitle").textContent = `${t.name} · ${s.label} · ${s.mode === "light" ? "Light" : "Dark"} · ${device === "phone" ? "Phone" : "Tablet"}  (${lbIndex + 1} of ${shown.length})`;
+  $("lb").hidden = false; $("lbClose").focus();
+}
+function closeLb(){ $("lb").hidden = true; const b = document.querySelector(`.shot[data-i="${lbIndex}"]`); if (b) b.focus(); }
+$("lbClose").addEventListener("click", closeLb);
+$("lbPrev").addEventListener("click", () => openLb(lbIndex - 1));
+$("lbNext").addEventListener("click", () => openLb(lbIndex + 1));
+$("lb").addEventListener("click", e => { if (e.target.id === "lb" || e.target.classList.contains("lb-img")) closeLb(); });
+document.addEventListener("keydown", e => {
+  if ($("lb").hidden) return;
+  if (e.key === "Escape") closeLb(); else if (e.key === "ArrowLeft") openLb(lbIndex - 1); else if (e.key === "ArrowRight") openLb(lbIndex + 1);
+});
+render();
+</script>
+
+</body>
+</html>
