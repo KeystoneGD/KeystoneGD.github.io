@@ -868,7 +868,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261022c";
+const NIPOS_VERSION = "20261022d";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -1027,9 +1027,10 @@ async function flushActivity() {
   if (activityFlushing) await activityFlushing;
   if (!activityQueue.length || !supabaseClient) return;
   const batch = activityQueue.splice(0, 200);
-  activityFlushing = (async () => { try { const { error } = await supabaseClient.from("activity_log").insert(batch); if (error && batch.length < 400) activityQueue.unshift(...batch.filter(r => r.user_id === signedInUserId)); } catch (e) {} })();
+  const putBack = () => { if (activityQueue.length < 2000) activityQueue.unshift(...batch.filter(r => r.user_id === signedInUserId)); };
+  activityFlushing = (async () => { try { const { error } = await supabaseClient.from("activity_log").insert(batch); if (error) putBack(); } catch (e) { putBack(); } })();
   await activityFlushing; activityFlushing = null;
-  if (activityQueue.length) return flushActivity();
+  if (activityQueue.length && !(activityQueue[0] === batch[0])) return flushActivity(); // stop for now if it failed; the timer tries again
 }
 async function logActivity(action, detail, venueId, now) {
   if (!featureOn("activityLog") || !supabaseClient || !signedInUserId) return;
@@ -1712,15 +1713,59 @@ function openRefundScreen(opts) {
 // Every shared log is a table of independent rows, one per event, addressed by its own id. A device
 // only ever writes its own row, so two devices can never clobber each other. Rows are also scoped to
 // the currently selected venue so one venue's data is never mixed with another's.
+// --- Outbox: a save that doesn't reach the database (Wi-Fi drop, timeout) is kept on this device and
+// retried every few seconds until it does, instead of being lost while the screen says it was logged.
+// Saves are upserts by id, so sending one twice is harmless. A warning shows while anything is waiting.
+const LS_OUTBOX = "nipos.outbox.v1";
+let outbox = [];
+try { outbox = JSON.parse(localStorage.getItem(LS_OUTBOX) || "[]"); } catch (e) { outbox = []; }
+function saveOutbox() { try { localStorage.setItem(LS_OUTBOX, JSON.stringify(outbox)); } catch (e) {} renderOutboxNote(); }
+async function upsertRow(table, rec) {
+  try { const { error } = await supabaseClient.from(table).upsert(rec); return !error; } catch (e) { return false; }
+}
+function queueOutbox(table, rec) {
+  outbox = outbox.filter(o => !(o.table === table && o.rec.id === rec.id)).concat([{ table, rec, at: Date.now() }]);
+  saveOutbox();
+}
+let outboxBusy = false;
+async function flushOutbox() {
+  if (outboxBusy || !outbox.length || !supabaseClient) return;
+  outboxBusy = true;
+  try {
+    for (const o of outbox.slice()) {
+      if (!(await upsertRow(o.table, o.rec))) break; // still offline: try again later, in order
+      outbox = outbox.filter(x => x !== o);
+      saveOutbox();
+    }
+  } finally { outboxBusy = false; }
+}
+function renderOutboxNote() {
+  if (typeof document === "undefined" || !document.body) return;
+  let el = document.getElementById("outboxNote");
+  if (!outbox.length) { if (el) el.hidden = true; return; }
+  if (!el) {
+    el = document.createElement("div"); el.id = "outboxNote"; el.className = "outbox-note"; el.setAttribute("role", "status");
+    document.body.appendChild(el);
+  }
+  const sales = outbox.filter(o => o.table === "sales").length;
+  el.textContent = `${outbox.length} change${outbox.length === 1 ? "" : "s"}${sales ? ` (${sales} sale${sales === 1 ? "" : "s"})` : ""} waiting to save. Keep this screen open and online.`;
+  el.hidden = false;
+}
+setInterval(flushOutbox, 5000);
+try { window.addEventListener("online", flushOutbox); document.addEventListener("DOMContentLoaded", () => { renderOutboxNote(); flushOutbox(); }); } catch (e) {}
+
 function rowStore(table, limit) {
   limit = limit || 1000;
   return {
     async save(row) {
       if (!supabaseClient || !currentVenueId) return;
-      try { await supabaseClient.from(table).upsert({ id: row.id, ts: row.ts, venue_id: currentVenueId, data: row }); } catch (e) {}
+      const rec = { id: row.id, ts: row.ts, venue_id: currentVenueId, data: row };
+      if (outbox.some(o => o.table === table)) { queueOutbox(table, rec); flushOutbox(); return; } // keep the order
+      if (!(await upsertRow(table, rec))) queueOutbox(table, rec);
     },
     async remove(id) {
       if (!supabaseClient) return;
+      if (outbox.some(o => o.table === table && o.rec.id === id)) { outbox = outbox.filter(o => !(o.table === table && o.rec.id === id)); saveOutbox(); }
       try { await supabaseClient.from(table).delete().eq("id", id); } catch (e) {}
     },
     // Fetches the row fresh right before applying `mutator` and saving it, so a field another device
