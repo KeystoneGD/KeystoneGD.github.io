@@ -133,7 +133,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022j">
+<link rel="stylesheet" href="nipos.css?v=20261022k">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -261,7 +261,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261022j"></script>
+<script src="db.js?v=20261022k"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -1126,6 +1126,11 @@ async function refreshServiceModal(){
   renderServiceGroups();
 }
 document.getElementById("serviceBtn").addEventListener("click", async () => {
+  // Say it's checking until it knows, rather than "Nobody's online" (or the last list) on a slow connection.
+  document.getElementById("serviceUserList").innerHTML = `<div class="empty" style="padding:10px 0;">Checking who's online…</div>`;
+  document.getElementById("serviceGroupList").innerHTML = "";
+  document.getElementById("serviceOnlineCount").textContent = "…";
+  document.getElementById("serviceModal").hidden = false;
   serviceGroups = await fetchAllGroups();
   if (!allVenuesCache.length) allVenuesCache = await fetchAllVenues();
   await refreshServiceModal();

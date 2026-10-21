@@ -137,6 +137,8 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .oo-problem{margin-top:6px;font-size:13.5px;font-weight:700;color:var(--text);}
 .oo-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;}
 .oo-actions select{min-height:44px;width:auto;min-width:200px;flex:0 0 auto;}
+.act-pager{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin:12px 0;}
+.act-pager span{font-weight:700;font-size:14px;margin:0 6px;}
 .kitchen-card label.check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;cursor:pointer;}
 .kitchen-venues{border:0;padding:0;margin:12px 0 0;display:flex;flex-direction:column;gap:4px;}
 .feature-list{display:flex;flex-direction:column;gap:12px;max-width:860px;}
@@ -323,7 +325,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022j">
+<link rel="stylesheet" href="nipos.css?v=20261022k">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -822,7 +824,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261022j"></script>
+<script src="db.js?v=20261022k"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -1950,7 +1952,7 @@ async function runExport(){
 
 // Activity log viewer: used by Master settings › Activity ($YSTEM) and the Activity log page (View
 // Activity Logs). Dates and search go to the database; the tick boxes filter what's loaded, straight away.
-const activityViewers = {}, ACTIVITY_MAX = 5000;
+const activityViewers = {}, ACTIVITY_MAX = 50000, ACTIVITY_PAGE = 100; // a whole night, 100 to a page
 function activityViewerHTML(k){
   return `<div class="card act-card">
     <div class="edit-row">
@@ -2020,6 +2022,7 @@ async function loadActivity(k){
     try { const res = await query; rows = res.data || []; } catch (e) {}
     data = data.concat(rows);
     if (rows.length < 1000) break;
+    list.innerHTML = `<div class="empty">Loading… ${data.length.toLocaleString("en-GB")} entries so far</div>`;
   }
   activityViewers[k].rows = data.sort((a, b) => b.ts - a.ts);
   showActivity(k);
@@ -2054,9 +2057,20 @@ function showActivity(k){
   const ok = (p, val) => p.set.has(val) || p.set.size === p.all;
   v.shown = v.rows.filter(r => types.set.has(rowType(r)) && screens.set.has(activityScreenName(r.data.page)) && ok(venuesP, rowVenueKey(r)) && ok(people, r.user_id || "")
     && (!q || `${r.data.action} ${rowDetail(r)} ${r.data.by} ${rowVenueLabel(r)}`.toLowerCase().includes(q)));
-  document.getElementById(k + "Count").textContent = v.rows.length ? `Showing ${v.shown.length} of ${v.rows.length} loaded${v.rows.length >= ACTIVITY_MAX ? " (the newest 5,000; narrow the dates to see older ones)" : ""}.` : "";
-  list.innerHTML = v.shown.length ? `<div class="table-scroll"><table class="feature-table activity-table"><thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">Venue</th><th scope="col">Where</th><th scope="col">What</th></tr></thead><tbody>${v.shown.map(r => `<tr${v.newIds && v.newIds.has(r.id) ? ' class="act-new"' : ""}><td>${fmtDayTime(r.ts)}</td><td>${esc(r.data.by || "")}</td><td>${esc(rowVenueLabel(r))}</td><td>${esc(activityScreenName(r.data.page))}</td><td><span class="act-type act-${esc(rowType(r))}">${esc((ACTIVITY_TYPES.find(t => t.key === rowType(r)) || {}).name || "")}</span> <strong>${esc(r.data.action)}</strong>${rowDetail(r) ? " · " + esc(rowDetail(r)) : ""}</td></tr>`).join("")}</tbody></table></div>`
+  // 100 to a page. Changing a filter goes back to the first page; live updates keep the page.
+  const filterKey = JSON.stringify([[...types.set], [...screens.set], [...venuesP.set], [...people.set], q]);
+  if (v.filterKey !== filterKey) { v.filterKey = filterKey; v.page = 0; }
+  const pages = Math.max(1, Math.ceil(v.shown.length / ACTIVITY_PAGE));
+  v.page = Math.min(Math.max(0, v.page || 0), pages - 1);
+  const pageRows = v.shown.slice(v.page * ACTIVITY_PAGE, (v.page + 1) * ACTIVITY_PAGE);
+  const n = x => x.toLocaleString("en-GB");
+  document.getElementById(k + "Count").textContent = v.rows.length ? `${v.shown.length ? `Showing ${n(v.page * ACTIVITY_PAGE + 1)}–${n(v.page * ACTIVITY_PAGE + pageRows.length)} of ${n(v.shown.length)}` : "Showing 0"} (${n(v.rows.length)} loaded${v.rows.length >= ACTIVITY_MAX ? `, the newest ${n(ACTIVITY_MAX)}; narrow the dates to see older ones` : ""}).` : "";
+  list.innerHTML = v.shown.length ? `<div class="table-scroll"><table class="feature-table activity-table"><thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">Venue</th><th scope="col">Where</th><th scope="col">What</th></tr></thead><tbody>${pageRows.map(r => `<tr${v.newIds && v.newIds.has(r.id) ? ' class="act-new"' : ""}><td>${fmtDayTime(r.ts)}</td><td>${esc(r.data.by || "")}</td><td>${esc(rowVenueLabel(r))}</td><td>${esc(activityScreenName(r.data.page))}</td><td><span class="act-type act-${esc(rowType(r))}">${esc((ACTIVITY_TYPES.find(t => t.key === rowType(r)) || {}).name || "")}</span> <strong>${esc(r.data.action)}</strong>${rowDetail(r) ? " · " + esc(rowDetail(r)) : ""}</td></tr>`).join("")}</tbody></table></div>${pages > 1 ? `<nav class="act-pager" aria-label="Activity log pages"><button type="button" class="btn btn-ghost" data-act-page="first" ${v.page === 0 ? "disabled" : ""}>First</button><button type="button" class="btn btn-ghost" data-act-page="prev" ${v.page === 0 ? "disabled" : ""}>Previous</button><span>Page ${n(v.page + 1)} of ${n(pages)}</span><button type="button" class="btn btn-ghost" data-act-page="next" ${v.page >= pages - 1 ? "disabled" : ""}>Next</button><button type="button" class="btn btn-ghost" data-act-page="last" ${v.page >= pages - 1 ? "disabled" : ""}>Last</button></nav>` : ""}`
     : `<div class="empty">Nothing logged${featureOn("activityLog") ? " for these filters" : " yet. The Activity log is switched off in Master settings"}.</div>`;
+  list.querySelectorAll("[data-act-page]").forEach(b => b.addEventListener("click", () => {
+    const go = b.dataset.actPage; v.page = go === "first" ? 0 : go === "last" ? pages - 1 : v.page + (go === "next" ? 1 : -1);
+    showActivity(k); list.scrollIntoView({ block: "start" });
+  }));
 }
 document.querySelector('#page-themes .tab-btn[data-tab="ms-activity"]').addEventListener("click", () => { mountActivityViewer("ms"); renderActivityFilters("ms"); document.getElementById("actOffNote").hidden = featureOn("activityLog"); loadActivity("ms"); });
 document.getElementById("navActivity").addEventListener("click", () => { mountActivityViewer("pg"); renderActivityFilters("pg"); loadActivity("pg"); });
