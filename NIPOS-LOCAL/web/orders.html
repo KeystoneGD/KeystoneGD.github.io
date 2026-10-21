@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>NIPOS - Orders</title>
+<title>NIPOS Order Screen</title>
 <link rel="manifest" href="manifest-orders.json" id="manifestLink">
 <script>
 // /kitchen (kitchen.html) opens this page as the kitchen's screen and puts its own address back.
 const KITCHEN_PAGE = new URLSearchParams(location.search).get("station") === "kitchen";
 if (KITCHEN_PAGE) {
+  document.title = "NIPOS Kitchen View";
   document.getElementById("manifestLink").href = "manifest-kitchen.json";
   const from = new URLSearchParams(location.search).get("from");
   if (from && /^\/[\w\/.-]*$/.test(from)) try { history.replaceState(null, "", from + location.hash); } catch (e) {}
@@ -133,7 +134,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022l">
+<link rel="stylesheet" href="nipos.css?v=20261022m">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -262,7 +263,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022l"></script>
+<script src="db.js?v=20261022m"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -310,10 +311,9 @@ function applyLoginState(){
     document.getElementById("loginGate").hidden = true;
     document.getElementById("accountName").textContent = "Signed in as " + u.name + (currentVenue ? " · " + currentVenue.name : "");
     applyVenueIdentity(activeKitchen && currentVenue ? { ...currentVenue, name: activeKitchen.name } : currentVenue, u.name);
-    if (currentVenue) document.title = currentVenue.name + (KITCHEN_PAGE ? " · Kitchen" : " · Orders");
-    if (activeKitchen) {
-      document.title = activeKitchen.name + " · Kitchen";
-    }
+    // The kitchen's tab names the kitchen (or, with no kitchens set up, the venue it's cooking for).
+    if (KITCHEN_PAGE) setTabTitle("kitchen", activeKitchen ? activeKitchen.name : currentVenue ? currentVenue.name : "");
+    else setTabTitle("orders", currentVenue ? currentVenue.name : "");
   } else {
     applyVenueIdentity(null);
     document.getElementById("loginGate").hidden = false;

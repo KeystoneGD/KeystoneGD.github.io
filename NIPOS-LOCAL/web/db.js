@@ -449,6 +449,28 @@ let systemSettings = {};
 function featureOn(key) { const f = systemSettings[key]; return !!(f && f.enabled); }
 function featureConfig(key) { return systemSettings[key] || {}; }
 
+// Browser tab names. {venue} / {kitchen} is filled in; with no name yet (before sign-in) the
+// trailing " - " goes. Master settings > Browser tab names can change each one.
+const TAB_TITLES = {
+  pos: "NIPOS - {venue}",
+  orders: "NIPOS Order Screen - {venue}",
+  kitchen: "NIPOS Kitchen View - {kitchen}",
+  display: "NIPOS - Customer View",
+  backend: "NIPOS Back Office - {venue}"
+};
+let tabTitleNow = null;
+function tabTitle(kind, name) {
+  const own = featureOn("tabTitles") ? ((featureConfig("tabTitles").titles || {})[kind] || "").trim() : "";
+  const tpl = own || TAB_TITLES[kind] || "NIPOS";
+  const out = tpl.replace(/\{(venue|kitchen|name)\}/gi, name || "").replace(/\s*[-–·|:]\s*$/, "").replace(/\s{2,}/g, " ").trim();
+  return out || "NIPOS";
+}
+function setTabTitle(kind, name) {
+  tabTitleNow = [kind, name];
+  try { document.title = tabTitle(kind, name); } catch (e) {}
+}
+try { document.addEventListener("nipos:settingschange", () => { if (tabTitleNow) setTabTitle(tabTitleNow[0], tabTitleNow[1]); }); } catch (e) {}
+
 // --- Push notifications on this device. $YSTEM can reset them for everyone (Master settings), which
 // clears every saved device and asks each device to accept again; staff can also switch them off or
 // on for their device from the till menu. Both are remembered per device in localStorage.
@@ -879,7 +901,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261022l";
+const NIPOS_VERSION = "20261022m";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }

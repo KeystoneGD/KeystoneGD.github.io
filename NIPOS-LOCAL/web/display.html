@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Customer display · NIPOS</title>
+<title>NIPOS - Customer View</title>
 <meta name="theme-color" content="#101418">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="stylesheet" href="vendor/fonts/fonts.css">
-<link rel="stylesheet" href="nipos.css?v=20261022l">
+<link rel="stylesheet" href="nipos.css?v=20261022m">
 <style>
 /* The screen facing the customer (Master settings "Customer display"): the order and total from one
    till, big enough to read across the bar. */
@@ -64,7 +64,7 @@ body{background:var(--bg);color:var(--text);font-family:'Atkinson Hyperlegible N
 </div>
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022l"></script>
+<script src="db.js?v=20261022m"></script>
 <script>
 const LS_DISPLAY = "nipos.customerDisplay";
 let pairing = null, lastTs = 0, pollTimer = null;
@@ -125,6 +125,7 @@ async function poll(){
     + `<div class="cd-total"><span>Total</span><span class="tabular">${fmt(v.total)}</span></div>`;
 }
 function renderIdle(title, sub){ $("cdIdle").hidden = false; $("cdLines").hidden = true; $("cdTotals").hidden = true; $("cdIdleTitle").textContent = title; $("cdIdleSub").textContent = sub; }
+setTabTitle("display", "");
 (async () => {
   connectAuthClient();
   startMasterThemeSync();
