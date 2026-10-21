@@ -222,6 +222,12 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .section-title:first-child{margin-top:0;}
 
 /* ---------- dashboard ---------- */
+.dash-live{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--text-muted);min-height:44px;cursor:pointer;margin-right:auto;margin-left:12px;}
+.dash-live input{width:18px;height:18px;margin:0;accent-color:var(--success);}
+.dash-live .dot{width:9px;height:9px;border-radius:50%;background:var(--success);box-shadow:0 0 0 0 var(--success);animation:dashPulse 2s infinite;}
+.dash-live.off .dot{background:var(--text-muted);animation:none;}
+@keyframes dashPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--success) 60%, transparent);}70%{box-shadow:0 0 0 8px transparent;}100%{box-shadow:0 0 0 0 transparent;}}
+@media (prefers-reduced-motion: reduce){.dash-live .dot{animation:none;}}
 .range-picker{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
 .range-btn{background:var(--surface-2);border:1px solid var(--border);color:var(--text);font-size:14px;font-weight:700;padding:0 16px;min-height:44px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;}
 .range-btn.active{background:var(--sel-bg);color:var(--sel-ink);border-color:var(--sel-bg);}
@@ -325,7 +331,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022k">
+<link rel="stylesheet" href="nipos.css?v=20261022l">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -399,6 +405,7 @@ table.data-table tr:last-child td{border-bottom:0;}
     <section class="page active" id="page-dashboard">
       <div class="page-header">
         <h1>Takings</h1>
+        <label class="dash-live" title="Takings update by themselves every few seconds while this is on"><input type="checkbox" id="dashLive" checked><span class="dot" aria-hidden="true"></span><span id="dashLiveText">Live</span></label>
         <label class="page-venue" id="dashVenueWrap" hidden><span>Venue</span><select id="dashVenue" aria-label="Venue for Takings"></select></label>
         <div class="range-picker">
           <button class="range-btn active" data-range="today">Today</button>
@@ -824,7 +831,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261022k"></script>
+<script src="db.js?v=20261022l"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -2674,18 +2681,35 @@ function compareText(cur, prev, kind){
 }
 
 let lastDash = null;
-async function loadDashboard(){
+// Live Takings: while the page is open (and its dates include now) it re-reads every 5 seconds, and
+// only redraws when a sale or refund actually changed. The comparison period can't change, so it's
+// read once per view and kept.
+let dashLoading = false, dashPending = false, dashSig = null, dashCmpCache = { key: null, at: 0, sales: [], refunds: [] };
+async function loadDashboard(quiet){
   if (!currentVenue) return;
+  if (dashLoading) { if (quiet !== true) dashPending = true; return; } // a change asked for mid-check runs right after it
+  dashLoading = true;
+  try { await loadDashboardNow(quiet === true); } finally { dashLoading = false; }
+  if (dashPending) { dashPending = false; dashSig = null; loadDashboard(); }
+}
+async function loadDashboardNow(quiet){
   const { startMs, endMs, bucket } = rangeToMs(currentRange);
   const cmp = comparisonFor(currentRange, startMs, endMs);
   const allVenues = !dashVenueId && myVenues.length > 1;
   const venueIds = allVenues ? myVenues.map(v => v.id) : [dashVenueId || currentVenue.id];
+  const cmpKey = `${currentRange}|${venueIds.join(",")}|${new Date(startMs).toDateString()}|${cmp.startMs}`;
+  const cmpFresh = dashCmpCache.key === cmpKey && Date.now() - dashCmpCache.at < 10 * 60000;
   const [sales, refunds, prevSales, prevRefunds] = await Promise.all([
     fetchSalesInRange(startMs, endMs, venueIds),
     fetchRefundsInRange(startMs, endMs, venueIds),
-    fetchSalesInRange(cmp.startMs, cmp.endMs, venueIds),
-    fetchRefundsInRange(cmp.startMs, cmp.endMs, venueIds)
+    cmpFresh ? dashCmpCache.sales : fetchSalesInRange(cmp.startMs, cmp.endMs, venueIds),
+    cmpFresh ? dashCmpCache.refunds : fetchRefundsInRange(cmp.startMs, cmp.endMs, venueIds)
   ]);
+  if (!cmpFresh) dashCmpCache = { key: cmpKey, at: Date.now(), sales: prevSales, refunds: prevRefunds };
+  const sig = `${cmpKey}|${sales.length}|${sales.reduce((n, x) => n + (x.total || 0) + (x.items || []).filter(i => i.refunded).length, 0)}|${refunds.length}|${refunds.reduce((n, x) => n + (x.pence || 0), 0)}|${new Date().getHours()}`;
+  markDashUpdated();
+  if (quiet && sig === dashSig) return; // nothing new: leave the page (and its charts) alone
+  dashSig = sig;
   const summary = computeSalesSummary(sales, refunds);
   const prev = computeSalesSummary(prevSales, prevRefunds);
   document.getElementById("kpiRevenue").textContent = fmt(summary.grandTotal);
@@ -4074,7 +4098,20 @@ document.getElementById("soundUploadInput").addEventListener("change", async (e)
 });
 
 /* ---------- live refresh ---------- */
-setInterval(() => { if (currentVenue && currentPage === "dashboard") loadDashboard(); }, 20000);
+function dashShowsNow(){ const { endMs } = rangeToMs(currentRange); return endMs >= Date.now() - 60000; }
+function markDashUpdated(){
+  const t = document.getElementById("dashLiveText"); if (!t) return;
+  const on = document.getElementById("dashLive").checked;
+  t.textContent = !on ? "Live paused" : dashShowsNow() ? `Live · updated ${new Date().toLocaleTimeString("en-GB")}` : "Past dates (not live)";
+  document.querySelector(".dash-live").classList.toggle("off", !on || !dashShowsNow());
+}
+document.getElementById("dashLive").addEventListener("change", () => { markDashUpdated(); if (document.getElementById("dashLive").checked) loadDashboard(true); });
+setInterval(() => {
+  if (!currentVenue || currentPage !== "dashboard" || document.visibilityState !== "visible") return;
+  if (!document.getElementById("dashLive").checked || !dashShowsNow()) return;
+  loadDashboard(true);
+}, 5000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && currentPage === "dashboard" && document.getElementById("dashLive").checked) loadDashboard(true); });
 
 init();
 </script>
