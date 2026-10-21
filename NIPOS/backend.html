@@ -86,7 +86,8 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .sidebar .venue-band .grow{flex-direction:column;align-items:flex-start;gap:0;}
 .venue-band.mobile-band{display:none;}
 .sidebar-footer{border-top:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:8px;}
-.venue-switcher select{font-size:13px;padding:8px 10px;}
+.page-venue{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;color:var(--text-muted);}
+.page-venue select{min-width:200px;font-size:14px;}
 .footer-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .footer-row .account-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .icon-btn{background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:10px;cursor:pointer;font-size:14px;flex:0 0 auto;}
@@ -316,9 +317,6 @@ table.data-table tr:last-child td{border-bottom:0;}
       <button class="nav-item" data-page="themes" id="navThemes" hidden>Master settings</button>
     </nav>
     <div class="sidebar-footer">
-      <div class="venue-switcher" id="venueSwitcherWrap" hidden>
-        <select id="venueSwitchSelect"></select>
-      </div>
       <div class="footer-row">
         <div class="account-name" id="accountName" hidden></div>
         <span class="account-name">Theme</span>
@@ -347,6 +345,7 @@ table.data-table tr:last-child td{border-bottom:0;}
       </div>
       <div class="page-header">
         <h1>Takings</h1>
+        <label class="page-venue" id="dashVenueWrap" hidden><span>Venue</span><select id="dashVenue" aria-label="Venue for Takings"></select></label>
         <div class="range-picker">
           <button class="range-btn active" data-range="today">Today</button>
           <button class="range-btn" data-range="week">Week</button>
@@ -383,6 +382,7 @@ table.data-table tr:last-child td{border-bottom:0;}
     <section class="page" id="page-products">
       <div class="page-header">
         <h1>Products</h1>
+        <label class="page-venue" data-page-venue-wrap hidden><span>Venue</span><select data-page-venue aria-label="Venue for Products"></select></label>
         <div class="tab-row">
           <button class="tab-btn active" data-tab="catalogue">Catalogue</button>
           <button class="tab-btn" data-tab="categories">Categories</button>
@@ -470,7 +470,7 @@ table.data-table tr:last-child td{border-bottom:0;}
     </section>
 
     <section class="page" id="page-discounts">
-      <div class="page-header"><h1>Discounts</h1></div>
+      <div class="page-header"><h1>Discounts</h1><label class="page-venue" data-page-venue-wrap hidden><span>Venue</span><select data-page-venue aria-label="Venue for Discounts"></select></label></div>
       <div class="section-title">Add a Custom Offer</div>
       <div class="card">
         <label class="field">Name</label>
@@ -510,6 +510,7 @@ table.data-table tr:last-child td{border-bottom:0;}
     <section class="page" id="page-zreads">
       <div class="page-header">
         <h1>Z Reads</h1>
+        <label class="page-venue" data-page-venue-wrap hidden><span>Venue</span><select data-page-venue aria-label="Venue for Z Reads"></select></label>
         <button class="btn btn-danger btn-sm" id="backendZReadBtn">Z Read now</button>
       </div>
       <p class="note">Closes out <span id="zreadsVenueName">this venue</span>'s current shift and archives it below. Doesn't require being signed in on the till.</p>
@@ -836,7 +837,7 @@ async function loadVenueData(){
     await renderSoundsList();
   }
   await loadDashboard();
-  if (currentUser && currentUser.system) renderFeatures(); // now the staff list is loaded
+  if (currentUser && currentUser.system) renderFeaturesIfIdle(); // now the staff list is loaded
 }
 
 function applyLoginState(){
@@ -852,7 +853,7 @@ function applyLoginState(){
   }
   setSignedInUser(currentUser);
   maintenanceLockScreen(maintenanceLocksOut(currentUser), signOutBackend);
-  if (currentUser && currentUser.system) { renderThemes(); renderLayouts(); renderWipeVenues(); renderFeatures(); }
+  if (currentUser && currentUser.system) { renderThemes(); renderLayouts(); renderWipeVenues(); renderFeaturesIfIdle(); }
   renderAnnounceCard();
   if (currentUser && !currentUser.system) setTimeout(() => runRemoteCommands(currentVenueId), 0);
   if (currentUser && currentUser.perms.backendAccess) {
@@ -864,17 +865,27 @@ function applyLoginState(){
     shell.hidden = true; hamburger.hidden = true;
   }
 }
+// Each page that works on one venue's data (Products, Discounts, Z Reads) has its own venue box; they
+// all stay in step. Takings has its own, with All venues, which doesn't change the working venue.
+let dashVenueId = null; // null = not chosen yet; "" = All venues
 function renderVenueSwitcher(){
-  const wrap = document.getElementById("venueSwitcherWrap");
-  const sel = document.getElementById("venueSwitchSelect");
-  if (myVenues.length < 2) { wrap.hidden = true; return; }
-  wrap.hidden = false;
-  sel.innerHTML = myVenues.map(v => `<option value="${v.id}" ${v.id === currentVenueId ? "selected" : ""}>${v.name}${v.active === false ? " (Closed)" : ""}</option>`).join("");
+  const many = myVenues.length > 1;
+  const label = v => esc(v.name) + (v.active === false ? " (Closed)" : "");
+  document.querySelectorAll("[data-page-venue-wrap]").forEach(w => { w.hidden = !many; });
+  document.querySelectorAll("[data-page-venue]").forEach(sel => {
+    sel.innerHTML = myVenues.map(v => `<option value="${esc(v.id)}" ${v.id === currentVenueId ? "selected" : ""}>${label(v)}</option>`).join("");
+  });
+  document.getElementById("dashVenueWrap").hidden = !many;
+  if (dashVenueId === null) dashVenueId = many ? "" : (currentVenueId || "");
+  if (dashVenueId && !myVenues.some(v => v.id === dashVenueId)) dashVenueId = "";
+  document.getElementById("dashVenue").innerHTML = `<option value="">All venues</option>` + myVenues.map(v => `<option value="${esc(v.id)}">${label(v)}</option>`).join("");
+  document.getElementById("dashVenue").value = dashVenueId;
 }
-document.getElementById("venueSwitchSelect").addEventListener("change", async e => {
+document.querySelectorAll("[data-page-venue]").forEach(sel => sel.addEventListener("change", async e => {
   setCurrentVenueId(e.target.value);
   await resolveVenueSelection();
-});
+}));
+document.getElementById("dashVenue").addEventListener("change", e => { dashVenueId = e.target.value; loadDashboard(); });
 function renderSidebarAccount(){
   document.getElementById("accountName").textContent = currentUser.name + (currentVenue ? " · " + currentVenue.name : "");
   applyVenueIdentity(currentVenue, currentUser.name);
@@ -1153,13 +1164,34 @@ const FEATURE_EDITORS = {
 };
 // Add/remove rows in an editor without saving yet: re-render it from what's on screen.
 function editorRowChange(key, listField, mutate){
-  const current = { ...featureConfig(key), ...FEATURE_EDITORS[key].read() };
+  const current = { ...featureView(key), ...FEATURE_EDITORS[key].read() };
   current[listField] = mutate(current[listField] || []);
-  systemSettings = { ...systemSettings, [key]: current };
+  featureDrafts[key] = current;
   renderFeatures();
   document.getElementById("featureMsg").textContent = "Not saved yet.";
 }
 
+// Unsaved edits in the Features list (rows added, colours being picked) live here, not in
+// systemSettings, so the 15-second settings check can't wipe them. Saving clears the draft.
+const featureDrafts = {};
+function featureView(key){ return { ...featureConfig(key), ...(featureDrafts[key] || {}), enabled: !!featureConfig(key).enabled }; }
+// Redraw the Features list only when nobody is using it - redrawing would close an open colour picker
+// or drop what's being typed.
+function renderFeaturesIfIdle(){
+  const list = document.getElementById("featureList");
+  if (list && list.contains(document.activeElement)) return;
+  keepTypedEdits();
+  renderFeatures();
+}
+// Anything typed into an editor since it was drawn is copied into its draft before a redraw.
+const featureDirty = new Set();
+function keepTypedEdits(){
+  featureDirty.forEach(key => {
+    if (key === "venueColours" && document.querySelector("#featureList [data-colour]")) featureDrafts.venueColours = { ...featureView("venueColours"), colours: readColourRows() };
+    else if (FEATURE_EDITORS[key] && document.querySelector(`#featureList [data-feature="${key}"] .feature-body`)) featureDrafts[key] = { ...featureView(key), ...FEATURE_EDITORS[key].read() };
+  });
+  featureDirty.clear();
+}
 function staffForSettings(){ return users.filter(u => !u.system).sort((a, b) => a.name.localeCompare(b.name)); }
 function venueOptions(withAll){ return (withAll ? `<option value="">Every venue</option>` : "") + myVenues.map(v => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join(""); }
 async function saveFeature(key, value, okText){
@@ -1170,6 +1202,7 @@ async function saveFeature(key, value, okText){
     systemPassword = null; document.getElementById("systemGateMsg").textContent = SYSTEM_PASSWORD_MESSAGES[result]; applyLoginState(); return false;
   }
   if (result !== "ok") { msg.textContent = "Couldn't save that. Try again."; return false; }
+  delete featureDrafts[key]; featureDirty.delete(key);
   systemSettings = { ...systemSettings, [key]: value };
   applyTheme(); renderMaintenanceWatermark();
   msg.textContent = okText || "Saved.";
@@ -1225,7 +1258,7 @@ function renderFeatures(){
   const wrap = document.getElementById("featureList");
   if (!wrap) return;
   wrap.innerHTML = FEATURES.map(f => {
-    const cfg = featureConfig(f.key);
+    const cfg = featureView(f.key);
     return `<div class="feature${cfg.enabled ? " on" : ""}" data-feature="${f.key}">
       <div class="feature-head"><div class="info"><h3>${esc(f.name)}</h3><p>${esc(f.about)}</p></div>
         <label class="feature-toggle"><span>${cfg.enabled ? "On" : "Off"}</span><span class="switch"><input type="checkbox" data-feature-toggle="${f.key}" aria-label="${esc(f.name)}" ${cfg.enabled ? "checked" : ""}><span class="slider"></span></span></label></div>
@@ -1234,7 +1267,7 @@ function renderFeatures(){
   wrap.querySelectorAll("[data-feature-toggle]").forEach(inp => inp.addEventListener("change", e => {
     const key = e.target.dataset.featureToggle, f = FEATURES.find(x => x.key === key);
     if (e.target.checked && !confirm(`Switch on ${f.name}? It takes effect on every till straight away.`)) { e.target.checked = false; return; }
-    saveFeature(key, { ...featureConfig(key), enabled: e.target.checked }, `${f.name} is ${e.target.checked ? "on" : "off"}.`);
+    saveFeature(key, { ...featureConfig(key), enabled: e.target.checked }, `${f.name} is ${e.target.checked ? "on" : "off"}.`).then(ok => { if (ok && featureDrafts[key]) document.getElementById("featureMsg").textContent += " Your unsaved changes are still there: save them when you're ready."; });
   }));
   wrap.querySelectorAll("input[type=color]").forEach(inp => inp.addEventListener("input", e => {
     const chip = e.target.parentElement.querySelector(".colour-chip") || (e.target.closest(".edit-row") && e.target.closest(".edit-row").querySelector(".colour-chip"));
@@ -1243,16 +1276,20 @@ function renderFeatures(){
     chip.style.color = e.target.closest("[data-group-row]") ? "#fff" : inkFor(e.target.value); // group buttons always use white text
   }));
   wrap.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", () => runFeatureAction(b.dataset.act, b)));
+  wrap.querySelectorAll(".feature").forEach(card => {
+    const key = card.dataset.feature;
+    if (key === "venueColours" || FEATURE_EDITORS[key]) ["input", "change"].forEach(ev => card.querySelector(".feature-body").addEventListener(ev, () => featureDirty.add(key)));
+  });
 }
 function readColourRows(){
   return [...document.querySelectorAll("#featureList [data-colour]")].map((row, i) => {
-    const old = (featureConfig("venueColours").colours || [])[i] || {};
+    const old = (featureView("venueColours").colours || [])[i] || {};
     const shades = {}; row.querySelectorAll("[data-col-theme]").forEach(inp => { shades[inp.dataset.colTheme] = inp.value; });
     return { key: old.key || "c" + Date.now().toString(36) + i, label: row.querySelector("[data-col-name]").value.trim() || "Colour " + (i + 1), shades };
   });
 }
 async function runFeatureAction(act, btn){
-  if (act === "save-editor") { const key = btn.dataset.key, name = FEATURES.find(f => f.key === key).name; return saveFeature(key, { ...featureConfig(key), ...FEATURE_EDITORS[key].read() }, `${name} saved.`); }
+  if (act === "save-editor") { const key = btn.dataset.key, name = FEATURES.find(f => f.key === key).name; return saveFeature(key, { ...featureView(key), ...FEATURE_EDITORS[key].read() }, `${name} saved.`); }
   const removeAt = i => list => list.filter((_, j) => j !== Number(i));
   if (act === "hh-add") return editorRowChange("happyHour", "windows", l => l.concat([{ days: [], from: "17:00", to: "19:00" }]));
   if (act === "hh-remove") return editorRowChange("happyHour", "windows", removeAt(btn.dataset.i));
@@ -1291,7 +1328,7 @@ async function runFeatureAction(act, btn){
     let colours = readColourRows();
     if (act === "col-add") colours.push({ key: "c" + Date.now().toString(36), label: "", shades: Object.fromEntries(Object.keys(MASTER_THEMES).map(k => [k, "#3d6ea8"])) });
     if (act === "col-remove") colours.splice(Number(btn.dataset.i), 1);
-    if (act === "col-add" || act === "col-remove") { systemSettings = { ...systemSettings, venueColours: { ...featureConfig("venueColours"), colours } }; renderFeatures(); document.getElementById("featureMsg").textContent = "Not saved yet. Press Save colours."; return; }
+    if (act === "col-add" || act === "col-remove") { featureDirty.delete("venueColours"); featureDrafts.venueColours = { ...featureView("venueColours"), colours }; renderFeatures(); document.getElementById("featureMsg").textContent = "Not saved yet. Press Save colours."; return; }
     return saveFeature("venueColours", { ...featureConfig("venueColours"), colours }, "Colours saved.");
   }
 }
@@ -1582,8 +1619,8 @@ async function loadDashboard(){
   if (!currentVenue) return;
   const { startMs, endMs, bucket } = rangeToMs(currentRange);
   const cmp = comparisonFor(currentRange, startMs, endMs);
-  const isGlobalAdmin = !!(currentUser && currentUser.perms.globalAdmin);
-  const venueIds = isGlobalAdmin ? myVenues.map(v => v.id) : [currentVenue.id];
+  const allVenues = !dashVenueId && myVenues.length > 1;
+  const venueIds = allVenues ? myVenues.map(v => v.id) : [dashVenueId || currentVenue.id];
   const [sales, refunds, prevSales, prevRefunds] = await Promise.all([
     fetchSalesInRange(startMs, endMs, venueIds),
     fetchRefundsInRange(startMs, endMs, venueIds),
@@ -1599,9 +1636,9 @@ async function loadDashboard(){
   document.getElementById("kpiOrdersCmp").innerHTML = compareText(summary.txCount, prev.txCount, "count");
   document.getElementById("kpiAvgCmp").innerHTML = compareText(summary.avgOrderPence, prev.avgOrderPence);
 
-  document.getElementById("venueBreakdownWrap").hidden = !isGlobalAdmin;
-  if (isGlobalAdmin) {
-    const rows = computeVenueBreakdown(sales, venues.length ? venues : myVenues);
+  document.getElementById("venueBreakdownWrap").hidden = !allVenues;
+  if (allVenues) {
+    const rows = computeVenueBreakdown(sales, myVenues);
     document.querySelector("#venueBreakdownTable tbody").innerHTML = rows.map(r => `<tr><td>${esc(r.name)}</td><td>${fmt(r.total)}</td><td>${r.txCount}</td></tr>`).join("") || `<tr><td colspan="3" style="color:var(--text-muted);">No sales in this range.</td></tr>`;
   }
 
@@ -1752,7 +1789,7 @@ function renderEmptyCatalogueBanner(wrap){
       <div style="font-weight:700;margin-bottom:4px;">This venue has no catalogue yet</div>
       <p class="note">Every venue's menu is independent, so a new venue starts empty. Copy another venue's full catalogue to get started, or add products one at a time below.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <select id="copyCatalogueSource">${others.map(v => `<option value="${v.id}">${v.name}</option>`).join("") || `<option value="">No other venues yet</option>`}</select>
+        <select id="copyCatalogueSource" aria-label="Venue to copy the catalogue from">${others.map(v => `<option value="${v.id}">${v.name}</option>`).join("") || `<option value="">No other venues yet</option>`}</select>
         <button type="button" class="btn btn-accent btn-sm" id="copyCatalogueBtn" ${others.length ? "" : "disabled"}>Copy catalogue</button>
       </div>
     </div>`;

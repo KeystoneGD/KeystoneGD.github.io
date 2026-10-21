@@ -37,7 +37,7 @@ try { currentVenueId = localStorage.getItem(LS_CURRENT_VENUE); } catch (e) {}
 // order they were created, so each venue still gets its own colour.
 const VENUE_ACCENTS = {
   violet: { label: "Violet", color: "#7a5af0", ink: "#ffffff" },
-  teal:   { label: "Teal",   color: "#0f8394", ink: "#ffffff" },
+  teal:   { label: "Teal",   color: "#0e7f8f", ink: "#ffffff" }, // a touch darker than #0f8394 so white text passes AA
   pink:   { label: "Pink",   color: "#cf3a84", ink: "#ffffff" },
   blue:   { label: "Blue",   color: "#2f6fe0", ink: "#ffffff" },
   plum:   { label: "Plum",   color: "#9b3fb5", ink: "#ffffff" }
