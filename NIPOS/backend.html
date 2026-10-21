@@ -136,6 +136,17 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .colour-chip{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:28px;padding:0 8px;font-weight:800;font-size:12.5px;border-radius:6px;}
 .feature-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
 .announce-card{max-width:620px;}
+.edit-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:6px 0;border-bottom:1px solid var(--border);}
+.edit-row label{display:inline-flex;align-items:center;gap:6px;font-size:14px;}
+.edit-row input[type="text"]{width:auto;min-width:160px;}
+.feature-body label.check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;cursor:pointer;}
+.feature-body input[type="checkbox"]{width:22px;height:22px;}
+.feature-body input[type="color"]{width:44px;height:44px;padding:0;border:1px solid var(--border);background:none;cursor:pointer;}
+.feature-body label.field textarea,.feature-body label.field input{display:block;margin-top:4px;}
+.hh-window{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 0;border-bottom:1px solid var(--border);}
+.hh-days{display:flex;flex-wrap:wrap;gap:4px 10px;}
+.hh-days label{display:inline-flex;align-items:center;gap:4px;min-height:44px;font-size:14px;}
+.hh-window input[type="time"]{min-height:44px;}
 .announce-title{margin:0 0 4px;font-size:18px;}
 .wipe-summary{margin-top:14px;border:1px solid var(--border);border-left:6px solid var(--danger);padding:12px 14px;background:var(--surface-2);line-height:1.6;}
 .wipe-summary table{border-collapse:collapse;width:100%;}
@@ -991,8 +1002,164 @@ const FEATURES = [
   { key: "privateMessages", name: "Private messages", about: "Message one person. It beeps and pops up on their screen. Backend users can from the Users page; on the order screen it needs Notify Specific Users." },
   { key: "remote", name: "Refresh or sign out tills", about: "Reload every till and order screen (to pick up an update) or sign everyone out, for one venue or everywhere." },
   { key: "personal", name: "Own layout and theme per person", about: "Give anyone their own till layout and theme. It follows them to whichever device they sign in on." },
-  { key: "venueColours", name: "Extra venue colours", about: "Add your own venue colours, with a shade for each theme. The text on them is picked so it always reads." }
+  { key: "venueColours", name: "Extra venue colours", about: "Add your own venue colours, with a shade for each theme. The text on them is picked so it always reads." },
+  { key: "happyHour", name: "Happy Hour", about: "Choose the days and times, the deal, and which categories count. Backend's Happy Hour switch on the Products page still forces it on or off." },
+  { key: "discounts", name: "Discount buttons", about: "Add, rename, change or remove the fixed discount buttons on the till (Owner's 10%, Team 50%, Team 20%)." },
+  { key: "drinkOptions", name: "Drink options", about: "The mixer dashes and their prices, the cordials, and whether draught asks about a lemonade top." },
+  { key: "layoutGroups", name: "Layout groups", about: "Your own groups and colours for the new till layouts, and which category goes in which group." },
+  { key: "tableRules", name: "Table number rules", about: "Whether a table number is needed, and which numbers exist, so typos are caught before payment." },
+  { key: "cashButtons", name: "Cash and tip buttons", about: "The quick cash buttons on the payment screen, and preset tip amounts." },
+  { key: "lateOrders", name: "Late-order warning", about: "On the order screen and the till's Open Orders, orders waiting longer than this get a Late badge and move up." },
+  { key: "bigText", name: "Bigger text", about: "Makes the till and order screen bigger, everywhere or just for some venues or people." },
+  { key: "reportHeader", name: "Report header details", about: "Venue name, address and contact details on Z Reads and shift reports, plus a footer line." }
 ];
+/* Batch 2 editors. Each one opens filled in with what the till does today (the built-in values), so
+   switching a feature on changes nothing until something is edited. render(cfg) draws it; read()
+   collects it for saving. */
+const BUILTIN_DASHES = [["pepsi", "Diet Pepsi Dash"], ["lemonade", "Lemonade Dash"], ["pepsimax", "Pepsi Max Dash"], ["orange", "Orange Juice Dash"], ["apple", "Apple Juice Dash"], ["cranberry", "Cranberry Juice Dash"], ["pineapple", "Pineapple Juice Dash"]].map(([id, name]) => ({ id, name, pence: 100 }));
+const BUILTIN_CORDIALS = [["blackcurrant", "Blackcurrant Cordial"], ["lime", "Lime Cordial"], ["orange", "Orange Cordial"]].map(([id, name]) => ({ id, name }));
+const BUILTIN_GROUPS = [["cocktails", "Cocktails", "#8a2f6b"], ["softs", "Softs", "#17696d"], ["beer", "Beer & Cider", "#6e4b12"], ["wine", "Wine", "#7a1f33"], ["spirits", "Spirits", "#34458a"], ["hot", "Hot drinks", "#5a3d2b"], ["other", "Other drinks", "#3d4a57"], ["food", "Food", "#3f5e1f"]].map(([key, name, colour]) => ({ key, name, colour }));
+const BUILTIN_DISCOUNTS = [{ id: "owner10", label: "Owner's 10%", pct: 10, notOnHappyHour: true }, { id: "team50", label: "Team 50%", pct: 50 }, { id: "team20", label: "Team 20%", pct: 20 }];
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const poundsIn = p => (Number(p || 0) / 100).toFixed(2);
+const penceOut = v => Math.round(parseFloat(String(v).replace(/[£,\s]/g, "")) * 100);
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+const drinkCategoryNames = () => [...new Set(realCategories.filter(c => c.mode !== "food").sort((a, b) => a.order - b.order).map(c => c.name))];
+const allCategoryNames = () => [...new Set(realCategories.slice().sort((a, b) => a.order - b.order).map(c => c.name))];
+const F = sel => [...document.querySelectorAll("#featureList " + sel)];
+
+const FEATURE_EDITORS = {
+  happyHour: {
+    render(cfg){
+      const windows = cfg.windows || [{ days: [], from: "15:00", to: "18:00" }, { days: [], from: "21:30", to: "close" }];
+      const cats = cfg.categories || drinkCategoryNames().filter(n => n.startsWith("Cocktails"));
+      return `<span class="field">When it's on</span>
+        ${windows.map((w, i) => `<div class="hh-window" data-hh-window>
+          <div class="hh-days" role="group" aria-label="Days for time ${i + 1}">${DAY_NAMES.map((d, di) => `<label><input type="checkbox" data-hh-day="${di}" ${!w.days || !w.days.length || w.days.includes(di) ? "checked" : ""}>${d}</label>`).join("")}</div>
+          <label>From <input type="time" data-hh-from value="${esc(w.from || "15:00")}"></label>
+          <label>Until <input type="time" data-hh-to value="${w.to === "close" || w.to === "24:00" ? "" : esc(w.to || "")}"></label><span class="note">(leave Until empty for close)</span>
+          <button type="button" class="btn btn-ghost btn-sm" data-act="hh-remove" data-i="${i}">Remove</button></div>`).join("")}
+        <div class="feature-actions"><button type="button" class="btn btn-ghost" data-act="hh-add">Add a time</button></div>
+        <label class="field" for="hhPct">The deal: when someone buys 2, the cheaper one is this much off (%)</label>
+        <input type="number" id="hhPct" min="0" max="100" step="5" value="${cfg.secondItemPct != null ? Number(cfg.secondItemPct) : 50}" style="max-width:120px;">
+        <span class="field">Which categories count (none ticked = Cocktails)</span>
+        <div class="feature-people">${drinkCategoryNames().map(n => `<label><input type="checkbox" data-hh-cat="${esc(n)}" ${cats.includes(n) ? "checked" : ""}>${esc(n)}</label>`).join("")}</div>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="happyHour">Save Happy Hour</button></div>`;
+    },
+    read(){
+      return {
+        windows: F("[data-hh-window]").map(row => {
+          const days = [...row.querySelectorAll("[data-hh-day]")].filter(x => x.checked).map(x => Number(x.dataset.hhDay));
+          return { days: days.length === 7 ? [] : days, from: row.querySelector("[data-hh-from]").value || "00:00", to: row.querySelector("[data-hh-to]").value || "close" };
+        }),
+        secondItemPct: Math.max(0, Math.min(100, Number(document.getElementById("hhPct").value) || 0)),
+        categories: F("[data-hh-cat]").filter(x => x.checked).map(x => x.dataset.hhCat)
+      };
+    }
+  },
+  discounts: {
+    render(cfg){
+      const buttons = cfg.buttons || BUILTIN_DISCOUNTS;
+      return `<p class="note">The discount buttons on the till's order panel. Custom % and Custom price always stay.</p>
+        ${buttons.map((d, i) => `<div class="edit-row" data-disc data-id="${esc(d.id)}">
+          <label>Name <input type="text" data-disc-label value="${esc(d.label)}" maxlength="24"></label>
+          <label>% off <input type="number" data-disc-pct min="1" max="100" value="${Number(d.pct) || 10}" style="max-width:90px;"></label>
+          <label class="check"><input type="checkbox" data-disc-hh ${d.notOnHappyHour ? "checked" : ""}>Not on Happy Hour drinks</label>
+          <button type="button" class="btn btn-ghost btn-sm" data-act="disc-remove" data-i="${i}">Remove</button></div>`).join("")}
+        <div class="feature-actions"><button type="button" class="btn btn-ghost" data-act="disc-add">Add a discount</button><button type="button" class="btn btn-solid" data-act="save-editor" data-key="discounts">Save discounts</button></div>`;
+    },
+    read(){ return { buttons: F("[data-disc]").map(row => ({ id: row.dataset.id, label: row.querySelector("[data-disc-label]").value.trim(), pct: Number(row.querySelector("[data-disc-pct]").value) || 0, notOnHappyHour: row.querySelector("[data-disc-hh]").checked })).filter(d => d.label && d.pct > 0) }; }
+  },
+  drinkOptions: {
+    render(cfg){
+      const dashes = cfg.dashes || BUILTIN_DASHES, cordials = cfg.cordials || BUILTIN_CORDIALS;
+      return `<span class="field">Mixer dashes (offered with spirits)</span>
+        ${dashes.map((d, i) => `<div class="edit-row" data-dash data-id="${esc(d.id)}"><label>Name <input type="text" data-dash-name value="${esc(d.name)}" maxlength="32"></label><label>Price £ <input type="text" inputmode="decimal" data-dash-price value="${poundsIn(d.pence)}" style="max-width:90px;"></label><button type="button" class="btn btn-ghost btn-sm" data-act="dash-remove" data-i="${i}">Remove</button></div>`).join("")}
+        <div class="feature-actions"><button type="button" class="btn btn-ghost" data-act="dash-add">Add a dash</button></div>
+        <span class="field">Cordials (free, offered with draught)</span>
+        ${cordials.map((c, i) => `<div class="edit-row" data-cordial data-id="${esc(c.id)}"><label>Name <input type="text" data-cordial-name value="${esc(c.name)}" maxlength="32"></label><button type="button" class="btn btn-ghost btn-sm" data-act="cordial-remove" data-i="${i}">Remove</button></div>`).join("")}
+        <div class="feature-actions"><button type="button" class="btn btn-ghost" data-act="cordial-add">Add a cordial</button></div>
+        <label class="check" style="margin-top:8px;"><input type="checkbox" id="lemTop" ${cfg.lemonadeTop === false ? "" : "checked"}>Ask "Lemonade top?" with draught</label>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="drinkOptions">Save drink options</button></div>`;
+    },
+    read(){
+      return {
+        dashes: F("[data-dash]").map(r => ({ id: r.dataset.id, name: r.querySelector("[data-dash-name]").value.trim(), pence: penceOut(r.querySelector("[data-dash-price]").value) || 0 })).filter(d => d.name),
+        cordials: F("[data-cordial]").map(r => ({ id: r.dataset.id, name: r.querySelector("[data-cordial-name]").value.trim() })).filter(c => c.name),
+        lemonadeTop: document.getElementById("lemTop").checked
+      };
+    }
+  },
+  layoutGroups: {
+    render(cfg){
+      const groups = cfg.groups || BUILTIN_GROUPS, assign = cfg.assign || {};
+      return `<p class="note">The groups in the new till layouts (not the original one). Categories left on Automatic stay in their built-in group (Cocktails, Softs, Beer &amp; Cider, Wine, Spirits, Hot drinks, Other drinks, Food).</p>
+        ${groups.map((g, i) => `<div class="edit-row" data-group-row data-key="${esc(g.key)}"><label>Name <input type="text" data-group-name value="${esc(g.name)}" maxlength="20"></label><label>Colour <input type="color" data-group-colour value="${esc(g.colour)}"></label><span class="colour-chip" style="background:${esc(g.colour)};color:#fff">Aa</span>${contrastRatio(g.colour, "#ffffff") < 4.5 ? `<span class="note">Too light for white text: pick a darker shade.</span>` : ""}<button type="button" class="btn btn-ghost btn-sm" data-act="group-remove" data-i="${i}">Remove</button></div>`).join("")}
+        <div class="feature-actions"><button type="button" class="btn btn-ghost" data-act="group-add">Add a group</button></div>
+        <span class="field">Which group each category goes in</span>
+        <table class="feature-table"><tbody>${allCategoryNames().map(n => `<tr><th scope="row">${esc(n)}</th><td><select data-assign="${esc(n)}" aria-label="Group for ${esc(n)}"><option value="">Automatic</option>${groups.map(g => `<option value="${esc(g.key)}" ${assign[n] === g.key ? "selected" : ""}>${esc(g.name)}</option>`).join("")}</select></td></tr>`).join("")}</tbody></table>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="layoutGroups">Save groups</button></div>`;
+    },
+    read(){
+      const assign = {}; F("[data-assign]").forEach(s => { if (s.value) assign[s.dataset.assign] = s.value; });
+      return { groups: F("[data-group-row]").map(r => ({ key: r.dataset.key, name: r.querySelector("[data-group-name]").value.trim(), colour: r.querySelector("[data-group-colour]").value })).filter(g => g.name), assign };
+    }
+  },
+  tableRules: {
+    render(cfg){
+      return `<label class="check"><input type="checkbox" id="trRequired" ${cfg.required === false ? "" : "checked"}>A table number is needed before taking payment</label>
+        <div class="edit-row"><label>Lowest table <input type="number" id="trMin" min="0" value="${cfg.min || ""}" placeholder="1" style="max-width:100px;"></label><label>Highest table <input type="number" id="trMax" min="0" value="${cfg.max || ""}" placeholder="none" style="max-width:100px;"></label></div>
+        <p class="note">Leave both empty to allow any table number.</p>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="tableRules">Save table rules</button></div>`;
+    },
+    read(){ return { required: document.getElementById("trRequired").checked, min: Number(document.getElementById("trMin").value) || null, max: Number(document.getElementById("trMax").value) || null }; }
+  },
+  cashButtons: {
+    render(cfg){
+      const cash = (cfg.cash || [500, 1000, 2000, 5000]).map(poundsIn).join(", "), tips = (cfg.tips || []).map(poundsIn).join(", ");
+      return `<label class="field" for="cbCash">Quick cash buttons on the payment screen (£, separated by commas)</label><input type="text" id="cbCash" value="${esc(cash)}" inputmode="decimal">
+        <label class="field" for="cbTips">Preset tip amounts (£, separated by commas, empty for none)</label><input type="text" id="cbTips" value="${esc(tips)}" inputmode="decimal" placeholder="e.g. 1, 2, 5">
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="cashButtons">Save buttons</button></div>`;
+    },
+    read(){ const list = id => document.getElementById(id).value.split(",").map(penceOut).filter(v => v > 0).slice(0, 8); return { cash: list("cbCash"), tips: list("cbTips") }; }
+  },
+  lateOrders: {
+    render(cfg){ return `<label class="field" for="loMins">Mark an order late after this many minutes</label><input type="number" id="loMins" min="1" max="120" value="${Number(cfg.minutes) || 10}" style="max-width:120px;">
+      <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="lateOrders">Save</button></div>`; },
+    read(){ return { minutes: Math.max(1, Number(document.getElementById("loMins").value) || 10) }; }
+  },
+  bigText: {
+    render(cfg){
+      const venues = new Set(cfg.venueIds || []), people = new Set(cfg.userIds || []);
+      return `<label class="field" for="btScale">How much bigger</label><select id="btScale" style="max-width:200px;">${[[1.1, "10% bigger"], [1.2, "20% bigger"], [1.35, "35% bigger"], [1.5, "50% bigger"]].map(([v, l]) => `<option value="${v}" ${Number(cfg.scale || 1.2) === v ? "selected" : ""}>${l}</option>`).join("")}</select>
+        <span class="field">Venues (none ticked, and no people ticked = everywhere)</span><div class="feature-people">${myVenues.map(v => `<label><input type="checkbox" data-bt-venue="${esc(v.id)}" ${venues.has(v.id) ? "checked" : ""}>${esc(v.name)}</label>`).join("")}</div>
+        <span class="field">People</span><div class="feature-people">${staffForSettings().map(u => `<label><input type="checkbox" data-bt-user="${esc(u.id)}" ${people.has(u.id) ? "checked" : ""}>${esc(u.name)}</label>`).join("")}</div>
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="bigText">Save bigger text</button></div>`;
+    },
+    read(){ return { scale: Number(document.getElementById("btScale").value) || 1.2, venueIds: F("[data-bt-venue]").filter(x => x.checked).map(x => x.dataset.btVenue), userIds: F("[data-bt-user]").filter(x => x.checked).map(x => x.dataset.btUser) }; }
+  },
+  reportHeader: {
+    render(cfg){
+      const v = cfg.venues || {};
+      return myVenues.map(ven => { const h = v[ven.id] || {}; return `<div class="colour-row" data-rh="${esc(ven.id)}"><strong>${esc(ven.name)}</strong>
+        <label class="field">Name on reports <input type="text" data-rh-name value="${esc(h.name || "")}" placeholder="${esc(ven.name)}"></label>
+        <label class="field">Address <textarea data-rh-address rows="2">${esc(h.address || "")}</textarea></label>
+        <div class="edit-row"><label>Phone <input type="text" data-rh-phone value="${esc(h.phone || "")}"></label><label>Email <input type="text" data-rh-email value="${esc(h.email || "")}"></label></div>
+        <label class="field">Footer line <input type="text" data-rh-footer value="${esc(h.footer || "")}" placeholder="e.g. Thank you, see you again soon"></label></div>`; }).join("") +
+        `<div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="reportHeader">Save report details</button></div>`;
+    },
+    read(){ const venues = {}; F("[data-rh]").forEach(r => { const g = s => r.querySelector(s).value.trim(); venues[r.dataset.rh] = { name: g("[data-rh-name]"), address: g("[data-rh-address]"), phone: g("[data-rh-phone]"), email: g("[data-rh-email]"), footer: g("[data-rh-footer]") }; }); return { venues }; }
+  }
+};
+// Add/remove rows in an editor without saving yet: re-render it from what's on screen.
+function editorRowChange(key, listField, mutate){
+  const current = { ...featureConfig(key), ...FEATURE_EDITORS[key].read() };
+  current[listField] = mutate(current[listField] || []);
+  systemSettings = { ...systemSettings, [key]: current };
+  renderFeatures();
+  document.getElementById("featureMsg").textContent = "Not saved yet.";
+}
+
 function staffForSettings(){ return users.filter(u => !u.system).sort((a, b) => a.name.localeCompare(b.name)); }
 function venueOptions(withAll){ return (withAll ? `<option value="">Every venue</option>` : "") + myVenues.map(v => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join(""); }
 async function saveFeature(key, value, okText){
@@ -1010,6 +1177,7 @@ async function saveFeature(key, value, okText){
   return true;
 }
 function featureBody(key, cfg){
+  if (FEATURE_EDITORS[key]) return FEATURE_EDITORS[key].render(cfg);
   if (key === "maintenance") {
     const allowed = new Set(cfg.allowedUserIds || []);
     return `<span class="field">Who can still use the app (you always can)</span>
@@ -1068,7 +1236,12 @@ function renderFeatures(){
     if (e.target.checked && !confirm(`Switch on ${f.name}? It takes effect on every till straight away.`)) { e.target.checked = false; return; }
     saveFeature(key, { ...featureConfig(key), enabled: e.target.checked }, `${f.name} is ${e.target.checked ? "on" : "off"}.`);
   }));
-  wrap.querySelectorAll("input[type=color]").forEach(inp => inp.addEventListener("input", e => { const chip = e.target.parentElement.querySelector(".colour-chip"); chip.style.background = e.target.value; chip.style.color = inkFor(e.target.value); }));
+  wrap.querySelectorAll("input[type=color]").forEach(inp => inp.addEventListener("input", e => {
+    const chip = e.target.parentElement.querySelector(".colour-chip") || (e.target.closest(".edit-row") && e.target.closest(".edit-row").querySelector(".colour-chip"));
+    if (!chip) return;
+    chip.style.background = e.target.value;
+    chip.style.color = e.target.closest("[data-group-row]") ? "#fff" : inkFor(e.target.value); // group buttons always use white text
+  }));
   wrap.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", () => runFeatureAction(b.dataset.act, b)));
 }
 function readColourRows(){
@@ -1079,6 +1252,18 @@ function readColourRows(){
   });
 }
 async function runFeatureAction(act, btn){
+  if (act === "save-editor") { const key = btn.dataset.key, name = FEATURES.find(f => f.key === key).name; return saveFeature(key, { ...featureConfig(key), ...FEATURE_EDITORS[key].read() }, `${name} saved.`); }
+  const removeAt = i => list => list.filter((_, j) => j !== Number(i));
+  if (act === "hh-add") return editorRowChange("happyHour", "windows", l => l.concat([{ days: [], from: "17:00", to: "19:00" }]));
+  if (act === "hh-remove") return editorRowChange("happyHour", "windows", removeAt(btn.dataset.i));
+  if (act === "disc-add") return editorRowChange("discounts", "buttons", l => l.concat([{ id: uid("d"), label: "New discount", pct: 10 }]));
+  if (act === "disc-remove") return editorRowChange("discounts", "buttons", removeAt(btn.dataset.i));
+  if (act === "dash-add") return editorRowChange("drinkOptions", "dashes", l => l.concat([{ id: uid("x"), name: "", pence: 100 }]));
+  if (act === "dash-remove") return editorRowChange("drinkOptions", "dashes", removeAt(btn.dataset.i));
+  if (act === "cordial-add") return editorRowChange("drinkOptions", "cordials", l => l.concat([{ id: uid("c"), name: "" }]));
+  if (act === "cordial-remove") return editorRowChange("drinkOptions", "cordials", removeAt(btn.dataset.i));
+  if (act === "group-add") return editorRowChange("layoutGroups", "groups", l => l.concat([{ key: uid("g"), name: "New group", colour: "#34458a" }]));
+  if (act === "group-remove") return editorRowChange("layoutGroups", "groups", removeAt(btn.dataset.i));
   if (act === "maint-save") {
     const ids = [...document.querySelectorAll("[data-maint-user]:checked")].map(x => x.dataset.maintUser);
     return saveFeature("maintenance", { ...featureConfig("maintenance"), allowedUserIds: ids }, `Saved: ${ids.length} ${ids.length === 1 ? "person" : "people"} can get in during Maintenance Mode.`);

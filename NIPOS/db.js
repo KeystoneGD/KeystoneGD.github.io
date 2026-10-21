@@ -653,6 +653,30 @@ async function postDiscordEmbed(webhook, embed, file){
 }
 
 // Printable Z Report / receipt HTML, shared by the till and Backend's Z Reads page.
+// Master settings > Report header details: venue name, address and contact details on Z Reads and
+// shift reports, and a footer line.
+function reportHeaderFor(venueId) {
+  if (!featureOn("reportHeader")) return null;
+  const h = (featureConfig("reportHeader").venues || {})[venueId];
+  return h && (h.name || h.address || h.phone || h.email || h.footer) ? h : null;
+}
+function reportHeaderHTML(venueId) {
+  const h = reportHeaderFor(venueId);
+  if (!h || !(h.name || h.address || h.phone || h.email)) return "";
+  return `<div class="rh">${h.name ? `<strong>${esc(h.name)}</strong><br>` : ""}${h.address ? esc(h.address).replace(/\n/g, "<br>") + "<br>" : ""}${[h.phone, h.email].filter(Boolean).map(esc).join(" · ")}</div>`;
+}
+function reportFooterHTML(venueId) { const h = reportHeaderFor(venueId); return h && h.footer ? `<div class="rf">${esc(h.footer)}</div>` : ""; }
+
+// Master settings > Bigger text: scales the till and order screen up, for everyone or just some
+// venues / people.
+function applyBigText(user, venueId) {
+  const cfg = featureOn("bigText") ? featureConfig("bigText") : null;
+  const venues = (cfg && cfg.venueIds) || [], people = (cfg && cfg.userIds) || [];
+  const on = !!cfg && ((!venues.length && !people.length) || (venueId && venues.includes(venueId)) || (user && people.includes(user.id)));
+  const scale = on ? Math.min(1.6, Math.max(1.05, Number(cfg.scale) || 1.2)) : 1;
+  document.documentElement.style.zoom = scale === 1 ? "" : String(scale);
+}
+
 function buildReceiptHTML(title, subtitle, rows, transactions){
   const rowsHtml = rows.map(([l,v]) => `<tr><td>${l}</td><td>${v}</td></tr>`).join("");
   const txnHtml = (transactions && transactions.length) ? `
@@ -684,7 +708,10 @@ function buildReceiptHTML(title, subtitle, rows, transactions){
     table.txns td{padding:8px;font-size:12.5px;vertical-align:top;}
     table.txns tr:nth-child(even){background:#f7f7f7;}
     @media print{ table.txns tr{page-break-inside:avoid;} }
-  </style></head><body><h1>${title}</h1><p class="sub">${subtitle}</p><table>${rowsHtml}</table>${txnHtml}</body></html>`;
+    .rh{border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:16px;font-size:13px;line-height:1.5;}
+    .rh strong{font-size:16px;}
+    .rf{margin-top:24px;color:#444;font-size:12.5px;text-align:center;}
+  </style></head><body>${reportHeaderHTML(currentVenueId)}<h1>${title}</h1><p class="sub">${subtitle}</p><table>${rowsHtml}</table>${txnHtml}${reportFooterHTML(currentVenueId)}</body></html>`;
 }
 function openReportTab(title, subtitle, rows, transactions){
   const win = window.open("", "_blank");
@@ -916,8 +943,15 @@ function orderStage(o) {
   if (o.ready) return "ready";
   return o.accepted ? "progress" : "new";
 }
+// Master settings > Late-order warning: an order still new or in progress after this many minutes
+// gets a "Late" badge and moves up, just under problems.
+function lateAfterMinutes() { if (!featureOn("lateOrders")) return null; const m = Number(featureConfig("lateOrders").minutes); return m > 0 ? m : 10; }
+function orderIsLate(o) {
+  const m = lateAfterMinutes(), st = orderStage(o);
+  return !!m && (st === "new" || st === "progress") && Date.now() - o.ts > m * 60000;
+}
 function sortOrdersByPriority(list) {
-  const rank = o => ({ refund: 0, refunding: 0, problem: 0, ready: 1, new: 2, progress: 3 })[orderStage(o)];
+  const rank = o => orderIsLate(o) ? 0.5 : ({ refund: 0, refunding: 0, problem: 0, ready: 1, new: 2, progress: 3 })[orderStage(o)];
   return list.slice().sort((a, b) => (rank(a) - rank(b)) || (a.ts - b.ts));
 }
 function orderLabel(o) { return o.table ? "Table " + o.table : "No table"; }
@@ -962,7 +996,7 @@ function buildOrderCard(o, opts) {
   const handedToTill = state === "ready" && !opts.onDeliver;
   const card = document.createElement("article");
   card.className = "oc oc-state-" + (state === "refund" ? "problem" : state === "refunding" ? "refund" : state) + (opts.isNext ? " oc-next" : "");
-  card.setAttribute("aria-label", `${orderLabel(o)}, ${{ refund: "needs refund", refunding: "refund in progress", problem: "problem", ready: "ready to take out", progress: "in progress", new: "new order" }[state]}`);
+  card.setAttribute("aria-label", `${orderLabel(o)}${orderIsLate(o) ? ", late" : ""}, ${{ refund: "needs refund", refunding: "refund in progress", problem: "problem", ready: "ready to take out", progress: "in progress", new: "new order" }[state]}`);
   const badge = state === "refund" ? `<span class="state-badge problem">${icon("alert")}Needs refund</span>`
     : state === "refunding" ? `<span class="state-badge progress">${icon("clock")}Refund in progress</span>`
     : state === "problem" ? `<span class="state-badge problem">${icon("alert")}Problem</span>`
@@ -980,7 +1014,7 @@ function buildOrderCard(o, opts) {
         : `<div class="oc-problem">${icon("alert")}<span><strong>Needs refund</strong> · ${esc(o.flagItem)}${known ? ", " + poundsText(opts.refundPence) : ""}</span></div>`)
       : `<div class="oc-problem">${icon("alert")}<span>${what}${o.flagIntent === "substitute" && o.flagSubstitute ? ` Offer ${esc(o.flagSubstitute)} instead, free.` : ""}</span></div>`;
   card.innerHTML = `
-    <div class="oc-top">${opts.isNext ? `<span class="state-badge next">Next</span>` : ""}${badge}<span class="oc-time">${fmtTime(o.ts)} · ${minutesAgo(o.ts)}</span></div>
+    <div class="oc-top">${opts.isNext ? `<span class="state-badge next">Next</span>` : ""}${badge}${orderIsLate(o) ? `<span class="state-badge late">${icon("clock")}Late</span>` : ""}<span class="oc-time">${fmtTime(o.ts)} · ${minutesAgo(o.ts)}</span></div>
     <div class="oc-head"><h3 class="oc-table">${esc(orderLabel(o))}</h3><span class="tag">${o.method === "cash" ? "Cash" : "Card"}</span></div>
     <div class="oc-items">${items}</div>
     ${o.notes ? `<div class="note-box">${icon("note")}<span>${esc(o.notes)}</span></div>` : ""}
