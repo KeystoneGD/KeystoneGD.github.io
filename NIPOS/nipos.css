@@ -112,3 +112,25 @@ button,.btn,select,input[type="text"],input[type="search"],input[type="password"
 .oc.oc-state-refund,.oc.oc-state-progress{border-left-color:var(--progress-edge);}
 .oc-progress{display:flex;gap:8px;align-items:center;background:var(--progress-soft);border:1px solid var(--progress-edge);border-radius:10px;padding:9px 10px;font-size:14.5px;line-height:1.4;color:var(--text);}
 .oc-progress .ic{color:var(--progress-edge);flex:0 0 auto;}
+
+/* ---------- Type scale (one scale on every page) ----------
+   Body: Atkinson Hyperlegible Next, made for low-vision legibility - suits a dim bar at 1am.
+   Headings: Plus Jakarta Sans, tight line-height and slightly closed-up tracking.
+     h1 page / venue  24px   h2 section  20px   h3 card  17px
+   Running text gets 1.6 line-height; dense rows (menu items, buttons, badges) stay compact. */
+body{line-height:1.6;}
+h1,h2,h3,.venue-name,.oc-table,.page-header h1{line-height:1.15;letter-spacing:-0.01em;}
+.venue-band .venue-name{font-size:24px;}
+.category h2,.list-title,.sheet-head h2,.drawer-head h2,.section-title.as-heading{font-size:20px;}
+.oc-table{font-size:17px;}
+.page-header h1{font-size:26px;}
+.chart-card h3{font-size:17px;}
+.kpi-value,.rf-amount,.chargebig .amount,.totalsbreak .row.grand .amt,.cartbar-info .t{letter-spacing:-0.02em;line-height:1.1;}
+button,.btn,.tag,.state-badge,.stepper,.nav-item,.drawer-list button,.product .name,.product .price,.line .name,.line .unit,.chip,input,select,textarea{line-height:1.25;}
+.oc-items{line-height:1.45;}
+
+/* ---------- Shadows only on things that float above the page ---------- */
+.order-card,.oc,.cartbar,.login-card,.hist-item,.zcard,.sidebar,.drawer,.tab-btn.active,.kpi-tile,.chart-card,.card{box-shadow:none !important;}
+.oc.oc-next{box-shadow:none !important;outline:2px solid var(--text);outline-offset:-1px;}
+.hist-item.highlight{outline:2px solid var(--danger);outline-offset:-1px;}
+.tab-btn.active{border-top:3px solid var(--text) !important;}

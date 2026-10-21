@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Atkinson+Hyperlegible+Next:wght@400;500;600;700;800&display=swap">
 <style>
 :root{
   --bg:#0c1826; --surface:#13212f; --surface-2:#1a2e3f; --border:#253d52;
@@ -18,7 +18,7 @@
   --danger:#ff7a68; --danger-soft:rgba(255,122,104,.14);
   --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 24px -12px rgba(0,0,0,.55);
   --font-display:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
-  --font-body:"Inter",-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+  --font-body:"Atkinson Hyperlegible Next",-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
 }
 :root[data-theme="light"]{
   --bg:#f5f7fa; --surface:#ffffff; --surface-2:#eef2f6; --border:#dbe3ea;
@@ -234,7 +234,7 @@ table.data-table tr:last-child td{border-bottom:0;}
     </div>
     <div class="sidebar-brand"><span class="brand-name">Backend</span></div>
     <nav class="sidebar-nav">
-      <button class="nav-item active" data-page="dashboard" aria-current="page">Dashboard</button>
+      <button class="nav-item active" data-page="dashboard" aria-current="page">Takings</button>
       <button class="nav-item" data-page="products">Products</button>
       <button class="nav-item" data-page="discounts">Discounts</button>
       <button class="nav-item" data-page="users">Users</button>
@@ -261,7 +261,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 
     <section class="page active" id="page-dashboard">
       <div class="page-header">
-        <h1>Dashboard</h1>
+        <h1>Takings</h1>
         <div class="range-picker">
           <button class="range-btn active" data-range="today">Today</button>
           <button class="range-btn" data-range="week">Week</button>
@@ -269,7 +269,7 @@ table.data-table tr:last-child td{border-bottom:0;}
           <button class="range-btn" data-range="custom">Custom</button>
           <span class="range-custom" id="rangeCustomInputs">
             <input type="date" id="rangeCustomFrom"> <span style="color:var(--text-muted);">to</span> <input type="date" id="rangeCustomTo">
-            <button class="btn btn-solid btn-sm" id="rangeCustomApply">Show</button>
+            <button class="btn btn-solid btn-sm" id="rangeCustomApply">Show these dates</button>
           </span>
         </div>
       </div>
@@ -543,8 +543,9 @@ table.data-table tr:last-child td{border-bottom:0;}
     </details>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="venueModalCancel">Cancel</button>
-      <button class="btn btn-accent" id="venueModalSave">Save</button>
+      <button class="btn btn-accent" id="venueModalSave">Save venue</button>
     </div>
+    <button class="btn btn-danger btn-block" id="venueModalDelete" type="button" style="margin-top:14px;" hidden>Delete this venue</button>
   </div>
 </div>
 
@@ -911,7 +912,7 @@ const valueLabelsPlugin = {
     const { ctx } = chart, horizontal = chart.options.indexAxis === "y";
     const meta = chart.getDatasetMeta(opts.dataset || 0);
     ctx.save();
-    ctx.fillStyle = opts.color; ctx.font = `700 ${opts.size || 12}px Inter, system-ui, sans-serif`;
+    ctx.fillStyle = opts.color; ctx.font = `700 ${opts.size || 12}px "Atkinson Hyperlegible Next", system-ui, sans-serif`;
     meta.data.forEach((el, i) => {
       const txt = opts.format(i); if (!txt) return;
       if (horizontal) { ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText(txt, el.x + 8, el.y); }
@@ -924,7 +925,7 @@ function renderCharts(){
   if (!lastDash) return;
   const c = chartColors(), d = lastDash;
   Chart.defaults.color = c.muted;
-  Chart.defaults.font.family = "Inter";
+  Chart.defaults.font.family = "Atkinson Hyperlegible Next";
   Chart.defaults.font.size = 13;
   Object.values(charts).forEach(ch => ch && ch.destroy());
   charts = {};
@@ -1526,7 +1527,6 @@ function renderVenues(){
       <div class="actions">
         <label class="food-toggle"><span>Selling food</span><span class="switch"><input type="checkbox" data-act="food" aria-label="${esc(v.name)} selling food" ${v.foodEnabled !== false ? "checked" : ""}><span class="slider"></span></span></label>
         <button type="button" class="btn btn-ghost btn-sm" data-act="edit">Edit</button>
-        <button type="button" class="btn btn-danger btn-sm" data-act="delete">Delete</button>
       </div>`;
     row.querySelector('[data-act="edit"]').addEventListener("click", () => openVenueModal("edit", v));
     row.querySelector('[data-act="food"]').addEventListener("change", async e => {
@@ -1541,7 +1541,6 @@ function renderVenues(){
       const mine = myVenues.find(x => x.id === v.id); if (mine) mine.foodEnabled = on;
       renderVenues();
     });
-    row.querySelector('[data-act="delete"]').addEventListener("click", () => deleteVenueFlow(v));
     wrap.appendChild(row);
   });
 }
@@ -1560,8 +1559,14 @@ function openVenueModal(mode, venue){
   document.getElementById("vmWebhookStop").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.stop || "") : "";
   document.getElementById("vmStaff").innerHTML = users.map(u => `
     <label class="row" style="border:0;padding:8px 0;"><span class="info"><span class="name">${u.name}</span></span><span class="switch"><input type="checkbox" data-staff="${u.id}" ${venue && (u.venueIds||[]).includes(venue.id) ? "checked" : ""}><span class="slider"></span></span></label>`).join("") || `<div class="empty">No staff yet, add some from Users first.</div>`;
+  document.getElementById("venueModalDelete").hidden = mode !== "edit";
   document.getElementById("venueModal").hidden = false;
 }
+document.getElementById("venueModalDelete").addEventListener("click", () => {
+  const v = editingVenue; if (!v) return;
+  document.getElementById("venueModal").hidden = true; editingVenue = null;
+  deleteVenueFlow(v);
+});
 document.getElementById("openAddVenueBtn").addEventListener("click", () => openVenueModal("add", null));
 document.getElementById("venueModalCancel").addEventListener("click", () => { document.getElementById("venueModal").hidden = true; editingVenue = null; });
 document.getElementById("venueModalSave").addEventListener("click", async () => {
