@@ -133,7 +133,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022d">
+<link rel="stylesheet" href="nipos.css?v=20261022e">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -262,7 +262,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022d"></script>
+<script src="db.js?v=20261022e"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -1012,11 +1012,15 @@ function closeFlagModal(){
 document.getElementById("flagCancel1").addEventListener("click", closeFlagModal);
 document.getElementById("flagCancel2").addEventListener("click", closeFlagModal);
 document.getElementById("flagCancel3").addEventListener("click", closeFlagModal);
+let flagSaving = false;
 document.getElementById("flagConfirm").addEventListener("click", async () => {
   if (!flagIntent) { alert("Choose Offer Refund or Substitute."); return; }
   if (flagIntent === "substitute" && !flagSubstituteName) { alert("Pick a substitute item."); return; }
+  if (flagSaving) return; // one report per tap, however many times it's pressed
   const cached = openOrders.find(x => x.id === flagTargetId);
-  if (cached) {
+  const btn = document.getElementById("flagConfirm");
+  flagSaving = true; btn.disabled = true; btn.textContent = "Reporting…";
+  try { if (cached) {
     const flagItem = cached.items[flagItemIdx].name;
     const flagReasonText = flagReason === "Other" ? document.getElementById("flagOtherInput").value.trim() : flagReason;
     const fresh = await mergeOpenOrder(flagTargetId, {
@@ -1030,10 +1034,11 @@ document.getElementById("flagConfirm").addEventListener("click", async () => {
     if (fresh) {
       const idx = openOrders.findIndex(x => x.id === flagTargetId);
       if (idx !== -1) openOrders[idx] = fresh;
-      if (fresh.placedById) await pushNotification(fresh.placedById, `Table ${fresh.table || "?"}: ${fresh.flagItem} flagged - ${fresh.flagReason}`, true);
+      // The push to whoever took the order goes in the background: the screen doesn't wait for it.
+      if (fresh.placedById) pushNotification(fresh.placedById, `Table ${fresh.table || "?"}: ${fresh.flagItem} flagged - ${fresh.flagReason}`, true).catch(() => {});
       logActivity("Reported a problem", `Table ${fresh.table || "?"}: ${fresh.flagItem}, ${fresh.flagReason} (${flagIntent === "substitute" ? "substitute " + flagSubstituteName : "offer refund"})`);
-    }
-  }
+    } else { alert("Couldn't report it. Check the connection and try again."); return; }
+  } } finally { flagSaving = false; btn.disabled = false; btn.textContent = "Report problem"; }
   closeFlagModal();
   render();
 });
