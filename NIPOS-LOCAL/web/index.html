@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021m">
-<link rel="stylesheet" href="layouts.css?v=20261021m">
+<link rel="stylesheet" href="nipos.css?v=20261021n">
+<link rel="stylesheet" href="layouts.css?v=20261021n">
 </head>
 <body>
 
@@ -507,6 +507,13 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
         <button class="admin-row-main" type="button">
           <span class="name">Notifications</span>
           <span class="sub" id="notifyVenuesRowSub">Off</span>
+        </button>
+        <span class="chevron" data-icon="chevron"></span>
+      </div>
+      <div class="admin-row" id="pushRow" hidden>
+        <button class="admin-row-main" type="button" aria-describedby="pushRowSub">
+          <span class="name">Alerts on this device</span>
+          <span class="sub" id="pushRowSub">Off</span>
         </button>
         <span class="chevron" data-icon="chevron"></span>
       </div>
@@ -745,7 +752,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261021m"></script>
+<script src="db.js?v=20261021n"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -2718,7 +2725,7 @@ function urlBase64ToUint8Array(base64String){
 async function savePushSubscription(sub){
   if (!supabaseClient || !sub || !currentVenueId) return;
   const json = sub.toJSON ? sub.toJSON() : sub;
-  const id = "px" + btoa(json.endpoint).replace(/[^a-zA-Z0-9]/g, "").slice(0, 60);
+  const id = pushRowId(json.endpoint);
   // Only once someone's signed in: a subscription saved before that had no person, so pushes sent
   // to them (e.g. Call for service) never found this device.
   if (!currentUserId) return;
@@ -2729,7 +2736,7 @@ async function savePushSubscription(sub){
 var pushSavedFor = null; // var: applyLoginState can run before this line on first load
 function ensurePushForUser(){
   const key = currentUserId ? currentUserId + "|" + currentVenueId : null;
-  if (!key || key === pushSavedFor || !("Notification" in window) || Notification.permission !== "granted") return;
+  if (!key || key === pushSavedFor || !pushWanted()) return;
   pushSavedFor = key;
   enablePush();
 }
@@ -2751,25 +2758,49 @@ async function sendPushNotification(toUserId, fromUserId, fromName, message, urg
     });
   } catch(e){}
 }
-// The banner only needs the explicit tap the very first time - once Notification permission is
-// granted, that's a browser-level, per-device grant that persists on its own (it survives reloads,
-// force-closes, reinstalls of the PWA, all of it), so there's nothing left to "remember": every later
-// load just checks the browser's own permission state and skips straight past the banner.
+// The banner needs one tap per device: the browser remembers the permission after that. It comes back
+// after a reset in Master settings, and stays away on a device where alerts were switched off.
 function refreshAlertsRow(){
-  const granted = ("Notification" in window) && Notification.permission === "granted";
-  const denied = ("Notification" in window) && Notification.permission === "denied";
-  document.getElementById("alertsRow").hidden = granted;
-  document.getElementById("alertsStatus").textContent = denied
+  const state = pushState();
+  // Switched off on this device, or already on: no banner. After a reset in Master settings it comes
+  // back on every device until someone taps Turn on alerts again.
+  document.getElementById("alertsRow").hidden = state === "on" || state === "off" || state === "unsupported";
+  document.getElementById("alertsStatus").textContent = state === "blocked"
     ? "Alerts are blocked for this app. Turn them on in your browser's site settings to hear Service calls."
-    : "Turn on alerts to hear Service calls and delivery notices";
-  if (granted) enablePush(); // re-confirm the push subscription's still registered, no prompt shown
+    : state === "reset" ? "Notifications were reset. Tap Turn on alerts to get them again." : "Turn on alerts to hear Service calls and delivery notices";
+  if (state === "on") enablePush(); // re-confirm the push subscription's still registered, no prompt shown
+  if (typeof refreshPushRow === "function") refreshPushRow();
 }
-document.getElementById("enableAlertsBtn").addEventListener("click", async () => {
+async function turnOnAlerts(){
   ensureAudioCtx(); playChime();
   if ("Notification" in window) { try { await Notification.requestPermission(); } catch(e){} }
-  await enablePush();
+  if (("Notification" in window) && Notification.permission === "granted") { markPushAccepted(); pushSavedFor = null; await enablePush(); }
+  refreshAlertsRow();
+}
+document.getElementById("enableAlertsBtn").addEventListener("click", turnOnAlerts);
+// Till menu: switch push alerts off or back on for this device (Master settings "Alerts on or off per device").
+const PUSH_ROW_TEXT = { on: "On. Tap to switch off", off: "Off. Tap to switch on", ask: "Off. Tap to switch on", reset: "Reset. Tap to switch on again", blocked: "Blocked in this browser's site settings", unsupported: "This browser can't show alerts" };
+function refreshPushRow(){
+  const row = document.getElementById("pushRow");
+  row.hidden = !featureOn("pushChoice");
+  document.getElementById("pushRowSub").textContent = PUSH_ROW_TEXT[pushState()];
+}
+document.getElementById("pushRow").querySelector(".admin-row-main").addEventListener("click", async () => {
+  const state = pushState();
+  if (state === "blocked" || state === "unsupported") { refreshPushRow(); return; }
+  if (state === "on") {
+    await disablePushHere(); pushSavedFor = null;
+    logActivity("Alerts switched off", "This device");
+  } else {
+    await turnOnAlerts();
+    if (pushWanted()) logActivity("Alerts switched on", "This device");
+  }
   refreshAlertsRow();
 });
+document.addEventListener("nipos:settingschange", refreshPushRow);
+// A reset in Master settings reaches this device within a few seconds.
+var lastPushReset = null;
+document.addEventListener("nipos:settingschange", () => { const r = pushResetAt(); if (r !== lastPushReset) { lastPushReset = r; pushSavedFor = null; refreshAlertsRow(); } });
 refreshAlertsRow();
 
 let knownNotificationIds = null;
