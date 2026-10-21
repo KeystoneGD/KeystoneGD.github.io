@@ -429,3 +429,18 @@ create policy "devices update their own row" on public.devices for update to aut
 drop policy if exists "admins read devices" on public.devices;
 create policy "admins read devices" on public.devices for select to authenticated using (is_global_admin() or is_system_user() or is_member_of_venue(venue_id));
 grant select, insert, update on public.devices to authenticated;
+
+-- NIPOS: Kitchens (Backend > Kitchens). Each kitchen cooks for one or more venues; /kitchen shows
+-- their food orders together. Everyone signed in can read them; only a Global Admin can change them.
+create table if not exists public.kitchens (
+  id text primary key,
+  ts bigint not null default 0,
+  data jsonb not null default '{}'::jsonb
+);
+alter table public.kitchens enable row level security;
+drop policy if exists "read kitchens" on public.kitchens;
+create policy "read kitchens" on public.kitchens for select to authenticated using (true);
+drop policy if exists "global admin manages kitchens" on public.kitchens;
+create policy "global admin manages kitchens" on public.kitchens for all to authenticated
+  using (public.is_global_admin()) with check (public.is_global_admin());
+grant select, insert, update, delete on public.kitchens to authenticated;
