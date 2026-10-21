@@ -132,3 +132,23 @@ html[data-layout="pubtill"] #cartSheet .line{border-bottom-style:dashed;}
   html[data-layout="pubtill"] #goCash,html[data-layout="pubtill"] #goCard{display:none;}
   .pt-plu{grid-auto-rows:minmax(100px,auto);}
 }
+
+/* Food as its own menu: the "‹ Drinks" row is one slim full-width button. */
+.pm-groups.pm-back-row button,.pt-depts.pt-back-row button{min-height:42px;}
+/* Long category lists on a phone: two rows that scroll sideways instead of filling the screen. */
+.pm-cats.pm-cats-scroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;}
+.pm-cats.pm-cats-scroll button{flex:0 0 auto;white-space:nowrap;}
+.pt-depts.pt-scroll{grid-template-columns:none !important;grid-auto-flow:column;grid-template-rows:repeat(2,44px);grid-auto-columns:max-content;overflow-x:auto;scrollbar-width:none;}
+.pt-depts.pt-scroll button{min-height:44px;padding:4px 14px;white-space:nowrap;}
+.pm-cats-scroll::-webkit-scrollbar,.pt-scroll::-webkit-scrollbar{display:none;}
+/* Item tiles always hold their name and price: long names stop at three lines, the price never moves out. */
+.pm-tile{overflow:hidden;}
+.pm-tile .n{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;}
+.pm-tile .p{flex:0 0 auto;}
+@media (max-width: 599px){
+  .pm-tile{padding:8px 9px;gap:4px;}
+  .pm-tile .n{font-size:14px;line-height:1.2;}
+  .pm-tile .p{font-size:13px;}
+  .pt-plu{grid-auto-rows:minmax(78px,auto);}
+}
+.pm-rail button.pm-back{flex:0 0 auto;min-height:64px;}
