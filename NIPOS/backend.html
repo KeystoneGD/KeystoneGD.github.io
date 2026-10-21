@@ -136,7 +136,6 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .colour-shade input[type="color"]{width:44px;height:44px;padding:0;border:1px solid var(--border);background:none;cursor:pointer;}
 .colour-chip{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:28px;padding:0 8px;font-weight:800;font-size:12.5px;border-radius:6px;}
 .feature-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
-.announce-card{max-width:620px;}
 .activity-table td{font-size:13.5px;}
 .activity-table td:first-child{white-space:nowrap;color:var(--text-muted);}
 .edit-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:6px 0;border-bottom:1px solid var(--border);}
@@ -157,7 +156,6 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .hh-days{display:flex;flex-wrap:wrap;gap:4px 10px;}
 .hh-days label{display:inline-flex;align-items:center;gap:4px;min-height:44px;font-size:14px;}
 .hh-window input[type="time"]{min-height:44px;}
-.announce-title{margin:0 0 4px;font-size:18px;}
 .wipe-summary{margin-top:14px;border:1px solid var(--border);border-left:6px solid var(--danger);padding:12px 14px;background:var(--surface-2);line-height:1.6;}
 .wipe-summary table{border-collapse:collapse;width:100%;}
 .wipe-summary td{padding:3px 0;}
@@ -272,7 +270,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021c">
+<link rel="stylesheet" href="nipos.css?v=20261021d">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -324,6 +322,7 @@ table.data-table tr:last-child td{border-bottom:0;}
       <button class="nav-item" data-page="testdata" id="navTestData" hidden>Test Data</button>
       <button class="nav-item" data-page="settings" id="navSettings" hidden>Settings</button>
       <button class="nav-item" data-page="themes" id="navThemes" hidden>Master settings</button>
+      <button class="nav-item nav-notify" id="navNotify" type="button" hidden><span data-icon="bell"></span>Notify</button>
     </nav>
     <div class="sidebar-footer">
       <div class="footer-row">
@@ -339,19 +338,6 @@ table.data-table tr:last-child td{border-bottom:0;}
     <div class="status" id="dbStatus" role="status" hidden></div>
 
     <section class="page active" id="page-dashboard">
-      <div class="card announce-card" id="announceCard" hidden>
-        <h2 class="announce-title">Message on every till</h2>
-        <p class="note">Shows as a banner at the top of every till and order screen until it's taken down.</p>
-        <label class="field" for="announceVenue">Where</label>
-        <select id="announceVenue"></select>
-        <label class="field" for="announceText">Message</label>
-        <textarea id="announceText" rows="2" maxlength="280"></textarea>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-          <button type="button" class="btn btn-accent" id="announcePost">Put it up</button>
-          <button type="button" class="btn btn-ghost" id="announceClear">Take it down</button>
-        </div>
-        <p class="note" id="announceMsg" role="status" style="margin-top:8px;"></p>
-      </div>
       <div class="page-header">
         <h1>Takings</h1>
         <label class="page-venue" id="dashVenueWrap" hidden><span>Venue</span><select id="dashVenue" aria-label="Venue for Takings"></select></label>
@@ -726,7 +712,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021c"></script>
+<script src="db.js?v=20261021d"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -901,7 +887,7 @@ function applyLoginState(){
   setSignedInUser(currentUser);
   maintenanceLockScreen(maintenanceLocksOut(currentUser), signOutBackend);
   if (currentUser && currentUser.system) { renderThemes(); renderLayouts(); renderWipeVenues(); renderFeaturesIfIdle(); if (document.activeElement !== document.getElementById("siteNameInput")) document.getElementById("siteNameInput").value = siteName(); }
-  renderAnnounceCard();
+  renderNotifyNav();
   if (currentUser && !currentUser.system) setTimeout(() => runRemoteCommands(currentVenueId), 0);
   if (currentUser && currentUser.perms.backendAccess) {
     document.getElementById("loginGate").hidden = true;
@@ -1150,8 +1136,8 @@ function renderThemes(){
    through nipos_set_system_setting, which checks the $YSTEM password every time. All start off. */
 const FEATURES = [
   { key: "maintenance", name: "Maintenance Mode", about: "Only the people you pick can use the app; everyone else sees a locked screen. A MAINTENANCE MODE - TESTING watermark runs across every screen, and every sale is a test sale (kept out of Takings and Discord, cleared from Test Data)." },
-  { key: "announcements", name: "Message on every till", about: "A banner at the top of every till and order screen. You can put one up here; staff with Send Announcements can from Backend and the order screen." },
-  { key: "privateMessages", name: "Private messages", about: "Message one person. It beeps and pops up on their screen. Backend users can from the Users page; on the order screen it needs Notify Specific Users." },
+  { key: "announcements", name: "Notify everyone", about: "A banner at the top of every till, order screen and Backend, or an urgent pop-up that beeps on every screen. Staff with Send Announcements can put up banners; staff with Notify Specific Users can also send pop-ups. They use the Notify button on the till menu, the order screen and the Backend menu." },
+  { key: "privateMessages", name: "Notify someone", about: "Message one person. It beeps and pops up on their screen. Sent from Notify (\"Someone\") on the till menu, the order screen and the Backend menu by staff with Notify Specific Users, or from the Users page." },
   { key: "remote", name: "Refresh or sign out tills", about: "Reload every till and order screen (to pick up an update) or sign everyone out, for one venue or everywhere." },
   { key: "personal", name: "Own layout and theme per person", about: "Give anyone their own till layout and theme. It follows them to whichever device they sign in on." },
   { key: "venueColours", name: "Extra venue colours", about: "Add your own venue colours, with a shade for each theme. The text on them is picked so it always reads." },
@@ -1450,13 +1436,14 @@ function featureBody(key, cfg){
   if (key === "announcements") {
     const posts = systemSettings.announcementPosts || {};
     const list = Object.entries(posts).map(([v, p]) => `<li><strong>${v === "*" ? "Every venue" : esc(venueName(v))}:</strong> ${esc(p.text)} <span class="note">· ${esc(p.by || "")}</span></li>`).join("");
-    return `${list ? `<span class="field">Up now</span><ul style="margin:0 0 6px 18px;">${list}</ul>` : `<p class="note">No message is up right now.</p>`}
+    return `${list ? `<span class="field">Banners up now</span><ul style="margin:0 0 6px 18px;">${list}</ul>` : `<p class="note">No banner is up right now.</p>`}
       <label class="field" for="fAnnVenue">Where</label><select id="fAnnVenue">${venueOptions(true)}</select>
+      <label class="field" for="fAnnHow">How</label><select id="fAnnHow"><option value="banner">Banner (stays up until taken down)</option><option value="popup">Pop-up (beeps on every screen, urgent)</option></select>
       <label class="field" for="fAnnText">Message</label><textarea id="fAnnText" rows="2" maxlength="280"></textarea>
-      <div class="feature-actions"><button type="button" class="btn btn-accent" data-act="ann-post">Put it up</button><button type="button" class="btn btn-ghost" data-act="ann-clear">Take it down</button></div>
+      <div class="feature-actions"><button type="button" class="btn btn-accent" data-act="ann-post">Send</button><button type="button" class="btn btn-ghost" data-act="ann-clear">Take the banner down</button></div>
       ${cfg.enabled ? "" : `<p class="note">Switch the feature on first. Messages only show while it's on.</p>`}`;
   }
-  if (key === "privateMessages") return `<p class="note">When it's on, a Message button appears next to each person on the Users page, and staff with Notify Specific Users get "Message someone" on the order screen.</p>`;
+  if (key === "privateMessages") return `<p class="note">When it's on, a Message button appears next to each person on the Users page, and staff with Notify Specific Users get "Someone" in the Notify pop-up on the till menu, the order screen and the Backend menu.</p>`;
   if (key === "remote") {
     const recent = (cfg.commands || []).slice(-5).reverse().map(c => `<li>${c.action === "refresh" ? "Refresh" : "Sign out"} · ${c.venueId ? esc(venueName(c.venueId)) : "every venue"} · ${fmtDayTime(c.ts)}</li>`).join("");
     return `<label class="field" for="fRemoteVenue">Which tills</label><select id="fRemoteVenue">${venueOptions(true)}</select>
@@ -1539,8 +1526,9 @@ async function runFeatureAction(act, btn){
   if (act === "ann-post" || act === "ann-clear") {
     const text = act === "ann-post" ? document.getElementById("fAnnText").value.trim() : "";
     if (act === "ann-post" && !text) { document.getElementById("featureMsg").textContent = "Type a message first."; return; }
-    const res = await postAnnouncement(document.getElementById("fAnnVenue").value || null, text);
-    document.getElementById("featureMsg").textContent = res === "ok" ? (text ? "Message is up." : "Message taken down.") : res === "off" ? "Switch Message on every till on first." : "Couldn't do that. Try again.";
+    const how = act === "ann-post" ? document.getElementById("fAnnHow").value : "banner";
+    const res = await postAnnouncement(document.getElementById("fAnnVenue").value || null, text, how);
+    document.getElementById("featureMsg").textContent = res === "ok" ? (!text ? "Banner taken down." : how === "popup" ? "Pop-up sent to every screen." : "Banner is up.") : res === "off" ? "Switch Notify everyone on first." : "Couldn't do that. Try again.";
     return renderFeatures();
   }
   if (act === "remote-refresh" || act === "remote-signout") {
@@ -1564,23 +1552,17 @@ async function runFeatureAction(act, btn){
   }
 }
 
-// Staff with Send Announcements put a message up from the Takings page.
-function renderAnnounceCard(){
-  const card = document.getElementById("announceCard");
-  const can = !!(currentUser && !currentUser.system && featureOn("announcements") && currentUser.perms.sendAnnouncements);
-  card.hidden = !can;
-  if (!can) return;
-  const sel = document.getElementById("announceVenue"), keep = sel.value;
-  sel.innerHTML = myVenues.map(v => `<option value="${esc(v.id)}">${esc(v.name)} only</option>`).join("") + (currentUser.perms.globalAdmin ? `<option value="">Every venue</option>` : "");
-  if ([...sel.options].some(o => o.value === keep)) sel.value = keep; else if (currentVenue) sel.value = currentVenue.id;
+// Notify (Backend menu): everyone by banner or pop-up, or one person. The same pop-up as the till and order screen.
+function renderNotifyNav(){
+  document.getElementById("navNotify").hidden = !canNotify(currentUser);
+  checkEveryonePopup(currentVenue && currentVenue.id);
 }
-async function announceFromCard(text){
-  const res = await postAnnouncement(document.getElementById("announceVenue").value || null, text);
-  document.getElementById("announceMsg").textContent = res === "ok" ? (text ? "Message is up on every till." : "Message taken down.") : res === "no_permission" ? "You don't have permission to do that." : "Couldn't do that. Try again.";
-  if (res === "ok" && !text) document.getElementById("announceText").value = "";
-}
-document.getElementById("announcePost").addEventListener("click", () => { const t = document.getElementById("announceText").value.trim(); if (t) announceFromCard(t); });
-document.getElementById("announceClear").addEventListener("click", () => announceFromCard(""));
+function playChime(){ playBackendChime(); } // pop-ups from db.js beep with this
+document.getElementById("navNotify").addEventListener("click", () => {
+  closeSidebar();
+  openNotifyDialog({ user: currentUser, venue: currentVenue, venues: myVenues, toast: notifyToast,
+    fetchStaff: async () => users.filter(u => !u.system && (u.perms.globalAdmin || !currentVenue || (u.venueIds || []).includes(currentVenue.id))) });
+});
 document.addEventListener("nipos:settingschange", () => { if (currentUser) applyLoginState(); });
 
 // Backend follows "Refresh or sign out tills" too - except $YSTEM, who's the one sending them.
@@ -1748,7 +1730,7 @@ function showPage(page){
   });
   closeSidebar();
 }
-document.querySelectorAll(".nav-item").forEach(el => el.addEventListener("click", () => showPage(el.dataset.page)));
+document.querySelectorAll(".nav-item[data-page]").forEach(el => el.addEventListener("click", () => showPage(el.dataset.page)));
 
 function openSidebar(){ document.getElementById("sidebar").classList.add("open"); document.getElementById("sidebarBackdrop").classList.add("show"); }
 function closeSidebar(){ document.getElementById("sidebar").classList.remove("open"); document.getElementById("sidebarBackdrop").classList.remove("show"); }

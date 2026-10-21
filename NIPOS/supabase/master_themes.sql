@@ -147,6 +147,42 @@ end $$;
 revoke all on function public.nipos_set_announcement(text, text) from public, anon;
 grant execute on function public.nipos_set_announcement(text, text) to authenticated, service_role;
 
+-- Notify everyone: as above, plus how it shows. 'banner' stays at the top of every screen until it's
+-- taken down; 'popup' beeps and pops up on every screen (urgent). Banners need Send Announcements or
+-- Notify Specific Users; pop-ups need Notify Specific Users.
+create or replace function public.nipos_set_announcement(p_venue text, p_text text, p_style text) returns text
+language plpgsql volatile security definer set search_path = public as $$
+declare me jsonb; s jsonb; k text := coalesce(p_venue, '*'); st text := case when p_style = 'popup' then 'popup' else 'banner' end;
+  can_banner boolean; can_popup boolean;
+  bucket text := case when p_style = 'popup' then 'announcementPopups' else 'announcementPosts' end;
+begin
+  select data into me from public.staff_users where id = auth.uid()::text;
+  if me is null then return 'not_signed_in'; end if;
+  select settings into s from public.system_theme where id = 'current';
+  if not coalesce((s->'announcements'->>'enabled')::boolean, false) then return 'off'; end if;
+  if not public.is_system_user() then
+    can_popup := coalesce((me->'perms'->>'notifySpecificUsers')::boolean, false);
+    can_banner := can_popup or coalesce((me->'perms'->>'sendAnnouncements')::boolean, false);
+    if not can_banner or (st = 'popup' and not can_popup) then return 'no_permission'; end if;
+    if p_venue is null and not coalesce((me->'perms'->>'globalAdmin')::boolean, false) then return 'no_permission'; end if;
+    if p_venue is not null and not (coalesce((me->'perms'->>'globalAdmin')::boolean, false) or (me->'venueIds') ? p_venue) then return 'no_permission'; end if;
+  end if;
+  -- Banners and pop-ups are kept apart, so an urgent pop-up never knocks a banner down.
+  if coalesce(btrim(p_text), '') = '' then
+    update public.system_theme set settings = settings #- array[bucket, k] where id = 'current';
+  else
+    update public.system_theme set settings = jsonb_set(
+      case when settings ? bucket then settings else settings || jsonb_build_object(bucket, '{}'::jsonb) end,
+      array[bucket, k],
+      jsonb_build_object('text', left(btrim(p_text), 280), 'by', me->>'name', 'byId', auth.uid()::text, 'style', st,
+        'id', 'a' || (extract(epoch from clock_timestamp()) * 1000)::bigint, 'ts', (extract(epoch from now()) * 1000)::bigint), true)
+    where id = 'current';
+  end if;
+  return 'ok';
+end $$;
+revoke all on function public.nipos_set_announcement(text, text, text) from public, anon;
+grant execute on function public.nipos_set_announcement(text, text, text) to authenticated, service_role;
+
 -- Activity log (Master settings feature): staff add entries about themselves; only $YSTEM reads it.
 create table if not exists public.activity_log (
   id text primary key,
