@@ -2,7 +2,7 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>NIPOS</title>
 <meta name="description" content="NIPOS - Non Integrated POS. Pocket point-of-sale for taking cash-register-style orders and logging card sales.">
 <link rel="manifest" href="manifest.json">
@@ -35,7 +35,7 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 [hidden]{display:none !important;}
-body{background:var(--bg);color:var(--text);font-family:'Atkinson Hyperlegible Next',system-ui,sans-serif;margin:0;padding-bottom:84px;min-height:100vh;}
+body{background:var(--bg);color:var(--text);font-family:'Atkinson Hyperlegible Next',system-ui,sans-serif;margin:0;padding-bottom:calc(84px + env(safe-area-inset-bottom));min-height:100vh;}
 h1,h2,h3,.display{font-family:'Plus Jakarta Sans',system-ui,sans-serif;text-wrap:balance;}
 button{font-family:inherit;}
 input{font-family:inherit;}
@@ -87,7 +87,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 .empty-state{text-align:center;color:var(--text-muted);font-size:14px;padding:40px 10px;}
 
-.cartbar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--border);box-shadow:var(--shadow);padding:10px 14px;display:none;padding-bottom:calc(10px + env(safe-area-inset-bottom));}
+.cartbar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--border);box-shadow:var(--shadow);padding:10px max(14px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));display:none;}
 .cartbar.show{display:flex;}
 .cartbar-inner{max-width:640px;margin:0 auto;width:100%;display:flex;align-items:center;gap:12px;}
 .cartbar-info{flex:1;}
@@ -102,7 +102,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 .btn-void{background:transparent;color:var(--text-muted);border:1px solid var(--border);}
 .btn-block{width:100%;}
 
-.sheet{position:fixed;inset:0;background:var(--bg);z-index:30;display:none;flex-direction:column;}
+.sheet{position:fixed;inset:0;background:var(--bg);z-index:30;display:none;flex-direction:column;padding-top:env(safe-area-inset-top);}
 .sheet.show{display:flex;}
 .sheet-head{padding:14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:var(--surface);}
 .sheet-head h2{font-size:16px;margin:0;flex:1;}
@@ -239,7 +239,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 .drawer-overlay{position:fixed;inset:0;background:rgba(4,10,11,.55);z-index:35;}
 .drawer-overlay[hidden]{display:none;}
-.drawer{position:fixed;top:0;left:0;bottom:0;width:82%;max-width:320px;background:var(--surface);z-index:36;transform:translateX(-100%);transition:transform .2s ease;display:flex;flex-direction:column;box-shadow:var(--shadow);}
+.drawer{position:fixed;top:0;left:0;bottom:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);width:82%;max-width:320px;background:var(--surface);z-index:36;transform:translateX(-100%);transition:transform .2s ease;display:flex;flex-direction:column;box-shadow:var(--shadow);}
 .drawer.show{transform:translateX(0);}
 .drawer-head{padding:16px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);}
 .drawer-head h2{margin:0;font-size:16px;flex:1;}
@@ -288,7 +288,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .category{scroll-margin-top:calc(var(--header-h,112px) + 8px);}
 }
 
-.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:var(--success);color:var(--success-ink);padding:10px 18px;border-radius:999px;font-weight:700;font-size:14px;box-shadow:var(--shadow);z-index:60;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;text-align:center;max-width:88vw;}
+.toast{position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--success);color:var(--success-ink);padding:10px 18px;border-radius:999px;font-weight:700;font-size:14px;box-shadow:var(--shadow);z-index:60;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;text-align:center;max-width:88vw;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
 
 .login-gate{position:fixed;inset:0;z-index:70;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;}
@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021c">
-<link rel="stylesheet" href="layouts.css?v=20261021c">
+<link rel="stylesheet" href="nipos.css?v=20261021d">
+<link rel="stylesheet" href="layouts.css?v=20261021d">
 </head>
 <body>
 
@@ -459,6 +459,14 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
           <span class="sub">Stop a whole category, or open one to pick individual drinks</span>
         </button>
         <span class="count-badge" id="stoppedCountBadge">0</span>
+        <span class="chevron" data-icon="chevron"></span>
+      </div>
+
+      <div class="admin-row special" id="notifyRow" hidden>
+        <button class="admin-row-main" type="button">
+          <span class="name">Notify</span>
+          <span class="sub" id="notifyRowSub">Message everyone, or one person</span>
+        </button>
         <span class="chevron" data-icon="chevron"></span>
       </div>
 
@@ -668,7 +676,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021c"></script>
+<script src="db.js?v=20261021d"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -1625,6 +1633,8 @@ function renderCartBar(){
   document.getElementById("cartTotal").textContent = fmt(total);
   // Phone layouts other than classic sit above the bar, so leave room for it.
   document.documentElement.style.setProperty("--cartbar-h", bar.classList.contains("show") && !wideLayout.matches && posLayoutKey !== "pubtill" ? bar.offsetHeight + "px" : "0px");
+  // With the bar showing it already clears the iPhone's home bar; without it, the menu has to.
+  document.documentElement.style.setProperty("--menu-safe", bar.classList.contains("show") && !wideLayout.matches && posLayoutKey !== "pubtill" ? "0px" : "env(safe-area-inset-bottom)");
   renderPubTillDisplay();
   // On a tablet the current order is always on screen, so keep it in step with every change.
   if (wideLayout.matches) renderCartSheet();
@@ -2354,6 +2364,7 @@ function applyLoginState(){
   setSignedInUser(currentUser);
   maintenanceLockScreen(maintenanceLocksOut(currentUser), signOut);
   renderAnnouncement(currentVenue && currentVenue.id);
+  renderNotifyRow();
   applyBigText(currentUser, currentVenue && currentVenue.id);
   if (currentUser) setTimeout(() => runRemoteCommands(currentVenueId), 0); // e.g. a sign-out sent while this till was closed
   const venuePicker = document.getElementById("venuePickerScreen");
@@ -2514,6 +2525,21 @@ document.getElementById("notifyPrefsSave").addEventListener("click", async () =>
   showToast("Notification settings saved");
 });
 
+// Notify (feature "announcements" / "privateMessages"): the shared pop-up in db.js.
+function renderNotifyRow(){
+  const a = notifyAbilities(currentUser);
+  document.getElementById("notifyRow").hidden = !(a.everyone || a.someone);
+  document.getElementById("notifyRowSub").textContent = a.everyone && a.someone ? "Everyone (banner or pop-up), or one person" : a.everyone ? (a.popup ? "Everyone, by banner or pop-up" : "A banner on every screen") : "Message one person";
+}
+document.getElementById("notifyRow").querySelector(".admin-row-main").addEventListener("click", () => {
+  openNotifyDialog({ user: currentUser, venue: currentVenue, venues: myVenues, toast: showToast,
+    fetchStaff: async () => {
+      try {
+        const { data } = await supabaseClient.from("staff_users").select("id,data");
+        return (data || []).map(r => ({ id: r.id, ...r.data })).filter(u => (u.venueIds || []).includes(currentVenueId));
+      } catch (e) { return []; }
+    } });
+});
 function showAdminHome(){
   adminView = "home";
   document.getElementById("adminTitle").textContent = "Settings";

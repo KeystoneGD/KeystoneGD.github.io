@@ -2,7 +2,7 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>NIPOS - Orders</title>
 <link rel="manifest" href="manifest-orders.json">
 <meta name="theme-color" content="#0c1826">
@@ -109,8 +109,6 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .placed-by{font-size:11.5px;color:var(--text-muted);margin-bottom:6px;}
 .order-notes{font-size:13px;font-weight:700;color:var(--accent-text,var(--accent));margin-bottom:10px;}
 .send-error{color:var(--text);background:var(--danger-soft);border:1px solid var(--danger);border-radius:10px;padding:8px 10px;font-weight:700;margin:8px 0 0;}
-#sendModal select,#sendModal textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font:inherit;font-size:16px;margin-bottom:10px;}
-#sendModal .field{display:block;font-weight:700;font-size:13.5px;margin:6px 0 4px;}
 .stock-cat{font-size:15px;color:var(--text);font-weight:800;margin:16px 0 4px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .stock-cat-btn{min-height:48px;min-width:124px;padding:0 12px;border-radius:10px;font:inherit;font-size:14px;font-weight:800;cursor:pointer;background:var(--surface-2);color:var(--text);border:2px solid var(--text-muted);}
 .stock-cat-btn.on{background:transparent;border-color:var(--danger);}
@@ -124,7 +122,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021c">
+<link rel="stylesheet" href="nipos.css?v=20261021d">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -157,8 +155,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
   <div class="toolbar-row" id="toolbarRow">
     <button class="btn btn-solid" id="stockBtn" type="button" hidden><span data-icon="stop"></span>Products on stop</button>
     <button class="btn btn-solid" id="serviceBtn" type="button"><span data-icon="bell"></span>Call for service</button>
-    <button class="btn btn-solid" id="announceBtn" type="button" hidden><span data-icon="bell"></span>Message every till</button>
-    <button class="btn btn-solid" id="messageBtn" type="button" hidden><span data-icon="note"></span>Message someone</button>
+    <button class="btn btn-solid" id="notifyBtn" type="button" hidden><span data-icon="bell"></span>Notify</button>
   </div>
   <div class="alerts-banner" id="alertsRow">
     <div class="msg"><span data-icon="bell"></span><span id="alertsStatus">Turn on alerts to hear new orders</span></div>
@@ -183,24 +180,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
   </div>
 </div>
 
-<div class="modal-overlay" id="sendModal" hidden>
-  <div class="modal-card" style="max-width:480px;" role="dialog" aria-modal="true" aria-labelledby="sendTitle">
-    <h3 id="sendTitle"></h3>
-    <p id="sendIntro"></p>
-    <div id="sendWhoWrap">
-      <label class="field" for="sendWho" id="sendWhoLabel"></label>
-      <select id="sendWho"></select>
-    </div>
-    <label class="field" for="sendText">Message</label>
-    <textarea id="sendText" rows="3" maxlength="280"></textarea>
-    <p class="send-error" id="sendError" role="alert" hidden></p>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" id="sendCancel" type="button">Cancel</button>
-      <button class="btn btn-ghost" id="sendClear" type="button" hidden>Take it down</button>
-      <button class="btn btn-accent" id="sendGo" type="button"></button>
-    </div>
-  </div>
-</div>
+
 
 <div class="modal-overlay" id="serviceModal" hidden>
   <div class="modal-card">
@@ -268,7 +248,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021c"></script>
+<script src="db.js?v=20261021d"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -331,63 +311,15 @@ function applyLoginState(){
   renderAnnouncement(currentVenue && currentVenue.id);
   applyBigText(currentUser, currentVenue && currentVenue.id);
   if (u) setTimeout(() => runRemoteCommands(currentVenueId), 0);
-  document.getElementById("announceBtn").hidden = !(u && featureOn("announcements") && (u.perms.sendAnnouncements || u.system));
-  document.getElementById("messageBtn").hidden = !(u && featureOn("privateMessages") && (u.perms.notifySpecificUsers || u.system));
+  document.getElementById("notifyBtn").hidden = !canNotify(u);
 }
 document.addEventListener("nipos:settingschange", () => applyLoginState());
 onRemoteCommand("refresh", () => location.reload());
 onRemoteCommand("signout", () => { if (!currentUser) return false; if (!currentUser.system) signOutOrders(); });
 
-// "Message every till" (Send Announcements) and "Message someone" (Notify Specific Users).
-let sendMode = null;
-async function openSend(mode){
-  sendMode = mode;
-  const u = currentUser, err = document.getElementById("sendError");
-  err.hidden = true;
-  document.getElementById("sendText").value = "";
-  const who = document.getElementById("sendWho");
-  if (mode === "announce") {
-    document.getElementById("sendTitle").textContent = "Message every till";
-    document.getElementById("sendIntro").textContent = "Shows as a banner at the top of every till and order screen until someone takes it down.";
-    document.getElementById("sendWhoLabel").textContent = "Where";
-    who.innerHTML = `<option value="${esc(currentVenue.id)}">${esc(currentVenue.name)} only</option>` + (u.perms.globalAdmin || u.system ? `<option value="">Every venue</option>` : "");
-    document.getElementById("sendGo").textContent = "Put it up";
-    const current = currentAnnouncement(currentVenue.id);
-    document.getElementById("sendClear").hidden = !current;
-    if (current) document.getElementById("sendText").value = current.text;
-  } else {
-    document.getElementById("sendTitle").textContent = "Message someone";
-    document.getElementById("sendIntro").textContent = "Beeps and pops up on their screen, wherever they're signed in.";
-    document.getElementById("sendWhoLabel").textContent = "Who";
-    const staff = (await fetchVenueStaff()).filter(x => x.id !== currentUserId && x.perms && x.perms.active !== false && !x.system).sort((a, b) => a.name.localeCompare(b.name));
-    who.innerHTML = staff.length ? staff.map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("") : `<option value="">Nobody else works here yet</option>`;
-    document.getElementById("sendGo").textContent = "Send";
-    document.getElementById("sendClear").hidden = true;
-  }
-  document.getElementById("sendModal").hidden = false;
-  document.getElementById("sendText").focus();
-}
-document.getElementById("announceBtn").addEventListener("click", () => openSend("announce"));
-document.getElementById("messageBtn").addEventListener("click", () => openSend("message"));
-document.getElementById("sendCancel").addEventListener("click", () => { document.getElementById("sendModal").hidden = true; });
-async function finishAnnounce(text){
-  const err = document.getElementById("sendError");
-  const res = await postAnnouncement(document.getElementById("sendWho").value || null, text);
-  if (res !== "ok") { err.textContent = res === "no_permission" ? "You don't have permission to do that." : res === "off" ? "Messages on every till are switched off." : "Couldn't do that. Try again."; err.hidden = false; return; }
-  document.getElementById("sendModal").hidden = true;
-  renderAnnouncement(currentVenue.id);
-  showToast(text ? "Message is up on every till" : "Message taken down");
-}
-document.getElementById("sendClear").addEventListener("click", () => finishAnnounce(""));
-document.getElementById("sendGo").addEventListener("click", async () => {
-  const text = document.getElementById("sendText").value.trim(), err = document.getElementById("sendError");
-  if (!text) { err.textContent = "Type a message first."; err.hidden = false; return; }
-  if (sendMode === "announce") return finishAnnounce(text);
-  const to = document.getElementById("sendWho").value;
-  if (!to) return;
-  await sendPrivateMessage(to, currentUser, text);
-  document.getElementById("sendModal").hidden = true;
-  showToast("Message sent to " + document.getElementById("sendWho").selectedOptions[0].textContent);
+// Notify: everyone (banner or pop-up) or one person - the shared pop-up in db.js.
+document.getElementById("notifyBtn").addEventListener("click", () => {
+  openNotifyDialog({ user: currentUser, venue: currentVenue, venues: myVenues, fetchStaff: fetchVenueStaff, toast: showToast });
 });
 function renderVenuePicker(){
   if (!venueCreationOrder) { loadVenueCreationOrder().then(renderVenuePicker); }

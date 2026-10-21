@@ -12,7 +12,7 @@ html:not([data-layout="classic"]) #hamburgerBtn{display:none !important;}
 html:not([data-layout="classic"]) body{padding-bottom:0;}
 html[data-layout="classic"] #posMenu{display:none !important;}
 
-.pos-menu{position:fixed;left:0;right:0;top:var(--header-h,112px);bottom:var(--cartbar-h,0px);display:flex;flex-direction:column;min-height:0;background:var(--bg);z-index:5;}
+.pos-menu{position:fixed;left:0;right:0;top:var(--header-h,112px);bottom:var(--cartbar-h,0px);padding-bottom:var(--menu-safe,0px);display:flex;flex-direction:column;min-height:0;background:var(--bg);z-index:5;}
 .pos-menu[hidden]{display:none;}
 .pm-row{display:flex;min-height:0;flex:1;}
 .pm-col{display:flex;flex-direction:column;min-width:0;min-height:0;flex:1;}
@@ -77,7 +77,7 @@ html[data-layout="list"] .pm-groups{grid-template-columns:repeat(4,1fr);}
 /* ---------- Pub till (WRS-style) ---------- */
 html[data-layout="pubtill"] .header-tools{display:none;}
 html[data-layout="pubtill"].pt-search .header-tools{display:block;}
-html[data-layout="pubtill"] .pos-menu{background:#000;gap:2px;padding:2px;}
+html[data-layout="pubtill"] .pos-menu{background:#000;gap:2px;padding:2px;padding-bottom:calc(2px + var(--menu-safe,0px));}
 html[data-layout="pubtill"] .cartbar{display:none !important;}
 .pt-depts{display:grid;gap:2px;flex:0 0 auto;}
 .pt-depts button{border:0;font:inherit;cursor:pointer;color:#fff;background:var(--gc,#2a3a4a);min-height:50px;padding:4px 6px;font-weight:800;font-size:13.5px;line-height:1.15;}

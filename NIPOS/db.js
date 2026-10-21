@@ -500,6 +500,7 @@ function currentAnnouncement(venueId) {
   return (venueId && posts[venueId]) || posts["*"] || null;
 }
 function renderAnnouncement(venueId) {
+  checkEveryonePopup(venueId);
   let el = document.getElementById("niposAnnouncement");
   const a = currentAnnouncement(venueId);
   if (!a) { if (el) el.remove(); return; }
@@ -511,13 +512,163 @@ function renderAnnouncement(venueId) {
   }
   el.innerHTML = `${icon("bell")}<span><strong>${esc(a.text)}</strong>${a.by ? ` <span class="by">· ${esc(a.by)}</span>` : ""}</span>`;
 }
-async function postAnnouncement(venueId, text) {
+async function postAnnouncement(venueId, text, style) {
   try {
-    const { data, error } = await supabaseClient.rpc("nipos_set_announcement", { p_venue: venueId || null, p_text: text || "" });
+    const { data, error } = await supabaseClient.rpc("nipos_set_announcement", { p_venue: venueId || null, p_text: text || "", p_style: style === "popup" ? "popup" : "banner" });
     if (error) return "error";
     if (data === "ok") await syncMasterTheme();
     return data;
   } catch (e) { return "error"; }
+}
+
+// Urgent "Notify everyone" pop-ups: beep and pop up once on every till, order screen and Backend at
+// that venue (not on the sender's own screen). Only for 30 minutes after they're sent, so a till
+// opened the next day doesn't pop up yesterday's news.
+const POPUP_FRESH_MS = 30 * 60 * 1000;
+function checkEveryonePopup(venueId) {
+  if (!featureOn("announcements") || !signedInUserId) return;
+  const pops = systemSettings.announcementPopups || {};
+  const list = [venueId && pops[venueId], pops["*"]].filter(p => p && p.text && Date.now() - (p.ts || 0) < POPUP_FRESH_MS && p.byId !== signedInUserId);
+  if (!list.length) return;
+  let seen = [];
+  try { seen = JSON.parse(localStorage.getItem("nipos.seenPopups") || "[]"); } catch (e) {}
+  const next = list.sort((a, b) => b.ts - a.ts).find(p => !seen.includes(p.id || String(p.ts)));
+  if (!next) return;
+  seen.push(next.id || String(next.ts));
+  try { localStorage.setItem("nipos.seenPopups", JSON.stringify(seen.slice(-50))); } catch (e) {}
+  if (typeof playChime === "function") { try { playChime(); } catch (e) {} }
+  if (navigator.vibrate) { try { navigator.vibrate([300, 150, 300]); } catch (e) {} }
+  showPrivateMessage({ fromName: next.by, message: next.text, ts: next.ts, title: `Urgent notice from ${next.by || "the manager"}` });
+}
+
+// Who can send what. Notify everyone by banner: Send Announcements or Notify Specific Users.
+// By pop-up, and Notify someone: Notify Specific Users. $YSTEM can do all of it.
+function notifyAbilities(user) {
+  const p = (user && user.perms) || {}, sys = !!(user && user.system);
+  const everyone = featureOn("announcements") && (sys || !!p.sendAnnouncements || !!p.notifySpecificUsers);
+  return { everyone, popup: everyone && (sys || !!p.notifySpecificUsers), someone: featureOn("privateMessages") && (sys || !!p.notifySpecificUsers), allVenues: sys || !!p.globalAdmin };
+}
+function canNotify(user) { const a = notifyAbilities(user); return a.everyone || a.someone; }
+
+// The Notify pop-up, shared by the till's menu, the order screen and Backend's menu.
+// opts: { user, venue: {id,name}, venues: [{id,name}], fetchStaff: async () => [...], toast: fn }
+let notifyOpts = null, notifyTab = "everyone";
+function notifyModalEl() {
+  let el = document.getElementById("notifyModal");
+  if (el) return el;
+  el = document.createElement("div");
+  el.id = "notifyModal"; el.className = "modal-overlay notify-overlay"; el.hidden = true;
+  el.innerHTML = `<div class="modal-card notify-card" role="dialog" aria-modal="true" aria-labelledby="nfyTitle">
+    <h3 id="nfyTitle">Notify</h3>
+    <div class="nfy-tabs" role="tablist" aria-label="Who to notify">
+      <button type="button" role="tab" id="nfyTabEveryone" data-nfy-tab="everyone">Everyone</button>
+      <button type="button" role="tab" id="nfyTabSomeone" data-nfy-tab="someone">Someone</button>
+    </div>
+    <p class="nfy-intro" id="nfyIntro"></p>
+    <label class="field" for="nfyWho" id="nfyWhoLabel">Where</label>
+    <select id="nfyWho"></select>
+    <fieldset class="nfy-how" id="nfyHow"><legend>How</legend>
+      <label><input type="radio" name="nfyHow" value="banner" checked> <span><strong>Banner</strong><small>Stays at the top of every screen until it's taken down</small></span></label>
+      <label><input type="radio" name="nfyHow" value="popup"> <span><strong>Pop-up</strong><small>Beeps and pops up on every screen. For urgent things.</small></span></label>
+    </fieldset>
+    <label class="field" for="nfyText">Message</label>
+    <textarea id="nfyText" rows="3" maxlength="280"></textarea>
+    <p class="send-error nfy-error" id="nfyError" role="alert" hidden></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="nfyCancel" type="button">Cancel</button>
+      <button class="btn btn-ghost" id="nfyClear" type="button" hidden>Take the banner down</button>
+      <button class="btn btn-accent" id="nfyGo" type="button">Send</button>
+    </div>
+  </div>`;
+  document.body.appendChild(el);
+  el.querySelectorAll("[data-nfy-tab]").forEach(b => b.addEventListener("click", () => { notifyTab = b.dataset.nfyTab; renderNotifyModal(); }));
+  el.querySelectorAll('input[name="nfyHow"]').forEach(r => r.addEventListener("change", renderNotifyClear));
+  el.querySelector("#nfyWho").addEventListener("change", renderNotifyClear);
+  el.querySelector("#nfyCancel").addEventListener("click", () => { el.hidden = true; });
+  el.addEventListener("keydown", e => { if (e.key === "Escape") el.hidden = true; });
+  el.querySelector("#nfyClear").addEventListener("click", () => sendNotify(true));
+  el.querySelector("#nfyGo").addEventListener("click", () => sendNotify(false));
+  return el;
+}
+function notifyHow() { const r = document.querySelector('input[name="nfyHow"]:checked'); return r ? r.value : "banner"; }
+function renderNotifyClear() {
+  const el = notifyModalEl();
+  if (notifyTab !== "everyone") { el.querySelector("#nfyClear").hidden = true; return; }
+  const key = el.querySelector("#nfyWho").value || "*", up = (systemSettings.announcementPosts || {})[key];
+  el.querySelector("#nfyClear").hidden = !(up && notifyHow() === "banner");
+  if (notifyHow() === "banner" && up && !el.querySelector("#nfyText").value) el.querySelector("#nfyText").value = up.text;
+}
+async function renderNotifyModal() {
+  const el = notifyModalEl(), o = notifyOpts, a = notifyAbilities(o.user);
+  if (notifyTab === "everyone" && !a.everyone) notifyTab = "someone";
+  if (notifyTab === "someone" && !a.someone) notifyTab = "everyone";
+  el.querySelector(".nfy-tabs").hidden = !(a.everyone && a.someone);
+  el.querySelectorAll("[data-nfy-tab]").forEach(b => { const on = b.dataset.nfyTab === notifyTab; b.setAttribute("aria-selected", on ? "true" : "false"); b.classList.toggle("active", on); });
+  el.querySelector("#nfyError").hidden = true;
+  const who = el.querySelector("#nfyWho");
+  if (notifyTab === "everyone") {
+    el.querySelector("#nfyTitle").textContent = "Notify everyone";
+    el.querySelector("#nfyIntro").textContent = "Everyone signed in to the tills, order screens and Backend sees it.";
+    el.querySelector("#nfyWhoLabel").textContent = "Where";
+    const venues = (o.venues && o.venues.length ? o.venues : [o.venue]).filter(Boolean);
+    who.innerHTML = venues.map(v => `<option value="${esc(v.id)}">${esc(v.name)} only</option>`).join("") + (a.allVenues ? `<option value="">Every venue</option>` : "");
+    if (o.venue && venues.some(v => v.id === o.venue.id)) who.value = o.venue.id;
+    el.querySelector("#nfyHow").hidden = !a.popup;
+    if (!a.popup) el.querySelector('input[name="nfyHow"][value="banner"]').checked = true;
+    el.querySelector("#nfyGo").textContent = "Send";
+    renderNotifyClear();
+  } else {
+    el.querySelector("#nfyTitle").textContent = "Notify someone";
+    el.querySelector("#nfyIntro").textContent = "Beeps and pops up on their screen, wherever they're signed in.";
+    el.querySelector("#nfyWhoLabel").textContent = "Who";
+    el.querySelector("#nfyHow").hidden = true;
+    el.querySelector("#nfyClear").hidden = true;
+    el.querySelector("#nfyGo").textContent = "Send";
+    who.innerHTML = `<option value="">Loading…</option>`;
+    const staff = ((o.fetchStaff ? await o.fetchStaff() : []) || []).filter(x => x.id !== (o.user && o.user.id) && x.perms && x.perms.active !== false && !x.system).sort((x, y) => String(x.name).localeCompare(String(y.name)));
+    if (notifyTab !== "someone") return;
+    who.innerHTML = staff.length ? staff.map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("") : `<option value="">Nobody else works here yet</option>`;
+  }
+}
+function notifyToast(msg) {
+  let el = document.getElementById("nfyToast");
+  if (!el) { el = document.createElement("div"); el.id = "nfyToast"; el.className = "nfy-toast"; el.setAttribute("role", "status"); document.body.appendChild(el); }
+  el.textContent = msg; el.classList.add("show");
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("show"), 2600);
+}
+async function openNotifyDialog(opts, tab) {
+  notifyOpts = opts;
+  if (tab) notifyTab = tab;
+  const el = notifyModalEl();
+  el.querySelector("#nfyText").value = "";
+  el.querySelector('input[name="nfyHow"][value="banner"]').checked = true;
+  el.hidden = false;
+  await renderNotifyModal();
+  el.querySelector("#nfyText").focus();
+}
+async function sendNotify(takeDown) {
+  const el = notifyModalEl(), o = notifyOpts, err = el.querySelector("#nfyError");
+  const text = takeDown ? "" : el.querySelector("#nfyText").value.trim(), who = el.querySelector("#nfyWho");
+  const fail = m => { err.textContent = m; err.hidden = false; };
+  if (!takeDown && !text) return fail("Type a message first.");
+  const go = el.querySelector("#nfyGo"); go.disabled = true;
+  try {
+    if (notifyTab === "everyone") {
+      const how = takeDown ? "banner" : notifyHow();
+      const res = await postAnnouncement(who.value || null, text, how);
+      if (res !== "ok") return fail(res === "no_permission" ? "You don't have permission to do that." : res === "off" ? "Notify everyone is switched off in Master settings." : "Couldn't send that. Try again.");
+      el.hidden = true;
+      if (o.venue) renderAnnouncement(o.venue.id);
+      (o.toast || notifyToast)(takeDown ? "Banner taken down" : how === "popup" ? "Pop-up sent to every screen" : "Banner is up on every screen");
+      logActivity(takeDown ? "Took a banner down" : how === "popup" ? "Sent an urgent pop-up to everyone" : "Put a banner up for everyone", text, who.value || null);
+    } else {
+      if (!who.value) return fail("Pick someone first.");
+      await sendPrivateMessage(who.value, o.user, text);
+      el.hidden = true;
+      (o.toast || notifyToast)("Sent to " + who.selectedOptions[0].textContent);
+      logActivity("Sent a private message", "To " + who.selectedOptions[0].textContent);
+    }
+  } finally { go.disabled = false; }
 }
 
 // Private messages (feature "privateMessages"): beep and pop up on the person's screen, wherever
@@ -541,7 +692,7 @@ function showPrivateMessage(n) {
     document.body.appendChild(el);
     el.querySelector("#pmOk").addEventListener("click", () => { el.hidden = true; });
   }
-  el.querySelector("#pmTitle").textContent = `Message from ${n.fromName || "someone"}`;
+  el.querySelector("#pmTitle").textContent = n.title || `Message from ${n.fromName || "someone"}`;
   el.querySelector("#pmText").textContent = n.message;
   el.querySelector("#pmTime").textContent = fmtTime(n.ts);
   el.hidden = false;
