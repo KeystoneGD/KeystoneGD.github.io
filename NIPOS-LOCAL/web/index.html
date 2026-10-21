@@ -315,8 +315,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022n">
-<link rel="stylesheet" href="layouts.css?v=20261022n">
+<link rel="stylesheet" href="nipos.css?v=20261022o">
+<link rel="stylesheet" href="layouts.css?v=20261022o">
 </head>
 <body>
 
@@ -752,7 +752,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022n"></script>
+<script src="db.js?v=20261022o"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -3212,11 +3212,20 @@ async function closeRefundedOrder(id){
 async function markOrderDelivered(id){
   const o = openOrders.find(x => x.id === id);
   if (!o || !o.ready) { showToast("That order isn't ready to take out yet."); renderOpenOrdersList(); return; }
-  if (o && o.placedById) pushNotification(o.placedById, `Table ${o.table || "?"}: order delivered`);
-  if (o) logActivity("Order delivered", orderLabel(o));
   openOrders = openOrders.filter(x => x.id !== id);
-  await ordersStore.remove(id);
   renderOpenOrdersList(); renderOpenOrdersBadge();
+  // Only the till that actually removes the order counts it as delivered, so two tills tapping the
+  // same order never send the "delivered" notice twice. Offline, it waits in the outbox as before.
+  let removed = true;
+  if (outbox.some(x => x.table === "open_orders")) await ordersStore.remove(id); // keep queued changes in order
+  else try {
+    const { data, error } = await supabaseClient.from("open_orders").delete().eq("id", id).select("id");
+    if (error) throw error;
+    removed = !!(data && data.length);
+  } catch (e) { await ordersStore.remove(id); }
+  if (!removed) { showToast(`Table ${o.table || "?"} was already delivered by someone else.`); return; }
+  if (o.placedById) pushNotification(o.placedById, `Table ${o.table || "?"}: order delivered`);
+  logActivity("Order delivered", orderLabel(o));
 }
 async function requestOrderRefund(id){
   const o = openOrders.find(x => x.id === id);
@@ -3308,7 +3317,7 @@ function renderAdminHome(){
   document.getElementById("receiptsRow").hidden = !featureOn("receipts");
   document.getElementById("displayRow").hidden = !featureOn("customerDisplay");
   renderClockRow();
-  if (featureOn("customerDisplay")) document.getElementById("displayRowSub").textContent = `On the customer's screen, open display.html and enter this till's code: ${displayCode()}`;
+  if (featureOn("customerDisplay")) document.getElementById("displayRowSub").textContent = `On the customer's screen, open ${new URL("display", location.href).href} and enter this till's code: ${displayCode()}`;
   renderTabsBadge();
   renderOpenOrdersBadge();
 }
