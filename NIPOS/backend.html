@@ -134,6 +134,11 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .act-checks label{display:flex;align-items:center;gap:10px;min-height:40px;cursor:pointer;font-size:14px;}
 .act-checks input{width:20px;height:20px;flex:0 0 auto;accent-color:var(--accent);}
 .act-search{flex:1 1 220px;}
+.act-live{margin-left:auto;}
+.live-dot{width:10px;height:10px;border-radius:50%;background:var(--success);flex:0 0 auto;}
+.act-live:has(input:not(:checked)) .live-dot{background:var(--text-muted);}
+@keyframes actNew{from{background:var(--sel-bg);}to{background:transparent;}}
+.activity-table tr.act-new td{animation:actNew 2.5s ease-out;}
 .act-type{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);margin-right:4px;white-space:nowrap;}
 .table-scroll{overflow-x:auto;}
 .activity-table td:first-child{white-space:nowrap;}
@@ -281,7 +286,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261021f">
+<link rel="stylesheet" href="nipos.css?v=20261021g">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -542,11 +547,12 @@ table.data-table tr:last-child td{border-bottom:0;}
       <div class="page-header"><h1>Settings</h1></div>
       <div class="section-title">Lockdown</div>
       <div class="card">
-        <p class="note">Blocks staff from placing new orders on the till until you turn it back off.</p>
+        <p class="note">Blocks staff from placing new orders on the till until you turn it back off. You pick which venues each time.</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn btn-danger" id="toggleSuspendBtn">Suspend All Orders</button>
+          <button class="btn btn-danger" id="toggleSuspendBtn">Suspend Orders</button>
           <button class="btn btn-ghost" id="toggleServiceBreakBtn">Service Break</button>
         </div>
+        <p class="note" id="lockdownStatus" role="status" style="margin-top:10px;"></p>
       </div>
       <div class="section-title">Session</div>
       <div class="card">
@@ -614,7 +620,7 @@ table.data-table tr:last-child td{border-bottom:0;}
       </div>
       <div class="tab-panel" id="tab-ms-wipe" role="tabpanel">
       <h2 class="layout-title" style="margin-top:0;">Remove sales</h2>
-      <p class="note">Clears out test transactions. Removes every sale, refund, tip, abandoned order, open order and Z Read for the venue you pick. Takings, Past Orders and the charts start again from nothing. This can't be undone.</p>
+      <p class="note">Clears out test transactions. Removes every sale, refund, tip, abandoned order, open order, Z Read and activity log entry for the venue you pick. Takings, Past Orders and the charts start again from nothing. This can't be undone.</p>
       <div class="card wipe-card">
         <label class="field" for="wipeVenue">Venue</label>
         <select id="wipeVenue"></select>
@@ -719,7 +725,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261021f"></script>
+<script src="db.js?v=20261021g"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -910,7 +916,7 @@ function applyLoginState(){
    Each venue has its own copy of the menu and offers. With "All venues" picked, Products and
    Discounts list each item once (matched by name, inside a category of the same name) and every
    change - price, stop, mixer, delete, add, rename - is written to every venue's copy. */
-let productsAllVenues = false;
+let productsAllVenues = true; // Products and Discounts open on All venues (when there are several)
 let stopsByVenue = new Map(), mixersByVenue = new Map();
 async function upsertFor(table, venueId, row){
   try { await supabaseClient.from(table).upsert({ id: row.id, ts: row.ts || Date.now(), venue_id: venueId, data: row }); } catch (e) {}
@@ -959,11 +965,14 @@ function scopeVenueIds(){ return productsAllVenues ? myVenues.map(v => v.id) : [
 async function saveDocFor(venueId, key, value){ try { await supabaseClient.from("app_state").upsert({ key: venueId + ":state/" + key, value }); } catch (e) {} }
 // The corner shows the site name (Master settings) while a page is looking at every venue.
 function siteName(){ return (systemSettings.siteName && systemSettings.siteName.name) || "Cleethorpes Pearl"; }
+// Backend is the whole site, so the corner shows the site name everywhere except a page that's
+// looking at one venue (Takings, Products or Discounts with a venue picked, and Z Reads).
 function viewingAllVenues(){
   if (myVenues.length < 2) return false;
   if (currentPage === "dashboard") return !dashVenueId;
   if (currentPage === "products" || currentPage === "discounts") return productsAllVenues;
-  return false;
+  if (currentPage === "zreads") return false;
+  return true;
 }
 function refreshCornerIdentity(){
   if (!currentUser) return;
@@ -1356,7 +1365,8 @@ function activityViewerHTML(k){
       <label class="act-search">Search <input type="text" id="${k}Search" placeholder="e.g. refund, Zombie, Sam"></label>
     </div>
     <div class="act-filters" id="${k}Filters"></div>
-    <div class="feature-actions"><button type="button" class="btn btn-solid" id="${k}Load">Show activity</button><button type="button" class="btn btn-ghost" id="${k}Csv">Download as spreadsheet</button></div>
+    <div class="feature-actions"><button type="button" class="btn btn-solid" id="${k}Load">Show activity</button><button type="button" class="btn btn-ghost" id="${k}Csv">Download as spreadsheet</button>
+      <label class="check act-live"><input type="checkbox" id="${k}Live" checked><span class="live-dot" aria-hidden="true"></span>Live: add new activity as it happens</label></div>
     <p class="note" id="${k}Count" role="status"></p>
   </div>
   <div id="${k}List"></div>`;
@@ -1376,17 +1386,21 @@ function mountActivityViewer(k){
   document.getElementById(k + "Load").addEventListener("click", () => loadActivity(k));
   document.getElementById(k + "Search").addEventListener("keydown", e => { if (e.key === "Enter") loadActivity(k); });
   document.getElementById(k + "Csv").addEventListener("click", () => downloadCsv(`activity_${new Date().toISOString().slice(0, 10)}.csv`, ["Date", "Time", "Who", "Venue", "Type", "What", "Details", "Screen"],
-    activityViewers[k].shown.map(r => [new Date(r.ts).toLocaleDateString("en-GB"), fmtTime(r.ts), r.data.by, r.venue_id ? venueName(r.venue_id) : "", (ACTIVITY_TYPES.find(t => t.key === rowType(r)) || {}).name, r.data.action, r.data.detail, activityScreenName(r.data.page)])));
+    activityViewers[k].shown.map(r => [new Date(r.ts).toLocaleDateString("en-GB"), fmtTime(r.ts), r.data.by, rowVenueLabel(r), (ACTIVITY_TYPES.find(t => t.key === rowType(r)) || {}).name, r.data.action, rowDetail(r), activityScreenName(r.data.page)])));
   renderActivityFilters(k);
 }
 function rowType(r){ return r.data.type || activityType(r.data.action); }
+const isBackendRow = r => /backend/.test(r.data.page || "");
+function rowVenueKey(r){ return isBackendRow(r) || !r.venue_id ? "__backend" : r.venue_id; }
+function rowVenueLabel(r){ return rowVenueKey(r) === "__backend" ? "NIPOS Backend" : venueName(r.venue_id); }
+function rowDetail(r){ const at = isBackendRow(r) && (r.data.venueId || r.venue_id); return (r.data.detail || "") + (at ? `${r.data.detail ? " " : ""}(for ${venueName(at)})` : ""); }
 function renderActivityFilters(k){
   const wrap = document.getElementById(k + "Filters");
   if (!wrap) return;
   const before = {};
   wrap.querySelectorAll("[data-act-check]").forEach(c => { (before[c.dataset.actCheck] = before[c.dataset.actCheck] || {})[c.value] = c.checked; });
   const people = users.slice().sort((a, b) => a.name.localeCompare(b.name)).map(u => ({ value: u.id, label: u.name }));
-  const venueList = (venues.length ? venues : myVenues).map(v => ({ value: v.id, label: v.name })).concat([{ value: "", label: "No venue (Backend, every venue)" }]);
+  const venueList = (venues.length ? venues : myVenues).map(v => ({ value: v.id, label: v.name })).concat([{ value: "__backend", label: "NIPOS Backend" }]);
   wrap.innerHTML = actGroupHTML(k, "type", "What", ACTIVITY_TYPES.map(t => ({ value: t.key, label: t.name, hint: t.hint })))
     + actGroupHTML(k, "screen", "Where it was done", [{ value: "Till", label: "Till" }, { value: "Order screen", label: "Order screen" }, { value: "Backend", label: "Backend" }])
     + actGroupHTML(k, "venue", "Venue", venueList)
@@ -1405,7 +1419,7 @@ async function loadActivity(k){
   // The database hands back at most 1,000 rows at a time, so read in pages, newest first.
   let data = [];
   for (let page = 0; page < ACTIVITY_MAX / 1000; page++) {
-    let query = supabaseClient.from("activity_log").select("ts,venue_id,user_id,data").order("ts", { ascending: false }).range(page * 1000, page * 1000 + 999);
+    let query = supabaseClient.from("activity_log").select("id,ts,venue_id,user_id,data").order("ts", { ascending: false }).range(page * 1000, page * 1000 + 999);
     if (from) query = query.gte("ts", new Date(from + "T00:00:00").getTime());
     if (to) query = query.lte("ts", new Date(to + "T23:59:59.999").getTime());
     let rows = [];
@@ -1413,9 +1427,30 @@ async function loadActivity(k){
     data = data.concat(rows);
     if (rows.length < 1000) break;
   }
-  activityViewers[k].rows = data;
+  activityViewers[k].rows = data.sort((a, b) => b.ts - a.ts);
   showActivity(k);
 }
+// Live: every 4 seconds, while the log is on screen and showing up to today, fetch anything newer
+// than the newest entry loaded and add it to the top.
+async function pollActivity(k){
+  const v = activityViewers[k];
+  if (!v || v.polling || !document.getElementById(k + "Live").checked || document.visibilityState !== "visible") return;
+  const root = document.querySelector(`[data-act-root="${k}"]`);
+  if (!root || !root.offsetParent) return; // not on screen
+  const to = document.getElementById(k + "To").value;
+  if (to && new Date(to + "T23:59:59.999").getTime() < Date.now()) return;
+  v.polling = true;
+  try {
+    const newest = v.rows.length ? v.rows[0].ts : Date.now() - 60e3;
+    const { data } = await supabaseClient.from("activity_log").select("id,ts,venue_id,user_id,data").gt("ts", newest).order("ts", { ascending: false }).limit(500);
+    const seen = new Set(v.rows.slice(0, 200).map(r => r.id));
+    const fresh = (data || []).filter(r => !seen.has(r.id));
+    fresh.sort((a, b) => b.ts - a.ts);
+    if (fresh.length) { v.rows = fresh.concat(v.rows).slice(0, ACTIVITY_MAX); v.newIds = new Set(fresh.map(r => r.id)); showActivity(k); }
+  } catch (e) {}
+  v.polling = false;
+}
+setInterval(() => { Object.keys(activityViewers).forEach(pollActivity); }, 4000);
 function showActivity(k){
   const v = activityViewers[k], wrap = document.getElementById(k + "Filters"), list = document.getElementById(k + "List");
   const picked = g => { const all = [...wrap.querySelectorAll(`[data-act-check="${g}"]`)]; return { set: new Set(all.filter(c => c.checked).map(c => c.value)), all: all.length }; };
@@ -1423,10 +1458,10 @@ function showActivity(k){
   const q = document.getElementById(k + "Search").value.trim().toLowerCase();
   // Anyone or any venue not in the boxes (e.g. a deleted venue) shows while every box in that group is ticked.
   const ok = (p, val) => p.set.has(val) || p.set.size === p.all;
-  v.shown = v.rows.filter(r => types.set.has(rowType(r)) && screens.set.has(activityScreenName(r.data.page)) && ok(venuesP, r.venue_id || "") && ok(people, r.user_id || "")
-    && (!q || `${r.data.action} ${r.data.detail} ${r.data.by}`.toLowerCase().includes(q)));
+  v.shown = v.rows.filter(r => types.set.has(rowType(r)) && screens.set.has(activityScreenName(r.data.page)) && ok(venuesP, rowVenueKey(r)) && ok(people, r.user_id || "")
+    && (!q || `${r.data.action} ${rowDetail(r)} ${r.data.by} ${rowVenueLabel(r)}`.toLowerCase().includes(q)));
   document.getElementById(k + "Count").textContent = v.rows.length ? `Showing ${v.shown.length} of ${v.rows.length} loaded${v.rows.length >= ACTIVITY_MAX ? " (the newest 5,000; narrow the dates to see older ones)" : ""}.` : "";
-  list.innerHTML = v.shown.length ? `<div class="table-scroll"><table class="feature-table activity-table"><thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">Venue</th><th scope="col">Where</th><th scope="col">What</th></tr></thead><tbody>${v.shown.map(r => `<tr><td>${fmtDayTime(r.ts)}</td><td>${esc(r.data.by || "")}</td><td>${r.venue_id ? esc(venueName(r.venue_id)) : "-"}</td><td>${esc(activityScreenName(r.data.page))}</td><td><span class="act-type act-${esc(rowType(r))}">${esc((ACTIVITY_TYPES.find(t => t.key === rowType(r)) || {}).name || "")}</span> <strong>${esc(r.data.action)}</strong>${r.data.detail ? " · " + esc(r.data.detail) : ""}</td></tr>`).join("")}</tbody></table></div>`
+  list.innerHTML = v.shown.length ? `<div class="table-scroll"><table class="feature-table activity-table"><thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">Venue</th><th scope="col">Where</th><th scope="col">What</th></tr></thead><tbody>${v.shown.map(r => `<tr${v.newIds && v.newIds.has(r.id) ? ' class="act-new"' : ""}><td>${fmtDayTime(r.ts)}</td><td>${esc(r.data.by || "")}</td><td>${esc(rowVenueLabel(r))}</td><td>${esc(activityScreenName(r.data.page))}</td><td><span class="act-type act-${esc(rowType(r))}">${esc((ACTIVITY_TYPES.find(t => t.key === rowType(r)) || {}).name || "")}</span> <strong>${esc(r.data.action)}</strong>${rowDetail(r) ? " · " + esc(rowDetail(r)) : ""}</td></tr>`).join("")}</tbody></table></div>`
     : `<div class="empty">Nothing logged${featureOn("activityLog") ? " for these filters" : " yet. The Activity log is switched off in Master settings"}.</div>`;
 }
 document.querySelector('#page-themes .tab-btn[data-tab="ms-activity"]').addEventListener("click", () => { mountActivityViewer("ms"); renderActivityFilters("ms"); document.getElementById("actOffNote").hidden = featureOn("activityLog"); loadActivity("ms"); });
@@ -1489,7 +1524,8 @@ async function saveFeature(key, value, okText){
   if (result !== "ok") { msg.textContent = "Couldn't save that. Try again."; return false; }
   delete featureDrafts[key]; featureDirty.delete(key);
   const f = FEATURES.find(x => x.key === key), wasOn = !!featureConfig(key).enabled, nowOn = !!(value && value.enabled);
-  const entry = `${f ? f.name : key}: ${nowOn ? "on" : "off"}${wasOn === nowOn ? ", setup changed" : ""}`;
+  const changed = settingChanges(featureConfig(key), value || {});
+  const entry = `${f ? f.name : key}: ${wasOn !== nowOn ? (nowOn ? "switched on" : "switched off") : changed || "saved, nothing changed"}${wasOn !== nowOn && changed ? "; " + changed : ""}`;
   if (wasOn && !nowOn) await logActivity("Master settings", entry, null); // log before the log itself switches off
   systemSettings = { ...systemSettings, [key]: value };
   if (nowOn || wasOn === nowOn) logActivity("Master settings", entry, null);
@@ -1697,7 +1733,7 @@ function wipeReset(){
   document.getElementById("wipeConfirm").value = ""; document.getElementById("wipePassword").value = "";
   document.getElementById("wipeBtn").disabled = true;
 }
-const WIPE_ROWS = [["sales", "Sales"], ["refunds", "Refunds"], ["gratuities", "Tips"], ["abandoned", "Abandoned orders"], ["open_orders", "Open orders"], ["z_reports", "Z Reads"]];
+const WIPE_ROWS = [["sales", "Sales"], ["refunds", "Refunds"], ["gratuities", "Tips"], ["abandoned", "Abandoned orders"], ["open_orders", "Open orders"], ["z_reports", "Z Reads"], ["activity_log", "Activity log entries"]];
 document.getElementById("wipeVenue").addEventListener("change", () => { wipeReset(); document.getElementById("wipeMsg").textContent = ""; });
 document.getElementById("wipeCheckBtn").addEventListener("click", async () => {
   const msg = document.getElementById("wipeMsg"), venue = document.getElementById("wipeVenue").value || null;
@@ -1707,9 +1743,10 @@ document.getElementById("wipeCheckBtn").addEventListener("click", async () => {
   if (!data) { msg.textContent = "Couldn't check. If this is the first time, the remove-sales SQL may not have been run in Supabase yet."; return; }
   if (data.error) { msg.textContent = SYSTEM_PASSWORD_MESSAGES[data.error] || "Couldn't check. Try again."; return; }
   const total = WIPE_ROWS.reduce((n, [k]) => n + (data[k] ? data[k].count : 0), 0);
+  // (Activity log entries only show once remove_sales_and_logs.sql has been run.)
   const name = venue ? (myVenues.find(v => v.id === venue) || {}).name : "every venue";
   const box = document.getElementById("wipeSummary");
-  box.innerHTML = `<strong>${total ? "This would remove, for " + esc(name) + ":" : "Nothing to remove for " + esc(name) + "."}</strong>` + (total ? `<table>${WIPE_ROWS.map(([k, label]) => `<tr><td>${label}</td><td class="num">${data[k].count}${data[k].pence != null && data[k].count ? " · " + fmt(data[k].pence) : ""}</td></tr>`).join("")}</table>` : "");
+  box.innerHTML = `<strong>${total ? "This would remove, for " + esc(name) + ":" : "Nothing to remove for " + esc(name) + "."}</strong>` + (total ? `<table>${WIPE_ROWS.filter(([k]) => data[k]).map(([k, label]) => `<tr><td>${label}</td><td class="num">${data[k].count}${data[k].pence != null && data[k].count ? " · " + fmt(data[k].pence) : ""}</td></tr>`).join("")}</table>` : "");
   box.hidden = false;
   document.getElementById("wipeConfirmArea").hidden = !total;
 });
@@ -1793,7 +1830,17 @@ document.getElementById("venuePickerLogoutBtn").addEventListener("click", signOu
 
 /* ---------- shell: nav, theme, mobile drawer ---------- */
 function showPage(page){
+  const from = currentPage, group = p => p === "products" || p === "discounts" ? "catalogue" : p;
   currentPage = page;
+  // Leaving a page puts its venue box back to All venues, so the next visit (and the corner) starts
+  // from the whole site again. Products and Discounts share one box, so moving between them keeps it.
+  if (group(from) !== group(page) && myVenues.length > 1) {
+    if (from === "dashboard" && dashVenueId) { dashVenueId = ""; renderVenueSwitcher(); loadDashboard(); }
+    if (group(from) === "catalogue" && !productsAllVenues) {
+      productsAllVenues = true;
+      loadAllVenuesData().then(() => { renderVenueSwitcher(); renderOfferList(); renderDeals(); renderCategoryFilterOptions(); renderNewProductCategoryOptions(); renderProductsList(); renderCategoriesList(); refreshCornerIdentity(); });
+    }
+  }
   setTimeout(refreshCornerIdentity, 0);
   document.querySelectorAll(".page").forEach(el => el.classList.remove("active"));
   document.getElementById("page-" + page).classList.add("active");
@@ -2205,6 +2252,7 @@ function renderProductRow(it, cat){
     panel.querySelector(".save-product-btn").addEventListener("click", async (e) => {
       const name = panel.querySelector(".edit-name").value.trim();
       if (!name) { alert("Enter a name."); return; }
+      const was = { name: it.name, price: priceText(it), cat: catNameById(it.categoryId) };
       it.name = name;
       it.categoryId = panel.querySelector(".edit-category").value;
       if (it.sizes && it.sizes.length) {
@@ -2229,7 +2277,8 @@ function renderProductRow(it, cat){
         }
         it.__varies = false;
       } else await catalogueItemsStore.save(it);
-      logActivity("Changed a product", `${it.name}: ${it.sizes && it.sizes.length ? it.sizes.map(s => `${s.label} ${fmt(s.pence)}`).join(", ") : fmt(it.pence) + (it.doublePence != null ? " / double " + fmt(it.doublePence) : "")}`);
+      const now = { name: it.name, price: priceText(it), cat: catNameById(it.categoryId) };
+      logActivity("Changed a product", `${was.name}: ${[was.name !== now.name ? `name ${was.name} → ${now.name}` : "", was.price !== now.price ? `price ${was.price} → ${now.price}` : "", was.cat !== now.cat ? `category ${was.cat} → ${now.cat}` : ""].filter(Boolean).join("; ") || "nothing changed"}${it.__copies ? " (every venue)" : ""}`, it.__copies ? null : undefined);
       e.target.textContent = "Saved";
       setTimeout(() => { renderProductsList(); }, 700);
     });
@@ -2382,7 +2431,8 @@ async function updateCategoryFlags(id, patch){
   if (!cat) return;
   Object.assign(cat, patch);
   if (patch.isSpirit && !cat.mixerType) cat.mixerType = "both";
-  logActivity("Changed a category", `${cat.name}: ${Object.entries(patch).map(([k, v]) => `${k} ${v === true ? "on" : v === false ? "off" : v}`).join(", ")}`, cat.__copies ? null : undefined);
+  const flagNames = { isSpirit: "Spirits (asks for mixers)", isBeer: "Draught beer (asks for size and extras)", isCocktailHappyHour: "Counts for Happy Hour", mixerType: "Mixer type", mode: "Drinks or food", note: "Note" };
+  logActivity("Changed a category", `${cat.name}: ${Object.entries(patch).map(([k, v]) => `${flagNames[k] || k} ${v === true ? "on" : v === false ? "off" : v}`).join(", ")}`, cat.__copies ? null : undefined);
   if (cat.__copies) { for (const c of cat.__copies) { Object.assign(c.cat, patch); if (patch.isSpirit && !c.cat.mixerType) c.cat.mixerType = "both"; await upsertFor("categories", c.venueId, c.cat); } return; }
   await categoriesStore.save(cat);
 }
@@ -2552,14 +2602,24 @@ document.getElementById("dealAdd").addEventListener("click", () => {
   renderDeals(deals);
   document.getElementById("dealsMsg").textContent = "Not saved yet. New deals start switched off.";
 });
+function dealChanges(before, after){
+  const desc = d => ({ name: d.name, "switched on": d.enabled !== false ? "yes" : "no", times: (d.windows || []).map(w => `${w.days && w.days.length ? w.days.map(x => DAY_NAMES[x]).join("/") + " " : ""}${w.from}-${w.to}`).join(", ") || "all day",
+    categories: (d.categories || []).join(", ") || "Cocktails", pair: d.pairFrom === "sameProduct" ? "same product" : "any two", "same price only": d.samePrice ? "yes" : "no",
+    "money off": `${d.discounted === "dearer" ? "dearer" : "cheaper"} one ${d.pct}%`, buttons: Object.entries(d.buttons || {}).map(([k, v]) => `${k} ${v}`).join(", ") || "all allowed" });
+  const b = new Map((before || []).map(d => [d.id, d])), a = new Map(after.map(d => [d.id, d])), out = [];
+  after.forEach(d => { if (!b.has(d.id)) out.push(`added ${d.name}`); });
+  (before || []).forEach(d => { if (!a.has(d.id)) out.push(`removed ${d.name}`); });
+  after.forEach(d => { const old = b.get(d.id); if (!old) return; const x = desc(old), y = desc(d); const ch = Object.keys(y).filter(k => x[k] !== y[k]).map(k => `${k} ${x[k]} → ${y[k]}`); if (ch.length) out.push(`${old.name}: ${ch.join(", ")}`); });
+  return out.join("; ") || "nothing changed";
+}
 document.getElementById("dealsSave").addEventListener("click", async () => {
-  const deals = readDeals();
+  const deals = readDeals(), dealsBefore = venueDeals || DEFAULT_DEALS;
   if (productsAllVenues) { for (const v of scopeVenueIds()) await saveDocFor(v, LS_DEALS, deals); }
   else await saveDoc(LS_DEALS, deals);
   venueDeals = deals;
   renderDeals();
   document.getElementById("dealsMsg").textContent = `Deals saved${productsAllVenues ? " at every venue" : ""}. Tills pick them up within a few seconds.`;
-  logActivity("Changed deals", deals.map(d => `${d.name} (${d.enabled ? "on" : "off"})`).join(", "), productsAllVenues ? null : undefined);
+  logActivity("Changed deals", dealChanges(dealsBefore, deals) + (productsAllVenues ? " (every venue)" : ""), productsAllVenues ? null : undefined);
 });
 
 /* ---------- Discounts ---------- */
@@ -2608,6 +2668,38 @@ const PERM_KEYS_ORDERED = Object.keys(PERM_LABELS).filter(k => k !== "globalAdmi
 // Permissions that belong to a Master settings feature only show once that feature is switched on.
 function permVisible(k){ return k === "sendAnnouncements" ? featureOn("announcements") : k === "notifySpecificUsers" ? (featureOn("privateMessages") || featureOn("announcements")) : k === "viewActivityLogs" ? featureOn("activityLog") : true; }
 function venueName(id){ const v = myVenues.find(x => x.id === id) || venues.find(x => x.id === id); return v ? v.name : id; }
+// Activity log: what exactly changed, as "field: before → after" pieces.
+function shortValue(v){
+  if (v === undefined || v === null || v === "") return "none";
+  if (v === true) return "on"; if (v === false) return "off";
+  if (Array.isArray(v)) return v.length ? v.map(x => typeof x === "object" ? (x.name || x.label || x.id || JSON.stringify(x)) : (typeof x === "string" && /^venue_|^[0-9a-f-]{36}$|^u\d/.test(x) ? (venueName(x) !== x ? venueName(x) : (users.find(u => u.id === x) || {}).name || x) : x)).join(", ").slice(0, 120) : "none";
+  if (typeof v === "object") return JSON.stringify(v).slice(0, 120);
+  return String(v).slice(0, 120);
+}
+function settingChanges(before, after){
+  const keys = [...new Set([...Object.keys(before || {}), ...Object.keys(after || {})])].filter(k => k !== "enabled");
+  return keys.filter(k => JSON.stringify((before || {})[k]) !== JSON.stringify((after || {})[k])).map(k => `${k}: ${shortValue((before || {})[k])} → ${shortValue((after || {})[k])}`).join("; ");
+}
+function listDiff(label, before, after, nameOf){
+  const b = new Set(before || []), a = new Set(after || []);
+  const added = [...a].filter(x => !b.has(x)).map(nameOf), removed = [...b].filter(x => !a.has(x)).map(nameOf);
+  return [added.length ? `${label} added: ${added.join(", ")}` : "", removed.length ? `${label} removed: ${removed.join(", ")}` : ""].filter(Boolean);
+}
+function staffChanges(before, after){
+  const out = [];
+  if (before.name !== after.name) out.push(`name: ${before.name} → ${after.name}`);
+  if (before.pin !== after.pin) out.push("PIN changed");
+  const bp = before.perms || {}, ap = after.perms || {};
+  const keys = ["active", "globalAdmin", ...PERM_KEYS_ORDERED];
+  const label = k => k === "active" ? "Active" : PERM_LABELS[k] || k;
+  const on = keys.filter(k => !bp[k] && ap[k]).map(label), off = keys.filter(k => bp[k] && !ap[k]).map(label);
+  if (on.length) out.push(`permissions given: ${on.join(", ")}`);
+  if (off.length) out.push(`permissions taken away: ${off.join(", ")}`);
+  out.push(...listDiff("venues", before.venueIds, after.venueIds, venueName), ...listDiff("groups", before.groupIds, after.groupIds, groupName));
+  return out.length ? out.join("; ") : "nothing changed";
+}
+function priceText(it){ return it.sizes && it.sizes.length ? it.sizes.map(s => `${s.label} ${fmt(s.pence)}`).join(", ") : fmt(it.pence) + (it.doublePence != null ? " / double " + fmt(it.doublePence) : ""); }
+function catNameById(id){ const c = realCategories.find(x => x.id === id); return c ? c.name : id; }
 function groupName(id){ const g = allGroups.find(x => x.id === id); return g ? g.name : id; }
 function permCheckRow(key, label, checked){
   return `<label class="row" style="border:0;padding:8px 0 0;"><span class="info"><span class="name">${label}</span></span><span class="switch"><input type="checkbox" data-perm="${key}" ${checked ? "checked" : ""}><span class="slider"></span></span></label>`;
@@ -2712,9 +2804,9 @@ document.getElementById("userModalSave").addEventListener("click", async () => {
     const merged = { ...(freshRow ? freshRow.data : u), name, pin, perms, venueIds, groupIds };
     const { error } = await supabaseClient.from("staff_users").update({ data: merged }).eq("id", u.id);
     if (error) { alert(error.message); return; }
-    logActivity("Changed a staff member", `${name}${pin !== u.pin ? " (new PIN)" : ""}`, null);
+    logActivity("Changed a staff member", `${u.name}: ${staffChanges(u, { name, pin, perms, venueIds, groupIds })}`, null);
   }
-  if (userModalMode === "add") logActivity("Added a staff member", name, null);
+  if (userModalMode === "add") logActivity("Added a staff member", `${name}: permissions ${["globalAdmin", ...PERM_KEYS_ORDERED].filter(k => perms[k]).map(k => PERM_LABELS[k] || k).join(", ") || "none"}; venues ${venueIds.map(venueName).join(", ")}${groupIds.length ? "; groups " + groupIds.map(groupName).join(", ") : ""}`, null);
   users = await fetchAllVisibleStaff();
   renderUserList();
   closeUserModal();
@@ -2835,7 +2927,7 @@ document.getElementById("venueModalSave").addEventListener("click", async () => 
     const { error } = await supabaseClient.from("venues").insert({ id: venueId, ts: Date.now(), data: { name, discordWebhooks, active, accent, foodEnabled } });
     if (error) { alert(error.message); return; }
   }
-  logActivity(editingVenue ? "Changed a venue" : "Added a venue", `${name}${active ? "" : " (closed)"}${foodEnabled ? ", food on" : ", food off"}`, venueId);
+  const venueWas = editingVenue ? { ...editingVenue } : null, staffAdded = [], staffRemoved = [];
   // Reconcile assigned-staff checkboxes against each user's own venueIds.
   const checkedStaffIds = new Set([...document.querySelectorAll("#vmStaff [data-staff]:checked")].map(inp => inp.dataset.staff));
   for (const u of users) {
@@ -2847,6 +2939,21 @@ document.getElementById("venueModalSave").addEventListener("click", async () => 
     const venueIds = shouldHave ? [...(baseData.venueIds || []), venueId] : (baseData.venueIds || []).filter(id => id !== venueId);
     await supabaseClient.from("staff_users").update({ data: { ...baseData, venueIds } }).eq("id", u.id);
     u.venueIds = venueIds;
+    (shouldHave ? staffAdded : staffRemoved).push(u.name);
+  }
+  {
+    const ch = [];
+    if (venueWas) {
+      if (venueWas.name !== name) ch.push(`name ${venueWas.name} → ${name}`);
+      if ((venueWas.active !== false) !== active) ch.push(active ? "opened" : "closed");
+      if ((venueWas.foodEnabled !== false) !== foodEnabled) ch.push(foodEnabled ? "food switched on" : "food switched off");
+      if ((venueWas.accent || null) !== accent) ch.push(`colour ${venueWas.accent || "automatic"} → ${accent || "automatic"}`);
+      const wh = venueWas.discordWebhooks || {};
+      [["order", "orders"], ["zread", "Z Reads"], ["stop", "stops"]].forEach(([k, l]) => { if ((wh[k] || null) !== discordWebhooks[k]) ch.push(`Discord ${l} webhook ${discordWebhooks[k] ? (wh[k] ? "changed" : "added") : "removed"}`); });
+    } else ch.push(`${active ? "open" : "closed"}, food ${foodEnabled ? "on" : "off"}`);
+    if (staffAdded.length) ch.push(`staff added: ${staffAdded.join(", ")}`);
+    if (staffRemoved.length) ch.push(`staff removed: ${staffRemoved.join(", ")}`);
+    logActivity(venueWas ? "Changed a venue" : "Added a venue", `${venueWas ? venueWas.name : name}: ${ch.join("; ") || "nothing changed"}`, venueId);
   }
   venues = await fetchAllVisibleVenues();
   myVenues = await fetchMyVenues(currentUser, true);
@@ -2950,27 +3057,61 @@ document.getElementById("saveSessionSettingsBtn").addEventListener("click", asyn
   const btn = document.getElementById("saveSessionSettingsBtn");
   btn.textContent = "Saved"; setTimeout(() => { btn.textContent = "Save"; }, 1200);
 });
-function renderLockdownButtons(){
-  const suspendBtn = document.getElementById("toggleSuspendBtn");
-  const breakBtn = document.getElementById("toggleServiceBreakBtn");
-  suspendBtn.textContent = appSettings.ordersSuspended ? "Resume Orders" : "Suspend All Orders";
-  suspendBtn.className = appSettings.ordersSuspended ? "btn btn-accent" : "btn btn-danger";
-  breakBtn.textContent = appSettings.serviceBreak ? "End Service Break" : "Service Break";
-  breakBtn.className = appSettings.serviceBreak ? "btn btn-accent" : "btn btn-ghost";
+// Suspend Orders and Service Break are per venue: pressing one asks which venues. The old
+// every-venue switches (ordersSuspended / serviceBreak) still count as "every venue".
+const LOCKDOWNS = {
+  suspend: { flag: "ordersSuspended", list: "suspendedVenueIds", name: "Suspend Orders", verb: "Orders suspended", btn: "toggleSuspendBtn" },
+  break: { flag: "serviceBreak", list: "breakVenueIds", name: "Service Break", verb: "On a service break", btn: "toggleServiceBreakBtn" }
+};
+function lockdownVenues(kind){
+  const L = LOCKDOWNS[kind];
+  return appSettings[L.flag] ? myVenues.map(v => v.id) : (appSettings[L.list] || []).filter(id => myVenues.some(v => v.id === id));
 }
-document.getElementById("toggleSuspendBtn").addEventListener("click", async () => {
-  const next = !appSettings.ordersSuspended;
-  if (next && !confirm("Suspend order-taking on the till for every venue? Staff will see a lock screen until you resume.")) return;
-  const res = await saveAppSettings({ ordersSuspended: next });
-  if (res.error) { alert(res.error); return; }
-  renderLockdownButtons();
-});
-document.getElementById("toggleServiceBreakBtn").addEventListener("click", async () => {
-  const next = !appSettings.serviceBreak;
-  const res = await saveAppSettings({ serviceBreak: next });
-  if (res.error) { alert(res.error); return; }
-  renderLockdownButtons();
-});
+function renderLockdownButtons(){
+  const status = [];
+  Object.entries(LOCKDOWNS).forEach(([kind, L]) => {
+    const ids = lockdownVenues(kind), btn = document.getElementById(L.btn);
+    btn.textContent = ids.length ? `${L.name} (${ids.length === myVenues.length && myVenues.length > 1 ? "every venue" : ids.length + (ids.length === 1 ? " venue" : " venues")})` : L.name;
+    btn.className = ids.length ? "btn btn-accent" : kind === "suspend" ? "btn btn-danger" : "btn btn-ghost";
+    if (ids.length) status.push(`${L.verb}: ${ids.length === myVenues.length && myVenues.length > 1 ? "every venue" : ids.map(venueName).join(", ")}.`);
+  });
+  document.getElementById("lockdownStatus").textContent = status.join(" ") || "Every till is taking orders.";
+}
+function openLockdownPicker(kind){
+  const L = LOCKDOWNS[kind], on = new Set(lockdownVenues(kind));
+  let el = document.getElementById("lockdownModal");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "lockdownModal"; el.className = "modal-overlay"; el.hidden = true;
+    el.innerHTML = `<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="ldTitle"><h3 id="ldTitle"></h3><p class="note" id="ldIntro"></p>
+      <div class="feature-people" id="ldVenues" role="group" aria-label="Venues"></div>
+      <div class="modal-actions" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px;">
+        <button type="button" class="btn btn-ghost" id="ldCancel">Cancel</button><button type="button" class="btn btn-accent" id="ldSave">Save</button></div></div>`;
+    document.body.appendChild(el);
+    el.querySelector("#ldCancel").addEventListener("click", () => { el.hidden = true; });
+    el.addEventListener("keydown", e => { if (e.key === "Escape") el.hidden = true; });
+  }
+  el.querySelector("#ldTitle").textContent = L.name;
+  el.querySelector("#ldIntro").textContent = kind === "suspend" ? "Tick the venues whose tills should stop taking orders. Untick a venue to let it take orders again." : "Tick the venues going on a service break. Untick a venue to end its break.";
+  el.querySelector("#ldVenues").innerHTML = (myVenues.length > 1 ? `<label><input type="checkbox" id="ldAll" ${on.size === myVenues.length ? "checked" : ""}><strong>Every venue</strong></label>` : "")
+    + myVenues.map(v => `<label><input type="checkbox" data-ld-venue="${esc(v.id)}" ${on.has(v.id) ? "checked" : ""}>${esc(v.name)}</label>`).join("");
+  const all = el.querySelector("#ldAll"), boxes = [...el.querySelectorAll("[data-ld-venue]")];
+  if (all) { all.addEventListener("change", () => boxes.forEach(b => { b.checked = all.checked; })); boxes.forEach(b => b.addEventListener("change", () => { all.checked = boxes.every(x => x.checked); })); }
+  el.querySelector("#ldSave").onclick = async () => {
+    // Venues this person can't see keep whatever they had.
+    const mine = new Set(myVenues.map(v => v.id));
+    const others = appSettings[L.flag] ? venues.map(v => v.id).filter(id => !mine.has(id)) : (appSettings[L.list] || []).filter(id => !mine.has(id));
+    const ids = boxes.filter(b => b.checked).map(b => b.dataset.ldVenue).concat(others);
+    const res = await saveAppSettings({ [L.flag]: false, [L.list]: ids });
+    if (res.error) { alert(res.error); return; }
+    el.hidden = true;
+    renderLockdownButtons();
+  };
+  el.hidden = false;
+  (all || boxes[0]).focus();
+}
+document.getElementById("toggleSuspendBtn").addEventListener("click", () => openLockdownPicker("suspend"));
+document.getElementById("toggleServiceBreakBtn").addEventListener("click", () => openLockdownPicker("break"));
 
 async function renderSoundsList(){
   const wrap = document.getElementById("soundsList");

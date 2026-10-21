@@ -218,7 +218,8 @@ begin
     'gratuities', (select jsonb_build_object('count', count(*), 'pence', coalesce(sum((data->>'amount')::bigint), 0)) from gratuities where p_venue is null or venue_id = p_venue),
     'abandoned',  (select jsonb_build_object('count', count(*), 'pence', coalesce(sum((data->>'total')::bigint), 0)) from abandoned where p_venue is null or venue_id = p_venue),
     'open_orders',(select jsonb_build_object('count', count(*)) from open_orders where p_venue is null or venue_id = p_venue),
-    'z_reports',  (select jsonb_build_object('count', count(*)) from z_reports where p_venue is null or venue_id = p_venue)
+    'z_reports',  (select jsonb_build_object('count', count(*)) from z_reports where p_venue is null or venue_id = p_venue),
+    'activity_log',(select jsonb_build_object('count', count(*)) from activity_log where p_venue is null or venue_id = p_venue)
   ) into out;
   return out;
 end $$;
@@ -227,7 +228,7 @@ grant execute on function public.nipos_sales_summary(text, text) to authenticate
 
 create or replace function public.nipos_wipe_sales(p_password text, p_venue text, p_confirm text) returns jsonb
 language plpgsql volatile security definer set search_path = public as $$
-declare r text; n_sales int; n_ref int; n_grat int; n_ab int; n_open int; n_z int;
+declare r text; n_sales int; n_ref int; n_grat int; n_ab int; n_open int; n_z int; n_log int;
 begin
   if coalesce(p_confirm, '') <> 'DELETE' then return jsonb_build_object('error', 'not_confirmed'); end if;
   r := public.nipos_check_system_password(p_password);
@@ -239,7 +240,9 @@ begin
   delete from abandoned   where p_venue is null or venue_id = p_venue; get diagnostics n_ab = row_count;
   delete from open_orders where p_venue is null or venue_id = p_venue; get diagnostics n_open = row_count;
   delete from z_reports   where p_venue is null or venue_id = p_venue; get diagnostics n_z = row_count;
-  return jsonb_build_object('sales', n_sales, 'refunds', n_ref, 'gratuities', n_grat, 'abandoned', n_ab, 'open_orders', n_open, 'z_reports', n_z);
+  -- The activity log goes too (for one venue: that venue's entries; for every venue: all of it).
+  delete from activity_log where p_venue is null or venue_id = p_venue; get diagnostics n_log = row_count;
+  return jsonb_build_object('sales', n_sales, 'refunds', n_ref, 'gratuities', n_grat, 'abandoned', n_ab, 'open_orders', n_open, 'z_reports', n_z, 'activity_log', n_log);
 end $$;
 revoke all on function public.nipos_wipe_sales(text, text, text) from public, anon;
 grant execute on function public.nipos_wipe_sales(text, text, text) to authenticated, service_role;
