@@ -134,7 +134,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261022n">
+<link rel="stylesheet" href="nipos.css?v=20261022o">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -263,7 +263,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261022n"></script>
+<script src="db.js?v=20261022o"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -763,7 +763,11 @@ function renderStationTag(){
   document.getElementById("stationTag").hidden = !KITCHEN_PAGE;
   const off = screenView() === "off";
   document.getElementById("kitchenOff").hidden = !off;
+  applyKitchenLock();
 }
+// The kitchen screen is locked (sign-in screen included) while Kitchen screen is off in Master settings.
+function applyKitchenLock(){ if (KITCHEN_PAGE) featureOffLock(systemSettingsLoaded && !featureOn("kitchenScreen"), "The kitchen screen is switched off", "Switch on Kitchen screen in Backend › Master settings › Screens and devices. This screen opens again by itself."); }
+document.addEventListener("nipos:settingschange", applyKitchenLock);
 function render(){
   const wrap = document.getElementById("grid");
   wrap.innerHTML = "";

@@ -453,6 +453,24 @@ function setMasterThemeLocal(key) {
 let systemSettings = {};
 function featureOn(key) { const f = systemSettings[key]; return !!(f && f.enabled); }
 function featureConfig(key) { return systemSettings[key] || {}; }
+let systemSettingsLoaded = false; // true once Master settings have been read, so a switch reads as really off
+
+// A screen that only exists for one feature (the customer display, the kitchen screen) locks itself
+// while that feature is off in Master settings, and opens again by itself when it's switched back on.
+function featureOffLock(show, title, text) {
+  let el = document.getElementById("featureOffLock");
+  if (!show) { if (el) el.hidden = true; return; }
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "featureOffLock"; el.className = "maint-lock feature-off-lock";
+    el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "featureOffTitle");
+    el.innerHTML = `<div class="maint-card"><h2 id="featureOffTitle"></h2><p id="featureOffText"></p></div>`;
+    document.body.appendChild(el);
+  }
+  el.querySelector("#featureOffTitle").textContent = title;
+  el.querySelector("#featureOffText").textContent = text;
+  el.hidden = false;
+}
 
 // Browser tab names. {venue} / {kitchen} is filled in; with no name yet (before sign-in) the
 // trailing " - " goes. Master settings > Browser tab names can change each one.
@@ -916,7 +934,7 @@ function alertAllowed(event, user) {
 function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261022n";
+const NIPOS_VERSION = "20261022o";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -1226,7 +1244,8 @@ async function syncMasterTheme() {
     if (data.theme) setMasterThemeLocal(data.theme);
     if (data.layout) setPosLayoutLocal(data.layout);
     const next = data.settings || {};
-    if (JSON.stringify(next) !== JSON.stringify(systemSettings)) {
+    const first = !systemSettingsLoaded; systemSettingsLoaded = true;
+    if (first || JSON.stringify(next) !== JSON.stringify(systemSettings)) {
       systemSettings = next;
       applyTheme(); refreshEffectiveLayout(); renderMaintenanceWatermark();
       if (featureOn("maintenance")) maintenanceMode = true;

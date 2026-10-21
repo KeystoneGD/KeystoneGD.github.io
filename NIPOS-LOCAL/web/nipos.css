@@ -149,6 +149,7 @@ button,.btn,.tag,.state-badge,.stepper,.nav-item,.drawer-list button,.product .n
 @media (max-width:600px){ .maint-watermark span{font-size:28px;} .maint-watermark{gap:60px 80px;} }
 .maint-lock{position:fixed;inset:0;z-index:190;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;}
 .maint-lock[hidden]{display:none;}
+.feature-off-lock{z-index:300;}
 .maint-card{background:var(--surface);border:1px solid var(--border);border-top:6px solid var(--danger);border-radius:16px;padding:26px 22px;max-width:420px;width:100%;text-align:center;}
 .maint-card h2{margin:0 0 8px;font-size:20px;}
 .maint-card p{margin:0 0 18px;color:var(--text-muted);line-height:1.55;}
