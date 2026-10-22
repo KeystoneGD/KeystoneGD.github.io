@@ -265,3 +265,4 @@ button,.btn,.tag,.state-badge,.stepper,.nav-item,.drawer-list button,.product .n
 .ss-msg{color:var(--danger);font-weight:700;min-height:1.2em;margin:0;}
 .ss-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:8px;}
 .ss-card{max-height:min(90vh,760px);overflow-y:auto;}
+.ss-locked select{opacity:.75;cursor:not-allowed;}

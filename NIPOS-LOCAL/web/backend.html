@@ -331,7 +331,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261023b">
+<link rel="stylesheet" href="nipos.css?v=20261023c">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -860,7 +860,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261023b"></script>
+<script src="db.js?v=20261023c"></script>
 <script src="vendor/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -1887,14 +1887,15 @@ const FEATURE_EDITORS = {
     render(cfg){
       const ev = cfg.events || {}, perms = [["", "Everyone signed in"], ["placeOrders", "Till people (Place Orders)"], ["viewOpenOrders", "People who deliver (View Open Orders)"], ["orderScreen", "Order screen people"], ["processRefunds", "Refund people"], ["backendAccess", "Managers (Backend access)"]];
       const sounds = [["", "Let them choose"]].concat(Object.entries(CHIME_PRESETS), uploadedSoundsCache.map(f => [f.path, f.label + " (uploaded)"]));
-      return `<table class="feature-table"><thead><tr><th scope="col">Event</th><th scope="col">On</th><th scope="col">Who</th><th scope="col">Sound</th></tr></thead><tbody>${ALERT_EVENTS.map(([k, l]) => { const r = ev[k] || {}; return `<tr data-al="${k}"><th scope="row">${esc(l)}</th>
+      return `<table class="feature-table"><thead><tr><th scope="col">Event</th><th scope="col">On</th><th scope="col">Who</th><th scope="col">Sound</th><th scope="col">People can change</th></tr></thead><tbody>${ALERT_EVENTS.map(([k, l]) => { const r = ev[k] || {}; return `<tr data-al="${k}"><th scope="row">${esc(l)}</th>
         <td><input type="checkbox" data-al-on aria-label="${esc(l)} on" ${r.on !== false ? "checked" : ""}></td>
         <td>${k === "other" ? `<span class="note">Everyone</span><input type="hidden" data-al-perm value="">` : `<select data-al-perm aria-label="${esc(l)}: who">${perms.map(([v, n]) => `<option value="${v}" ${(r.perm !== undefined ? r.perm : (ALERT_DEFAULT_WHO[k] || "")) === v ? "selected" : ""}>${n}</option>`).join("")}</select>`}</td>
-        <td><select data-al-sound aria-label="${esc(l)}: sound">${sounds.map(([v, n]) => `<option value="${v}" ${(r.sound || "") === v ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></td></tr>`; }).join("")}</tbody></table>
-        <p class="note" style="margin-top:8px;">Only people signed in get an alert, on the screen they're signed in to. Order ready goes to tills at the order's venue. A sound set here replaces each person's own choice; "All other notices" sets the sound for everything without its own. Upload more sounds in Settings › Notification Sounds.</p>
+        <td><select data-al-sound aria-label="${esc(l)}: sound">${sounds.map(([v, n]) => `<option value="${v}" ${(r.sound || "") === v ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></td>
+        <td><input type="checkbox" data-al-choose aria-label="${esc(l)}: people can change its sound" ${r.choose !== false ? "checked" : ""}></td></tr>`; }).join("")}</tbody></table>
+        <p class="note" style="margin-top:8px;">Only people signed in get an alert, on the screen they're signed in to. Order ready goes to tills at the order's venue. A sound set here replaces each person's own choice; "All other notices" sets the sound for everything without its own. Untick "People can change" to stop people picking their own sound for that alert in their Sounds settings (for "All other notices", their main sound); with no sound set here, the standard beep plays instead. Upload more sounds in Settings › Notification Sounds.</p>
         <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="alertSettings">Save</button></div>`;
     },
-    read(){ const events = {}; F("[data-al]").forEach(r => { events[r.dataset.al] = { on: r.querySelector("[data-al-on]").checked, perm: r.querySelector("[data-al-perm]").value, sound: r.querySelector("[data-al-sound]").value }; }); return { events }; }
+    read(){ const events = {}; F("[data-al]").forEach(r => { events[r.dataset.al] = { on: r.querySelector("[data-al-on]").checked, perm: r.querySelector("[data-al-perm]").value, sound: r.querySelector("[data-al-sound]").value, choose: r.querySelector("[data-al-choose]").checked }; }); return { events }; }
   },
   sessionTimeouts: {
     render(cfg){ return `<div class="edit-row"><label>Managers (minutes) <input type="number" id="stMgr" min="0" value="${cfg.managerMinutes != null ? esc(cfg.managerMinutes) : 60}" style="max-width:110px;"></label><label>Everyone else (minutes) <input type="number" id="stStaff" min="0" value="${cfg.staffMinutes != null ? esc(cfg.staffMinutes) : 15}" style="max-width:110px;"></label></div>
