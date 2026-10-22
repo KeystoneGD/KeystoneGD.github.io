@@ -17,7 +17,6 @@ const PERM_LABELS = {
   active: "Account Active",
   placeOrders: "Place Orders",
   productsOnStop: "Products on Stop",
-  recoveryTool: "Recovery Tool",
   callToService: "Call to Service",
   clearHistory: "Clear History on Orders",
   xzRead: "X and Z Read",
@@ -956,18 +955,123 @@ function startIdleWatch(getUser, onTimeout) {
 
 // Alert settings (feature "alertSettings"): per event, on or off, who gets it (a permission) and the
 // sound. Events: newOrder, problem, serviceCall, refund.
-const ALERT_EVENTS = [["newOrder", "New order (order screen)"], ["problem", "Problem reported"], ["serviceCall", "Call for service"], ["refund", "Refund requested"]];
-function alertRule(event) { return featureOn("alertSettings") ? ((featureConfig("alertSettings").events || {})[event] || {}) : {}; }
+const ALERT_EVENTS = [["newOrder", "New order (order screen)"], ["orderReady", "Order ready to take out (tills)"], ["problem", "Problem reported"], ["serviceCall", "Call for service"], ["refund", "Refund requested"], ["other", "All other notices"]];
+// Who gets an alert when Master settings > Alert settings doesn't say: order-ready pop-ups go to till people.
+const ALERT_DEFAULT_WHO = { orderReady: "placeOrders" };
+function alertRule(event) {
+  const r = featureOn("alertSettings") ? ((featureConfig("alertSettings").events || {})[event] || {}) : {};
+  return r.perm === undefined && ALERT_DEFAULT_WHO[event] ? { ...r, perm: ALERT_DEFAULT_WHO[event] } : r;
+}
 function alertAllowed(event, user) {
   const r = alertRule(event);
   if (r.on === false) return false;
   if (r.perm && !(user && user.perms && (user.perms[r.perm] || user.perms.globalAdmin))) return false;
   return true;
 }
-function alertSound(event, user) { const r = alertRule(event); return r.sound || (user && user.notificationSound) || null; }
+// Which sound plays, strongest first:
+//   1. Master settings > Alert settings: a sound for that alert (or "All other notices").
+//   2. The person's manager (Backend > Notifications): managerSound locks one sound for everything.
+//   3. The person's own picks (Sounds on the till or order screen): one per alert, or their main sound.
+function personalSound(event, user) {
+  if (!user) return null;
+  return user.managerSound || (user.eventSounds || {})[event] || user.notificationSound || null;
+}
+function alertSound(event, user) {
+  const r = alertRule(event), other = event !== "other" ? alertRule("other") : {};
+  return r.sound || other.sound || personalSound(event, user);
+}
+function soundLabel(choice) {
+  if (!choice) return "Classic (triple beep)";
+  return CHIME_PRESETS[choice] || ((uploadedSoundsCache.find(f => f.path === choice) || {}).label) || choice.replace(/^\d+-/, "").replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ");
+}
+// Saves the signed-in person's own picks (never their manager's lock).
+async function setMySounds(patch) {
+  const session = await getSession();
+  if (!session) return { error: "Not signed in" };
+  try {
+    const { data } = await supabaseClient.from("staff_users").select("data").eq("id", session.user.id).maybeSingle();
+    if (!data) return { error: "Account not found" };
+    const { error } = await supabaseClient.from("staff_users").update({ data: { ...data.data, ...patch } }).eq("id", session.user.id);
+    return error ? { error: error.message } : { ok: true };
+  } catch (e) { return { error: "Network error" }; }
+}
+// The Sounds dialog on the till and the order screen: a main sound, and one per alert this screen gets
+// ("Same as my main sound" by default). Nothing changes until Save. Locked when a manager set the sound.
+async function openSoundSettings(opts) {
+  const user = opts.user, events = opts.events;
+  const uploaded = await fetchNotificationSounds();
+  const all = Object.entries(CHIME_PRESETS).concat(uploaded.map(f => [f.path, f.label + " (uploaded)"]));
+  let el = document.getElementById("soundSettings");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "soundSettings"; el.className = "pm-overlay";
+    el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "ssTitle");
+    document.body.appendChild(el);
+  }
+  const preview = v => { try { if (typeof unlockSound === "function") unlockSound(); playNotificationSound(typeof audioCtx !== "undefined" ? audioCtx : null, v); } catch (e) {} };
+  const row = (id, label, value, withSame) => `<div class="ss-row"><label for="${id}">${esc(label)}</label><div class="ss-pick"><select id="${id}">${withSame ? `<option value="">Same as my main sound</option>` : ""}${all.map(([v, n]) => `<option value="${esc(v)}" ${value === v ? "selected" : ""}>${esc(n)}</option>`).join("")}</select><button type="button" class="btn btn-ghost" data-ss-play="${id}">Play</button></div></div>`;
+  const forced = events.filter(([k]) => alertRule(k).sound || alertRule("other").sound).map(([, l]) => l);
+  if (user.managerSound) {
+    el.innerHTML = `<div class="pm-card ss-card"><h2 id="ssTitle">Sounds</h2><p>Your manager has set your sound to <b>${esc(soundLabel(user.managerSound))}</b> on every screen, so it can't be changed here. Ask them to set it back to Let them choose.</p>
+      <div class="ss-actions"><button type="button" class="btn btn-ghost" data-ss-play-v="${esc(user.managerSound)}">Play it</button><button type="button" class="btn btn-accent" data-ss-close>Close</button></div></div>`;
+  } else {
+    el.innerHTML = `<div class="pm-card ss-card"><h2 id="ssTitle">Sounds</h2><p class="ss-intro">Pick a sound, try it with Play, then Save.</p>
+      ${row("ssMain", "My main sound", user.notificationSound || "classic", false)}
+      ${events.map(([k, l]) => row("ss_" + k, l, (user.eventSounds || {})[k] || "", true)).join("")}
+      ${forced.length ? `<p class="note ss-note">Your manager has set the sound for: ${esc(forced.join(", "))}. Those play their sound instead.</p>` : ""}
+      <p class="ss-msg" role="status"></p>
+      <div class="ss-actions"><button type="button" class="btn btn-ghost" data-ss-close>Cancel</button><button type="button" class="btn btn-accent" data-ss-save>Save</button></div></div>`;
+  }
+  el.querySelectorAll("[data-ss-play]").forEach(b => b.addEventListener("click", () => { const sel = el.querySelector("#" + b.dataset.ssPlay); preview(sel.value || el.querySelector("#ssMain").value); }));
+  el.querySelectorAll("[data-ss-play-v]").forEach(b => b.addEventListener("click", () => preview(b.dataset.ssPlayV)));
+  el.querySelectorAll("[data-ss-close]").forEach(b => b.addEventListener("click", () => { el.hidden = true; }));
+  const save = el.querySelector("[data-ss-save]");
+  if (save) save.addEventListener("click", async () => {
+    const notificationSound = el.querySelector("#ssMain").value, eventSounds = { ...(user.eventSounds || {}) };
+    events.forEach(([k]) => { const v = el.querySelector("#ss_" + k).value; if (v) eventSounds[k] = v; else delete eventSounds[k]; });
+    save.disabled = true;
+    const res = await setMySounds({ notificationSound, eventSounds });
+    save.disabled = false;
+    if (res.error) { el.querySelector(".ss-msg").textContent = "Couldn't save: " + res.error; return; }
+    user.notificationSound = notificationSound; user.eventSounds = eventSounds;
+    if (typeof logActivity === "function") logActivity("Changed my sounds", `main: ${soundLabel(notificationSound)}${Object.keys(eventSounds).length ? "; " + Object.entries(eventSounds).map(([k, v]) => `${(events.find(e => e[0] === k) || [k, k])[1]}: ${soundLabel(v)}`).join(", ") : ""}`);
+    el.hidden = true;
+    if (opts.onSaved) opts.onSaved();
+  });
+  el.hidden = false;
+  (el.querySelector("select") || el.querySelector("button")).focus();
+}
+// True when Master settings picks the sound for everything, so a person's own choice is never heard.
+// ("All other notices" covers every alert that doesn't have its own sound.)
+function soundChosenByManager() { return !!alertRule("other").sound; }
+
+// Order ready to take out: a pop-up on every till signed in at that venue (who exactly: Master settings >
+// Alert settings). Sent as an "everyone" notice tagged with the venue; other screens ignore it.
+async function sendOrderReady(o, fromUserId, fromName) {
+  if (!o) return;
+  const notif = { id: "n" + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), toUserId: "all", fromUserId, fromName: fromName || "The bar",
+    kind: "orderReady", venueId: currentVenueId, orderId: o.id, table: o.table || null, message: `${o.table ? "Table " + o.table : "An order"} is ready to take out` };
+  await saveNotification(notif);
+  return notif;
+}
+let readyQueue = [];
+function showOrderReady(n, sound) {
+  const box = document.getElementById("privateMessageBox");
+  if (!box || box.hidden || !readyQueue.length) readyQueue = [];
+  if (!readyQueue.some(x => x.orderId === n.orderId)) readyQueue.push(n);
+  const tables = readyQueue.map(x => x.table ? "Table " + x.table : "An order");
+  const text = tables.length === 1 ? `${tables[0]} is ready to take out.` : `${tables.slice(0, -1).join(", ")} and ${tables[tables.length - 1]} are ready to take out.`;
+  if (sound && typeof playNotificationSound === "function" && typeof audioCtx !== "undefined") { try { playNotificationSound(audioCtx, sound); } catch (e) {} }
+  else if (typeof playChime === "function") { try { playChime(); } catch (e) {} }
+  if (navigator.vibrate) { try { navigator.vibrate([200, 100, 200]); } catch (e) {} }
+  if ("Notification" in window && Notification.permission === "granted" && document.visibilityState !== "visible") {
+    try { new Notification("Ready to take out", { body: text, tag: "ready-" + n.orderId }); } catch (e) {}
+  }
+  showPrivateMessage({ ...n, title: "Ready to take out", message: text + " Ready orders are at the top of Open orders." });
+}
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261023a";
+const NIPOS_VERSION = "20261023b";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -2197,6 +2301,7 @@ function playChimePreset(audioCtx, preset) {
   } catch (e) {}
 }
 const NOTIFICATION_SOUNDS_BUCKET = "notification-sounds";
+let uploadedSoundsCache = []; // the last list fetched, for pickers that draw without waiting
 function notificationSoundUrl(path) {
   return supabaseClient.storage.from(NOTIFICATION_SOUNDS_BUCKET).getPublicUrl(path).data.publicUrl;
 }
@@ -2205,14 +2310,21 @@ async function fetchNotificationSounds() {
   try {
     const { data, error } = await supabaseClient.storage.from(NOTIFICATION_SOUNDS_BUCKET).list("", { sortBy: { column: "name", order: "asc" } });
     if (error || !data) return [];
-    return data.filter(f => f.id).map(f => ({ path: f.name, label: f.name.replace(/^\d+-/, "").replace(/\.[a-z0-9]+$/i, "") }));
+    uploadedSoundsCache = data.filter(f => f.id).map(f => ({ path: f.name, label: f.name.replace(/^\d+-/, "").replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ") }));
+    return uploadedSoundsCache;
   } catch (e) { return []; }
 }
+// Browsers label the same file type differently (a WAV can be audio/x-wav, audio/wave...), so the type is
+// taken from the file's extension; storage only accepts the standard ones.
+const SOUND_TYPES = { mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", m4a: "audio/mp4", aac: "audio/aac", webm: "audio/webm" };
 async function uploadNotificationSound(file) {
   if (!supabaseClient) return { error: "Not connected" };
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  if (!SOUND_TYPES[ext]) return { error: `${file.name}: use an MP3, WAV, OGG or M4A file.` };
+  if (file.size > 2 * 1024 * 1024) return { error: `${file.name} is over 2MB.` };
   const path = Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
   try {
-    const { error } = await supabaseClient.storage.from(NOTIFICATION_SOUNDS_BUCKET).upload(path, file, { contentType: file.type || "audio/mpeg" });
+    const { error } = await supabaseClient.storage.from(NOTIFICATION_SOUNDS_BUCKET).upload(path, file, { contentType: SOUND_TYPES[ext] });
     return error ? { error: error.message } : { ok: true, path };
   } catch (e) { return { error: "Upload failed" }; }
 }
