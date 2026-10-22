@@ -331,7 +331,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261023a">
+<link rel="stylesheet" href="nipos.css?v=20261023b">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -579,7 +579,7 @@ table.data-table tr:last-child td{border-bottom:0;}
         <h1>Venues</h1>
         <button class="btn btn-accent btn-sm" id="openAddVenueBtn">+ Add venue</button>
       </div>
-      <p class="note">Global Admin only.</p>
+      <p class="note" id="venuesNote">Edit your venues: name, colour, food, Discord and staff. Only a Global Admin can add or delete a venue.</p>
       <div class="card" id="venueList"><div class="empty">Loading…</div></div>
     </section>
 
@@ -599,7 +599,7 @@ table.data-table tr:last-child td{border-bottom:0;}
         <h1>Kitchens</h1>
         <button class="btn btn-accent btn-sm" id="addKitchenBtn">+ Add kitchen</button>
       </div>
-      <p class="note">Global Admin only. Each kitchen cooks for the venues you tick, and its screen (keystonegd.github.io/NIPOS/kitchen) shows all their food orders together. The account signed in on that screen needs the Order screen permission and every one of those venues (Users).</p>
+      <p class="note">Each kitchen cooks for the venues you tick, and its screen (keystonegd.github.io/NIPOS/kitchen) shows all their food orders together. The account signed in on that screen needs the Order screen permission and every one of those venues (Users).</p>
       <p class="note" id="kitchenMsg" role="status"></p>
       <div id="kitchenList"><div class="card"><div class="empty">Loading…</div></div></div>
     </section>
@@ -644,7 +644,7 @@ table.data-table tr:last-child td{border-bottom:0;}
         <p class="note" id="ntLockStatus" role="status" style="margin-top:10px;"></p>
       </div>
       <div class="section-title">Staff notification sounds</div>
-      <p class="note">The sound each person's screens play for calls for service and notices. Changes save straight away and apply the next time their screen beeps.</p>
+      <p class="note">Leave a person on <b>Let them choose</b> to let them pick their own sounds on their till or order screen. Pick a sound and press Save to lock them to it on every screen; set it back to Let them choose to give them their own pick again. A sound set for an alert in Master settings › Alert settings still plays for that alert.</p>
       <p class="note" id="ntSoundMsg" role="status"></p>
       <div class="card" id="ntSoundList"><div class="empty">Loading…</div></div>
     </section>
@@ -675,7 +675,8 @@ table.data-table tr:last-child td{border-bottom:0;}
       <div class="card" id="soundsList"><div class="empty">Loading…</div></div>
       <div class="card">
         <label class="field">Upload a sound (MP3/WAV/OGG/M4A, under 2MB)</label>
-        <input type="file" id="soundUploadInput" accept="audio/*">
+        <input type="file" id="soundUploadInput" accept=".mp3,.wav,.ogg,.m4a,audio/*" multiple>
+        <p class="note" id="soundUploadMsg" role="status" style="margin-top:8px;"></p>
       </div>
     </section>
 
@@ -858,7 +859,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261023a"></script>
+<script src="db.js?v=20261023b"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -979,7 +980,8 @@ async function resolveVenueSelection(){
 
 async function loadVenueData(){
   const isGlobalAdmin = !!(currentUser && currentUser.perms.globalAdmin);
-  document.getElementById("navVenues").hidden = !isGlobalAdmin;
+  const backendUser = !!(currentUser && !(currentUser.system && !systemPassword));
+  document.getElementById("navVenues").hidden = !backendUser; // Global Admins: every venue; everyone else: their own
   document.getElementById("navSettings").hidden = !isGlobalAdmin;
   document.getElementById("navNotifications").hidden = !currentUser || (currentUser.system && !systemPassword);
   document.getElementById("navZReads").hidden = !(currentUser && currentUser.perms.xzRead);
@@ -1017,7 +1019,14 @@ async function loadVenueData(){
     renderVenues();
     await loadAppSettings();
     await renderSoundsList();
-  } else await loadAppSettings(); // the Notifications page shows (and pauses) orders at their venues
+  } else {
+    await loadAppSettings(); // the Notifications page shows (and pauses) orders at their venues
+    const everyVenue = await fetchAllVisibleVenues();
+    everyVenueName = new Map(everyVenue.map(v => [v.id, v.name]));
+    venues = everyVenue.filter(v => myVenues.some(m => m.id === v.id)); // Venues page: their own
+    renderVenues();
+  }
+  if (currentUser && currentUser.system) fetchNotificationSounds(); // for Master settings' sound lists
   await loadDashboard();
   refreshCornerIdentity(); // last, after everything that sets the venue identity
   if (currentUser && currentUser.system) renderFeaturesIfIdle(); // now the staff list is loaded
@@ -1031,7 +1040,7 @@ function applyLoginState(){
   document.getElementById("navThemes").hidden = !(currentUser && currentUser.system && systemPassword);
   document.getElementById("navActivity").hidden = !(canViewActivity(currentUser) && !(currentUser.system && !systemPassword));
   document.getElementById("navOpenOrders").hidden = !(currentUser && currentUser.system && systemPassword);
-  document.getElementById("navKitchens").hidden = !(currentUser && currentUser.perms.globalAdmin && featureOn("kitchenScreen") && !(currentUser.system && !systemPassword));
+  document.getElementById("navKitchens").hidden = !(currentUser && featureOn("kitchenScreen") && !(currentUser.system && !systemPassword));
   document.getElementById("navHours").hidden = !(currentUser && featureOn("clockInOut") && (currentUser.system ? !!systemPassword : currentUser.perms.backendAccess));
   if (needsPassword) {
     document.getElementById("loginGate").hidden = true;
@@ -1875,12 +1884,13 @@ const FEATURE_EDITORS = {
   },
   alertSettings: {
     render(cfg){
-      const ev = cfg.events || {}, perms = [["", "Everyone"], ["orderScreen", "Order screen people"], ["placeOrders", "Till people"], ["processRefunds", "Refund people"], ["backendAccess", "Managers (Backend access)"]];
-      const sounds = [["", "Their own sound"]].concat(Object.entries(CHIME_PRESETS));
+      const ev = cfg.events || {}, perms = [["", "Everyone signed in"], ["placeOrders", "Till people (Place Orders)"], ["viewOpenOrders", "People who deliver (View Open Orders)"], ["orderScreen", "Order screen people"], ["processRefunds", "Refund people"], ["backendAccess", "Managers (Backend access)"]];
+      const sounds = [["", "Let them choose"]].concat(Object.entries(CHIME_PRESETS), uploadedSoundsCache.map(f => [f.path, f.label + " (uploaded)"]));
       return `<table class="feature-table"><thead><tr><th scope="col">Event</th><th scope="col">On</th><th scope="col">Who</th><th scope="col">Sound</th></tr></thead><tbody>${ALERT_EVENTS.map(([k, l]) => { const r = ev[k] || {}; return `<tr data-al="${k}"><th scope="row">${esc(l)}</th>
         <td><input type="checkbox" data-al-on aria-label="${esc(l)} on" ${r.on !== false ? "checked" : ""}></td>
-        <td><select data-al-perm aria-label="${esc(l)}: who">${perms.map(([v, n]) => `<option value="${v}" ${(r.perm || "") === v ? "selected" : ""}>${n}</option>`).join("")}</select></td>
+        <td>${k === "other" ? `<span class="note">Everyone</span><input type="hidden" data-al-perm value="">` : `<select data-al-perm aria-label="${esc(l)}: who">${perms.map(([v, n]) => `<option value="${v}" ${(r.perm !== undefined ? r.perm : (ALERT_DEFAULT_WHO[k] || "")) === v ? "selected" : ""}>${n}</option>`).join("")}</select>`}</td>
         <td><select data-al-sound aria-label="${esc(l)}: sound">${sounds.map(([v, n]) => `<option value="${v}" ${(r.sound || "") === v ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></td></tr>`; }).join("")}</tbody></table>
+        <p class="note" style="margin-top:8px;">Only people signed in get an alert, on the screen they're signed in to. Order ready goes to tills at the order's venue. A sound set here replaces each person's own choice; "All other notices" sets the sound for everything without its own. Upload more sounds in Settings › Notification Sounds.</p>
         <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="alertSettings">Save</button></div>`;
     },
     read(){ const events = {}; F("[data-al]").forEach(r => { events[r.dataset.al] = { on: r.querySelector("[data-al-on]").checked, perm: r.querySelector("[data-al-perm]").value, sound: r.querySelector("[data-al-sound]").value }; }); return { events }; }
@@ -3866,11 +3876,17 @@ function renderKitchens(){
   if (kitchenTableMissing) { wrap.innerHTML = `<div class="card"><div class="empty">Kitchens aren't set up in the database yet. Run the kitchens SQL (end of supabase/master_themes.sql) in Supabase's SQL Editor, then reload.</div></div>`; return; }
   if (!kitchens.length) { wrap.innerHTML = `<div class="card"><div class="empty">No kitchens yet. Until you add one, /kitchen shows the food for whichever venue it's signed in to.</div></div>`; return; }
   const taken = id => kitchens.filter(k => (k.venueIds || []).includes(id)).length;
-  wrap.innerHTML = kitchens.map(k => `<div class="card kitchen-card" data-kitchen="${esc(k.id)}" style="margin-bottom:12px;max-width:640px;">
+  // Everyone but a Global Admin sees and edits only kitchens that cook just for venues they work at.
+  const all = canManageAllVenues(), mineIds = new Set(myVenues.map(v => v.id));
+  const editable = k => all || ((k.venueIds || []).length > 0 && (k.venueIds || []).every(id => mineIds.has(id))) || !(k.venueIds || []).length;
+  const pickVenues = all ? venues : myVenues;
+  wrap.innerHTML = kitchens.filter(k => all || (k.venueIds || []).some(id => mineIds.has(id)) || !(k.venueIds || []).length).map(k => !editable(k)
+    ? `<div class="card" style="margin-bottom:12px;max-width:640px;"><strong>${esc(k.name)}</strong><p class="note">Cooks for ${esc(kitchenVenueNames(k.venueIds || []))}. It also cooks for a venue you don't work at, so only a Global Admin can change it.</p></div>`
+    : `<div class="card kitchen-card" data-kitchen="${esc(k.id)}" style="margin-bottom:12px;max-width:640px;">
       <label class="field" for="kn-${esc(k.id)}">Name</label>
       <input type="text" id="kn-${esc(k.id)}" data-k-name value="${esc(k.name)}" maxlength="60" autocomplete="off">
       <fieldset class="kitchen-venues"><legend class="field">Cooks for</legend>
-        ${venues.map(v => `<label class="check"><input type="checkbox" data-k-venue="${esc(v.id)}" ${(k.venueIds || []).includes(v.id) ? "checked" : ""}><span class="venue-swatch" style="display:inline-block;vertical-align:-3px;margin-right:6px;background:${VENUE_ACCENTS[venueAccentKey(v)].color}"></span>${esc(v.name)}${taken(v.id) > 1 && (k.venueIds || []).includes(v.id) ? ` <span class="note" style="margin:0;">(also another kitchen)</span>` : ""}</label>`).join("")}
+        ${pickVenues.map(v => `<label class="check"><input type="checkbox" data-k-venue="${esc(v.id)}" ${(k.venueIds || []).includes(v.id) ? "checked" : ""}><span class="venue-swatch" style="display:inline-block;vertical-align:-3px;margin-right:6px;background:${VENUE_ACCENTS[venueAccentKey(v)].color}"></span>${esc(v.name)}${taken(v.id) > 1 && (k.venueIds || []).includes(v.id) ? ` <span class="note" style="margin:0;">(also another kitchen)</span>` : ""}</label>`).join("")}
       </fieldset>
       <div class="feature-actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="btn btn-solid" data-k-save>Save</button><button type="button" class="btn btn-danger" data-k-delete>Delete kitchen</button></div>
     </div>`).join("");
@@ -3880,11 +3896,13 @@ function renderKitchens(){
     card.querySelector("[data-k-delete]").addEventListener("click", () => deleteKitchen(k));
   });
 }
-const kitchenVenueNames = ids => ids.map(id => (venues.find(v => v.id === id) || {}).name || id).join(", ") || "no venues";
+let everyVenueName = new Map(); // every venue's name, so a kitchen shared with another venue still reads properly
+const kitchenVenueNames = ids => ids.map(id => (venues.find(v => v.id === id) || {}).name || everyVenueName.get(id) || id).join(", ") || "no venues";
 async function saveKitchen(k, card){
   const msg = document.getElementById("kitchenMsg");
   const name = card.querySelector("[data-k-name]").value.trim() || "Kitchen";
   const venueIds = [...card.querySelectorAll("[data-k-venue]:checked")].map(i => i.dataset.kVenue);
+  if (!canManageAllVenues() && !venueIds.length) { msg.textContent = "Tick at least one of your venues."; return; }
   const data = { name, venueIds };
   const { error } = await supabaseClient.from("kitchens").upsert({ id: k.id, ts: k.ts || Date.now(), data });
   if (error) { msg.textContent = "Couldn't save: " + error.message; return; }
@@ -3905,9 +3923,11 @@ async function deleteKitchen(k){
   renderKitchens();
 }
 document.getElementById("addKitchenBtn").addEventListener("click", async () => {
-  const k = { id: "kit" + Date.now().toString(36), ts: Date.now(), name: kitchens.length ? `Kitchen ${kitchens.length + 1}` : "Kitchen", venueIds: [] };
-  const { error } = await supabaseClient.from("kitchens").insert({ id: k.id, ts: k.ts, data: { name: k.name, venueIds: [] } });
-  if (error) { document.getElementById("kitchenMsg").textContent = "Couldn't add a kitchen: " + error.message; return; }
+  // A new kitchen starts on the venue this person is looking at (a Global Admin's can start empty).
+  const startIds = canManageAllVenues() ? [] : [(currentVenue && currentVenue.id) || (myVenues[0] && myVenues[0].id)].filter(Boolean);
+  const k = { id: "kit" + Date.now().toString(36), ts: Date.now(), name: kitchens.length ? `Kitchen ${kitchens.length + 1}` : "Kitchen", venueIds: startIds };
+  const { error } = await supabaseClient.from("kitchens").insert({ id: k.id, ts: k.ts, data: { name: k.name, venueIds: startIds } });
+  if (error) { document.getElementById("kitchenMsg").textContent = "Couldn't add a kitchen: " + (/row-level|policy/i.test(error.message) ? "this needs the one-off database update (backend_venues_kitchens.sql). Ask $YSTEM to run it." : error.message); return; }
   kitchens.push(k);
   logActivity("Kitchen added", k.name, null);
   document.getElementById("kitchenMsg").textContent = `${k.name} added. Name it and tick its venues, then Save.`;
@@ -3917,8 +3937,10 @@ document.getElementById("addKitchenBtn").addEventListener("click", async () => {
 document.getElementById("navKitchens").addEventListener("click", loadKitchens);
 
 /* ---------- Venues ---------- */
+function canManageAllVenues(){ return !!(currentUser && (currentUser.perms.globalAdmin || currentUser.system)); }
 function renderVenues(){
   const wrap = document.getElementById("venueList");
+  document.getElementById("openAddVenueBtn").hidden = !canManageAllVenues();
   wrap.innerHTML = "";
   if (!venues.length) { wrap.innerHTML = `<div class="empty">None yet.</div>`; return; }
   venues.forEach(v => {
@@ -3963,7 +3985,7 @@ function openVenueModal(mode, venue){
   document.getElementById("vmWebhookStop").value = venue && venue.discordWebhooks ? (venue.discordWebhooks.stop || "") : "";
   document.getElementById("vmStaff").innerHTML = users.map(u => `
     <label class="row" style="border:0;padding:8px 0;"><span class="info"><span class="name">${u.name}</span></span><span class="switch"><input type="checkbox" data-staff="${u.id}" ${venue && (u.venueIds||[]).includes(venue.id) ? "checked" : ""}><span class="slider"></span></span></label>`).join("") || `<div class="empty">No staff yet, add some from Users first.</div>`;
-  document.getElementById("venueModalDelete").hidden = mode !== "edit";
+  document.getElementById("venueModalDelete").hidden = mode !== "edit" || !canManageAllVenues();
   document.getElementById("venueModal").hidden = false;
 }
 document.getElementById("venueModalDelete").addEventListener("click", () => {
@@ -4025,8 +4047,8 @@ document.getElementById("venueModalSave").addEventListener("click", async () => 
     if (staffRemoved.length) ch.push(`staff removed: ${staffRemoved.join(", ")}`);
     logActivity(venueWas ? "Changed a venue" : "Added a venue", `${venueWas ? venueWas.name : name}: ${ch.join("; ") || "nothing changed"}`, venueId);
   }
-  venues = await fetchAllVisibleVenues();
   myVenues = await fetchMyVenues(currentUser, true);
+  venues = canManageAllVenues() ? await fetchAllVisibleVenues() : (await fetchAllVisibleVenues()).filter(v => myVenues.some(m => m.id === v.id));
   document.getElementById("venueModal").hidden = true; editingVenue = null;
   renderVenues(); renderUserList(); renderVenueSwitcher();
 });
@@ -4176,7 +4198,7 @@ function openLockdownPicker(kind){
     const others = appSettings[L.flag] ? venues.map(v => v.id).filter(id => !mine.has(id)) : (appSettings[L.list] || []).filter(id => !mine.has(id));
     const ids = boxes.filter(b => b.checked).map(b => b.dataset.ldVenue).concat(others);
     let res;
-    if (isGlobalAdmin) res = await saveAppSettings({ [L.flag]: false, [L.list]: ids });
+    if (currentUser && currentUser.perms.globalAdmin) res = await saveAppSettings({ [L.flag]: false, [L.list]: ids });
     else {
       // Everyone else changes only their own venues, through a database function that checks that.
       const before = new Set(lockdownVenues(kind)), changed = boxes.filter(b => b.checked !== before.has(b.dataset.ldVenue));
@@ -4218,34 +4240,40 @@ async function loadNotificationsPage(){
   const wrap = document.getElementById("ntSoundList");
   wrap.innerHTML = `<div class="empty">Loading…</div>`;
   const uploaded = await fetchNotificationSounds();
-  const options = Object.entries(CHIME_PRESETS).map(([id, label]) => [id, label]).concat(uploaded.map(f => [f.path, f.label]));
+  const options = Object.entries(CHIME_PRESETS).map(([id, label]) => [id, label]).concat(uploaded.map(f => [f.path, f.label + " (uploaded)"]));
   const staff = users.filter(u => !u.system && !isHiddenAccount(u.name)).sort((x, y) => x.name.localeCompare(y.name));
   if (!staff.length) { wrap.innerHTML = `<div class="empty">No staff at your venues yet.</div>`; return; }
   wrap.innerHTML = "";
   staff.forEach(u => {
     const row = document.createElement("div");
     row.className = "list-row";
-    const current = u.notificationSound || "classic";
-    row.innerHTML = `<div class="info"><div class="name">${esc(u.name)}</div><div class="sub">${esc((u.venueIds || []).map(venueName).filter(Boolean).join(", ") || "Every venue")}</div></div>
+    // "Let them choose" leaves it to them (their own pick plays); a sound here locks them to it.
+    const current = u.managerSound || "";
+    const ownPick = () => `Their own pick: ${soundLabel(u.notificationSound)}`;
+    row.innerHTML = `<div class="info"><div class="name">${esc(u.name)}</div><div class="sub" data-sub>${esc(u.managerSound ? "Locked by a manager" : ownPick())}</div></div>
       <div class="actions" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <select aria-label="Notification sound for ${esc(u.name)}">${options.map(([id, label]) => `<option value="${esc(id)}" ${id === current ? "selected" : ""}>${esc(label)}</option>`).join("")}</select>
-        <button type="button" class="btn btn-ghost btn-sm">Preview</button></div>`;
-    const sel = row.querySelector("select");
-    row.querySelector("button").addEventListener("click", () => {
+        <select aria-label="Notification sound for ${esc(u.name)}"><option value="">Let them choose</option>${options.map(([id, label]) => `<option value="${esc(id)}" ${id === current ? "selected" : ""}>${esc(label)}</option>`).join("")}</select>
+        <button type="button" class="btn btn-ghost btn-sm" data-play>Play</button>
+        <button type="button" class="btn btn-solid btn-sm" data-save disabled>Save</button></div>`;
+    const sel = row.querySelector("select"), saveBtn = row.querySelector("[data-save]");
+    sel.addEventListener("change", () => { saveBtn.disabled = sel.value === (u.managerSound || ""); });
+    row.querySelector("[data-play]").addEventListener("click", () => {
       if (!ntPreviewCtx) { try { ntPreviewCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
-      playNotificationSound(ntPreviewCtx, sel.value);
+      playNotificationSound(ntPreviewCtx, sel.value || u.notificationSound || "classic");
     });
-    sel.addEventListener("change", async () => {
-      const msg = document.getElementById("ntSoundMsg");
-      // Re-read the row first so anything else on it (their own settings) is kept.
+    saveBtn.addEventListener("click", async () => {
+      const msg = document.getElementById("ntSoundMsg"), value = sel.value || null;
+      saveBtn.disabled = true;
+      // Re-read the row first so everything else on it (their own picks) is kept.
       const { data: fresh } = await supabaseClient.from("staff_users").select("data").eq("id", u.id).maybeSingle();
-      const merged = { ...(fresh ? fresh.data : u), notificationSound: sel.value };
+      const merged = { ...(fresh ? fresh.data : u), managerSound: value };
       delete merged.pin;
       const { error } = await supabaseClient.from("staff_users").update({ data: merged }).eq("id", u.id);
-      if (error) { msg.textContent = `Couldn't save ${u.name}'s sound: ${error.message}`; sel.value = u.notificationSound || "classic"; return; }
-      u.notificationSound = sel.value;
-      msg.textContent = `Saved: ${u.name} now hears ${sel.options[sel.selectedIndex].text}.`;
-      logActivity("Changed a notification sound", `${u.name}: ${sel.options[sel.selectedIndex].text}`, null);
+      if (error) { msg.textContent = `Couldn't save ${u.name}'s sound: ${error.message}`; saveBtn.disabled = false; return; }
+      u.managerSound = value; if (fresh) u.notificationSound = fresh.data.notificationSound;
+      row.querySelector("[data-sub]").textContent = value ? "Locked by a manager" : ownPick();
+      msg.textContent = value ? `Saved: ${u.name} now hears ${soundLabel(value)} and can't change it.` : `Saved: ${u.name} chooses again, back to ${soundLabel(u.notificationSound)}.`;
+      logActivity("Changed a notification sound", `${u.name}: ${value ? soundLabel(value) + " (locked)" : "let them choose"}`, null);
     });
     wrap.appendChild(row);
   });
@@ -4280,11 +4308,14 @@ async function renderSoundsList(){
   });
 }
 document.getElementById("soundUploadInput").addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const res = await uploadNotificationSound(file);
+  const files = [...e.target.files];
+  if (!files.length) return;
+  const msg = document.getElementById("soundUploadMsg"), done = [], failed = [];
+  msg.textContent = `Uploading ${files.length} sound${files.length === 1 ? "" : "s"}…`;
+  for (const f of files) { const res = await uploadNotificationSound(f); if (res.error) failed.push(res.error); else done.push(f.name); }
   e.target.value = "";
-  if (res.error) { alert(res.error); return; }
+  if (done.length) logActivity("Uploaded notification sounds", done.join(", "), null);
+  msg.textContent = (done.length ? `Added ${done.length}: ${done.join(", ")}.` : "") + (failed.length ? ` Not added: ${failed.join(" ")}` : "");
   renderSoundsList();
 });
 

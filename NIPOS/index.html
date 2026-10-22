@@ -323,8 +323,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261023a">
-<link rel="stylesheet" href="layouts.css?v=20261023a">
+<link rel="stylesheet" href="nipos.css?v=20261023b">
+<link rel="stylesheet" href="layouts.css?v=20261023b">
 </head>
 <body>
 
@@ -759,7 +759,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261023a"></script>
+<script src="db.js?v=20261023b"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -2818,7 +2818,7 @@ function showToast(msg){
 
 let audioCtx = null;
 function playChime(){
-  playNotificationSound(audioCtx, currentUser && currentUser.notificationSound);
+  playNotificationSound(audioCtx, alertSound("other", currentUser)); // Master settings' sound, or their own
 }
 // Browsers only allow audio to start from a user gesture - rather than making that gesture a dedicated
 // "Enable alerts" tap every single time the app is opened, piggyback on the first tap/key anywhere on
@@ -2939,6 +2939,8 @@ function checkPersonalNotifications(list){
   if (knownNotificationIds === null) { knownNotificationIds = ids; return; }
   list.filter(n => !knownNotificationIds.has(n.id) && (n.toUserId === "all" || n.toUserId === currentUserId) && n.fromUserId !== currentUserId)
     .forEach(n => {
+      // Order ready to take out: only on a till signed in at that order's venue, for whoever Alert settings says.
+      if (n.kind === "orderReady") { if (n.venueId === currentVenueId && alertAllowed("orderReady", currentUser)) { showOrderReady(n, alertSound("orderReady", currentUser)); renderOpenOrdersBadge(); } return; }
       if (n.kind === "message") { playChime(); if (navigator.vibrate) { try { navigator.vibrate([300, 150, 300]); } catch (e) {} } showPrivateMessage(n); }
       else if (isServiceCall(n)) { if (alertAllowed("serviceCall", currentUser)) showServiceCall(n, alertSound("serviceCall", currentUser)); }
       else if (n.quiet) { showToast(n.message); logNotificationReceived("Notice", n.message, n.fromName); }
@@ -3048,7 +3050,7 @@ function applyLoginState(){
   applyVenueIdentity(currentVenue, currentUser.name);
   setTabTitle("pos", currentVenue ? currentVenue.name : "");
   document.getElementById("switchVenueBtn").hidden = myVenues.length < 2;
-  document.getElementById("soundRowSub").textContent = CHIME_PRESETS[currentUser.notificationSound] || (currentUser.notificationSound ? "Uploaded sound" : "Classic (triple beep)");
+  renderSoundRow();
   const notifyCount = (currentUser.notifyVenueIds || []).length;
   document.getElementById("notifyVenuesRowSub").textContent = notifyCount ? `On for ${notifyCount} venue${notifyCount === 1 ? "" : "s"}` : "Off";
   document.getElementById("stoppedRow").hidden = !currentUser.perms.productsOnStop;
@@ -3152,21 +3154,14 @@ document.getElementById("adminEndOfShiftRow").querySelector(".admin-row-main").a
 document.getElementById("endOfShiftBack").addEventListener("click", () => closeSheet("endOfShiftSheet"));
 document.getElementById("stoppedRow").querySelector(".admin-row-main").addEventListener("click", () => showStoppedCategories());
 document.getElementById("openOrdersRow").querySelector(".admin-row-main").addEventListener("click", () => showOpenOrders());
-document.getElementById("soundRow").querySelector(".admin-row-main").addEventListener("click", async () => {
-  const uploaded = await fetchNotificationSounds();
-  const choices = [
-    ...Object.entries(CHIME_PRESETS).map(([id, label]) => ({ value: id, label })),
-    ...uploaded.map(s => ({ value: s.path, label: s.label, sub: "Uploaded" }))
-  ];
-  const chosen = await askChoice({ title: "Notification sound", message: "Plays when you're signed in and someone pages you.", choices });
-  if (!chosen) return;
-  const res = await setMyNotificationSound(chosen);
-  if (res.error) { showToast(res.error); return; }
-  currentUser.notificationSound = chosen;
-  document.getElementById("soundRowSub").textContent = choices.find(c => c.value === chosen).label;
-  showToast("Notification sound updated");
-  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
-  playNotificationSound(audioCtx, chosen);
+// Sounds: the main sound and one per alert the till gets (shared dialog in db.js).
+const TILL_SOUND_EVENTS = [["orderReady", "Order ready to take out"], ["serviceCall", "Call for service"], ["other", "Other notices"]];
+function renderSoundRow(){
+  const el = document.getElementById("soundRowSub"); if (!el || !currentUser) return;
+  el.textContent = currentUser.managerSound ? `${soundLabel(currentUser.managerSound)} (set by your manager)` : soundLabel(currentUser.notificationSound);
+}
+document.getElementById("soundRow").querySelector(".admin-row-main").addEventListener("click", () => {
+  openSoundSettings({ user: currentUser, events: TILL_SOUND_EVENTS, onSaved: () => { renderSoundRow(); showToast("Sounds saved"); } });
 });
 document.getElementById("notifyVenuesRow").querySelector(".admin-row-main").addEventListener("click", async () => {
   if (!allVenuesCache.length) allVenuesCache = await fetchAllVenues();

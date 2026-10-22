@@ -252,3 +252,16 @@ button,.btn,.tag,.state-badge,.stepper,.nav-item,.drawer-list button,.product .n
 /* Shown on a till or order screen that can't beep yet (nobody has tapped it since it loaded). */
 .sound-note{position:fixed;left:50%;transform:translateX(-50%);top:max(10px, env(safe-area-inset-top));z-index:9001;max-width:min(92vw,520px);background:#b45309;color:#fff;font:inherit;font-weight:800;font-size:15px;padding:12px 16px;border:0;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.35);cursor:pointer;}
 .sound-note[hidden]{display:none;}
+
+/* The Sounds dialog on the till and the order screen. */
+.ss-card{max-width:520px;text-align:left;}
+.ss-card h2{margin:0 0 6px;}
+.ss-intro,.ss-card > p{color:var(--text-muted);margin:0 0 12px;}
+.ss-row{display:grid;gap:6px;margin:0 0 12px;}
+.ss-row label{font-weight:700;}
+.ss-pick{display:flex;gap:8px;}
+.ss-pick select{flex:1;min-width:0;min-height:44px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font:inherit;padding:0 10px;}
+.ss-note{margin:4px 0 8px;}
+.ss-msg{color:var(--danger);font-weight:700;min-height:1.2em;margin:0;}
+.ss-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:8px;}
+.ss-card{max-height:min(90vh,760px);overflow-y:auto;}

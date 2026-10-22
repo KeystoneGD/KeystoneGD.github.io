@@ -134,7 +134,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261023a">
+<link rel="stylesheet" href="nipos.css?v=20261023b">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -169,6 +169,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
     <button class="btn btn-solid" id="stockBtn" type="button" hidden><span data-icon="stop"></span>Products on stop</button>
     <button class="btn btn-solid" id="serviceBtn" type="button"><span data-icon="bell"></span>Call for service</button>
     <button class="btn btn-solid" id="notifyBtn" type="button" hidden><span data-icon="bell"></span>Notify</button>
+    <button class="btn btn-solid" id="soundsBtn" type="button" hidden>Sounds</button>
   </div>
   <div class="alerts-banner" id="alertsRow">
     <div class="msg"><span data-icon="bell"></span><span id="alertsStatus">Turn on alerts to hear new orders</span></div>
@@ -262,7 +263,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261023a"></script>
+<script src="db.js?v=20261023b"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -323,6 +324,7 @@ function applyLoginState(){
   switchBtn.hidden = activeKitchen ? myKitchens.length < 2 : myVenues.length < 2;
   document.getElementById("stockBtn").hidden = !(u && u.perms.productsOnStop);
   document.getElementById("serviceBtn").hidden = !(u && u.perms.callToService);
+  document.getElementById("soundsBtn").hidden = !u;
   // Master settings features: own theme, Maintenance Mode, message on every till, messaging.
   setSignedInUser(u);
   maintenanceLockScreen(maintenanceLocksOut(u), signOutOrders);
@@ -486,7 +488,7 @@ function showToast(msg){
 
 let audioCtx = null;
 function playChime(){
-  playNotificationSound(audioCtx, currentUser && currentUser.notificationSound);
+  playNotificationSound(audioCtx, alertSound("other", currentUser)); // Master settings' sound, or their own
 }
 // Browsers only allow audio to start from a user gesture - rather than making that gesture a dedicated
 // "Enable alerts" tap every single time the app is opened, piggyback on the first tap/key anywhere on
@@ -616,6 +618,7 @@ function checkPersonalNotifications(list){
   if (knownNotificationIds === null) { knownNotificationIds = ids; return; }
   list.filter(n => !knownNotificationIds.has(n.id) && (n.toUserId === "all" || n.toUserId === currentUserId) && n.fromUserId !== currentUserId)
     .forEach(n => {
+      if (n.kind === "orderReady") return; // for the tills
       if (n.kind === "message") { playChime(); if (navigator.vibrate) { try { navigator.vibrate([300, 150, 300]); } catch (e) {} } showPrivateMessage(n); }
       else if (isServiceCall(n)) { if (alertAllowed("serviceCall", currentUser)) showServiceCall(n, alertSound("serviceCall", currentUser)); }
       else if (n.quiet) { showToast(n.message); logNotificationReceived("Notice", n.message, n.fromName); }
@@ -826,6 +829,8 @@ async function markReady(id){
   const split = screenView() !== "all" && o, st = split ? stationFor(o) : null;
   const fresh = split ? await markStation(o, st, "Ready", stationsOf(o)) : await mergeOpenOrder(id, { ready: true });
   if (fresh) logActivity(split && stationsOf(o).length > 1 ? `${STATION_NAMES[st]} ready to take out` : "Order ready to take out", orderLabel(fresh));
+  // The whole order has just become ready (every part done): the tills at its venue get a pop-up.
+  if (fresh && fresh.ready && !(o && o.ready)) sendOrderReady(fresh, currentUserId, currentUser && currentUser.name);
   if (fresh) { const idx = openOrders.findIndex(x => x.id === id); if (idx !== -1) openOrders[idx] = fresh; }
   render();
 }
@@ -1180,6 +1185,11 @@ async function setStopHere(name, on, until){
     } catch (e) {}
   }
 }
+// Sounds: this person's main sound and one per alert the order screen gets (shared dialog in db.js).
+const ORDER_SOUND_EVENTS = [["newOrder", "New order"], ["problem", "Problem reported"], ["refund", "Refund requested"], ["serviceCall", "Call for service"], ["other", "Other notices"]];
+document.getElementById("soundsBtn").addEventListener("click", () => {
+  if (currentUser) openSoundSettings({ user: currentUser, events: ORDER_SOUND_EVENTS, onSaved: () => showToast("Sounds saved") });
+});
 document.getElementById("stockBtn").addEventListener("click", () => {
   document.getElementById("stockSearch").value = "";
   renderStockList();
