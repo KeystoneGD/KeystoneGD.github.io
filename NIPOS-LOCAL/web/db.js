@@ -1093,7 +1093,7 @@ function showOrderReady(n, sound) {
 }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261023f";
+const NIPOS_VERSION = "20261023g";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -2064,6 +2064,12 @@ function openRefundScreen(opts) {
 const LS_OUTBOX = "nipos.outbox.v1";
 let outbox = [];
 try { outbox = JSON.parse(localStorage.getItem(LS_OUTBOX) || "[]"); } catch (e) { outbox = []; }
+// Reset for service (Backend > Master settings): drops this device's own copies, including anything
+// still waiting to save, before the page reloads from the cleared database.
+function clearDeviceCopies(keys) {
+  outbox = [];
+  [LS_OUTBOX, LS_ACTIVITY].concat(keys || []).forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+}
 function saveOutbox() { try { localStorage.setItem(LS_OUTBOX, JSON.stringify(outbox)); } catch (e) {} renderOutboxNote(); }
 async function upsertRow(table, rec) {
   try { const { error } = await supabaseClient.from(table).upsert(rec); return !error; } catch (e) { return false; }

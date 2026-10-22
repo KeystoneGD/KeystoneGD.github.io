@@ -323,8 +323,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261023f">
-<link rel="stylesheet" href="layouts.css?v=20261023f">
+<link rel="stylesheet" href="nipos.css?v=20261023g">
+<link rel="stylesheet" href="layouts.css?v=20261023g">
 </head>
 <body>
 
@@ -760,7 +760,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261023f"></script>
+<script src="db.js?v=20261023g"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -2954,6 +2954,7 @@ document.addEventListener("nipos:settingschange", () => applyLoginState());
 // Section B switches change what the menu shows (tags, favourites, stock, new prices).
 document.addEventListener("nipos:settingschange", () => { if (!currentVenue) return; renderMenuSections(); renderQtys(); renderDietFilter(); applyVisibility(); });
 onRemoteCommand("refresh", () => location.reload());
+onRemoteCommand("reset", () => { clearDeviceCopies([LS_HIST, LS_ABANDONED, LS_GRAT, LS_ORDERS, LS_REFUNDS, LS_NOTIFICATIONS, LS_CART, LS_LAST_ORDER, LS_HH_OVERRIDE, LS_CUSTOM]); location.reload(); });
 onRemoteCommand("signout", () => { if (!currentUser) return false; if (!currentUser.system) signOut(); });
 async function logOrderToDiscord(sale){
   const drinks = sale.items.map(i => `${i.qty}x ${i.name}`).join("\n") || "-";
