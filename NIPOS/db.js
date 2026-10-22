@@ -1089,7 +1089,7 @@ function showOrderReady(n, sound) {
 }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261023d";
+const NIPOS_VERSION = "20261023e";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -2398,5 +2398,21 @@ function renderSoundNote() {
 try {
   ["pointerdown", "keydown", "touchend"].forEach(evt => document.addEventListener(evt, unlockSound, { passive: true, capture: true }));
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { if (soundReady() === false && typeof audioCtx !== "undefined" && audioCtx) { try { audioCtx.resume(); } catch (e) {} } setTimeout(renderSoundNote, 500); } });
-  setInterval(renderSoundNote, 3000);
+  setInterval(soundWatchdog, 3000);
 } catch (e) {}
+// Every 3 seconds, on every device (iPhone, iPad, Android, computers): make sure the page's audio is
+// still running. iOS and Android suspend or interrupt it after a call, Siri or Assistant, another app's
+// audio or the screen sleeping; once that's over it can usually be resumed without a tap. On iOS the
+// playback session (so the silent switch doesn't mute the beeps) is re-asserted too. A silent blip
+// plays each time so neither system treats the page's audio as idle. If it still can't run, the amber
+// "Sound is off" button shows straight away, and hides again the moment sound is back.
+function soundWatchdog() {
+  if (typeof audioCtx === "undefined" || !audioCtx) { renderSoundNote(); return; } // no sound on this page yet: the note asks for a tap
+  try { if (navigator.audioSession && navigator.audioSession.type !== "playback") navigator.audioSession.type = "playback"; } catch (e) {}
+  if (audioCtx.state !== "running") {
+    try { audioCtx.resume().then(renderSoundNote, renderSoundNote); } catch (e) {}
+  } else if (document.visibilityState === "visible") {
+    try { const buf = audioCtx.createBuffer(1, 1, 22050), src = audioCtx.createBufferSource(); src.buffer = buf; src.connect(audioCtx.destination); src.start(0); } catch (e) {}
+  }
+  renderSoundNote();
+}
