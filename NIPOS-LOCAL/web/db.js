@@ -972,9 +972,13 @@ function alertAllowed(event, user) {
 //   1. Master settings > Alert settings: a sound for that alert (or "All other notices").
 //   2. The person's manager (Backend > Notifications): managerSound locks one sound for everything.
 //   3. The person's own picks (Sounds on the till or order screen): one per alert, or their main sound.
+// Master settings > Alert settings can stop people changing the sound for an alert ("People can change"
+// off). Then their pick for it is ignored; "All other notices" covers their main sound.
+function soundChangeAllowed(event) { return alertRule(event).choose !== false; }
 function personalSound(event, user) {
   if (!user) return null;
-  return user.managerSound || (user.eventSounds || {})[event] || user.notificationSound || null;
+  return user.managerSound || (soundChangeAllowed(event) ? (user.eventSounds || {})[event] : null)
+    || (soundChangeAllowed("other") ? user.notificationSound : null) || null;
 }
 function alertSound(event, user) {
   const r = alertRule(event), other = event !== "other" ? alertRule("other") : {};
@@ -1009,26 +1013,32 @@ async function openSoundSettings(opts) {
     document.body.appendChild(el);
   }
   const preview = v => { try { if (typeof unlockSound === "function") unlockSound(); playNotificationSound(typeof audioCtx !== "undefined" ? audioCtx : null, v); } catch (e) {} };
-  const row = (id, label, value, withSame) => `<div class="ss-row"><label for="${id}">${esc(label)}</label><div class="ss-pick"><select id="${id}">${withSame ? `<option value="">Same as my main sound</option>` : ""}${all.map(([v, n]) => `<option value="${esc(v)}" ${value === v ? "selected" : ""}>${esc(n)}</option>`).join("")}</select><button type="button" class="btn btn-ghost" data-ss-play="${id}">Play</button></div></div>`;
-  const forced = events.filter(([k]) => alertRule(k).sound || alertRule("other").sound).map(([, l]) => l);
+  // A row Master settings has locked shows the sound that plays and can't be changed.
+  const row = (id, label, value, withSame, locked, playing) => locked
+    ? `<div class="ss-row ss-locked"><label for="${id}">${esc(label)}</label><div class="ss-pick"><select id="${id}" disabled><option value="${esc(playing || "")}">${esc(soundLabel(playing))} · set in Master settings</option></select><button type="button" class="btn btn-ghost" data-ss-play="${id}">Play</button></div></div>`
+    : `<div class="ss-row"><label for="${id}">${esc(label)}</label><div class="ss-pick"><select id="${id}">${withSame ? `<option value="">Same as my main sound</option>` : ""}${all.map(([v, n]) => `<option value="${esc(v)}" ${value === v ? "selected" : ""}>${esc(n)}</option>`).join("")}</select><button type="button" class="btn btn-ghost" data-ss-play="${id}">Play</button></div></div>`;
+  const lockedEv = k => !soundChangeAllowed(k) || !!alertRule(k).sound || !!alertRule("other").sound;
+  const mainLocked = !soundChangeAllowed("other") || !!alertRule("other").sound;
+  const forced = events.filter(([k]) => lockedEv(k)).map(([, l]) => l);
   if (user.managerSound) {
     el.innerHTML = `<div class="pm-card ss-card"><h2 id="ssTitle">Sounds</h2><p>Your manager has set your sound to <b>${esc(soundLabel(user.managerSound))}</b> on every screen, so it can't be changed here. Ask them to set it back to Let them choose.</p>
       <div class="ss-actions"><button type="button" class="btn btn-ghost" data-ss-play-v="${esc(user.managerSound)}">Play it</button><button type="button" class="btn btn-accent" data-ss-close>Close</button></div></div>`;
   } else {
     el.innerHTML = `<div class="pm-card ss-card"><h2 id="ssTitle">Sounds</h2><p class="ss-intro">Pick a sound, try it with Play, then Save.</p>
-      ${row("ssMain", "My main sound", user.notificationSound || "classic", false)}
-      ${events.map(([k, l]) => row("ss_" + k, l, (user.eventSounds || {})[k] || "", true)).join("")}
-      ${forced.length ? `<p class="note ss-note">Your manager has set the sound for: ${esc(forced.join(", "))}. Those play their sound instead.</p>` : ""}
+      ${row("ssMain", "My main sound", user.notificationSound || "classic", false, mainLocked, alertSound("other", user))}
+      ${events.map(([k, l]) => row("ss_" + k, l, (user.eventSounds || {})[k] || "", true, lockedEv(k), alertSound(k, user))).join("")}
+      ${forced.length ? `<p class="note ss-note">Set in Master settings, so they can't be changed here: ${esc(forced.join(", "))}.</p>` : ""}
       <p class="ss-msg" role="status"></p>
-      <div class="ss-actions"><button type="button" class="btn btn-ghost" data-ss-close>Cancel</button><button type="button" class="btn btn-accent" data-ss-save>Save</button></div></div>`;
+      <div class="ss-actions"><button type="button" class="btn btn-ghost" data-ss-close>${mainLocked && events.every(([k]) => lockedEv(k)) ? "Close" : "Cancel"}</button>${mainLocked && events.every(([k]) => lockedEv(k)) ? "" : `<button type="button" class="btn btn-accent" data-ss-save>Save</button>`}</div></div>`;
   }
-  el.querySelectorAll("[data-ss-play]").forEach(b => b.addEventListener("click", () => { const sel = el.querySelector("#" + b.dataset.ssPlay); preview(sel.value || el.querySelector("#ssMain").value); }));
+  el.querySelectorAll("[data-ss-play]").forEach(b => b.addEventListener("click", () => { const sel = el.querySelector("#" + b.dataset.ssPlay); preview(sel.value || el.querySelector("#ssMain").value || "classic"); }));
   el.querySelectorAll("[data-ss-play-v]").forEach(b => b.addEventListener("click", () => preview(b.dataset.ssPlayV)));
   el.querySelectorAll("[data-ss-close]").forEach(b => b.addEventListener("click", () => { el.hidden = true; }));
   const save = el.querySelector("[data-ss-save]");
   if (save) save.addEventListener("click", async () => {
-    const notificationSound = el.querySelector("#ssMain").value, eventSounds = { ...(user.eventSounds || {}) };
-    events.forEach(([k]) => { const v = el.querySelector("#ss_" + k).value; if (v) eventSounds[k] = v; else delete eventSounds[k]; });
+    // Locked rows keep whatever the person had; only the rows they could change are saved.
+    const mainSel = el.querySelector("#ssMain"), notificationSound = mainSel.disabled ? (user.notificationSound || null) : mainSel.value, eventSounds = { ...(user.eventSounds || {}) };
+    events.forEach(([k]) => { const sel = el.querySelector("#ss_" + k); if (sel.disabled) return; if (sel.value) eventSounds[k] = sel.value; else delete eventSounds[k]; });
     save.disabled = true;
     const res = await setMySounds({ notificationSound, eventSounds });
     save.disabled = false;
@@ -1071,7 +1081,7 @@ function showOrderReady(n, sound) {
 }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261023b";
+const NIPOS_VERSION = "20261023c";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }

@@ -134,7 +134,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261023b">
+<link rel="stylesheet" href="nipos.css?v=20261023c">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -160,6 +160,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
   </div>
   <span class="station-tag" id="stationTag" hidden>Kitchen</span>
   <button class="band-btn" id="switchVenueBtn" type="button" hidden>Switch venue</button>
+  <button class="band-btn" id="soundsBtn" type="button" aria-label="Sound settings" title="Sound settings" hidden><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></button>
   <button class="band-btn" id="themeToggleBtn" type="button" aria-label="Switch to light theme"></button>
   <button class="band-btn" id="accountSignOutBtn" type="button">Sign out</button>
 </header>
@@ -169,7 +170,6 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
     <button class="btn btn-solid" id="stockBtn" type="button" hidden><span data-icon="stop"></span>Products on stop</button>
     <button class="btn btn-solid" id="serviceBtn" type="button"><span data-icon="bell"></span>Call for service</button>
     <button class="btn btn-solid" id="notifyBtn" type="button" hidden><span data-icon="bell"></span>Notify</button>
-    <button class="btn btn-solid" id="soundsBtn" type="button" hidden>Sounds</button>
   </div>
   <div class="alerts-banner" id="alertsRow">
     <div class="msg"><span data-icon="bell"></span><span id="alertsStatus">Turn on alerts to hear new orders</span></div>
@@ -264,7 +264,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261023b"></script>
+<script src="db.js?v=20261023c"></script>
 <script>
 initTheme();
 hydrateIcons();
