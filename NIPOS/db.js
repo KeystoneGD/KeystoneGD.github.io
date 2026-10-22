@@ -2398,22 +2398,20 @@ function renderSoundNote() {
 try {
   ["pointerdown", "keydown", "touchend"].forEach(evt => document.addEventListener(evt, unlockSound, { passive: true, capture: true }));
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { if (soundReady() === false && typeof audioCtx !== "undefined" && audioCtx) { try { audioCtx.resume(); } catch (e) {} } setTimeout(renderSoundNote, 500); } });
-  setInterval(soundWatchdog, 2500);
+  setInterval(soundWatchdog, 3000);
 } catch (e) {}
-// Every 2.5 seconds: make sure the browser's audio (on iPhone/iPad, iOS's media player for this page) is
-// still running. iOS suspends or "interrupts" it after a call, Siri, another app's audio or the screen
-// sleeping; once that's over it can usually be resumed without a tap. The playback session (so the
-// silent switch doesn't mute the beeps) is re-asserted too, and a silent blip every 25 seconds keeps
-// iOS from treating the page's audio as idle. If it still can't run, the amber "Sound is off" button
-// shows straight away, and hides again the moment sound is back.
-let lastKeepAlive = 0;
+// Every 3 seconds, on every device (iPhone, iPad, Android, computers): make sure the page's audio is
+// still running. iOS and Android suspend or interrupt it after a call, Siri or Assistant, another app's
+// audio or the screen sleeping; once that's over it can usually be resumed without a tap. On iOS the
+// playback session (so the silent switch doesn't mute the beeps) is re-asserted too. A silent blip
+// plays each time so neither system treats the page's audio as idle. If it still can't run, the amber
+// "Sound is off" button shows straight away, and hides again the moment sound is back.
 function soundWatchdog() {
   if (typeof audioCtx === "undefined" || !audioCtx) { renderSoundNote(); return; } // no sound on this page yet: the note asks for a tap
   try { if (navigator.audioSession && navigator.audioSession.type !== "playback") navigator.audioSession.type = "playback"; } catch (e) {}
   if (audioCtx.state !== "running") {
     try { audioCtx.resume().then(renderSoundNote, renderSoundNote); } catch (e) {}
-  } else if (Date.now() - lastKeepAlive > 25000 && document.visibilityState === "visible") {
-    lastKeepAlive = Date.now();
+  } else if (document.visibilityState === "visible") {
     try { const buf = audioCtx.createBuffer(1, 1, 22050), src = audioCtx.createBufferSource(); src.buffer = buf; src.connect(audioCtx.destination); src.start(0); } catch (e) {}
   }
   renderSoundNote();
