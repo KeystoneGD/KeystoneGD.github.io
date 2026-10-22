@@ -219,6 +219,11 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .wipe-summary table{border-collapse:collapse;width:100%;}
 .wipe-summary td{padding:3px 0;}
 .wipe-summary td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;}
+.wipe-summary td.grp{padding-top:8px;font-weight:700;}
+.reset-parts{border:0;padding:0;margin:14px 0 0;display:flex;flex-direction:column;gap:6px;}
+.reset-part{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--border);background:var(--surface-2);cursor:pointer;min-height:44px;margin-top:6px;}
+.reset-part input{width:20px;height:20px;margin:2px 0 0;flex:none;}
+.reset-part small{display:block;color:var(--text-muted);font-size:13px;line-height:1.4;margin-top:2px;}
 .layout-shot{display:block;width:100%;height:auto;aspect-ratio:1180/820;object-fit:cover;border:1px solid var(--border);background:var(--surface-2);}
 .layout-about{margin:0;color:var(--text-muted);font-size:14px;line-height:1.45;}
 .theme-venues span{width:26px;height:26px;border-radius:7px;border:2px solid rgba(127,127,127,.4);}
@@ -331,7 +336,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261023f">
+<link rel="stylesheet" href="nipos.css?v=20261023g">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -706,7 +711,7 @@ table.data-table tr:last-child td{border-bottom:0;}
           <button class="tab-btn active" data-tab="ms-features" role="tab" aria-selected="true" aria-controls="tab-ms-features">Features</button>
           <button class="tab-btn" data-tab="ms-looks" role="tab" aria-selected="false" aria-controls="tab-ms-looks">Themes and layouts</button>
           <button class="tab-btn" data-tab="ms-activity" role="tab" aria-selected="false" aria-controls="tab-ms-activity">Activity</button>
-          <button class="tab-btn" data-tab="ms-wipe" role="tab" aria-selected="false" aria-controls="tab-ms-wipe">Remove sales</button>
+          <button class="tab-btn" data-tab="ms-wipe" role="tab" aria-selected="false" aria-controls="tab-ms-wipe">Reset for service</button>
         </div>
       </div>
       <div class="tab-panel active" id="tab-ms-features" role="tabpanel">
@@ -753,19 +758,21 @@ table.data-table tr:last-child td{border-bottom:0;}
       <div class="act-viewer" data-act-root="ms"></div>
       </div>
       <div class="tab-panel" id="tab-ms-wipe" role="tabpanel">
-      <h2 class="layout-title" style="margin-top:0;">Remove sales</h2>
-      <p class="note">Clears out test transactions. Removes every sale, refund, tip, abandoned order, open order, Z Read and activity log entry for the venue you pick. Takings, Past Orders and the charts start again from nothing. This can't be undone.</p>
+      <h2 class="layout-title" style="margin-top:0;">Reset for service</h2>
+      <p class="note">Gets NIPOS ready for a fresh night: clears test sales, old orders, logs and notifications for the venue you pick. Menus, prices, deals, discounts, staff, venues, kitchens and settings are never touched. This can't be undone.</p>
       <div class="card wipe-card">
         <label class="field" for="wipeVenue">Venue</label>
         <select id="wipeVenue"></select>
-        <button type="button" class="btn btn-solid" id="wipeCheckBtn" style="margin-top:12px;">Check what would be removed</button>
+        <fieldset class="reset-parts" id="resetParts"><legend class="field">What to clear</legend></fieldset>
+        <label class="reset-part"><input type="checkbox" id="resetRefresh" checked><span><b>Refresh every screen afterwards</b><small>Each till and order screen at the venue clears what it still holds on the device and reloads.</small></span></label>
+        <button type="button" class="btn btn-solid" id="wipeCheckBtn" style="margin-top:12px;">Check what would be cleared</button>
         <div id="wipeSummary" class="wipe-summary" role="status" hidden></div>
         <div id="wipeConfirmArea" hidden>
-          <label class="field" for="wipeConfirm">Type DELETE to confirm</label>
+          <label class="field" for="wipeConfirm">Type RESET to confirm</label>
           <input type="text" id="wipeConfirm" autocomplete="off" autocapitalize="characters" spellcheck="false">
           <label class="field" for="wipePassword">$YSTEM password</label>
           <input type="password" id="wipePassword" autocomplete="current-password">
-          <button type="button" class="btn btn-danger-solid btn-block" id="wipeBtn" style="margin-top:12px;" disabled>Remove these sales</button>
+          <button type="button" class="btn btn-danger-solid btn-block" id="wipeBtn" style="margin-top:12px;" disabled>Reset for service</button>
         </div>
         <p class="note" id="wipeMsg" role="alert" style="margin-top:10px;"></p>
       </div>
@@ -859,7 +866,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261023f"></script>
+<script src="db.js?v=20261023g"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -2551,34 +2558,50 @@ function playBackendChime(){
 }
 setInterval(checkMyMessages, 5000);
 
-/* ---------- $YSTEM: remove sales ---------- */
+/* ---------- $YSTEM: reset for service ---------- */
 function renderWipeVenues(){
   const sel = document.getElementById("wipeVenue"), keep = sel.value;
   sel.innerHTML = `<option value="">Every venue</option>` + myVenues.map(v => `<option value="${esc(v.id)}">${esc(v.name)}${v.active === false ? " (closed)" : ""}</option>`).join("");
   if ([...sel.options].some(o => o.value === keep)) sel.value = keep;
 }
+// Reset for service: each part and the rows it clears (keys from nipos_reset_counts). Ticked ones go.
+const RESET_PARTS = [
+  { id: "sales", on: true, label: "Sales and takings", hint: "Sales, refunds, tips, abandoned orders, tabs and Z Reads. Takings and Past Orders start from nothing.", rows: [["sales", "Sales"], ["refunds", "Refunds"], ["gratuities", "Tips"], ["abandoned", "Abandoned orders"], ["tabs", "Tabs"], ["z_reports", "Z Reads"]] },
+  { id: "orders", on: true, label: "Open orders", hint: "Orders still on the order screens and the tills' Open orders.", rows: [["open_orders", "Open orders"]] },
+  { id: "logs", on: true, label: "Logs", hint: "The activity log, and (for every venue) Discord messages still waiting to send.", rows: [["activity_log", "Activity log entries"], ["discord_queue", "Discord messages waiting"]] },
+  { id: "notifications", on: true, label: "Notifications", hint: "Messages, service calls and order-ready notices, announcements, and any Suspend Orders or Service Break is lifted.", rows: [["notifications", "Notifications"], ["device_commands", "Old screen commands"]] },
+  { id: "screens", on: true, label: "Screens", hint: "Customer displays, orders left half rung up, open items, who's online, and Deals right now goes back to automatic.", rows: [["displays", "Customer display screens"], ["presence", "Online screens"]] },
+  { id: "stops", on: false, label: "Products on stop", hint: "Puts everything back on sale.", rows: [["stops", "Products on stop"]] },
+  { id: "hours", on: false, label: "Clocked hours", hint: "Staff shifts used for payroll. Download them from Hours first.", rows: [["clock_events", "Clocked shifts"]] },
+  { id: "stock", on: false, label: "Stock counts", hint: "Every stock count taken.", rows: [["stock_counts", "Stock counts"]] }
+];
+document.getElementById("resetParts").insertAdjacentHTML("beforeend", RESET_PARTS.map(p => `<label class="reset-part"><input type="checkbox" data-reset-part="${p.id}"${p.on ? " checked" : ""}><span><b>${p.label}</b><small>${p.hint}</small></span></label>`).join(""));
+function resetPicked(){ return [...document.querySelectorAll("[data-reset-part]:checked")].map(i => i.dataset.resetPart); }
 function wipeReset(){
   document.getElementById("wipeSummary").hidden = true;
   document.getElementById("wipeConfirmArea").hidden = true;
   document.getElementById("wipeConfirm").value = ""; document.getElementById("wipePassword").value = "";
   document.getElementById("wipeBtn").disabled = true;
 }
-const WIPE_ROWS = [["sales", "Sales"], ["refunds", "Refunds"], ["gratuities", "Tips"], ["abandoned", "Abandoned orders"], ["open_orders", "Open orders"], ["z_reports", "Z Reads"], ["activity_log", "Activity log entries"]];
 document.getElementById("wipeVenue").addEventListener("change", () => { wipeReset(); document.getElementById("wipeMsg").textContent = ""; });
+document.getElementById("resetParts").addEventListener("change", () => { wipeReset(); document.getElementById("wipeMsg").textContent = ""; });
+let resetCounts = null;
 document.getElementById("wipeCheckBtn").addEventListener("click", async () => {
-  const msg = document.getElementById("wipeMsg"), venue = document.getElementById("wipeVenue").value || null;
+  const msg = document.getElementById("wipeMsg"), venue = document.getElementById("wipeVenue").value || null, picked = resetPicked();
   msg.textContent = ""; wipeReset();
+  if (!picked.length) { msg.textContent = "Tick at least one thing to clear."; return; }
   let data = null;
-  try { const res = await supabaseClient.rpc("nipos_sales_summary", { p_password: systemPassword, p_venue: venue }); if (!res.error) data = res.data; } catch (e) {}
-  if (!data) { msg.textContent = "Couldn't check. If this is the first time, the remove-sales SQL may not have been run in Supabase yet."; return; }
+  try { const res = await supabaseClient.rpc("nipos_reset_summary", { p_password: systemPassword, p_venue: venue }); if (!res.error) data = res.data; } catch (e) {}
+  if (!data) { msg.textContent = "Couldn't check. If this is the first time, run reset_for_service.sql in Supabase first."; return; }
   if (data.error) { msg.textContent = SYSTEM_PASSWORD_MESSAGES[data.error] || "Couldn't check. Try again."; return; }
-  const total = WIPE_ROWS.reduce((n, [k]) => n + (data[k] ? data[k].count : 0), 0);
-  // (Activity log entries only show once remove_sales_and_logs.sql has been run.)
+  resetCounts = data;
   const name = venue ? (myVenues.find(v => v.id === venue) || {}).name : "every venue";
+  const parts = RESET_PARTS.filter(p => picked.includes(p.id));
+  const rows = parts.map(p => `<tr><td class="grp" colspan="2">${p.label}</td></tr>` + p.rows.filter(([k]) => data[k]).map(([k, label]) => `<tr><td>${label}</td><td class="num">${data[k].count}${data[k].pence != null && data[k].count ? " · " + fmt(data[k].pence) : ""}</td></tr>`).join("")).join("");
   const box = document.getElementById("wipeSummary");
-  box.innerHTML = `<strong>${total ? "This would remove, for " + esc(name) + ":" : "Nothing to remove for " + esc(name) + "."}</strong>` + (total ? `<table>${WIPE_ROWS.filter(([k]) => data[k]).map(([k, label]) => `<tr><td>${label}</td><td class="num">${data[k].count}${data[k].pence != null && data[k].count ? " · " + fmt(data[k].pence) : ""}</td></tr>`).join("")}</table>` : "");
+  box.innerHTML = `<strong>This clears, for ${esc(name)}:</strong><table>${rows}</table>`;
   box.hidden = false;
-  document.getElementById("wipeConfirmArea").hidden = !total;
+  document.getElementById("wipeConfirmArea").hidden = false;
 });
 // Reset notifications: clears every saved push device, and the new notifyReset time makes each till
 // and order screen ask again (it reaches them within 15 seconds).
@@ -2601,23 +2624,39 @@ document.getElementById("notifyResetBtn").addEventListener("click", async () => 
   logActivity("Master settings", `Notifications reset for everyone (${count} device${count === 1 ? "" : "s"} removed)`, null);
   msg.textContent = `Done. ${count} device${count === 1 ? "" : "s"} removed. Each one asks to turn on alerts again.`;
 });
-function wipeReady(){ document.getElementById("wipeBtn").disabled = !(document.getElementById("wipeConfirm").value.trim() === "DELETE" && document.getElementById("wipePassword").value); }
+function wipeReady(){ document.getElementById("wipeBtn").disabled = !(document.getElementById("wipeConfirm").value.trim().toUpperCase() === "RESET" && document.getElementById("wipePassword").value); }
 document.getElementById("wipeConfirm").addEventListener("input", wipeReady);
 document.getElementById("wipePassword").addEventListener("input", wipeReady);
 document.getElementById("wipeBtn").addEventListener("click", async () => {
-  const msg = document.getElementById("wipeMsg"), venue = document.getElementById("wipeVenue").value || null, btn = document.getElementById("wipeBtn");
-  btn.disabled = true;
+  const msg = document.getElementById("wipeMsg"), venue = document.getElementById("wipeVenue").value || null, btn = document.getElementById("wipeBtn"), picked = resetPicked();
+  if (!picked.length) { msg.textContent = "Tick at least one thing to clear."; return; }
+  btn.disabled = true; msg.textContent = "Resetting…";
   let data = null;
   try {
-    const res = await supabaseClient.rpc("nipos_wipe_sales", { p_password: document.getElementById("wipePassword").value, p_venue: venue, p_confirm: document.getElementById("wipeConfirm").value.trim() });
+    const res = await supabaseClient.rpc("nipos_reset_for_service", { p_password: document.getElementById("wipePassword").value, p_venue: venue, p_parts: picked, p_confirm: document.getElementById("wipeConfirm").value.trim().toUpperCase() });
     if (!res.error) data = res.data;
   } catch (e) {}
   document.getElementById("wipePassword").value = "";
-  if (!data) { msg.textContent = "Couldn't remove them. Try again."; wipeReady(); return; }
-  if (data.error) { msg.textContent = data.error === "not_confirmed" ? "Type DELETE to confirm." : (SYSTEM_PASSWORD_MESSAGES[data.error] || "Couldn't remove them."); wipeReady(); return; }
+  if (!data) { msg.textContent = "Couldn't reset. Try again."; wipeReady(); return; }
+  if (data.error) { msg.textContent = data.error === "not_confirmed" ? "Type RESET to confirm." : (SYSTEM_PASSWORD_MESSAGES[data.error] || "Couldn't reset."); wipeReady(); return; }
   wipeReset();
-  logActivity("Removed sales", `${venue ? venueName(venue) : "Every venue"}: ${WIPE_ROWS.map(([k, label]) => `${data[k] || 0} ${label.toLowerCase()}`).join(", ")}`, venue);
-  msg.textContent = "Removed " + WIPE_ROWS.map(([k, label]) => `${data[k] || 0} ${label.toLowerCase()}`).join(", ") + ". Tills clear their own copies on their next refresh.";
+  const before = data.before || resetCounts || {};
+  const cleared = RESET_PARTS.filter(p => picked.includes(p.id)).flatMap(p => p.rows).filter(([k]) => before[k] && before[k].count).map(([k, label]) => `${before[k].count} ${label.toLowerCase()}`);
+  // Each till and order screen at the venue drops its own copies (and, when sales or orders were
+  // cleared, anything still waiting to save) and reloads. Screens seen in the last day get it.
+  let screens = 0;
+  if (document.getElementById("resetRefresh").checked) {
+    const action = picked.includes("sales") || picked.includes("orders") ? "reset" : "refresh";
+    try {
+      let q = supabaseClient.from("devices").select("id,venue_id").gt("ts", Date.now() - 24 * 3600000);
+      if (venue) q = q.eq("venue_id", venue);
+      const { data: devs } = await q;
+      for (const d of devs || []) if (d.id !== deviceId() && await sendDeviceCommand("device", d.id, action)) screens++;
+    } catch (e) {}
+  }
+  const where = venue ? venueName(venue) : "Every venue";
+  logActivity("Reset for service", `${where}: ${cleared.length ? cleared.join(", ") : "nothing to clear"}${screens ? `; ${screens} screen${screens === 1 ? "" : "s"} refreshed` : ""}`, venue);
+  msg.textContent = `Done. ${where} is ready for service.` + (cleared.length ? " Cleared " + cleared.join(", ") + "." : "") + (screens ? ` ${screens} screen${screens === 1 ? "" : "s"} refreshing now.` : "");
   if (typeof loadDashboard === "function") loadDashboard();
 });
 
