@@ -331,7 +331,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261023e">
+<link rel="stylesheet" href="nipos.css?v=20261023f">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -859,7 +859,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261023e"></script>
+<script src="db.js?v=20261023f"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -1885,6 +1885,8 @@ const FEATURE_EDITORS = {
   alertSettings: {
     render(cfg){
       const ev = cfg.events || {}, perms = [["", "Everyone signed in"], ["placeOrders", "Till people (Place Orders)"], ["viewOpenOrders", "People who deliver (View Open Orders)"], ["orderScreen", "Order screen people"], ["processRefunds", "Refund people"], ["backendAccess", "Managers (Backend access)"]];
+      // Uploaded sounds: fetched once, then the list redraws with them.
+      if (!uploadedSoundsCache.length && !alertSoundsFetched) { alertSoundsFetched = true; fetchNotificationSounds().then(list => { if (list.length) renderFeaturesIfIdle(); }); }
       const sounds = [["", "Let them choose"]].concat(Object.entries(CHIME_PRESETS), uploadedSoundsCache.map(f => [f.path, f.label + " (uploaded)"]));
       return `<table class="feature-table"><thead><tr><th scope="col">Event</th><th scope="col">On</th><th scope="col">Who</th><th scope="col">Sound</th><th scope="col">People can change</th></tr></thead><tbody>${ALERT_EVENTS.map(([k, l]) => { const r = ev[k] || {}; return `<tr data-al="${k}"><th scope="row">${esc(l)}</th>
         <td><input type="checkbox" data-al-on aria-label="${esc(l)} on" ${r.on !== false ? "checked" : ""}></td>
@@ -3903,6 +3905,7 @@ function renderKitchens(){
     card.querySelector("[data-k-delete]").addEventListener("click", () => deleteKitchen(k));
   });
 }
+let alertSoundsFetched = false;
 let everyVenueName = new Map(); // every venue's name, so a kitchen shared with another venue still reads properly
 const kitchenVenueNames = ids => ids.map(id => (venues.find(v => v.id === id) || {}).name || everyVenueName.get(id) || id).join(", ") || "no venues";
 async function saveKitchen(k, card){

@@ -21,7 +21,7 @@ WEB = ROOT / "web"
 # Default: the hosted NIPOS folder next to this one (both live in the KeystoneGD.github.io repository).
 SRC = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else ROOT.parent / "NIPOS").resolve()
 
-COPY_SUFFIXES = {".html", ".js", ".css", ".json", ".png", ".jpg", ".ico", ".svg", ".webmanifest"}
+COPY_SUFFIXES = {".html", ".js", ".css", ".json", ".png", ".jpg", ".wav", ".ico", ".svg", ".webmanifest"}
 SKIP_DIRS = {"supabase", "vendor"}
 
 FONTS = (re.compile(r'<link rel="stylesheet" href="https://fonts\.googleapis\.com/css2\?[^"]*">'),
