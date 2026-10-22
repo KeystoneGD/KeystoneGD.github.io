@@ -331,7 +331,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261023c">
+<link rel="stylesheet" href="nipos.css?v=20261023d">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -860,7 +860,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261023c"></script>
+<script src="db.js?v=20261023d"></script>
 <script src="vendor/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -1893,7 +1893,12 @@ const FEATURE_EDITORS = {
         <td><select data-al-sound aria-label="${esc(l)}: sound">${sounds.map(([v, n]) => `<option value="${v}" ${(r.sound || "") === v ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></td>
         <td><input type="checkbox" data-al-choose aria-label="${esc(l)}: people can change its sound" ${r.choose !== false ? "checked" : ""}></td></tr>`; }).join("")}</tbody></table>
         <p class="note" style="margin-top:8px;">Only people signed in get an alert, on the screen they're signed in to. Order ready goes to tills at the order's venue. A sound set here replaces each person's own choice; "All other notices" sets the sound for everything without its own. Untick "People can change" to stop people picking their own sound for that alert in their Sounds settings (for "All other notices", their main sound); with no sound set here, the standard beep plays instead. Upload more sounds in Settings › Notification Sounds.</p>
-        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="alertSettings">Save</button></div>`;
+        <div class="feature-actions"><button type="button" class="btn btn-solid" data-act="save-editor" data-key="alertSettings">Save</button></div>
+        <h4 style="margin:22px 0 4px;">Sounds for one person</h4>
+        <p class="note">Pick someone to set the sound of each alert just for them. These win over everything above and over their own choices, even for alerts they're not allowed to change.</p>
+        <div class="edit-row"><label for="psWho">Person <select id="psWho">${users.filter(u => !u.system && !isHiddenAccount(u.name)).sort((a, b) => a.name.localeCompare(b.name)).map(u => `<option value="${esc(u.id)}">${esc(u.name)}${(cfg.people || {})[u.id] && Object.keys(cfg.people[u.id]).length ? " · " + Object.keys(cfg.people[u.id]).length + " set" : ""}</option>`).join("")}</select></label>
+          <button type="button" class="btn btn-solid" data-act="ps-open">Set their sounds</button></div>
+        ${Object.entries(cfg.people || {}).filter(([, v]) => v && Object.keys(v).length).map(([id, v]) => { const u = users.find(x => x.id === id); return `<p class="note" style="margin:6px 0 0;"><b>${esc(u ? u.name : "Someone no longer listed")}</b>: ${esc(Object.entries(v).map(([k, snd]) => `${(ALERT_EVENTS.find(e => e[0] === k) || [k, k])[1]}: ${soundLabel(snd)}`).join(", "))}</p>`; }).join("")}`;
     },
     read(){ const events = {}; F("[data-al]").forEach(r => { events[r.dataset.al] = { on: r.querySelector("[data-al-on]").checked, perm: r.querySelector("[data-al-perm]").value, sound: r.querySelector("[data-al-sound]").value, choose: r.querySelector("[data-al-choose]").checked }; }); return { events }; }
   },
@@ -2411,6 +2416,7 @@ function readColourRows(){
   });
 }
 async function runFeatureAction(act, btn){
+  if (act === "ps-open") return openPersonSounds(document.getElementById("psWho").value);
   if (act === "save-editor") { const key = btn.dataset.key, name = FEATURES.find(f => f.key === key).name; return saveFeature(key, { ...featureView(key), ...FEATURE_EDITORS[key].read() }, `${name} saved.`); }
   const removeAt = i => list => list.filter((_, j) => j !== Number(i));
   if (act === "export-run") return runExport();
@@ -4223,6 +4229,49 @@ document.getElementById("toggleSuspendBtn").addEventListener("click", () => open
 document.getElementById("toggleServiceBreakBtn").addEventListener("click", () => openLockdownPicker("break"));
 document.getElementById("ntSuspendBtn").addEventListener("click", () => openLockdownPicker("suspend"));
 document.getElementById("ntBreakBtn").addEventListener("click", () => openLockdownPicker("break"));
+
+// Master settings > Alert settings > Sounds for one person: every alert's sound for that person, saved
+// into the feature's settings (people: { userId: { event: sound } }). "Not set" leaves the usual rules.
+async function openPersonSounds(userId){
+  const u = users.find(x => x.id === userId); if (!u) return;
+  const uploaded = await fetchNotificationSounds();
+  const options = [["", "Not set (usual rules)"]].concat(Object.entries(CHIME_PRESETS), uploaded.map(f => [f.path, f.label + " (uploaded)"]));
+  const mine = { ...((featureView("alertSettings").people || {})[u.id] || {}) };
+  let el = document.getElementById("personSoundsModal");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "personSoundsModal"; el.className = "modal-overlay";
+    el.addEventListener("keydown", e => { if (e.key === "Escape") el.hidden = true; });
+    document.body.appendChild(el);
+  }
+  let ctx = null;
+  el.innerHTML = `<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="psTitle" style="max-width:560px;">
+    <h3 id="psTitle">${esc(u.name)}'s sounds</h3>
+    <p class="note">Set any alert just for ${esc(u.name)}, whether or not they can change it themselves. "All other notices" is their main sound.</p>
+    ${ALERT_EVENTS.map(([k, l]) => `<label class="field" for="ps_${k}">${esc(l)}</label>
+      <div style="display:flex;gap:8px;"><select id="ps_${k}" data-ps="${k}" style="flex:1;min-width:0;">${options.map(([v, n]) => `<option value="${esc(v)}" ${(mine[k] || "") === v ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
+      <button type="button" class="btn btn-ghost btn-sm" data-ps-play="${k}">Play</button></div>`).join("")}
+    <p class="note" id="psMsg" role="status"></p>
+    <div class="modal-actions" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px;">
+      <button type="button" class="btn btn-ghost" data-ps-clear>Clear all</button><button type="button" class="btn btn-ghost" data-ps-cancel>Cancel</button><button type="button" class="btn btn-accent" data-ps-save>Save</button></div></div>`;
+  el.querySelectorAll("[data-ps-play]").forEach(b => b.addEventListener("click", () => {
+    if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    playNotificationSound(ctx, el.querySelector("#ps_" + b.dataset.psPlay).value || alertSound(b.dataset.psPlay, u) || "classic");
+  }));
+  el.querySelector("[data-ps-cancel]").addEventListener("click", () => { el.hidden = true; });
+  el.querySelector("[data-ps-clear]").addEventListener("click", () => { el.querySelectorAll("[data-ps]").forEach(s => { s.value = ""; }); el.querySelector("#psMsg").textContent = "Cleared. Press Save to go back to the usual rules."; });
+  el.querySelector("[data-ps-save]").addEventListener("click", async () => {
+    const set = {}; el.querySelectorAll("[data-ps]").forEach(s => { if (s.value) set[s.dataset.ps] = s.value; });
+    const people = { ...(featureView("alertSettings").people || {}) };
+    if (Object.keys(set).length) people[u.id] = set; else delete people[u.id];
+    const ok = await saveFeature("alertSettings", { ...featureView("alertSettings"), people }, `${u.name}'s sounds saved.`);
+    if (ok === false) { el.querySelector("#psMsg").textContent = "Couldn't save that. Try again."; return; }
+    el.hidden = true;
+    renderFeatures();
+  });
+  el.hidden = false;
+  el.querySelector("select").focus();
+}
 
 /* ---------- Notifications page (every Backend user): Notify, Announce, pause orders, staff sounds ---------- */
 function notifyDialogOpts(){

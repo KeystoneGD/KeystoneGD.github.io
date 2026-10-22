@@ -976,10 +976,25 @@ function personalSound(event, user) {
   return user.managerSound || (soundChangeAllowed(event) ? (user.eventSounds || {})[event] : null)
     || (soundChangeAllowed("other") ? user.notificationSound : null) || null;
 }
+// Master settings can also set one person's sounds (Alert settings > Sounds for one person); those win
+// over everything, whatever that person is allowed to change.
+function masterPersonSound(event, user) {
+  if (!user || !featureOn("alertSettings")) return null;
+  return ((featureConfig("alertSettings").people || {})[user.id] || {})[event] || null;
+}
 function alertSound(event, user) {
   const r = alertRule(event), other = event !== "other" ? alertRule("other") : {};
-  return r.sound || other.sound || personalSound(event, user);
+  return masterPersonSound(event, user) || r.sound || masterPersonSound("other", user) || other.sound || personalSound(event, user);
 }
+// Which of a screen's alerts this person may still pick a sound for (and whether their main sound),
+// once Master settings and their manager have had their say. Nothing left means no Sounds option at all.
+function soundChoicesFor(user, events) {
+  if (!user || user.managerSound) return { main: false, events: [] };
+  const fixedAll = !!alertRule("other").sound || !!masterPersonSound("other", user);
+  const main = soundChangeAllowed("other") && !fixedAll;
+  return { main, events: events.filter(([k]) => soundChangeAllowed(k) && !alertRule(k).sound && !masterPersonSound(k, user) && !fixedAll) };
+}
+function soundSettingsAvailable(user, events) { const c = soundChoicesFor(user, events); return c.main || c.events.length > 0; }
 function soundLabel(choice) {
   if (!choice) return "Classic (triple beep)";
   return CHIME_PRESETS[choice] || ((uploadedSoundsCache.find(f => f.path === choice) || {}).label) || choice.replace(/^\d+-/, "").replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ");
@@ -1010,31 +1025,28 @@ async function openSoundSettings(opts) {
   }
   const preview = v => { try { if (typeof unlockSound === "function") unlockSound(); playNotificationSound(typeof audioCtx !== "undefined" ? audioCtx : null, v); } catch (e) {} };
   // A row Master settings has locked shows the sound that plays and can't be changed.
-  const row = (id, label, value, withSame, locked, playing) => locked
-    ? `<div class="ss-row ss-locked"><label for="${id}">${esc(label)}</label><div class="ss-pick"><select id="${id}" disabled><option value="${esc(playing || "")}">${esc(soundLabel(playing))} · set in Master settings</option></select><button type="button" class="btn btn-ghost" data-ss-play="${id}">Play</button></div></div>`
-    : `<div class="ss-row"><label for="${id}">${esc(label)}</label><div class="ss-pick"><select id="${id}">${withSame ? `<option value="">Same as my main sound</option>` : ""}${all.map(([v, n]) => `<option value="${esc(v)}" ${value === v ? "selected" : ""}>${esc(n)}</option>`).join("")}</select><button type="button" class="btn btn-ghost" data-ss-play="${id}">Play</button></div></div>`;
-  const lockedEv = k => !soundChangeAllowed(k) || !!alertRule(k).sound || !!alertRule("other").sound;
-  const mainLocked = !soundChangeAllowed("other") || !!alertRule("other").sound;
-  const forced = events.filter(([k]) => lockedEv(k)).map(([, l]) => l);
+  const row = (id, label, value, same) => `<div class="ss-row"><label for="${id}">${esc(label)}</label><div class="ss-pick"><select id="${id}">${same ? `<option value="">${esc(same)}</option>` : ""}${all.map(([v, n]) => `<option value="${esc(v)}" ${value === v ? "selected" : ""}>${esc(n)}</option>`).join("")}</select><button type="button" class="btn btn-ghost" data-ss-play="${id}">Play</button></div></div>`;
+  // Rows Master settings (or the manager) has fixed aren't shown at all: only what they can change.
+  const choice = soundChoicesFor(user, events), shown = choice.events;
   if (user.managerSound) {
     el.innerHTML = `<div class="pm-card ss-card"><h2 id="ssTitle">Sounds</h2><p>Your manager has set your sound to <b>${esc(soundLabel(user.managerSound))}</b> on every screen, so it can't be changed here. Ask them to set it back to Let them choose.</p>
       <div class="ss-actions"><button type="button" class="btn btn-ghost" data-ss-play-v="${esc(user.managerSound)}">Play it</button><button type="button" class="btn btn-accent" data-ss-close>Close</button></div></div>`;
   } else {
     el.innerHTML = `<div class="pm-card ss-card"><h2 id="ssTitle">Sounds</h2><p class="ss-intro">Pick a sound, try it with Play, then Save.</p>
-      ${row("ssMain", "My main sound", user.notificationSound || "classic", false, mainLocked, alertSound("other", user))}
-      ${events.map(([k, l]) => row("ss_" + k, l, (user.eventSounds || {})[k] || "", true, lockedEv(k), alertSound(k, user))).join("")}
-      ${forced.length ? `<p class="note ss-note">Set in Master settings, so they can't be changed here: ${esc(forced.join(", "))}.</p>` : ""}
+      ${choice.main ? row("ssMain", "My main sound", user.notificationSound || "classic", "") : ""}
+      ${shown.map(([k, l]) => row("ss_" + k, l, (user.eventSounds || {})[k] || "", choice.main ? "Same as my main sound" : "Default")).join("")}
+      ${!choice.main && !shown.length ? `<p>Your sounds are set by your manager.</p>` : ""}
       <p class="ss-msg" role="status"></p>
-      <div class="ss-actions"><button type="button" class="btn btn-ghost" data-ss-close>${mainLocked && events.every(([k]) => lockedEv(k)) ? "Close" : "Cancel"}</button>${mainLocked && events.every(([k]) => lockedEv(k)) ? "" : `<button type="button" class="btn btn-accent" data-ss-save>Save</button>`}</div></div>`;
+      <div class="ss-actions"><button type="button" class="btn btn-ghost" data-ss-close>${choice.main || shown.length ? "Cancel" : "Close"}</button>${choice.main || shown.length ? `<button type="button" class="btn btn-accent" data-ss-save>Save</button>` : ""}</div></div>`;
   }
-  el.querySelectorAll("[data-ss-play]").forEach(b => b.addEventListener("click", () => { const sel = el.querySelector("#" + b.dataset.ssPlay); preview(sel.value || el.querySelector("#ssMain").value || "classic"); }));
+  el.querySelectorAll("[data-ss-play]").forEach(b => b.addEventListener("click", () => { const sel = el.querySelector("#" + b.dataset.ssPlay), main = el.querySelector("#ssMain"); preview(sel.value || (main && main.value) || alertSound("other", user) || "classic"); }));
   el.querySelectorAll("[data-ss-play-v]").forEach(b => b.addEventListener("click", () => preview(b.dataset.ssPlayV)));
   el.querySelectorAll("[data-ss-close]").forEach(b => b.addEventListener("click", () => { el.hidden = true; }));
   const save = el.querySelector("[data-ss-save]");
   if (save) save.addEventListener("click", async () => {
     // Locked rows keep whatever the person had; only the rows they could change are saved.
-    const mainSel = el.querySelector("#ssMain"), notificationSound = mainSel.disabled ? (user.notificationSound || null) : mainSel.value, eventSounds = { ...(user.eventSounds || {}) };
-    events.forEach(([k]) => { const sel = el.querySelector("#ss_" + k); if (sel.disabled) return; if (sel.value) eventSounds[k] = sel.value; else delete eventSounds[k]; });
+    const mainSel = el.querySelector("#ssMain"), notificationSound = mainSel ? mainSel.value : (user.notificationSound || null), eventSounds = { ...(user.eventSounds || {}) };
+    shown.forEach(([k]) => { const sel = el.querySelector("#ss_" + k); if (sel.value) eventSounds[k] = sel.value; else delete eventSounds[k]; });
     save.disabled = true;
     const res = await setMySounds({ notificationSound, eventSounds });
     save.disabled = false;
@@ -1077,7 +1089,7 @@ function showOrderReady(n, sound) {
 }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261023c";
+const NIPOS_VERSION = "20261023d";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }

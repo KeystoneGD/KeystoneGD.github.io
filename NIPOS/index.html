@@ -323,8 +323,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261023c">
-<link rel="stylesheet" href="layouts.css?v=20261023c">
+<link rel="stylesheet" href="nipos.css?v=20261023d">
+<link rel="stylesheet" href="layouts.css?v=20261023d">
 </head>
 <body>
 
@@ -759,7 +759,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261023c"></script>
+<script src="db.js?v=20261023d"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -3158,6 +3158,7 @@ document.getElementById("openOrdersRow").querySelector(".admin-row-main").addEve
 const TILL_SOUND_EVENTS = [["orderReady", "Order ready to take out"], ["serviceCall", "Call for service"], ["other", "Other notices"]];
 function renderSoundRow(){
   const el = document.getElementById("soundRowSub"); if (!el || !currentUser) return;
+  document.getElementById("soundRow").hidden = !soundSettingsAvailable(currentUser, TILL_SOUND_EVENTS); // nothing they may change: no Sounds
   el.textContent = currentUser.managerSound ? `${soundLabel(currentUser.managerSound)} (set by your manager)` : soundLabel(currentUser.notificationSound);
 }
 document.getElementById("soundRow").querySelector(".admin-row-main").addEventListener("click", () => {
