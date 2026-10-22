@@ -1093,7 +1093,7 @@ function showOrderReady(n, sound) {
 }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261023e";
+const NIPOS_VERSION = "20261023f";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -2300,6 +2300,15 @@ const CHIME_PRESETS = {
   urgent: "Urgent buzz",
   chirp: "Chirp"
 };
+// Built-in sound files that ship with NIPOS (NIPOS/sounds/), so they're always there to pick on every
+// screen without anyone uploading them. They join the list above; playNotificationSound plays the file.
+const SOUND_FILES = {
+  doorbell: ["Doorbell", "sounds/Doorbell.wav"], marimba: ["Marimba", "sounds/Marimba.wav"],
+  rising: ["Rising alert", "sounds/Rising-alert.wav"], pager: ["Pager", "sounds/Pager.wav"],
+  kitchenbell: ["Kitchen bell", "sounds/Kitchen-bell.wav"], siren: ["Siren", "sounds/Siren.wav"],
+  arpeggio: ["Arpeggio", "sounds/Arpeggio.wav"], sonar: ["Sonar", "sounds/Sonar.wav"]
+};
+Object.entries(SOUND_FILES).forEach(([id, [label]]) => { CHIME_PRESETS[id] = label; });
 function playChimePreset(audioCtx, preset) {
   if (!audioCtx) return;
   try {
@@ -2360,8 +2369,9 @@ async function deleteNotificationSound(path) {
 const soundBuffers = new Map();
 function playNotificationSound(audioCtx, soundChoice) {
   if (audioCtx && audioCtx.state !== "running") { try { audioCtx.resume(); } catch (e) {} }
-  if (!soundChoice || CHIME_PRESETS[soundChoice]) { playChimePreset(audioCtx, soundChoice || "classic"); return; }
-  const url = notificationSoundUrl(soundChoice);
+  if (!soundChoice || (CHIME_PRESETS[soundChoice] && !SOUND_FILES[soundChoice])) { playChimePreset(audioCtx, soundChoice || "classic"); return; }
+  // A built-in file (relative to this page, which every NIPOS screen shares a folder with) or an uploaded one.
+  const url = SOUND_FILES[soundChoice] ? new URL(SOUND_FILES[soundChoice][1], location.href).href : notificationSoundUrl(soundChoice);
   const viaAudio = () => { try { new Audio(url).play().catch(() => playChimePreset(audioCtx, "classic")); } catch (e) {} };
   if (!audioCtx) { viaAudio(); return; }
   const play = buf => { try { const src = audioCtx.createBufferSource(); src.buffer = buf; src.connect(audioCtx.destination); src.start(); } catch (e) { viaAudio(); } };
