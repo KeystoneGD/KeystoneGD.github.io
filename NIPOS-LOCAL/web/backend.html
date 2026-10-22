@@ -336,7 +336,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261023g">
+<link rel="stylesheet" href="nipos.css?v=20261023h">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -867,7 +867,7 @@ table.data-table tr:last-child td{border-bottom:0;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261023g"></script>
+<script src="db.js?v=20261023h"></script>
 <script src="vendor/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -2569,7 +2569,7 @@ function renderWipeVenues(){
 const RESET_PARTS = [
   { id: "sales", on: true, label: "Sales and takings", hint: "Sales, refunds, tips, abandoned orders, tabs and Z Reads. Takings and Past Orders start from nothing.", rows: [["sales", "Sales"], ["refunds", "Refunds"], ["gratuities", "Tips"], ["abandoned", "Abandoned orders"], ["tabs", "Tabs"], ["z_reports", "Z Reads"]] },
   { id: "orders", on: true, label: "Open orders", hint: "Orders still on the order screens and the tills' Open orders.", rows: [["open_orders", "Open orders"]] },
-  { id: "logs", on: true, label: "Logs", hint: "The activity log, and (for every venue) Discord messages still waiting to send.", rows: [["activity_log", "Activity log entries"], ["discord_queue", "Discord messages waiting"]] },
+  { id: "logs", on: true, label: "Logs", hint: "The activity log, and (for every venue) the record of messages already posted to Discord.", rows: [["activity_log", "Activity log entries"], ["discord_queue", "Discord post records"]] },
   { id: "notifications", on: true, label: "Notifications", hint: "Messages, service calls and order-ready notices, announcements, and any Suspend Orders or Service Break is lifted.", rows: [["notifications", "Notifications"], ["device_commands", "Old screen commands"]] },
   { id: "screens", on: true, label: "Screens", hint: "Customer displays, orders left half rung up, open items, who's online, and Deals right now goes back to automatic.", rows: [["displays", "Customer display screens"], ["presence", "Online screens"]] },
   { id: "stops", on: false, label: "Products on stop", hint: "Puts everything back on sale.", rows: [["stops", "Products on stop"]] },

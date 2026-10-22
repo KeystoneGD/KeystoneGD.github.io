@@ -2,7 +2,7 @@
 -- Clears the chosen parts for one venue (p_venue) or every venue (p_venue null):
 --   sales          sales, refunds, tips, abandoned orders, tabs, Z Reads and each venue's shift start
 --   orders         open orders
---   logs           activity log, and (every venue only) the Discord queue
+--   logs           activity log, and (every venue only) the Discord queue (a record of posts already sent)
 --   notifications  notifications, announcements, Suspend Orders / Service Break, and (every venue only)
 --                  old device commands
 --   screens        customer display screens, orders left half rung up, open items, who's online,
