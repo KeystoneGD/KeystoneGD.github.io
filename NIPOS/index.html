@@ -323,8 +323,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261024a">
-<link rel="stylesheet" href="layouts.css?v=20261024a">
+<link rel="stylesheet" href="nipos.css?v=20261024b">
+<link rel="stylesheet" href="layouts.css?v=20261024b">
 </head>
 <body>
 
@@ -759,7 +759,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261024a"></script>
+<script src="db.js?v=20261024b"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -3658,21 +3658,16 @@ let xReadRows = [];
 function renderXRead(){
   document.getElementById("xReadHead").innerHTML = reportHeaderHTML(currentVenueId);
   const s = shiftSnapshot();
-  xReadRows = [
-    ["Cash", fmt(s.cashTotal)], ["Card", fmt(s.cardTotal)], ["Takings", fmt(s.grandTotal)],
-    ["Tips", fmt(s.gratuityTotal)], ["Discounts given", fmt(s.discountTotal)],
-    ["Refunds given", fmt(s.refundTotal)],
-    ["Abandoned (not counted)", fmt(s.abandonedTotal)], ["Transactions", String(s.txCount)]
-  ];
+  xReadRows = zReportRows(s);
   document.getElementById("xReadRange").textContent = fmtDateTime(Date.now());
-  document.getElementById("xReadRows").innerHTML = xReadRows.map(([l,v]) => `<tr><td>${l}</td><td class="num tabular">${v}</td></tr>`).join("");
+  document.getElementById("xReadRows").innerHTML = xReadRows.map(([l,v]) => l === REPORT_SECTION ? `<tr><th colspan="2" style="text-align:left;padding-top:18px;">${v}</th></tr>` : `<tr><td>${l}</td><td class="num tabular">${v}</td></tr>`).join("");
 }
 document.getElementById("xReadRow").querySelector(".admin-row-main").addEventListener("click", async () => {
   await pullCurrentShift();
   renderXRead(); openSheet("xReadSheet");
 });
 document.getElementById("xReadBack").addEventListener("click", () => closeSheet("xReadSheet"));
-document.getElementById("xReadCopyBtn").addEventListener("click", () => copyLines(xReadRows.map(([l,v]) => `${l}\t${v}`), "Copied, paste into Notes, email, or a spreadsheet"));
+document.getElementById("xReadCopyBtn").addEventListener("click", () => copyLines(xReadRows.map(([l,v]) => l === REPORT_SECTION ? `\n${v}` : `${l}\t${v}`), "Copied, paste into Notes, email, or a spreadsheet"));
 document.getElementById("xReadPdfBtn").addEventListener("click", () => window.print());
 
 document.getElementById("zReadBtn").addEventListener("click", async () => {
