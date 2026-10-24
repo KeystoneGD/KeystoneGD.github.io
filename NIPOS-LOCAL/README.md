@@ -53,6 +53,7 @@ The pages are the same as the hosted NIPOS (`index.html` till, `orders.html` ord
 | Add another Global Admin | `scripts/create-admin.sh <PIN> "Name"` |
 | Create $YSTEM, or change its password | `scripts/create-system.sh` |
 | Create an extra $YSTEM sign-in (e.g. 07466707188) | `scripts/create-system.sh 07466707188` |
+| Update to the latest NIPOS (pages and database) | `git pull`, then `scripts/start.sh` |
 | Bring the pages up to date with the hosted NIPOS | `python3 scripts/update-from-nipos.py ../NIPOS` (see below) |
 
 ChromeOS doesn't start Linux on its own, so after the Chromebook restarts, open the Terminal
@@ -138,6 +139,6 @@ scripts/                setup / start / stop / create-admin / create-system / ba
                         and update-from-nipos.py (copies the hosted pages in)
 ```
 
-Database changes go in a new file in `supabase/migrations/`. Apply them to the running server
-with `supabase migration up --local`, which keeps existing data. Don't use `supabase db reset`
+Database changes go in a new file in `supabase/migrations/`. `scripts/start.sh` applies any new ones
+each time it runs (`supabase migration up --local`), which keeps existing data. Don't use `supabase db reset`
 for this, because it wipes everything.
