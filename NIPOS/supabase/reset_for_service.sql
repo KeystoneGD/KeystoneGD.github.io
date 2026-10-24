@@ -73,7 +73,7 @@ begin
   end if;
   if 'logs' = any(p_parts) then
     delete from activity_log where p_venue is null or venue_id = p_venue;
-    if p_venue is null then delete from discord_queue; end if;
+    if p_venue is null then delete from discord_queue where true; end if; -- the API refuses a DELETE with no WHERE
   end if;
   if 'notifications' = any(p_parts) then
     delete from notifications where p_venue is null or venue_id = p_venue;
