@@ -1093,7 +1093,7 @@ function showOrderReady(n, sound) {
 }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261024b";
+const NIPOS_VERSION = "20261024c";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -1570,6 +1570,7 @@ function buildReceiptHTML(title, subtitle, rows, transactions){
     td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}
     table.media{border:2px solid #111;}
     table.media td{padding:12px 10px;font-size:16px;}
+    table.media tr:last-child td{border-top:2px solid #111;border-bottom:0;font-weight:800;}
     table.txns th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:#666;padding:6px 8px;border-bottom:2px solid #111;}
     table.txns td{padding:8px;font-size:12.5px;vertical-align:top;}
     table.txns tr:nth-child(even){background:#f7f7f7;}
@@ -1604,7 +1605,8 @@ function zReportRows(s){
     ["Abandoned (not counted)", m(s.abandonedTotal)], ["Transactions", String(s.txCount)],
     [REPORT_SECTION, "Media in drawer"],
     ["Cash in drawer" + (split ? " (cash sales − cash refunds)" : ""), m(s.cashTotal)],
-    ["Card machine total" + (split ? " (card sales − card refunds)" : ""), m(s.cardTotal)]
+    ["Card machine total" + (split ? " (card sales − card refunds)" : ""), m(s.cardTotal)],
+    ["Total takings (drawer + card machine)", m(s.cashTotal + s.cardTotal)]
   ];
 }
 
