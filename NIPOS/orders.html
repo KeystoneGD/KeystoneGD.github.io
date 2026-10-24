@@ -60,7 +60,10 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .station-tag{align-self:center;font-weight:800;font-size:14px;padding:6px 12px;border-radius:999px;background:var(--surface-2);color:var(--text);border:1px solid var(--border);}
 .station-tag[hidden]{display:none;}
 .status.bad{color:var(--text);background:var(--danger-soft);border:1px solid var(--danger);}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:12px;align-items:start;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));column-gap:14px;row-gap:0;grid-auto-rows:2px;margin-top:12px;align-items:start;}
+.grid > .oc{margin-bottom:14px;}
+.grid.wide > .oc-big{grid-column:span 2;}
+.grid.wide > .oc-big .oc-items{column-count:2;column-gap:28px;}
 .order-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow);}
 .order-card.flagged{border-color:var(--danger);background:var(--danger-soft);}
 .order-card.ready{border-color:var(--success);background:var(--success-soft);}
@@ -134,7 +137,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261024a">
+<link rel="stylesheet" href="nipos.css?v=20261024b">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -263,7 +266,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="db.js?v=20261024a"></script>
+<script src="db.js?v=20261024b"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -808,7 +811,21 @@ function render(){
       onCloseRefunded: () => closeRefundedOrder(o.id)
     }));
   });
+  packGrid();
 }
+// Each card takes as many 2px rows as it is tall, so short cards fill the space beside a big one
+// instead of leaving a gap the height of the biggest card in the row.
+function packGrid(){
+  const wrap = document.getElementById("grid");
+  const cols = getComputedStyle(wrap).gridTemplateColumns.split(" ").filter(Boolean).length;
+  wrap.classList.toggle("wide", cols >= 3);
+  wrap.querySelectorAll(":scope > .oc").forEach(c => { c.style.gridRowEnd = ""; });
+  wrap.querySelectorAll(":scope > .oc").forEach(c => { c.style.gridRowEnd = "span " + Math.ceil((c.getBoundingClientRect().height + 14) / 2); });
+}
+// Repack when the screen width changes (rotating a tablet, the side panel) or the fonts finish loading.
+let packWidth = 0;
+try { new ResizeObserver(es => { const w = Math.round(es[0].contentRect.width); if (w !== packWidth) { packWidth = w; clearTimeout(packGrid.t); packGrid.t = setTimeout(packGrid, 60); } }).observe(document.getElementById("grid")); } catch (e) {}
+try { document.fonts.ready.then(() => packGrid()); } catch (e) {}
 
 // Accepting tells the bar this order is being made, and quietly lets whoever took it know.
 async function acceptOrder(id){

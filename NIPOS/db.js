@@ -1089,7 +1089,7 @@ function showOrderReady(n, sound) {
 }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261024a";
+const NIPOS_VERSION = "20261024b";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -1538,7 +1538,7 @@ function applyBigText(user, venueId) {
 }
 
 function buildReceiptHTML(title, subtitle, rows, transactions){
-  const rowsHtml = rows.map(([l,v]) => `<tr><td>${l}</td><td>${v}</td></tr>`).join("");
+  const rowsHtml = rows.map(([l,v]) => l === REPORT_SECTION ? `</table><h2>${v}</h2><table class="media">` : `<tr><td>${l}</td><td>${v}</td></tr>`).join("");
   const txnHtml = (transactions && transactions.length) ? `
     <h2>Every Transaction</h2>
     <table class="txns">
@@ -1564,6 +1564,8 @@ function buildReceiptHTML(title, subtitle, rows, transactions){
     table{width:100%;border-collapse:collapse;}
     td{padding:9px 0;border-bottom:1px solid #ddd;font-size:14px;}
     td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}
+    table.media{border:2px solid #111;}
+    table.media td{padding:12px 10px;font-size:16px;}
     table.txns th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:#666;padding:6px 8px;border-bottom:2px solid #111;}
     table.txns td{padding:8px;font-size:12.5px;vertical-align:top;}
     table.txns tr:nth-child(even){background:#f7f7f7;}
@@ -1584,12 +1586,21 @@ function zReportTitle(venueName, closedAt, closedByName){
   const date = new Date(closedAt).toLocaleDateString("en-GB");
   return `Z-READ - ${venueName} - ${date} - By ${closedByName || "Unknown"}`;
 }
+// A row whose label is REPORT_SECTION starts a new titled section (its value is the title).
+const REPORT_SECTION = "\u00a7";
 function zReportRows(s){
+  const m = p => "£" + ((p || 0) / 100).toFixed(2);
+  // Z reads saved before the split was kept only have the after-refund figures.
+  const split = s.cashSales != null;
   return [
-    ["Cash", "£" + (s.cashTotal/100).toFixed(2)], ["Card", "£" + (s.cardTotal/100).toFixed(2)], ["Takings", "£" + (s.grandTotal/100).toFixed(2)],
-    ["Tips", "£" + ((s.gratuityTotal||0)/100).toFixed(2)], ["Discounts given", "£" + (s.discountTotal/100).toFixed(2)],
-    ["Refunds given", "£" + (s.refundTotal/100).toFixed(2)],
-    ["Abandoned (not counted)", "£" + ((s.abandonedTotal||0)/100).toFixed(2)], ["Transactions", String(s.txCount)]
+    ...(split ? [["Cash sales", m(s.cashSales)], ["Card sales", m(s.cardSales)]] : [["Cash", m(s.cashTotal)], ["Card", m(s.cardTotal)]]),
+    ["Takings (after refunds)", m(s.grandTotal)],
+    ["Tips", m(s.gratuityTotal)], ["Discounts given", m(s.discountTotal)],
+    ["Refunds given", m(s.refundTotal) + (split ? ` (cash ${m(s.refundCash)}, card ${m(s.refundCard)})` : "")],
+    ["Abandoned (not counted)", m(s.abandonedTotal)], ["Transactions", String(s.txCount)],
+    [REPORT_SECTION, "Media in drawer"],
+    ["Cash in drawer" + (split ? " (cash sales − cash refunds)" : ""), m(s.cashTotal)],
+    ["Card machine total" + (split ? " (card sales − card refunds)" : ""), m(s.cardTotal)]
   ];
 }
 
@@ -1674,12 +1685,14 @@ function computeSalesSummary(sales, refunds) {
   refunds = refunds || [];
   const refundCash = refunds.filter(r => (r.method || "card") === "cash").reduce((s, r) => s + r.pence, 0);
   const refundCard = refunds.filter(r => (r.method || "card") === "card").reduce((s, r) => s + r.pence, 0);
-  const cashTotal = sales.filter(s => (s.method || "card") === "cash").reduce((s, x) => s + x.total, 0) - refundCash;
-  const cardTotal = sales.filter(s => (s.method || "card") === "card").reduce((s, x) => s + x.total, 0) - refundCard;
+  const cashSales = sales.filter(s => (s.method || "card") === "cash").reduce((s, x) => s + x.total, 0);
+  const cardSales = sales.filter(s => (s.method || "card") === "card").reduce((s, x) => s + x.total, 0);
+  // cashTotal / cardTotal stay net of refunds: what should be in the drawer and on the card machine.
+  const cashTotal = cashSales - refundCash, cardTotal = cardSales - refundCard;
   const grandTotal = cashTotal + cardTotal;
   const discountTotal = sales.reduce((s, x) => s + (x.discountAmount || 0), 0);
   const txCount = sales.length;
-  return { cashTotal, cardTotal, grandTotal, discountTotal, refundTotal: refundCash + refundCard, txCount, avgOrderPence: txCount ? Math.round(grandTotal / txCount) : 0 };
+  return { cashTotal, cardTotal, cashSales, cardSales, refundCash, refundCard, grandTotal, discountTotal, refundTotal: refundCash + refundCard, txCount, avgOrderPence: txCount ? Math.round(grandTotal / txCount) : 0 };
 }
 
 function computeBestSellers(sales, limit, refunds) {
@@ -1926,7 +1939,7 @@ function buildOrderCard(o, opts) {
   // out can mark it delivered, and nothing else can be done to it here - like a refund in progress.
   const handedToTill = state === "ready" && !opts.onDeliver;
   const card = document.createElement("article");
-  card.className = "oc oc-state-" + (state === "refund" ? "problem" : state === "refunding" ? "refund" : state) + (opts.isNext ? " oc-next" : "");
+  card.className = "oc oc-state-" + (state === "refund" ? "problem" : state === "refunding" ? "refund" : state) + (opts.isNext ? " oc-next" : "") + (o.items.length > 8 ? " oc-big" : "");
   card.setAttribute("aria-label", `${orderLabel(o)}${orderIsLate(o) ? ", late" : ""}, ${{ refund: "needs refund", refunding: "refund in progress", problem: "problem", ready: "ready to take out", progress: "in progress", new: "new order" }[state]}`);
   const badge = state === "refund" ? `<span class="state-badge problem">${icon("alert")}Needs refund</span>`
     : state === "refunding" ? `<span class="state-badge progress">${icon("clock")}Refund in progress</span>`
@@ -1936,7 +1949,7 @@ function buildOrderCard(o, opts) {
     : `<span class="state-badge">${icon("bell")}New order</span>`;
   const items = o.items.map(i => i.substituted
     ? `${i.qty}× ${esc(i.name)} <span class="oc-muted">(free, instead of ${esc(i.subFor)})</span>`
-    : `${i.qty}× ${esc(i.name)}`).join("<br>");
+    : `${i.qty}× ${esc(i.name)}`).map(t => `<span class="oc-line">${t}</span>`).join("");
   const what = `<strong>${esc(o.flagItem)}: ${esc((o.flagReason || "").toLowerCase())}.</strong>`;
   const flagText = !o.flagged ? ""
     : refund
