@@ -1,6 +1,6 @@
 -- =====================================================================================================
 -- NIPOS: security fix, device controls and the Discord queue (22 October 2026).
--- Run once in Supabase > SQL Editor, after the site is on version 20261023h or later.
+-- Run once in Supabase > SQL Editor, after the site is on version 20261024a or later.
 -- Nothing here deletes data except the readable PIN copies in step 5 (the sign-in system keeps the real ones).
 -- =====================================================================================================
 
