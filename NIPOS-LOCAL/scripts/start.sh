@@ -11,6 +11,9 @@ docker info >/dev/null 2>&1 || die "Docker isn't running (or you need to reopen 
 
 echo "==> Starting Supabase"
 supabase start >/dev/null || supabase start
+# Applies any database changes added since this server was set up (after a git pull). Keeps all data.
+echo "==> Applying any new database changes"
+supabase migration up --local || echo "WARNING: couldn't apply new database changes - see the message above"
 load_stack_env
 
 # This server's push keys: the private half goes in app_secrets for the send-push function, the
