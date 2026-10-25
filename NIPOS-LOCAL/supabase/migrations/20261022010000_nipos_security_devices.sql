@@ -39,7 +39,7 @@ grant delete on public.devices to authenticated;
 create table if not exists public.device_commands (
   id text primary key, ts bigint not null,
   target_type text not null check (target_type in ('device', 'user')), target_id text not null,
-  action text not null check (action in ('refresh', 'signout')), data jsonb not null default '{}'::jsonb
+  action text not null check (action in ('refresh', 'signout', 'reset')), data jsonb not null default '{}'::jsonb
 );
 create index if not exists device_commands_target on public.device_commands (target_type, target_id, ts);
 alter table public.device_commands enable row level security;
