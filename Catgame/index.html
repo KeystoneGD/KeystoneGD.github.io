@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ece8f3">
+<title>Whisker Grid</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+/* Layout: one centred play column. Header, mode picker, status strip, square board, tool row, rules underneath. */
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#ece8f3; --surface:#f9f7fc; --ink:#2a2135; --muted:#6b6178; --line:rgba(42,33,53,.12);
+  --accent:#e8a33a; --accent-ink:#2a2135; --focus:#6b4fd8; --bad:#d6455d; --good:#3a8f62;
+  --thick:#2a2135; --thin:rgba(42,33,53,.16);
+  --cat:#2a2135; --cat-eye:#f2b33d; --cat-pupil:#2a2135; --cat-nose:#f08aa0; --paw:rgba(42,33,53,.34);
+  --r0:#f6b7ae; --r1:#f8d48a; --r2:#b7e0a5; --r3:#a5d6e6; --r4:#c8b7ef; --r5:#f1b4d6; --r6:#ffcc9e; --r7:#b2c5f3; --r8:#d6e39c;
+  --display:'Fredoka', ui-rounded, 'Segoe UI', system-ui, sans-serif;
+  --body:'Nunito', 'Segoe UI', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#1a1521; --surface:#241d2d; --ink:#efe9f6; --muted:#a99eb8; --line:rgba(255,255,255,.1);
+  --accent:#f0b04c; --accent-ink:#1a1521; --focus:#a995ff; --bad:#ff6b82; --good:#6cc794;
+  --thick:#0c0910; --thin:rgba(0,0,0,.32);
+  --cat:#f7f2fb; --cat-eye:#e9a632; --cat-pupil:#1a1521; --cat-nose:#f08aa0; --paw:rgba(255,255,255,.42);
+  --r0:#8a3f3a; --r1:#806a22; --r2:#2f6e3c; --r3:#1f6676; --r4:#5a4590; --r5:#86386b; --r6:#8f5524; --r7:#34508f; --r8:#4f6b1e;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#1a1521; --surface:#241d2d; --ink:#efe9f6; --muted:#a99eb8; --line:rgba(255,255,255,.1);
+  --accent:#f0b04c; --accent-ink:#1a1521; --focus:#a995ff; --bad:#ff6b82; --good:#6cc794;
+  --thick:#0c0910; --thin:rgba(0,0,0,.32);
+  --cat:#f7f2fb; --cat-eye:#e9a632; --cat-pupil:#1a1521; --cat-nose:#f08aa0; --paw:rgba(255,255,255,.42);
+  --r0:#8a3f3a; --r1:#806a22; --r2:#2f6e3c; --r3:#1f6676; --r4:#5a4590; --r5:#86386b; --r6:#8f5524; --r7:#34508f; --r8:#4f6b1e;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));
+  -webkit-tap-highlight-color:transparent}
+.app{max-width:560px;margin:0 auto;padding-block:14px 40px;display:flex;flex-direction:column;gap:14px}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.logo{width:40px;height:40px;flex:none}
+h1{font-family:var(--display);font-weight:700;font-size:1.75rem;line-height:1;margin:0;letter-spacing:-.01em}
+#sub{margin:3px 0 0;color:var(--muted);font-size:.85rem;font-weight:600}
+
+.modes{display:flex;gap:4px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.modes button{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:600 .95rem var(--display);
+  padding:8px 4px;border-radius:10px;cursor:pointer;position:relative}
+.modes button{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15;font-size:.88rem}
+.modes small{font:600 .68rem var(--body);opacity:.7;font-variant-numeric:tabular-nums}
+.hearts{display:flex;gap:3px;height:1.35rem;align-items:center}
+.hearts svg{width:20px;height:20px;fill:var(--bad);transition:transform .2s}
+.hearts svg.lost{fill:var(--line)}
+.hearts svg.drop{animation:shake .4s}
+.modes button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.modes button:not([aria-pressed="true"]):hover{background:var(--line)}
+.modes .done::after{content:"";position:absolute;top:6px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--good)}
+
+.status{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.toggles{display:flex;flex-direction:column;gap:6px;align-items:center}
+.status div{display:flex;flex-direction:column;align-items:center;gap:0}
+.lbl{font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:800}
+.status b{font:600 1.35rem var(--display);font-variant-numeric:tabular-nums}
+
+.board-wrap{position:relative;display:flex;justify-content:center}
+.board{--n:8;width:min(100%, 540px, max(280px, calc(100vh - 330px)));
+  width:min(100%, 540px, max(280px, calc(100svh - 330px)));
+  aspect-ratio:1/1;max-width:100%;display:grid;grid-template-columns:repeat(var(--n),1fr);grid-template-rows:repeat(var(--n),1fr);
+  border:3px solid var(--thick);border-radius:12px;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;
+  outline:none;box-shadow:0 10px 30px -14px rgba(42,33,53,.45)}
+.board:focus-visible{box-shadow:0 0 0 3px var(--focus)}
+.cell{position:relative;display:grid;place-items:center;border:1px solid var(--thin);cursor:pointer;min-width:0;min-height:0}
+.cell.bt{border-top:2.5px solid var(--thick)} .cell.bb{border-bottom:2.5px solid var(--thick)}
+.cell.bl{border-left:2.5px solid var(--thick)} .cell.br{border-right:2.5px solid var(--thick)}
+.cell svg{grid-area:1/1;display:none;pointer-events:none}
+.cell .cat{width:80%;height:80%}
+.cell .paw{width:34%;height:34%}
+.cell[data-s="1"] .paw{display:block}
+.cell[data-s="2"] .cat{display:block;animation:pop .2s ease-out}
+.cell.bad::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(45deg, color-mix(in srgb, var(--bad) 45%, transparent) 0 5px, transparent 5px 10px)}
+.cell.bad .cat{animation:shake .3s}
+.board:focus-visible .cell.cursor{box-shadow:inset 0 0 0 3px var(--focus)}
+.cell.flash{animation:flash .9s ease-in-out 2}
+.board.won .cell[data-s="2"] .cat{animation:hop .55s ease-in-out calc(var(--i, 0) * 70ms) 3}
+.board.won .cell[data-s="1"] .paw{opacity:.35}
+@keyframes pop{from{transform:scale(.4)}to{transform:scale(1)}}
+@keyframes shake{25%{transform:translateX(-8%)}75%{transform:translateX(8%)}}
+@keyframes hop{50%{transform:translateY(-16%) rotate(-6deg)}}
+@keyframes flash{50%{box-shadow:inset 0 0 0 4px var(--accent)}}
+#loading{position:absolute;inset:0;display:grid;place-items:center;font:600 1.1rem var(--display);color:var(--muted)}
+
+.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tools button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 4px;border-radius:12px;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);font:700 .82rem var(--body);cursor:pointer}
+.tools button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tools button:hover:not(:disabled){border-color:var(--ink)}
+.tools button:disabled{opacity:.4;cursor:default}
+.tools .primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+button:focus-visible,input:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+.toggle{display:flex;align-items:center;gap:10px;font-weight:600;font-size:.92rem;cursor:pointer;justify-content:center;color:var(--muted)}
+.toggle input{width:18px;height:18px;accent-color:var(--focus)}
+
+.rules{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+.rules h2{font:600 1.15rem var(--display);margin:0 0 8px}
+.rules ol{margin:0 0 10px;padding-left:1.2em;display:grid;gap:4px}
+.rules p{margin:0;color:var(--muted);font-size:.9rem;max-width:62ch}
+.rules kbd{font:700 .78rem var(--body);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--bg)}
+.mini{display:inline-block;width:1.1em;height:1.1em;vertical-align:-.2em}
+
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translate(-50%,20px);opacity:0;
+  background:var(--ink);color:var(--bg);font-weight:700;padding:10px 16px;border-radius:12px;transition:.25s;pointer-events:none;
+  max-width:calc(100% - 32px);text-align:center;z-index:20}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+.overlay{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:20px;background:rgba(20,15,26,.45);backdrop-filter:blur(3px)}
+.card{background:var(--surface);color:var(--ink);border-radius:20px;padding:24px 22px;width:min(100%,360px);text-align:center;
+  box-shadow:0 20px 50px -20px rgba(0,0,0,.5);animation:pop .25s ease-out}
+.card svg{width:72px;height:72px}
+.card h2{font:700 1.6rem var(--display);margin:6px 0 4px}
+.card p{margin:0 0 14px;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:18px}
+.stats b{display:block;font:600 1.3rem var(--display);font-variant-numeric:tabular-nums}
+.card .row{display:flex;gap:8px}
+.card button{flex:1;padding:11px 8px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);font:700 .95rem var(--body);cursor:pointer}
+.card button.go{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+
+@media (max-width:420px){ h1{font-size:1.5rem} .status b{font-size:1.15rem} }
+@media (prefers-reduced-motion: reduce){ *,*::before,*::after{animation:none!important;transition:none!important} }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="cat" viewBox="0 0 100 100">
+      <path d="M6 60 L30 64 M6 72 L30 70 M94 60 L70 64 M94 72 L70 70" stroke="var(--cat)" stroke-width="3" stroke-linecap="round"/>
+      <path d="M17 44 L20 9 L42 27 Q50 25 58 27 L80 9 L83 44 Q91 58 83 73 Q71 91 50 91 Q29 91 17 73 Q9 58 17 44 Z" fill="var(--cat)"/>
+      <ellipse cx="36" cy="54" rx="8" ry="9" fill="var(--cat-eye)"/>
+      <ellipse cx="64" cy="54" rx="8" ry="9" fill="var(--cat-eye)"/>
+      <ellipse cx="36" cy="55" rx="2.6" ry="6.5" fill="var(--cat-pupil)"/>
+      <ellipse cx="64" cy="55" rx="2.6" ry="6.5" fill="var(--cat-pupil)"/>
+      <path d="M45 68 L55 68 L50 74 Z" fill="var(--cat-nose)"/>
+    </symbol>
+    <symbol id="heart" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.2 0 3.6 1.2 5.3 3.1 1.7-1.9 3.1-3.1 5.3-3.1 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"/></symbol>
+    <symbol id="paw" viewBox="0 0 100 100">
+      <ellipse cx="50" cy="66" rx="20" ry="17" fill="var(--paw)"/>
+      <circle cx="24" cy="42" r="9" fill="var(--paw)"/>
+      <circle cx="40" cy="26" r="9" fill="var(--paw)"/>
+      <circle cx="60" cy="26" r="9" fill="var(--paw)"/>
+      <circle cx="76" cy="42" r="9" fill="var(--paw)"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg class="logo" aria-hidden="true"><use href="#cat"/></svg>
+      <div><h1>Whisker Grid</h1><p id="sub">Loading…</p></div>
+    </div>
+  </header>
+
+  <nav class="modes" id="modes" aria-label="Choose a puzzle">
+    <button class="daily" data-mode="daily" aria-pressed="false">Daily</button>
+    <button data-mode="easy" aria-pressed="false">Easy<small>6×6</small></button>
+    <button data-mode="normal" aria-pressed="false">Normal<small>7×7</small></button>
+    <button data-mode="hard" aria-pressed="false">Hard<small>8×8</small></button>
+    <button data-mode="expert" aria-pressed="false">Expert<small>9×9</small></button>
+  </nav>
+
+  <div class="status">
+    <div><span class="lbl">Time</span><b id="time">0:00</b></div>
+    <div><span class="lbl">Cats</span><b id="count">0 / 0</b></div>
+    <div><span class="lbl">Hearts</span><b id="hearts" class="hearts" aria-label="3 hearts left"></b></div>
+    <div><span class="lbl">Hints</span><b id="hints">0</b></div>
+  </div>
+
+  <div class="board-wrap">
+    <div id="board" class="board" role="grid" tabindex="0" aria-label="Puzzle board. Arrow keys move, Space cycles a square, X marks, C places a cat."></div>
+    <div id="loading" hidden>Herding cats…</div>
+  </div>
+
+  <div class="tools">
+    <button id="undo" type="button"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Undo</button>
+    <button id="hint" type="button"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>Hint</button>
+    <button id="clear" type="button"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/></svg>Clear</button>
+    <button id="new" class="primary" type="button"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg><span id="newLabel">Restart</span></button>
+  </div>
+
+  <div class="toggles">
+    <label class="toggle" for="autox"><input type="checkbox" id="autox"> Assist mode: auto-mark squares a cat blocks</label>
+  </div>
+
+  <section class="rules">
+    <h2>How to play</h2>
+    <ol>
+      <li>Put exactly one cat in every row and every column.</li>
+      <li>Each coloured patch gets exactly one cat.</li>
+      <li>Cats won't nap touching each other, not even at the corners.</li>
+    </ol>
+    <p>Tap a square once to leave a paw mark <svg class="mini" aria-hidden="true"><use href="#paw"/></svg> (no cat here), twice for a cat, three times to clear it. On a PC, right-click to drop a cat straight in. Drag across squares to paw-mark lots at once. A cat in the wrong spot costs a heart; lose all three and the level starts over. On a keyboard, use the arrows, <kbd>Space</kbd>, <kbd>X</kbd>, <kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Every puzzle has one solution and can be solved by logic alone.</p>
+  </section>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<div id="lose" class="overlay" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="loseTitle">
+    <svg aria-hidden="true"><use href="#cat"/></svg>
+    <h2 id="loseTitle">Out of hearts</h2>
+    <p>Three cats ended up in the wrong spots. Give this level another go.</p>
+    <div class="row"><button id="lRetry" class="go" type="button">Try again</button></div>
+  </div>
+</div>
+
+<div id="win" class="overlay" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+    <svg aria-hidden="true"><use href="#cat"/></svg>
+    <h2 id="winTitle">Purr-fect!</h2>
+    <p id="winMsg">Every cat found a sunny spot.</p>
+    <div class="stats">
+      <div><span class="lbl">Time</span><b id="wTime">0:00</b></div>
+      <div><span class="lbl">Best</span><b id="wBest">–</b></div>
+      <div><span class="lbl">Hearts</span><b id="wHints">3</b></div>
+    </div>
+    <div class="row">
+      <button id="wClose" type="button">See board</button>
+      <button id="wNext" class="go" type="button">Next puzzle</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  /* ---------- storage (best-effort) ---------- */
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+  const SAVE_KEY = 'whiskergrid.saves.v1', BEST_KEY = 'whiskergrid.best.v1', DAILY_KEY = 'whiskergrid.daily.v1', PREF_KEY = 'whiskergrid.prefs.v1';
+
+  /* ---------- seeded randomness ---------- */
+  function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function shuffle(a, rng) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  const range = n => Array.from({ length: n }, (_, i) => i);
+  const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+  /* ---------- puzzle generator ---------- */
+  function randomSolution(n, rng) {
+    const sol = new Array(n), used = new Array(n).fill(false);
+    (function bt(r) {
+      if (r === n) return true;
+      for (const c of shuffle(range(n), rng)) {
+        if (used[c] || (r > 0 && Math.abs(sol[r - 1] - c) < 2)) continue;
+        used[c] = true; sol[r] = c;
+        if (bt(r + 1)) return true;
+        used[c] = false;
+      }
+      return false;
+    })(0);
+    return sol;
+  }
+
+  function growRegions(n, sol, rng) {
+    const reg = range(n).map(() => new Array(n).fill(-1));
+    for (let r = 0; r < n; r++) reg[r][sol[r]] = r;
+    const weight = range(n).map(() => 0.25 + rng() * rng() * 3);
+    let left = n * n - n;
+    while (left > 0) {
+      const cand = []; let total = 0;
+      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        if (reg[r][c] !== -1) continue;
+        const seen = new Set();
+        for (const [dr, dc] of DIRS) {
+          const nr = r + dr, nc = c + dc;
+          if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue;
+          const id = reg[nr][nc];
+          if (id >= 0 && !seen.has(id)) { seen.add(id); cand.push([r, c, id]); total += weight[id]; }
+        }
+      }
+      let x = rng() * total, pick = cand[cand.length - 1];
+      for (const cd of cand) { x -= weight[cd[2]]; if (x <= 0) { pick = cd; break; } }
+      reg[pick[0]][pick[1]] = pick[2]; left--;
+    }
+    return reg;
+  }
+
+  function solve(n, reg, limit) {
+    const sols = [], colUsed = new Array(n).fill(false), regUsed = new Array(n).fill(false), cur = new Array(n);
+    (function bt(r) {
+      if (sols.length >= limit) return;
+      if (r === n) { sols.push(cur.slice()); return; }
+      for (let c = 0; c < n; c++) {
+        const id = reg[r][c];
+        if (colUsed[c] || regUsed[id] || (r > 0 && Math.abs(cur[r - 1] - c) < 2)) continue;
+        colUsed[c] = regUsed[id] = true; cur[r] = c;
+        bt(r + 1);
+        colUsed[c] = regUsed[id] = false;
+      }
+    })(0);
+    return sols;
+  }
+
+  function stillConnected(n, reg, id, rx, cx) {
+    const cells = [];
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (reg[r][c] === id && !(r === rx && c === cx)) cells.push([r, c]);
+    if (!cells.length) return false;
+    const seen = new Set([cells[0][0] * n + cells[0][1]]), q = [cells[0]];
+    while (q.length) {
+      const [r, c] = q.pop();
+      for (const [dr, dc] of DIRS) {
+        const nr = r + dr, nc = c + dc, k = nr * n + nc;
+        if (nr < 0 || nc < 0 || nr >= n || nc >= n || seen.has(k)) continue;
+        if (reg[nr][nc] !== id || (nr === rx && nc === cx)) continue;
+        seen.add(k); q.push([nr, nc]);
+      }
+    }
+    return seen.size === cells.length;
+  }
+
+  function generate(n, seed) {
+    const rng = mulberry32(seed);
+    for (let attempt = 0; attempt < 400; attempt++) {
+      const sol = randomSolution(n, rng);
+      const reg = growRegions(n, sol, rng);
+      for (let fix = 0; fix < 60; fix++) {
+        const sols = solve(n, reg, 2);
+        if (sols.length === 1) return { n, sol, reg, colors: shuffle(range(9), rng) };
+        const alt = sols.find(s => s.some((c, r) => c !== sol[r]));
+        const cells = shuffle(alt.map((c, r) => [r, c]).filter(([r, c]) => sol[r] !== c), rng);
+        let moved = false;
+        for (const [r, c] of cells) {
+          const id = reg[r][c];
+          if (r === id && sol[id] === c) continue; // never move a region's own cat square
+          const nbs = shuffle([...new Set(DIRS.map(([dr, dc]) => [r + dr, c + dc])
+            .filter(([a, b]) => a >= 0 && b >= 0 && a < n && b < n)
+            .map(([a, b]) => reg[a][b]).filter(x => x !== id))], rng);
+          if (!nbs.length || !stillConnected(n, reg, id, r, c)) continue;
+          reg[r][c] = nbs[0]; moved = true; break;
+        }
+        if (!moved) break;
+      }
+    }
+    return null;
+  }
+
+  /* ---------- game state ---------- */
+  const el = id => document.getElementById(id);
+  const boardEl = el('board');
+  const SIZES = { daily: 8, easy: 6, normal: 7, hard: 8, expert: 9 };
+  const NAMES = { easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert' };
+  const MAX_HEARTS = 3;
+  const LEVEL_KEY = 'whiskergrid.levels.v1';
+  let S = null;            // current game
+  let cellEls = [];
+  let saves = store.get(SAVE_KEY, {});
+  let levels = Object.assign({ easy: 1, normal: 1, hard: 1, expert: 1 }, store.get(LEVEL_KEY, {}));
+  let prefs = Object.assign({ autoX: false }, store.get(PREF_KEY, {}));
+  el('autox').checked = !!prefs.autoX;
+
+  function todayKey() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function fmt(ms) { const s = Math.floor(ms / 1000); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = String(s % 60).padStart(2, '0'); return h ? h + ':' + String(m).padStart(2, '0') + ':' + ss : m + ':' + ss; }
+
+  function elapsed() { return S ? S.elapsed + (S.runningSince ? Date.now() - S.runningSince : 0) : 0; }
+  function startClock() { if (S && !S.solved && !S.lost && !S.runningSince && !document.hidden) S.runningSince = Date.now(); }
+  function pauseClock() { if (S && S.runningSince) { S.elapsed += Date.now() - S.runningSince; S.runningSince = 0; } }
+
+  function persist() {
+    if (!S) return;
+    saves[S.mode] = { seed: S.seed, level: S.level, date: S.date, board: S.board, elapsed: elapsed(), hints: S.hints, hearts: S.hearts, solved: S.solved, started: S.started };
+    store.set(SAVE_KEY, saves);
+  }
+
+  function loadMode(mode) {
+    pauseClock(); persist();
+    store.set('whiskergrid.last.v1', mode);
+    const n = SIZES[mode];
+    const today = todayKey();
+    const level = mode === 'daily' ? 0 : levels[mode];
+    let saved = saves[mode];
+    if (saved && (mode === 'daily' ? saved.date !== today : saved.level !== level)) saved = null;
+    const seed = mode === 'daily' ? hashStr('whisker-daily-' + today) : hashStr('whisker-' + mode + '-' + level);
+
+    el('lose').hidden = true; el('win').hidden = true;
+    el('loading').hidden = false; boardEl.style.visibility = 'hidden';
+    setTimeout(() => {
+      let p = generate(n, seed), s2 = seed;
+      while (!p) { s2 = (s2 + 1) >>> 0; p = generate(n, s2); }
+      S = {
+        mode, n, level, seed: s2, date: today, puzzle: p,
+        board: saved && saved.board && saved.board.length === n ? saved.board : emptyBoard(n),
+        elapsed: saved ? saved.elapsed || 0 : 0, runningSince: 0, hints: saved ? saved.hints || 0 : 0,
+        hearts: saved && saved.hearts > 0 ? saved.hearts : MAX_HEARTS,
+        solved: saved ? !!saved.solved : false, started: saved ? !!saved.started : false, lost: false,
+        undo: [], cursor: { r: 0, c: 0 }
+      };
+      buildBoard();
+      el('loading').hidden = true; boardEl.style.visibility = '';
+      if (S.started && !S.solved) startClock();
+      persist(); refresh();
+    }, 30);
+    updateModeButtons(mode);
+  }
+
+  function emptyBoard(n) { return range(n).map(() => new Array(n).fill(0)); }
+
+  function updateModeButtons(mode) {
+    const daily = store.get(DAILY_KEY, {});
+    document.querySelectorAll('#modes button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
+      b.classList.toggle('done', b.dataset.mode === 'daily' && !!daily[todayKey()]);
+    });
+  }
+
+  function buildBoard() {
+    const { n, puzzle: { reg, colors } } = S;
+    boardEl.style.setProperty('--n', n);
+    boardEl.innerHTML = '';
+    boardEl.classList.remove('won');
+    cellEls = [];
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      const d = document.createElement('div');
+      const id = reg[r][c];
+      d.className = 'cell';
+      d.style.background = 'var(--r' + colors[id] + ')';
+      if (r === 0 || reg[r - 1][c] !== id) d.classList.add('bt');
+      if (r === n - 1 || reg[r + 1][c] !== id) d.classList.add('bb');
+      if (c === 0 || reg[r][c - 1] !== id) d.classList.add('bl');
+      if (c === n - 1 || reg[r][c + 1] !== id) d.classList.add('br');
+      if (r === 0) d.style.borderTopWidth = '0'; if (c === 0) d.style.borderLeftWidth = '0';
+      if (r === n - 1) d.style.borderBottomWidth = '0'; if (c === n - 1) d.style.borderRightWidth = '0';
+      d.dataset.r = r; d.dataset.c = c;
+      d.setAttribute('role', 'gridcell');
+      d.innerHTML = '<svg class="cat"><use href="#cat"/></svg><svg class="paw"><use href="#paw"/></svg>';
+      boardEl.appendChild(d); cellEls.push(d);
+    }
+    el('sub').textContent = S.mode === 'daily'
+      ? 'Daily puzzle · ' + new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+      : NAMES[S.mode] + ' · Level ' + S.level;
+  }
+
+  function conflicts() {
+    const { n, board, puzzle: { reg, sol } } = S;
+    const cats = [];
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (board[r][c] === 2) cats.push([r, c]);
+    const bad = new Set();
+    for (let i = 0; i < cats.length; i++) for (let j = i + 1; j < cats.length; j++) {
+      const [a, b] = cats[i], [x, y] = cats[j];
+      if (a === x || b === y || reg[a][b] === reg[x][y] || (Math.abs(a - x) <= 1 && Math.abs(b - y) <= 1)) { bad.add(a * n + b); bad.add(x * n + y); }
+    }
+    for (const [r, c] of cats) if (sol[r] !== c) bad.add(r * n + c);
+    return { cats, bad };
+  }
+
+  function renderHearts(dropIndex) {
+    const h = el('hearts');
+    let html = '';
+    for (let i = 0; i < MAX_HEARTS; i++) html += '<svg class="' + (i >= S.hearts ? 'lost' : '') + (i === dropIndex ? ' drop' : '') + '"><use href="#heart"/></svg>';
+    h.innerHTML = html;
+    h.setAttribute('aria-label', S.hearts + (S.hearts === 1 ? ' heart' : ' hearts') + ' left');
+  }
+
+  function refresh(dropIndex) {
+    if (!S) return;
+    const { n, board } = S;
+    const { cats, bad } = conflicts();
+    let order = 0;
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      const d = cellEls[r * n + c], s = board[r][c];
+      if (d.dataset.s !== String(s)) d.dataset.s = s;
+      d.classList.toggle('bad', bad.has(r * n + c));
+      d.classList.toggle('cursor', S.cursor.r === r && S.cursor.c === c);
+      if (s === 2) d.style.setProperty('--i', order++);
+      d.setAttribute('aria-label', 'Row ' + (r + 1) + ', column ' + (c + 1) + ': ' + (s === 2 ? 'cat' : s === 1 ? 'paw mark' : 'empty'));
+    }
+    el('count').textContent = cats.length + ' / ' + n;
+    el('hints').textContent = S.hints;
+    renderHearts(dropIndex);
+    el('time').textContent = fmt(elapsed());
+    const locked = S.solved || S.lost;
+    el('undo').disabled = !S.undo.length || locked;
+    el('hint').disabled = locked;
+    el('clear').disabled = locked;
+    boardEl.classList.toggle('won', S.solved);
+    return { cats, bad };
+  }
+
+  function snapshot() { S.undo.push(S.board.map(row => row.slice())); if (S.undo.length > 300) S.undo.shift(); }
+
+  function autoMark(r, c) {
+    const { n, board, puzzle: { reg } } = S, id = reg[r][c];
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      if (i === r && j === c) continue;
+      const blocked = i === r || j === c || reg[i][j] === id || (Math.abs(i - r) <= 1 && Math.abs(j - c) <= 1);
+      if (blocked && board[i][j] === 0) board[i][j] = 1;
+    }
+  }
+
+  // A wrong cat shows red, costs a heart, then turns into a paw mark.
+  function wrongCat(r, c) {
+    S.hearts = Math.max(0, S.hearts - 1);
+    const dropped = S.hearts;
+    refresh(dropped);
+    toast(S.hearts ? 'Wrong spot. No cat goes there.' : 'Out of hearts.');
+    const keep = S;
+    setTimeout(() => {
+      if (S !== keep) return;
+      if (S.board[r][c] === 2) S.board[r][c] = 1;
+      if (S.hearts === 0) lose();
+      refresh(); persist();
+    }, 650);
+  }
+
+  function setCell(r, c, v) {
+    S.board[r][c] = v;
+    if (v === 2 && S.puzzle.sol[r] !== c) { wrongCat(r, c); return; }
+    if (v === 2 && prefs.autoX) autoMark(r, c);
+  }
+
+  function afterMove() {
+    if (!S.started) S.started = true;
+    startClock();
+    const { cats, bad } = refresh();
+    if (cats.length === S.n && bad.size === 0) win();
+    persist();
+  }
+
+  const locked = () => !S || S.solved || S.lost || S.hearts === 0;
+  function cycle(r, c) { if (locked()) return; snapshot(); setCell(r, c, (S.board[r][c] + 1) % 3); afterMove(); }
+  function setTo(r, c, v) { if (locked()) return; snapshot(); setCell(r, c, S.board[r][c] === v ? 0 : v); afterMove(); }
+
+  function restart() {
+    S.board = emptyBoard(S.n); S.undo = []; S.elapsed = 0; S.runningSince = 0;
+    S.hints = 0; S.hearts = MAX_HEARTS; S.started = false; S.solved = false; S.lost = false;
+    el('lose').hidden = true;
+    refresh(); persist();
+  }
+
+  function lose() {
+    pauseClock();
+    S.lost = true;
+    persist();
+    setTimeout(() => { el('lose').hidden = false; el('lRetry').focus(); }, 300);
+  }
+
+  function win() {
+    pauseClock();
+    S.solved = true;
+    const t = S.elapsed;
+    const best = store.get(BEST_KEY, {});
+    const key = S.mode;
+    const isBest = !best[key] || t < best[key];
+    if (isBest) { best[key] = t; store.set(BEST_KEY, best); }
+    if (S.mode === 'daily') { const d = store.get(DAILY_KEY, {}); d[todayKey()] = t; store.set(DAILY_KEY, d); updateModeButtons('daily'); }
+    else { levels[S.mode] = S.level + 1; store.set(LEVEL_KEY, levels); }
+    refresh(); persist();
+    el('wTime').textContent = fmt(t);
+    el('wBest').textContent = fmt(best[key]);
+    el('wHints').textContent = S.hearts + ' / ' + MAX_HEARTS;
+    el('winTitle').textContent = S.hearts === MAX_HEARTS && S.hints === 0 ? 'Flawless!' : isBest ? 'New best time!' : 'Purr-fect!';
+    el('winMsg').textContent = S.mode === 'daily' ? "Today's puzzle is done. Come back tomorrow for a new one." : NAMES[S.mode] + ' level ' + S.level + ' complete.';
+    el('wNext').textContent = S.mode === 'daily' ? 'Play levels' : 'Next level';
+    setTimeout(() => { el('win').hidden = false; el('wNext').focus(); }, 900);
+  }
+
+  /* ---------- hints ---------- */
+  let toastTimer;
+  function toast(msg) { const t = el('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2400); }
+  function flash(r, c) { const d = cellEls[r * S.n + c]; d.classList.remove('flash'); void d.offsetWidth; d.classList.add('flash'); setTimeout(() => d.classList.remove('flash'), 1900); }
+
+  function hint() {
+    if (locked()) return;
+    const { n, board, puzzle: { sol } } = S;
+    for (let r = 0; r < n; r++) if (board[r][sol[r]] === 1) {
+      S.hints++; snapshot(); board[r][sol[r]] = 0; flash(r, sol[r]); toast('A paw mark was covering a spot a cat needs.'); refresh(); persist(); return;
+    }
+    const open = range(n).filter(r => board[r][sol[r]] !== 2);
+    if (!open.length) return;
+    const r = open[Math.floor(Math.random() * open.length)];
+    S.hints++; snapshot(); setCell(r, sol[r], 2); flash(r, sol[r]); toast('Here is one cat for free.'); afterMove();
+  }
+
+  /* ---------- pointer input: tap to cycle, right-click for a cat, drag to paint paw marks ---------- */
+  let drag = null;
+  function cellAt(x, y) { const t = document.elementFromPoint(x, y); const d = t && t.closest ? t.closest('.cell') : null; return d && boardEl.contains(d) ? d : null; }
+  function applyDrag(r, c) {
+    const s = S.board[r][c];
+    if (drag.mode === 'mark' && s === 0) S.board[r][c] = 1;
+    else if (drag.mode === 'erase' && s === 1) S.board[r][c] = 0;
+  }
+  boardEl.addEventListener('pointerdown', e => {
+    if (locked() || (e.button !== undefined && e.button > 0)) return;
+    const d = e.target.closest('.cell'); if (!d) return;
+    e.preventDefault();
+    try { boardEl.setPointerCapture(e.pointerId); } catch (err) {}
+    const r = +d.dataset.r, c = +d.dataset.c;
+    S.cursor = { r, c };
+    drag = { id: e.pointerId, r, c, start: S.board[r][c], moved: false, mode: null, seen: new Set([r * S.n + c]) };
+  });
+  boardEl.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id || locked()) return;
+    const d = cellAt(e.clientX, e.clientY); if (!d) return;
+    const r = +d.dataset.r, c = +d.dataset.c;
+    if (drag.lr === undefined) { drag.lr = drag.r; drag.lc = drag.c; }
+    if (r === drag.lr && c === drag.lc) return;
+    if (!drag.moved) {
+      drag.moved = true;
+      drag.mode = drag.start === 0 ? 'mark' : drag.start === 1 ? 'erase' : null;
+      if (drag.mode) { snapshot(); applyDrag(drag.r, drag.c); }
+    }
+    // walk every square between the last one and this one, so fast swipes don't skip any
+    const steps = Math.max(Math.abs(r - drag.lr), Math.abs(c - drag.lc));
+    for (let i = 1; i <= steps; i++) {
+      const rr = Math.round(drag.lr + (r - drag.lr) * i / steps), cc = Math.round(drag.lc + (c - drag.lc) * i / steps), k = rr * S.n + cc;
+      if (drag.seen.has(k)) continue;
+      drag.seen.add(k);
+      if (drag.mode) applyDrag(rr, cc);
+    }
+    drag.lr = r; drag.lc = c;
+    if (drag.mode) afterMove();
+  });
+  function endDrag(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dd = drag; drag = null;
+    if (e.type === 'pointerup' && !dd.moved) cycle(dd.r, dd.c);
+  }
+  boardEl.addEventListener('pointerup', endDrag);
+  boardEl.addEventListener('pointercancel', endDrag);
+  boardEl.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    const d = e.target.closest('.cell');
+    if (!d || e.pointerType === 'touch') return;
+    const r = +d.dataset.r, c = +d.dataset.c;
+    S.cursor = { r, c };
+    setTo(r, c, 2);
+  });
+
+  /* ---------- keyboard ---------- */
+  boardEl.addEventListener('keydown', e => {
+    if (!S) return;
+    const k = e.key, n = S.n;
+    const mv = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[k];
+    if (mv) { e.preventDefault(); S.cursor = { r: (S.cursor.r + mv[0] + n) % n, c: (S.cursor.c + mv[1] + n) % n }; refresh(); return; }
+    const { r, c } = S.cursor;
+    if (k === ' ' || k === 'Enter') { e.preventDefault(); cycle(r, c); }
+    else if (k === 'x' || k === 'X') setTo(r, c, 1);
+    else if (k === 'c' || k === 'C') { if (!e.ctrlKey && !e.metaKey) setTo(r, c, 2); }
+    else if ((k === 'Backspace' || k === 'Delete') && S.board[r][c] && !locked()) { snapshot(); S.board[r][c] = 0; afterMove(); }
+  });
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); undo(); }
+    if (e.key === 'Escape' && !el('win').hidden) el('win').hidden = true;
+  });
+
+  /* ---------- buttons ---------- */
+  function undo() { if (locked() || !S.undo.length) return; S.board = S.undo.pop(); refresh(); persist(); }
+  el('undo').onclick = undo;
+  el('hint').onclick = hint;
+  el('clear').onclick = () => {
+    if (locked() || !S.board.some(row => row.some(v => v))) return;
+    snapshot(); S.board = emptyBoard(S.n); refresh(); persist(); toast('Board cleared. Undo brings it back.');
+  };
+  el('new').onclick = () => {
+    if (S.mode === 'daily' && S.solved) { toast("You've solved today's puzzle. A new one arrives tomorrow."); return; }
+    if (S.solved) { loadMode(S.mode); return; }
+    restart(); toast('Level restarted with 3 hearts.');
+  };
+  el('lRetry').onclick = restart;
+  el('autox').onchange = e => { prefs.autoX = e.target.checked; store.set(PREF_KEY, prefs); };
+  document.querySelectorAll('#modes button').forEach(b => b.onclick = () => {
+    const m = b.dataset.mode;
+    if (S && S.mode === m && !S.solved) return;
+    loadMode(m);
+  });
+  el('wClose').onclick = () => { el('win').hidden = true; };
+  el('wNext').onclick = () => { el('win').hidden = true; loadMode(S.mode === 'daily' ? 'easy' : S.mode); };
+  el('win').addEventListener('click', e => { if (e.target === el('win')) el('win').hidden = true; });
+
+  /* ---------- clock ---------- */
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { pauseClock(); persist(); } else if (S && S.started) startClock(); });
+  window.addEventListener('pagehide', () => { pauseClock(); persist(); });
+  setInterval(() => { if (S) el('time').textContent = fmt(elapsed()); }, 250);
+
+  /* ---------- start ---------- */
+  const dailyDone = !!store.get(DAILY_KEY, {})[todayKey()];
+  const last = store.get('whiskergrid.last.v1', null);
+  loadMode(SIZES[last] ? last : (dailyDone ? 'easy' : 'daily'));
+})();
+</script>
+
+</body>
+</html>
