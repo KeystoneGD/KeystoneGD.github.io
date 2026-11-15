@@ -23,6 +23,9 @@ The pages are the same as the hosted NIPOS (`index.html` till, `orders.html` ord
 
 ## First-time setup
 
+**Step-by-step guide:** open `INSTALL-GUIDE.html` (in this folder) in Chrome. It covers installing from the
+zip file, testing, connecting the tills and what to do if something goes wrong. The short version:
+
 1. Turn on Linux: **Settings → About ChromeOS → Developers → Linux development environment →
    Turn on.** Pick a disk size of 20 GB or more.
 2. Open the **Terminal** app and run:
@@ -33,10 +36,12 @@ The pages are the same as the hosted NIPOS (`index.html` till, `orders.html` ord
    scripts/setup.sh
    ```
    The first run takes 10–20 minutes while it downloads everything.
-3. Create your first Global Admin (pick your own PIN, 6+ digits):
+3. Create your first Global Admin (pick your own PIN, 6+ digits). On a new server this also makes the
+   first venue:
    ```bash
-   scripts/create-admin.sh 123456 "Your Name"
+   scripts/create-admin.sh 123456 "Your Name" "Main Bar"
    ```
+   Optional, to have a menu to test with: `scripts/load-starter-menu.sh`
 4. On the Chromebook, open <http://localhost:8080/backend.html>, sign in with that PIN, and set up
    venues, staff, groups and the catalogue as usual. Do this step while you still have internet.
    The first time each Edge Function runs (adding staff, sending a push), it downloads its
@@ -51,6 +56,7 @@ The pages are the same as the hosted NIPOS (`index.html` till, `orders.html` ord
 | Back up all data | `scripts/backup.sh` |
 | Restore a backup (replaces all current data) | `scripts/restore.sh backups/nipos-….sql` |
 | Add another Global Admin | `scripts/create-admin.sh <PIN> "Name"` |
+| Load the starter menu into a venue with no menu | `scripts/load-starter-menu.sh ["Venue name"]` |
 | Create $YSTEM, or change its password | `scripts/create-system.sh` |
 | Create an extra $YSTEM sign-in (e.g. 07466707188) | `scripts/create-system.sh 07466707188` |
 | Update to the latest NIPOS (pages and database) | `git pull`, then `scripts/start.sh` |

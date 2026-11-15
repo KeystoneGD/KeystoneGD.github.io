@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NIPOS Local: install guide</title>
+<style>
+/* Self-contained (no internet needed): system fonts, no external files. Opens from the Files app. */
+:root{--bg:#f6f4ef;--card:#fff;--ink:#1d1c19;--muted:#5d5950;--line:#ddd7cb;--code:#1f2328;--code-ink:#f2f1ec;--accent:#9a5a12;--warn-bg:#fff4e0;--warn:#7a4300;--ok-bg:#e9f5ee;--ok:#1d6b43;}
+@media (prefers-color-scheme: dark){:root{--bg:#151513;--card:#1e1d1a;--ink:#f0ece3;--muted:#aaa499;--line:#37342e;--code:#0d0f12;--code-ink:#e9e7e1;--accent:#e4a24f;--warn-bg:#33270f;--warn:#f1c27d;--ok-bg:#11291d;--ok:#8fd6ae;}}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;}
+.wrap{max-width:820px;margin:0 auto;padding:32px max(16px,env(safe-area-inset-left)) 64px max(16px,env(safe-area-inset-right));}
+h1{font-size:32px;line-height:1.15;margin:0 0 8px;}
+h2{font-size:22px;margin:40px 0 10px;padding-top:12px;border-top:2px solid var(--line);}
+h3{font-size:17px;margin:22px 0 6px;}
+p,li{max-width:70ch;}
+.lead{color:var(--muted);font-size:17px;margin:0 0 20px;}
+nav.toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;}
+nav.toc ol{margin:6px 0 0;padding-left:22px;columns:2;column-gap:28px;}
+nav.toc a{color:var(--ink);}
+@media (max-width:620px){nav.toc ol{columns:1;}}
+ol.steps{padding-left:22px;}
+ol.steps>li{margin:0 0 14px;}
+.cmd{position:relative;margin:8px 0 14px;}
+.cmd pre{margin:0;background:var(--code);color:var(--code-ink);border-radius:10px;padding:12px 90px 12px 14px;overflow-x:auto;font:14.5px/1.5 ui-monospace,"Cascadia Mono","Roboto Mono",Menlo,monospace;white-space:pre;}
+.cmd button{position:absolute;top:8px;right:8px;min-height:36px;padding:0 12px;border-radius:8px;border:1px solid #4a4f57;background:#2c3138;color:#fff;font:600 13px/1 inherit;cursor:pointer;}
+code{font:14.5px ui-monospace,"Cascadia Mono","Roboto Mono",Menlo,monospace;background:var(--card);border:1px solid var(--line);border-radius:5px;padding:1px 5px;}
+.path{font-weight:700;}
+.note,.warn,.ok{border-radius:10px;padding:12px 14px;margin:12px 0;}
+.note{background:var(--card);border:1px solid var(--line);}
+.warn{background:var(--warn-bg);color:var(--warn);}
+.ok{background:var(--ok-bg);color:var(--ok);}
+.warn b,.ok b{color:inherit;}
+table{border-collapse:collapse;width:100%;margin:10px 0;background:var(--card);border-radius:10px;overflow:hidden;}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line);font-size:15px;}
+th{background:var(--bg);}
+.table{overflow-x:auto;}
+ul.check{list-style:none;padding-left:0;}
+ul.check li{padding-left:30px;position:relative;margin:6px 0;}
+ul.check li::before{content:"";position:absolute;left:2px;top:4px;width:16px;height:16px;border:2px solid var(--muted);border-radius:4px;}
+.time{display:inline-block;font-size:13px;font-weight:700;color:var(--accent);border:1px solid currentColor;border-radius:999px;padding:1px 9px;margin-left:8px;vertical-align:middle;}
+@media print{.cmd button{display:none;} .cmd pre{white-space:pre-wrap;} h2{break-before:auto;} body{background:#fff;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>NIPOS Local: install guide</h1>
+<p class="lead">How to put the whole NIPOS till system on one Chromebook, from the zip file, and test it. The Chromebook runs the database and the pages itself; tills, order screens and Backend on other devices connect to it over the venue's Wi-Fi, and it keeps working when the internet goes down.</p>
+
+<nav class="toc" aria-label="Contents"><strong>Contents</strong>
+<ol>
+  <li><a href="#before">Before you start</a></li>
+  <li><a href="#linux">Turn on Linux</a></li>
+  <li><a href="#copy">Put the zip into Linux</a></li>
+  <li><a href="#unzip">Unzip it</a></li>
+  <li><a href="#setup">Run the setup</a></li>
+  <li><a href="#admin">Create your login and first venue</a></li>
+  <li><a href="#open">Open NIPOS</a></li>
+  <li><a href="#system">$YSTEM and Master settings</a></li>
+  <li><a href="#devices">Connect tills and other devices</a></li>
+  <li><a href="#test">Test checklist</a></li>
+  <li><a href="#daily">Day to day</a></li>
+  <li><a href="#update">Updating to a newer zip</a></li>
+  <li><a href="#different">What's different offline</a></li>
+  <li><a href="#help">If something goes wrong</a></li>
+</ol></nav>
+
+<h2 id="before">1. Before you start</h2>
+<ul class="check">
+  <li>A Chromebook with <b>8 GB of memory</b> (4 GB will struggle) that can run Linux. Most Chromebooks from 2019 onwards can.</li>
+  <li><b>20 GB or more</b> of free storage for Linux.</li>
+  <li><b>Internet</b> for the setup. It downloads about 2–3 GB. After setup, NIPOS runs without internet.</li>
+  <li>The charger plugged in, and about <b>45 minutes</b>.</li>
+  <li>The file <code>NIPOS-LOCAL.zip</code> in the Chromebook's Downloads folder.</li>
+</ul>
+<div class="warn"><b>School or work Chromebooks</b> are often locked so Linux can't be turned on. If you can't find the Linux option in step 2, that's usually why: use a personal Chromebook.</div>
+<p>Typing commands: open the <b>Terminal</b> app (it appears after step 2). To paste a command into it, press <b>Ctrl + Shift + V</b> (or right-click). Press <b>Enter</b> to run it. Each grey box below has a <b>Copy</b> button.</p>
+
+<h2 id="linux">2. Turn on Linux <span class="time">5–10 min</span></h2>
+<ol class="steps">
+  <li>Open <b>Settings</b>, then <b>About ChromeOS</b>, then <b>Developers</b> (on older ChromeOS it's <b>Advanced → Developers</b>).</li>
+  <li>Next to <b>Linux development environment</b>, choose <b>Set up</b> (or <b>Turn on</b>).</li>
+  <li>Keep the suggested username. For <b>Disk size</b>, pick <b>Custom</b> and set it to <b>20 GB or more</b> (30 GB is comfortable). Sales history grows over time.</li>
+  <li>Choose <b>Install</b>. When it finishes, a black <b>Terminal</b> window opens. Leave it open.</li>
+</ol>
+
+<h2 id="copy">3. Put the zip into Linux <span class="time">1 min</span></h2>
+<ol class="steps">
+  <li>Open the <b>Files</b> app.</li>
+  <li>Go to <b>Downloads</b> and find <code>NIPOS-LOCAL.zip</code>.</li>
+  <li><b>Drag it onto "Linux files"</b> in the left-hand list (or right-click it, <b>Copy</b>, open <b>Linux files</b>, <b>Paste</b>).</li>
+</ol>
+<div class="warn"><b>Don't double-click the zip to open it.</b> ChromeOS opens zips as a read-only folder, and copying files out that way breaks the setup scripts. Unzip it in the Terminal instead, as in the next step.</div>
+
+<h2 id="unzip">4. Unzip it <span class="time">2 min</span></h2>
+<p>In the Terminal, run these one at a time:</p>
+<div class="cmd"><pre>sudo apt-get update && sudo apt-get install -y unzip</pre></div>
+<div class="cmd"><pre>unzip -o NIPOS-LOCAL.zip</pre></div>
+<div class="cmd"><pre>cd NIPOS-LOCAL && chmod +x scripts/*.sh</pre></div>
+<p>You're now "inside" the NIPOS-LOCAL folder. The other commands in this guide are run from there. If you close the Terminal, get back in with <code>cd NIPOS-LOCAL</code>.</p>
+
+<h2 id="setup">5. Run the setup <span class="time">10–25 min</span></h2>
+<div class="cmd"><pre>scripts/setup.sh</pre></div>
+<p>This installs Docker and Supabase (the database, logins and API), downloads everything NIPOS needs so it can later run without internet, makes this Chromebook's own security keys, and starts it all. It prints a lot of text: that's normal. It's finished when you see:</p>
+<div class="ok"><b>Setup complete.</b> followed by "Next: 1. Create your first Global Admin…"</div>
+<p>If it stops with an error part-way, run <code>scripts/setup.sh</code> again: it's safe to run more than once and carries on where it left off. If it says <b>permission denied</b> about Docker, close the Terminal, open it again, and run:</p>
+<div class="cmd"><pre>cd NIPOS-LOCAL && scripts/start.sh</pre></div>
+
+<h2 id="admin">6. Create your login and first venue <span class="time">1 min</span></h2>
+<p>Pick your own PIN (6 or more numbers, one nobody else uses), your name, and your venue's name, and put them in place of the examples:</p>
+<div class="cmd"><pre>scripts/create-admin.sh 246810 "Your Name" "Main Bar"</pre></div>
+<p>That makes you a <b>Global Admin</b> (every permission, every venue) and, on a new install, creates the first venue. You can rename it and add more venues later in Backend.</p>
+<h3>Optional: a menu to test with</h3>
+<p>Loads the starter menu (cocktails, draught, spirits, wine, soft drinks, food: 35 categories, 238 products) into that venue. Prices can be changed in Backend afterwards.</p>
+<div class="cmd"><pre>scripts/load-starter-menu.sh</pre></div>
+
+<h2 id="open">7. Open NIPOS <span class="time">5 min</span></h2>
+<ol class="steps">
+  <li>In Chrome on the Chromebook, go to <b class="path">http://localhost:8080/app.html</b></li>
+  <li>Sign in with the PIN from step 6. The <b>NIPOS start screen</b> shows Till, Orders, Kitchen and Backend: each person only ever sees the parts their permissions allow.</li>
+  <li>Open <b>Backend</b> and set things up (do this while you still have internet):
+    <ul>
+      <li><b>Places → Venues</b>: rename the venue, pick its colour, and add more venues.</li>
+      <li><b>Team → Staff</b>: add staff, each with their own PIN and permissions.</li>
+      <li><b>Menu → Products and stops</b>: check the menu and prices (or add your own).</li>
+      <li><b>Menu → Deals and discounts</b>: Happy Hour and other deals.</li>
+    </ul>
+    Lost? Type what you're after into the <b>Find</b> box at the top of Backend's menu (for example <i>deals</i>, <i>stop</i>, <i>PIN</i>).</li>
+</ol>
+<p>Other addresses on the Chromebook: the till is <b class="path">http://localhost:8080/</b>, the order screen <b class="path">http://localhost:8080/orders.html</b>, Backend <b class="path">http://localhost:8080/backend.html</b>.</p>
+
+<h2 id="system">8. $YSTEM and Master settings (optional)</h2>
+<p>Master settings (themes, till layouts and every optional feature) belongs to the hidden <b>$YSTEM</b> account. Create it once; it asks for a password (10+ characters) that isn't shown as you type:</p>
+<div class="cmd"><pre>scripts/create-system.sh</pre></div>
+<p>Then in Backend, type <code>$YSTEM</code> in the PIN box, press Sign in, and enter that password. <b>System → Master settings</b> appears. Every optional feature starts switched off, so nothing changes until you turn it on. The 17 themes are under <b>Themes and layouts</b>.</p>
+
+<h2 id="devices">9. Connect tills and other devices</h2>
+<p>Linux on a Chromebook sits in its own private network, so other devices can't reach it until you open two "ports":</p>
+<ol class="steps">
+  <li><b>Settings → About ChromeOS → Developers → Linux development environment → Port forwarding.</b></li>
+  <li>Add port <b>8080</b> (TCP), the pages, and port <b>54321</b> (TCP), the database API. Switch both on.</li>
+  <li>Find the Chromebook's Wi-Fi address: <b>Settings → Network → (your Wi-Fi) → Network</b>. It looks like <code>192.168.1.50</code>.</li>
+  <li>On each till, tablet or phone, on the <b>same Wi-Fi</b>, open <b class="path">http://192.168.1.50:8080/app.html</b> (using your Chromebook's address). Bookmark it.</li>
+</ol>
+<div class="note"><b>Keep it reachable:</b> ask whoever runs the router to give the Chromebook a fixed address (a "DHCP reservation"), so bookmarks keep working. Stop it sleeping: <b>Settings → Device → Power → While charging: Keep display on</b>, turn off <b>Sleep when cover is closed</b>, and keep it plugged in. If it sleeps, every till loses its connection.</div>
+
+<h2 id="test">10. Test checklist</h2>
+<p>Tick these off to check everything works:</p>
+<ul class="check">
+  <li>Start screen: sign in, and see the right tiles for your account. Sign in as a staff member with fewer permissions and see fewer tiles.</li>
+  <li>Till: ring up a few drinks, take a <b>card</b> payment and a <b>cash</b> payment.</li>
+  <li>Orders: the order appears on the order screen (on another device too, if you've connected one). Mark it ready and delivered.</li>
+  <li>Stops: put a product on stop in Backend; it shows as on stop on the till within a few seconds.</li>
+  <li>Deals: in <b>Deals and discounts</b>, edit Happy Hour or add a deal and switch it on; the till prices it. Switch it off with its switch; the till's "pricing is on" banner goes within a second or two.</li>
+  <li>Refund an item on the till, then check it in <b>Takings</b>.</li>
+  <li><b>Reports</b>: make a KPI report and a Full sales breakdown for today; download one as a spreadsheet.</li>
+  <li>Kitchen (if switched on in Master settings): add a kitchen in <b>Places → Kitchens</b>, switch <b>Kitchen open</b> off, and check it disappears from the start screen.</li>
+  <li>Internet off: turn the Chromebook's Wi-Fi to a network with no internet (or unplug the router's internet) and take a sale: it should still work.</li>
+  <li>Z Read: close the shift in <b>Z Reads</b>.</li>
+  <li>Backup: run <code>scripts/backup.sh</code> and check a file appears in <b>Linux files → NIPOS-LOCAL → backups</b>.</li>
+</ul>
+
+<h2 id="daily">11. Day to day</h2>
+<p>ChromeOS doesn't start Linux by itself, so <b>after every restart of the Chromebook</b> open the Terminal and run:</p>
+<div class="cmd"><pre>cd NIPOS-LOCAL && scripts/start.sh</pre></div>
+<div class="table"><table>
+<thead><tr><th>To…</th><th>Run (inside NIPOS-LOCAL)</th></tr></thead>
+<tbody>
+<tr><td>Start everything</td><td><code>scripts/start.sh</code></td></tr>
+<tr><td>Stop everything (data is kept)</td><td><code>scripts/stop.sh</code></td></tr>
+<tr><td>Back up all data</td><td><code>scripts/backup.sh</code></td></tr>
+<tr><td>Restore a backup (replaces all current data)</td><td><code>scripts/restore.sh backups/nipos-….sql</code></td></tr>
+<tr><td>Add another Global Admin</td><td><code>scripts/create-admin.sh &lt;PIN&gt; "Name"</code></td></tr>
+<tr><td>Create $YSTEM, or change its password</td><td><code>scripts/create-system.sh</code></td></tr>
+<tr><td>Load the starter menu into a venue with no menu</td><td><code>scripts/load-starter-menu.sh "Venue name"</code></td></tr>
+</tbody></table></div>
+<div class="warn"><b>Back up regularly.</b> This Chromebook holds the only copy of the data. After <code>scripts/backup.sh</code>, copy the file from <b>Linux files → NIPOS-LOCAL → backups</b> to Google Drive or a USB stick using the Files app.</div>
+<p>Database admin (for checking data directly) is at <b class="path">http://localhost:54323</b> on the Chromebook.</p>
+
+<h2 id="update">12. Updating to a newer zip</h2>
+<p>All your data lives in Docker, not in the folder, so updating the files doesn't touch it. Back up first anyway:</p>
+<ol class="steps">
+  <li>Run <code>scripts/backup.sh</code> and copy the backup somewhere safe.</li>
+  <li>Put the new <code>NIPOS-LOCAL.zip</code> into <b>Linux files</b> (step 3), replacing the old one.</li>
+  <li>In the Terminal:
+    <div class="cmd"><pre>cd ~ && unzip -o NIPOS-LOCAL.zip && cd NIPOS-LOCAL && chmod +x scripts/*.sh && scripts/start.sh</pre></div>
+    <code>start.sh</code> applies any database changes in the new version and keeps all existing data. Your keys (in the hidden <code>.nipos</code> folder) and backups stay as they are.</li>
+  <li>On each till, reload the page.</li>
+</ol>
+
+<h2 id="different">13. What's different from the online NIPOS</h2>
+<ul>
+  <li><b>Alerts when the page is closed</b> (push notifications) only work on the Chromebook itself: browsers only allow them over a secure connection. While a page is open, sounds, banners and pop-ups work on every device.</li>
+  <li><b>"Add to Home Screen" as an app</b> on phones and tablets needs a secure connection too, so use a browser bookmark on those devices.</li>
+  <li><b>Discord messages</b> (stops, orders, Z Reads) only send while the Chromebook has internet. Everything else works offline.</li>
+  <li><b>Daily summary email</b> isn't available.</li>
+  <li>Sales, staff and menus are separate from the online NIPOS: nothing is shared between the two.</li>
+</ul>
+
+<h2 id="help">14. If something goes wrong</h2>
+<div class="table"><table>
+<thead><tr><th>You see</th><th>Do this</th></tr></thead>
+<tbody>
+<tr><td>"Supabase isn't running" or the pages say they can't connect</td><td><code>scripts/start.sh</code></td></tr>
+<tr><td>"Docker isn't running" or "permission denied" just after setup</td><td>Close the Terminal, open it again, then <code>cd NIPOS-LOCAL && scripts/start.sh</code></td></tr>
+<tr><td><code>scripts/setup.sh: Permission denied</code></td><td><code>chmod +x scripts/*.sh</code>, then try again. (Usually means the zip was opened by double-clicking rather than unzipped in the Terminal.)</td></tr>
+<tr><td>"Incorrect PIN"</td><td>Check the PIN; or make another Global Admin with <code>scripts/create-admin.sh</code></td></tr>
+<tr><td>Backend has no menu items or venues</td><td>Run step 6 again (it only creates a venue if there are none), then <code>scripts/load-starter-menu.sh</code></td></tr>
+<tr><td>Other devices can't connect</td><td>Check both ports are forwarded and switched on (step 9), the device is on the same Wi-Fi, and the Chromebook's address hasn't changed. Make sure the Chromebook hasn't gone to sleep.</td></tr>
+<tr><td>Setup is very slow or fails downloading</td><td>Check the internet, close other Chrome tabs to free memory, and run <code>scripts/setup.sh</code> again.</td></tr>
+<tr><td>Everything is slow</td><td>Close other apps and tabs. NIPOS Local needs about 3 GB of the Chromebook's memory.</td></tr>
+</tbody></table></div>
+<h3>Starting again from scratch</h3>
+<div class="warn"><b>This deletes every sale, venue, staff member and setting on this Chromebook.</b> Only do it on a test install, after a backup if there's anything you want to keep:
+<div class="cmd"><pre>cd ~/NIPOS-LOCAL && scripts/stop.sh; supabase stop --no-backup && scripts/start.sh</pre></div>
+Then repeat from step 6.</div>
+</div>
+<script>
+// Copy buttons for each command (the Terminal pastes with Ctrl + Shift + V).
+document.querySelectorAll(".cmd").forEach(box => {
+  const b = document.createElement("button"); b.type = "button"; b.textContent = "Copy";
+  b.setAttribute("aria-label", "Copy this command");
+  b.addEventListener("click", async () => {
+    const text = box.querySelector("pre").textContent;
+    try { await navigator.clipboard.writeText(text); b.textContent = "Copied"; }
+    catch (e) { const r = document.createRange(); r.selectNodeContents(box.querySelector("pre")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Ctrl+C"; }
+    setTimeout(() => { b.textContent = "Copy"; }, 1500);
+  });
+  box.appendChild(b);
+});
+</script>
+</body>
+</html>

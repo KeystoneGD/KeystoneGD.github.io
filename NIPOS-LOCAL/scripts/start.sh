@@ -49,7 +49,8 @@ fi
 cat <<EOF
 
 NIPOS is running.
-  On this Chromebook:  http://localhost:$WEB_PORT/          (till)
+  On this Chromebook:  http://localhost:$WEB_PORT/app.html  (NIPOS start screen)
+                       http://localhost:$WEB_PORT/          (till)
                        http://localhost:$WEB_PORT/orders.html
                        http://localhost:$WEB_PORT/backend.html
   Database admin:      http://localhost:54323               (Supabase Studio)
