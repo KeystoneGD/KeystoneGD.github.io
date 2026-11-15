@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Install NIPOS</title>
+<link rel="manifest" href="manifest-app.json">
+<meta name="theme-color" content="#0c1826">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="NIPOS">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<style>
+:root{
+  --bg:#0c1826; --surface:#13212f; --surface-2:#1a2e3f; --border:#253d52;
+  --text:#eef4f8; --text-muted:#8fa5b8; --accent:#f0a13a; --accent-ink:#2b1a02; --ios-blue:#3d8bfd;
+}
+:root[data-theme="light"]{
+  --bg:#f5f7fa; --surface:#ffffff; --surface-2:#eef2f6; --border:#dbe3ea;
+  --text:#16232f; --text-muted:#5b6e7f; --accent:#c9791e; --accent-ink:#2b1a02; --ios-blue:#0a64d8;
+}
+*{box-sizing:border-box;}
+[hidden]{display:none !important;}
+body{background:var(--bg);color:var(--text);font-family:'Atkinson Hyperlegible Next',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;margin:0;line-height:1.45;
+  padding:max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(32px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));}
+.wrap{max-width:600px;margin:0 auto;}
+h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:28px;margin:8px 0 6px;}
+h2{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:28px 0 10px;}
+.lead{color:var(--text-muted);margin:0 0 18px;font-size:16px;}
+ol.steps{list-style:none;padding:0;margin:0;counter-reset:s;display:grid;gap:12px;}
+ol.steps li{counter-increment:s;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 16px 16px 60px;position:relative;font-size:16px;}
+ol.steps li::before{content:counter(s);position:absolute;left:16px;top:16px;width:30px;height:30px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-weight:800;display:flex;align-items:center;justify-content:center;}
+ol.steps li b{font-weight:800;}
+.pic{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.pic .bar{display:flex;align-items:center;justify-content:space-around;width:100%;max-width:300px;padding:8px 6px;border-radius:10px;background:var(--bg);color:var(--ios-blue);}
+.pic .bar svg{width:26px;height:26px;}
+.pic .bar .hit{outline:3px solid var(--accent);outline-offset:4px;border-radius:6px;}
+.menu-row{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;max-width:300px;padding:10px 12px;border-radius:10px;background:var(--bg);font-weight:600;outline:3px solid var(--accent);outline-offset:2px;}
+.menu-row svg{width:22px;height:22px;}
+.toggle{display:inline-block;width:46px;height:28px;border-radius:999px;background:#34c759;position:relative;flex:0 0 auto;}
+.toggle::after{content:"";position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:inherit;font-weight:800;font-size:16px;border-radius:12px;min-height:48px;padding:0 18px;cursor:pointer;border:1px solid var(--border);background:var(--surface-2);color:var(--text);text-decoration:none;margin-top:12px;}
+.btn-accent{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.addr{display:block;margin-top:10px;font-size:14px;color:var(--text-muted);word-break:break-all;}
+.done{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;font-size:16px;}
+.small{color:var(--text-muted);font-size:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Put NIPOS on your phone</h1>
+  <p class="lead">NIPOS opens like an app from its own icon, full screen, with alerts. It's free, and it updates itself, so there's nothing to download or reinstall.</p>
+
+  <div class="done" id="alreadyApp" hidden>You're already using NIPOS from your Home Screen. <a class="btn btn-accent" href="app.html">Open NIPOS</a></div>
+
+  <section id="iosSteps">
+    <h2 id="iosTitle">iPhone and iPad</h2>
+    <ol class="steps">
+      <li>Open the NIPOS start screen <b>in Safari</b>. Do the next steps from that page, not this one.
+        <a class="btn btn-accent" href="app.html" id="openStart">Open the NIPOS start screen</a>
+        <span class="addr" id="startAddr"></span></li>
+      <li>Tap the <b>Share</b> button. On an iPhone it's at the bottom of the screen (on newer iPhones, tap <b>•••</b> first); on an iPad it's at the top right.
+        <div class="pic" aria-hidden="true"><div class="bar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hit"><path d="M12 15V3M7.5 7.5L12 3l4.5 4.5"/><path d="M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v13l-8-4z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg>
+        </div></div></li>
+      <li>Scroll down the list and tap <b>Add to Home Screen</b>.
+        <div class="pic" aria-hidden="true"><div class="menu-row">Add to Home Screen<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg></div></div></li>
+      <li>If you see <b>Open as Web App</b>, leave it switched on. Tap <b>Add</b>.
+        <div class="pic" aria-hidden="true"><div class="menu-row">Open as Web App<span class="toggle"></span></div></div></li>
+      <li>Open <b>NIPOS</b> from your Home Screen and sign in with your PIN. You'll see only the parts of NIPOS your account can use. To get alerts, open the Till or Orders and tap <b>Turn on alerts</b>.</li>
+    </ol>
+    <p class="small">Alerts on iPhone need iOS 16.4 or newer (Settings › General › Software Update).</p>
+  </section>
+
+  <section id="androidSteps">
+    <h2>Android</h2>
+    <ol class="steps">
+      <li>Open the NIPOS start screen in <b>Chrome</b>. <a class="btn" href="app.html">Open the NIPOS start screen</a></li>
+      <li>Tap the <b>⋮</b> menu at the top right, then <b>Add to Home screen</b> (or <b>Install app</b>), then <b>Install</b>.</li>
+      <li>Open <b>NIPOS</b> from your Home screen and sign in with your PIN.</li>
+    </ol>
+  </section>
+</div>
+<script>
+try { document.documentElement.dataset.theme = localStorage.getItem("starlightTill.theme.v1") === "light" ? "light" : "dark"; } catch (e) {}
+(function () {
+  var standalone = window.navigator.standalone === true || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+  var ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var android = /Android/.test(navigator.userAgent);
+  document.getElementById("startAddr").textContent = new URL("app.html", location.href).href;
+  if (standalone) { document.getElementById("alreadyApp").hidden = false; document.getElementById("iosSteps").hidden = true; document.getElementById("androidSteps").hidden = true; return; }
+  // Show this device's steps first; the other set stays below for anyone sharing the link.
+  if (android) document.querySelector(".wrap").insertBefore(document.getElementById("androidSteps"), document.getElementById("iosSteps"));
+  // Another browser on an iPhone: Add to Home Screen is in its Share menu too, but Safari is surest.
+  if (ios && /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent)) document.getElementById("iosTitle").textContent = "iPhone and iPad (best done in Safari)";
+})();
+</script>
+</body>
+</html>

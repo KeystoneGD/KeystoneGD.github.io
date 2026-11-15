@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NIPOS</title>
+<link rel="manifest" href="manifest-app.json">
+<meta name="theme-color" content="#0c1826">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NIPOS">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<style>
+:root{
+  --bg:#0c1826; --surface:#13212f; --surface-2:#1a2e3f; --border:#253d52;
+  --text:#eef4f8; --text-muted:#8fa5b8;
+  --accent:#f0a13a; --accent-ink:#2b1a02;
+  --danger:#ff7a68;
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 24px -12px rgba(0,0,0,.55);
+}
+:root[data-theme="light"]{
+  --bg:#f5f7fa; --surface:#ffffff; --surface-2:#eef2f6; --border:#dbe3ea;
+  --text:#16232f; --text-muted:#5b6e7f;
+  --accent:#c9791e; --accent-ink:#2b1a02;
+  --danger:#c53c2c;
+  --shadow: 0 1px 2px rgba(16,30,45,.06), 0 8px 24px -12px rgba(16,30,45,.18);
+}
+*{box-sizing:border-box;}
+[hidden]{display:none !important;}
+body{background:var(--bg);color:var(--text);font-family:'Atkinson Hyperlegible Next',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;margin:0;min-height:100vh;
+  padding:max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));}
+.wrap{max-width:560px;margin:0 auto;}
+h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:28px;margin:12px 0 4px;}
+.lead{color:var(--text-muted);margin:0 0 20px;font-size:15px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:var(--shadow);}
+label.field{display:block;font-size:13px;font-weight:700;color:var(--text-muted);margin:0 0 6px;}
+input{width:100%;font:inherit;font-size:20px;letter-spacing:.2em;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:inherit;font-weight:700;font-size:16px;border-radius:12px;padding:12px 18px;cursor:pointer;border:1px solid var(--border);background:var(--surface-2);color:var(--text);text-decoration:none;}
+.btn-accent{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.btn-block{width:100%;margin-top:12px;}
+.msg{color:var(--danger);font-weight:600;min-height:1.4em;margin:10px 0 0;font-size:14px;}
+.tiles{display:grid;gap:12px;}
+.tile{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;color:var(--text);text-decoration:none;box-shadow:var(--shadow);min-height:84px;}
+.tile:active{transform:scale(.99);}
+.tile .ti{width:48px;height:48px;border-radius:12px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.tile .ti .ic{width:26px;height:26px;}
+.tile .tn{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-weight:800;font-size:19px;}
+.tile .td{color:var(--text-muted);font-size:14px;margin-top:2px;}
+.tile .go{margin-left:auto;color:var(--text-muted);}
+.who{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 16px;flex-wrap:wrap;}
+.who .name{font-weight:700;}
+.empty{color:var(--text-muted);background:var(--surface);border:1px dashed var(--border);border-radius:16px;padding:20px;}
+.foot{margin-top:24px;text-align:center;font-size:14px;}
+.foot a{color:var(--text-muted);}
+</style>
+<link rel="stylesheet" href="nipos.css?v=20261115d">
+</head>
+<body>
+<div class="wrap">
+  <h1>NIPOS</h1>
+
+  <div id="signInView" hidden>
+    <p class="lead">Sign in with your PIN.</p>
+    <div class="card">
+      <label class="field" for="pinInput">PIN</label>
+      <input type="password" inputmode="numeric" id="pinInput" autocomplete="off" aria-describedby="pinMsg">
+      <button type="button" class="btn btn-accent btn-block" id="pinBtn">Sign in</button>
+      <p class="msg" id="pinMsg" role="status"></p>
+    </div>
+  </div>
+
+  <div id="appsView" hidden>
+    <div class="who"><span>Signed in as <span class="name" id="whoName"></span></span><button type="button" class="btn" id="signOutBtn">Sign out</button></div>
+    <div class="tiles" id="tiles"></div>
+  </div>
+
+  <p class="lead" id="loadingView">Loading…</p>
+  <p class="foot"><a href="install.html">How to put NIPOS on your Home Screen</a></p>
+</div>
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script src="db.js?v=20261115d"></script>
+<script src="nipos-app.js?v=20261115d"></script>
+<script>
+// The NIPOS start screen: sign in once, then open whichever parts of NIPOS this person's permissions
+// allow. Each part uses the same sign-in, so it opens already signed in.
+initTheme();
+const TILL_PERMS = ["placeOrders", "productsOnStop", "xzRead", "endOfDay", "viewOpenOrders", "processRefunds"];
+// ctx: { venues: this person's open venues, kitchenOpen: an open kitchen cooks for one of them }.
+// A closed venue (Backend > Venues > Venue Open) or a closed kitchen doesn't count, so with nothing
+// open the Till, Orders and Kitchen don't show.
+function appsFor(u, ctx){
+  const p = (u && u.perms) || {}, out = [], open = !ctx || ctx.venues.length > 0;
+  if (u.system) return [{ href: "backend.html", name: "Backend", about: "Takings, menus, deals, staff and settings", icon: "settings" }];
+  if (open && (p.globalAdmin || TILL_PERMS.some(k => p[k]))) out.push({ href: "index.html", name: "Till", about: p.placeOrders || p.globalAdmin ? "Take orders and payments" : "Stops, reports and open orders", icon: "note" });
+  if (open && (p.globalAdmin || p.orderScreen)) out.push({ href: "orders.html", name: "Orders", about: "The order screen: new, in progress and ready", icon: "bell" });
+  if (open && (p.globalAdmin || p.orderScreen) && featureOn("kitchenScreen") && (!ctx || ctx.kitchenOpen)) out.push({ href: "kitchen.html", name: "Kitchen", about: "Food orders for the kitchen", icon: "clock" });
+  if (p.globalAdmin || p.backendAccess) out.push({ href: "backend.html", name: "Backend", about: "Takings, menus, deals, staff and settings", icon: "settings" });
+  return out;
+}
+function show(view){ ["signInView", "appsView", "loadingView"].forEach(id => { document.getElementById(id).hidden = id !== view; }); }
+async function appContext(u){
+  if (u.system) return { venues: [], kitchenOpen: false };
+  const venues = await fetchMyVenues(u), ids = new Set(venues.map(v => v.id));
+  let kitchens = [];
+  try { const { data } = await supabaseClient.from("kitchens").select("data"); kitchens = (data || []).map(r => r.data || {}); } catch (e) {}
+  // With no kitchens set up, the kitchen screen cooks for whichever open venue it signs in to.
+  const kitchenOpen = kitchens.length ? kitchens.some(k => k.active !== false && (k.venueIds || []).some(id => ids.has(id))) : venues.length > 0;
+  return { venues, kitchenOpen };
+}
+async function renderApps(u){
+  document.getElementById("whoName").textContent = u.name || "";
+  const ctx = await appContext(u), apps = appsFor(u, ctx), wrap = document.getElementById("tiles");
+  const note = !u.system && !ctx.venues.length && apps.length ? `<div class="empty">None of your venues are open right now, so the Till and order screens are hidden.</div>` : "";
+  wrap.innerHTML = note + apps.map(a => `<a class="tile" href="${a.href}"><span class="ti">${icon(a.icon)}</span><span><div class="tn">${esc(a.name)}</div><div class="td">${esc(a.about)}</div></span><span class="go">${icon("chevron")}</span></a>`).join("")
+    || (u.system || ctx.venues.length ? `<div class="empty">Your account doesn't have access to any part of NIPOS yet. Ask a manager to set your permissions in Backend › Users.</div>`
+      : `<div class="empty">None of your venues are open right now. Ask a manager if that's not right.</div>`);
+  show("appsView");
+}
+async function start(){
+  connectAuthClient();
+  await syncMasterTheme(); // so the Kitchen tile knows whether the kitchen screen is switched on
+  const u = await fetchMyStaffRow();
+  if (!u || (u.perms && u.perms.active === false)) { setSignedInUser(null); show("signInView"); document.getElementById("pinInput").focus(); return; }
+  setSignedInUser(u);
+  renderApps(u);
+}
+document.getElementById("pinBtn").addEventListener("click", async () => {
+  const input = document.getElementById("pinInput"), msg = document.getElementById("pinMsg"), pin = input.value.trim();
+  if (!pin) { input.focus(); return; }
+  // $YSTEM signs in with a password, which only Backend asks for.
+  if (isSystemSignIn(pin)) { location.href = "backend.html"; return; }
+  msg.textContent = "";
+  const res = await signInWithPin(pin);
+  input.value = "";
+  if (res.error) { msg.textContent = res.error; input.focus(); return; }
+  const u = await fetchMyStaffRow();
+  if (!u || u.perms.active === false) {
+    msg.textContent = !u ? "Account not found" : "This account is disabled";
+    await signOutAuth(); return;
+  }
+  setSignedInUser(u);
+  logActivity("Signed in", "NIPOS start screen", null);
+  renderApps(u);
+});
+document.getElementById("pinInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("pinBtn").click(); });
+document.getElementById("signOutBtn").addEventListener("click", async () => {
+  await signOutAuth();
+  setSignedInUser(null);
+  show("signInView");
+});
+document.addEventListener("nipos:settingschange", async () => { if (!document.getElementById("appsView").hidden) { const u = await fetchMyStaffRow(); if (u) renderApps(u); } });
+start();
+</script>
+</body>
+</html>

@@ -349,6 +349,56 @@ const MASTER_THEMES = {
     venues: [["Lavender", "#6E5BD6", "#FFFFFF"], ["Ocean", "#0A6ED1", "#FFFFFF"], ["Sand", "#B08D57", "#141414"], ["Navy", "#1F3A93", "#FFFFFF"], ["Driftwood", "#6D5D4B", "#FFFFFF"]],
     normal: { scheme: "light", tokens: { "--bg": "#F2F2F7", "--surface": "#FFFFFF", "--surface-2": "#EFEFEF", "--border": "#CDCDCE", "--text": "#1C1C1E", "--text-muted": "#6C6C6E", "--accent": "#00BFB7", "--accent-ink": "#141414", "--accent-soft": "rgba(0,191,183,0.12)", "--accent-text": "#007A75", "--sel-bg": "#1C1C1E", "--sel-ink": "#F2F2F7", "--focus": "#009C95" } },
     dark: { scheme: "dark", tokens: { "--bg": "#1C1C1E", "--surface": "#2C2C2E", "--surface-2": "#3A3A3C", "--border": "#58585A", "--text": "#F2F2F7", "--text-muted": "#A7A7AB", "--accent": "#00C7BE", "--accent-ink": "#141414", "--accent-soft": "rgba(0,199,190,0.16)", "--accent-text": "#00C7BE", "--sel-bg": "#F2F2F7", "--sel-ink": "#1C1C1E", "--focus": "#00C7BE" } }
+  },
+  "speakeasy": { name: "Speakeasy",
+    venues: [["Brass", "#B8862B", "#141414"], ["Emerald", "#1E7A55", "#FFFFFF"], ["Oxblood", "#8C2A2A", "#FFFFFF"], ["Midnight", "#2B3F73", "#FFFFFF"], ["Smoke", "#5C6660", "#FFFFFF"]],
+    normal: { scheme: "dark", tokens: { "--bg": "#0F1A16", "--surface": "#18261F", "--surface-2": "#213229", "--border": "#3A4E43", "--text": "#EFE8D6", "--text-muted": "#A9B3A6", "--accent": "#D4A64A", "--accent-ink": "#1A1405", "--accent-soft": "rgba(212,166,74,0.16)", "--accent-text": "#E0B65C", "--sel-bg": "#EFE8D6", "--sel-ink": "#0F1A16", "--focus": "#E0B65C" } },
+    dark: { scheme: "dark", tokens: { "--bg": "#0A0F0D", "--surface": "#131A16", "--surface-2": "#1B241F", "--border": "#33423A", "--text": "#EDE6D3", "--text-muted": "#9FA89D", "--accent": "#C99A3E", "--accent-ink": "#1A1405", "--accent-soft": "rgba(201,154,62,0.16)", "--accent-text": "#D9AE55", "--sel-bg": "#EDE6D3", "--sel-ink": "#0A0F0D", "--focus": "#D9AE55" } }
+  },
+  "copper-oak": { name: "Copper & Oak",
+    venues: [["Copper", "#A5532A", "#FFFFFF"], ["Forest", "#2F5D3A", "#FFFFFF"], ["Navy", "#24396B", "#FFFFFF"], ["Claret", "#7A2335", "#FFFFFF"], ["Walnut", "#5B4636", "#FFFFFF"]],
+    normal: { scheme: "light", tokens: { "--bg": "#F6EFE6", "--surface": "#FFFAF3", "--surface-2": "#EEE2D2", "--border": "#D2BFA8", "--text": "#2E1F14", "--text-muted": "#6B5543", "--accent": "#B4602F", "--accent-ink": "#FFFFFF", "--accent-soft": "rgba(180,96,47,0.12)", "--accent-text": "#97491D", "--sel-bg": "#2E1F14", "--sel-ink": "#F6EFE6", "--focus": "#B4602F" } },
+    dark: { scheme: "dark", tokens: { "--bg": "#1C1510", "--surface": "#2A2019", "--surface-2": "#352920", "--border": "#54443A", "--text": "#F3E7D9", "--text-muted": "#B8A694", "--accent": "#D27A44", "--accent-ink": "#1A0C03", "--accent-soft": "rgba(210,122,68,0.16)", "--accent-text": "#E59362", "--sel-bg": "#F3E7D9", "--sel-ink": "#1C1510", "--focus": "#E59362" } }
+  },
+  "gin-garden": { name: "Gin Garden",
+    venues: [["Juniper", "#2E6B4F", "#FFFFFF"], ["Lavender", "#6B5AA6", "#FFFFFF"], ["Elderflower", "#7A6B22", "#FFFFFF"], ["Rhubarb", "#A33A55", "#FFFFFF"], ["Slate", "#4A5A63", "#FFFFFF"]],
+    normal: { scheme: "light", tokens: { "--bg": "#EFF3EC", "--surface": "#FFFFFF", "--surface-2": "#E4EBE0", "--border": "#C3D0BE", "--text": "#1D2B22", "--text-muted": "#55665A", "--accent": "#2F7A55", "--accent-ink": "#FFFFFF", "--accent-soft": "rgba(47,122,85,0.12)", "--accent-text": "#246346", "--sel-bg": "#1D2B22", "--sel-ink": "#EFF3EC", "--focus": "#2F7A55" } },
+    dark: { scheme: "dark", tokens: { "--bg": "#111A15", "--surface": "#1A251F", "--surface-2": "#233029", "--border": "#3D4D44", "--text": "#E6EFE8", "--text-muted": "#A3B3A8", "--accent": "#5FBF8E", "--accent-ink": "#0B1F14", "--accent-soft": "rgba(95,191,142,0.16)", "--accent-text": "#6FCB9C", "--sel-bg": "#E6EFE8", "--sel-ink": "#111A15", "--focus": "#6FCB9C" } }
+  },
+  "midnight-velvet": { name: "Midnight Velvet",
+    venues: [["Burgundy", "#8E2341", "#FFFFFF"], ["Sapphire", "#2450A8", "#FFFFFF"], ["Champagne", "#C2A56B", "#141414"], ["Amethyst", "#6E3FA3", "#FFFFFF"], ["Teal", "#18707A", "#FFFFFF"]],
+    normal: { scheme: "dark", tokens: { "--bg": "#0E1328", "--surface": "#172040", "--surface-2": "#1F2A4E", "--border": "#384572", "--text": "#F1ECE2", "--text-muted": "#A9AFC6", "--accent": "#D8BE85", "--accent-ink": "#1A1406", "--accent-soft": "rgba(216,190,133,0.16)", "--accent-text": "#E2CB98", "--sel-bg": "#F1ECE2", "--sel-ink": "#0E1328", "--focus": "#E2CB98" } },
+    dark: { scheme: "dark", tokens: { "--bg": "#080B17", "--surface": "#11172C", "--surface-2": "#18203A", "--border": "#2F3A5C", "--text": "#EEE9DE", "--text-muted": "#A0A6BC", "--accent": "#CDB27A", "--accent-ink": "#1A1406", "--accent-soft": "rgba(205,178,122,0.16)", "--accent-text": "#DABF8C", "--sel-bg": "#EEE9DE", "--sel-ink": "#080B17", "--focus": "#DABF8C" } }
+  },
+  "tiki-bar": { name: "Tiki Bar",
+    venues: [["Lagoon", "#0E7C7B", "#FFFFFF"], ["Coral", "#C2452D", "#FFFFFF"], ["Palm", "#3C7A2E", "#FFFFFF"], ["Hibiscus", "#A62563", "#FFFFFF"], ["Bamboo", "#7A6224", "#FFFFFF"]],
+    normal: { scheme: "light", tokens: { "--bg": "#FBF4E6", "--surface": "#FFFDF7", "--surface-2": "#F2E7D0", "--border": "#DCC9A6", "--text": "#2A2118", "--text-muted": "#6A5A45", "--accent": "#C2452D", "--accent-ink": "#FFFFFF", "--accent-soft": "rgba(194,69,45,0.12)", "--accent-text": "#B23F24", "--sel-bg": "#2A2118", "--sel-ink": "#FBF4E6", "--focus": "#0E7C7B" } },
+    dark: { scheme: "dark", tokens: { "--bg": "#0F1F1F", "--surface": "#172C2C", "--surface-2": "#203838", "--border": "#3A5555", "--text": "#F5EBDA", "--text-muted": "#ABBAB6", "--accent": "#F07A5C", "--accent-ink": "#2A0B03", "--accent-soft": "rgba(240,122,92,0.16)", "--accent-text": "#F58D73", "--sel-bg": "#F5EBDA", "--sel-ink": "#0F1F1F", "--focus": "#F58D73" } }
+  },
+  "craft-brewery": { name: "Craft Brewery",
+    venues: [["Amber", "#C77D12", "#141414"], ["Hop green", "#4F7A24", "#FFFFFF"], ["Stout", "#4A3428", "#FFFFFF"], ["Steel blue", "#2E5A80", "#FFFFFF"], ["Brick", "#9A3B26", "#FFFFFF"]],
+    normal: { scheme: "dark", tokens: { "--bg": "#16191C", "--surface": "#21262B", "--surface-2": "#2B3137", "--border": "#454E57", "--text": "#ECEEF0", "--text-muted": "#A4ACB4", "--accent": "#E39A2B", "--accent-ink": "#1E1203", "--accent-soft": "rgba(227,154,43,0.16)", "--accent-text": "#EBAA45", "--sel-bg": "#ECEEF0", "--sel-ink": "#16191C", "--focus": "#EBAA45" } },
+    dark: { scheme: "dark", tokens: { "--bg": "#0D0F11", "--surface": "#171A1D", "--surface-2": "#1F2327", "--border": "#3A4148", "--text": "#E7E9EB", "--text-muted": "#9AA2AA", "--accent": "#D88F22", "--accent-ink": "#1E1203", "--accent-soft": "rgba(216,143,34,0.16)", "--accent-text": "#E39F38", "--sel-bg": "#E7E9EB", "--sel-ink": "#0D0F11", "--focus": "#E39F38" } }
+  },
+  "rose-terrace": { name: "Ros\u00e9 Terrace",
+    venues: [["Wine", "#8A1E3C", "#FFFFFF"], ["Olive", "#5B6B2A", "#FFFFFF"], ["Dusk blue", "#3A5A8C", "#FFFFFF"], ["Terracotta", "#A84E32", "#FFFFFF"], ["Mauve", "#7A4A6E", "#FFFFFF"]],
+    normal: { scheme: "light", tokens: { "--bg": "#FBF0F0", "--surface": "#FFFFFF", "--surface-2": "#F5E3E4", "--border": "#E2C3C7", "--text": "#2E1A1F", "--text-muted": "#6E545A", "--accent": "#A3264A", "--accent-ink": "#FFFFFF", "--accent-soft": "rgba(163,38,74,0.12)", "--accent-text": "#8E1F3F", "--sel-bg": "#2E1A1F", "--sel-ink": "#FBF0F0", "--focus": "#A3264A" } },
+    dark: { scheme: "dark", tokens: { "--bg": "#1E1216", "--surface": "#2B1C21", "--surface-2": "#36252B", "--border": "#55404A", "--text": "#F7E8EA", "--text-muted": "#BCA5AB", "--accent": "#E86C8C", "--accent-ink": "#2A0A13", "--accent-soft": "rgba(232,108,140,0.16)", "--accent-text": "#EF85A1", "--sel-bg": "#F7E8EA", "--sel-ink": "#1E1216", "--focus": "#EF85A1" } }
+  },
+  "arcade": { name: "Arcade",
+    venues: [["Neon pink", "#D01A7E", "#FFFFFF"], ["Cyan", "#00B8D4", "#141414"], ["Lime", "#7BC91B", "#141414"], ["Violet", "#7B4DFF", "#FFFFFF"], ["Orange", "#FF7A1A", "#141414"]],
+    normal: { scheme: "dark", tokens: { "--bg": "#0B0B10", "--surface": "#16161F", "--surface-2": "#20202C", "--border": "#3A3A4D", "--text": "#F2F2F7", "--text-muted": "#A6A6B8", "--accent": "#A6F23A", "--accent-ink": "#0E1A00", "--accent-soft": "rgba(166,242,58,0.16)", "--accent-text": "#B4F55A", "--sel-bg": "#F2F2F7", "--sel-ink": "#0B0B10", "--focus": "#00E5FF" } },
+    dark: { scheme: "dark", tokens: { "--bg": "#050507", "--surface": "#0F0F15", "--surface-2": "#18181F", "--border": "#30303D", "--text": "#EDEDF2", "--text-muted": "#9C9CAD", "--accent": "#93DE2A", "--accent-ink": "#0E1A00", "--accent-soft": "rgba(147,222,42,0.16)", "--accent-text": "#A6EA48", "--sel-bg": "#EDEDF2", "--sel-ink": "#050507", "--focus": "#00D4EE" } }
+  },
+  "nordic-frost": { name: "Nordic Frost",
+    venues: [["Fjord", "#1E5A8C", "#FFFFFF"], ["Pine", "#2C6B57", "#FFFFFF"], ["Berry", "#9C2F5A", "#FFFFFF"], ["Granite", "#4D5866", "#FFFFFF"], ["Aurora", "#5B4CB0", "#FFFFFF"]],
+    normal: { scheme: "light", tokens: { "--bg": "#F4F7FA", "--surface": "#FFFFFF", "--surface-2": "#EAF0F5", "--border": "#CDD8E2", "--text": "#14202B", "--text-muted": "#566573", "--accent": "#1E5A8C", "--accent-ink": "#FFFFFF", "--accent-soft": "rgba(30,90,140,0.12)", "--accent-text": "#1E5A8C", "--sel-bg": "#14202B", "--sel-ink": "#F4F7FA", "--focus": "#1E5A8C" } },
+    dark: { scheme: "dark", tokens: { "--bg": "#0F161D", "--surface": "#18222C", "--surface-2": "#212D39", "--border": "#3B4A59", "--text": "#E8EFF5", "--text-muted": "#A1B0BE", "--accent": "#6AA8DE", "--accent-ink": "#071624", "--accent-soft": "rgba(106,168,222,0.16)", "--accent-text": "#7DB5E5", "--sel-bg": "#E8EFF5", "--sel-ink": "#0F161D", "--focus": "#7DB5E5" } }
+  },
+  "sunlight": { name: "Sunlight (high contrast)",
+    venues: [["Black", "#000000", "#FFFFFF"], ["Blue", "#0040B0", "#FFFFFF"], ["Red", "#B00020", "#FFFFFF"], ["Green", "#00602A", "#FFFFFF"], ["Purple", "#5A1A9A", "#FFFFFF"]],
+    normal: { scheme: "light", tokens: { "--bg": "#FFFFFF", "--surface": "#FFFFFF", "--surface-2": "#F0F0F0", "--border": "#000000", "--text": "#000000", "--text-muted": "#2B2B2B", "--accent": "#FFD400", "--accent-ink": "#000000", "--accent-soft": "rgba(255,212,0,0.12)", "--accent-text": "#000000", "--sel-bg": "#000000", "--sel-ink": "#FFFFFF", "--focus": "#0040B0" } },
+    dark: { scheme: "dark", tokens: { "--bg": "#000000", "--surface": "#000000", "--surface-2": "#141414", "--border": "#FFFFFF", "--text": "#FFFFFF", "--text-muted": "#E0E0E0", "--accent": "#FFD400", "--accent-ink": "#000000", "--accent-soft": "rgba(255,212,0,0.16)", "--accent-text": "#FFD400", "--sel-bg": "#FFFFFF", "--sel-ink": "#000000", "--focus": "#FFD400" } }
   }
 };
 // Shown in Backend's theme picker for Classic, which uses each page's own built-in colours.
@@ -1093,7 +1143,7 @@ function showOrderReady(n, sound) {
 }
 
 // Device health (feature "deviceHealth"): every page reports in once a minute.
-const NIPOS_VERSION = "20261024c";
+const NIPOS_VERSION = "20261115d";
 function deviceId() {
   let id = null; try { id = localStorage.getItem("nipos.deviceId"); } catch (e) {}
   if (!id) { id = "dev" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("nipos.deviceId", id); } catch (e) {} }
@@ -1282,7 +1332,7 @@ function activityType(action) {
 }
 function activityScreenName(page) {
   const p = page || location.pathname.split("/").pop() || "index.html";
-  return /orders/.test(p) ? "Order screen" : /backend/.test(p) ? "Backend" : "Till";
+  return /orders/.test(p) ? "Order screen" : /backend/.test(p) ? "Backend" : /(^|\/)app\.html$/.test(p) ? "Start screen" : "Till";
 }
 // Entries are queued and sent together every few seconds (one request, not one per tap). Anything
 // that has to land before the person is signed out (signing out itself) passes now = true.

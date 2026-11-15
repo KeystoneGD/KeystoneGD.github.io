@@ -54,7 +54,7 @@ The pages are the same as the hosted NIPOS (`index.html` till, `orders.html` ord
 | Create $YSTEM, or change its password | `scripts/create-system.sh` |
 | Create an extra $YSTEM sign-in (e.g. 07466707188) | `scripts/create-system.sh 07466707188` |
 | Update to the latest NIPOS (pages and database) | `git pull`, then `scripts/start.sh` |
-| Bring the pages up to date with the hosted NIPOS | `python3 scripts/update-from-nipos.py ../NIPOS` (see below) |
+| Bring the pages up to date with the hosted NIPOS | `python3 scripts/update-from-nipos.py <NIPOS.github.io>/production` (see below) |
 
 ChromeOS doesn't start Linux on its own, so after the Chromebook restarts, open the Terminal
 and run `scripts/start.sh`. Stopping or restarting never loses data, because it lives in Docker volumes.
@@ -74,8 +74,9 @@ forward the ports:
    - Switch both on.
 2. Find the Chromebook's Wi-Fi address: **Settings → Network → (your Wi-Fi) → Network/IP address**,
    e.g. `192.168.1.50`.
-3. On each till or tablet, open `http://192.168.1.50:8080/`, using the Wi-Fi address from step 2.
-   Use `/orders.html` for the order screen and `/backend.html` for Backend.
+3. On each till or tablet, open `http://192.168.1.50:8080/app.html`, using the Wi-Fi address from step 2.
+   That's the NIPOS start screen: sign in with a PIN and it shows the Till, Orders, Kitchen and Backend
+   that person is allowed to use. You can also go straight to `/` (Till), `/orders.html` or `/backend.html`.
 
 Tips:
 - Give the Chromebook a **fixed IP** (a DHCP reservation in the router) so the address never changes.
@@ -100,11 +101,12 @@ Settings (Customer display). Switch on **Customer display** in Master settings f
 
 ## Keeping it up to date
 
-This folder lives next to the hosted NIPOS in the KeystoneGD.github.io repository. To bring the
-pages here up to date after a change to the hosted NIPOS, run from this folder:
+The current hosted NIPOS is the `production/` folder of the NIPOS/NIPOS.github.io repository. To bring
+the pages here up to date after a change there, clone that repository next to this one and run from
+this folder:
 
 ```bash
-python3 scripts/update-from-nipos.py ../NIPOS
+python3 scripts/update-from-nipos.py ../../NIPOS.github.io/production
 ```
 
 It copies the pages and points them at this server instead of the internet; it stops without

@@ -268,3 +268,6 @@ button,.btn,.tag,.state-badge,.stepper,.nav-item,.drawer-list button,.product .n
 .ss-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:8px;}
 .ss-card{max-height:min(90vh,760px);overflow-y:auto;}
 .ss-locked select{opacity:.75;cursor:not-allowed;}
+
+/* Link from each sign-in screen to the NIPOS start screen (app.html). */
+.start-link{display:flex;align-items:center;justify-content:center;min-height:var(--tap);margin-top:10px;color:var(--text-muted);font-weight:600;font-size:14px;text-decoration:underline;text-underline-offset:3px;}
