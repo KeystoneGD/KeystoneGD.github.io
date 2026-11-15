@@ -3,6 +3,9 @@
 
     python3 scripts/update-from-nipos.py [path to the hosted NIPOS folder; default ../NIPOS]
 
+The current hosted NIPOS is the production/ folder of the NIPOS/NIPOS.github.io repository, e.g.
+    python3 scripts/update-from-nipos.py ~/NIPOS.github.io/production
+
 Copies every page, script, stylesheet and image from the hosted NIPOS folder into web/, then makes the
 same few changes every time so the copy runs on this server with no internet:
   - the Google Fonts link becomes the bundled web/vendor/fonts/fonts.css
@@ -51,6 +54,8 @@ RULES = {
     "orders.html": [FONTS, SUPABASE_JS, PUSH_URL, VAPID],
     "backend.html": [FONTS, SUPABASE_JS, CHART_JS],
     "display.html": [FONTS, SUPABASE_JS],
+    "app.html": [FONTS, SUPABASE_JS],
+    "install.html": [FONTS],
     "db.js": [DB_CONFIG],
     "system-guide/index.html": [GUIDE_FONTS],
 }

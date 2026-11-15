@@ -137,7 +137,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 .switch input:checked + .slider{background:var(--danger);border-color:var(--danger);}
 .switch input:checked + .slider::before{transform:translateX(18px);background:#fff;opacity:1;}
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261024c">
+<link rel="stylesheet" href="nipos.css?v=20261115d">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -146,6 +146,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
     <p id="loginMessage">Enter your PIN for Order Screen access.</p>
     <input type="password" inputmode="numeric" id="loginPinInput" placeholder="PIN" autocomplete="off">
     <button class="btn btn-accent" id="loginSubmitBtn">Sign in</button>
+    <a class="start-link" href="app.html">Open the NIPOS start screen</a>
   </div>
 </div>
 <div class="login-gate" id="venuePickerScreen" hidden>
@@ -165,6 +166,7 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
   <button class="band-btn" id="switchVenueBtn" type="button" hidden>Switch venue</button>
   <button class="band-btn" id="soundsBtn" type="button" aria-label="Sound settings" title="Sound settings" hidden><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></button>
   <button class="band-btn" id="themeToggleBtn" type="button" aria-label="Switch to light theme"></button>
+  <a class="band-btn" href="app.html" data-app-home hidden style="text-decoration:none;">All apps</a>
   <button class="band-btn" id="accountSignOutBtn" type="button">Sign out</button>
 </header>
 <div id="accountName" hidden></div>
@@ -267,7 +269,8 @@ h1{font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:19px;margin:0;
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261024c"></script>
+<script src="db.js?v=20261115d"></script>
+<script src="nipos-app.js?v=20261115d"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -386,7 +389,8 @@ async function resolveKitchen(){
   if (!featureOn("kitchenScreen")) return;
   let rows = [];
   try { const { data, error } = await supabaseClient.from("kitchens").select("id,data").order("ts"); if (!error) rows = data || []; } catch (e) {}
-  myKitchens = rows.map(r => ({ name: "Kitchen", venueIds: [], ...r.data, id: r.id })).filter(k => kitchenVenues(k).length);
+  // A closed kitchen (Backend > Kitchens > Kitchen open) isn't offered; nor is one whose venues are all closed.
+  myKitchens = rows.map(r => ({ name: "Kitchen", venueIds: [], ...r.data, id: r.id })).filter(k => k.active !== false && kitchenVenues(k).length);
   if (!myKitchens.length) return;
   let saved = null; try { saved = localStorage.getItem(LS_KITCHEN); } catch (e) {}
   activeKitchen = myKitchens.find(k => k.id === saved) || (myKitchens.length === 1 ? myKitchens[0] : null);

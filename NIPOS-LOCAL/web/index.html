@@ -129,6 +129,9 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 .chargebig{text-align:center;padding:26px 10px 6px;}
 .chargebig .amount{font-size:52px;font-weight:800;font-family:'Manrope',sans-serif;}
 .chargebig .hint{color:var(--text-muted);font-size:14px;margin-top:8px;line-height:1.5;}
+.charge-offs{max-width:360px;margin:0 auto 10px;font-size:15px;}
+.charge-offs .co-line{display:flex;justify-content:space-between;gap:12px;padding:3px 0;color:var(--text-muted);}
+.charge-offs .co-line.off{color:var(--success);font-weight:700;}
 
 .cash-helper{padding:10px 4px 0;}
 .quickcash{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
@@ -323,8 +326,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   .print-sheet.show .report-range,.print-sheet.show .section-title{color:#333;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261024c">
-<link rel="stylesheet" href="layouts.css?v=20261024c">
+<link rel="stylesheet" href="nipos.css?v=20261115d">
+<link rel="stylesheet" href="layouts.css?v=20261115d">
 </head>
 <body>
 
@@ -422,6 +425,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
   </div>
   <div class="sheet-body">
     <div class="chargebig">
+      <div class="charge-offs tabular" id="chargeOffs" hidden></div>
       <div class="amount tabular" id="chargeAmount">£0.00</div>
       <div class="hint" id="chargeHint">Key this amount into the card machine.<br>Once it's approved, log the sale below.</div>
     </div>
@@ -459,6 +463,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
         <div style="display:flex;gap:8px;flex:0 0 auto;">
           <button class="btn btn-ghost" id="switchVenueBtn" hidden>Switch venue</button>
           <button class="btn btn-ghost" id="themeToggleBtn" type="button">Light theme</button>
+          <a class="btn btn-ghost" href="app.html" data-app-home hidden>All apps</a>
           <button class="btn btn-ghost" id="accountSignOutBtn">Sign out</button>
         </div>
       </div>
@@ -734,6 +739,7 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
     <p id="loginMessage">Enter your PIN to start your shift.</p>
     <input type="password" inputmode="numeric" id="loginPinInput" placeholder="PIN" autocomplete="off">
     <button class="btn btn-accent btn-block" id="loginSubmitBtn">Sign in</button>
+    <a class="start-link" href="app.html">Open the NIPOS start screen</a>
   </div>
 </div>
 <div class="login-gate" id="venuePickerScreen" hidden>
@@ -760,7 +766,8 @@ main{padding:6px 14px 16px;max-width:640px;margin:0 auto;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261024c"></script>
+<script src="db.js?v=20261115d"></script>
+<script src="nipos-app.js?v=20261115d"></script>
 <script>
 initTheme();
 hydrateIcons();
@@ -1092,6 +1099,8 @@ async function pullRowStores(){
 }
 
 const LS_DEALS = "starlightTill.deals.v1"; // the venue's deals (see Deals below)
+const LS_DEAL_RULES = "starlightTill.dealRules.v1"; // { overlap: "order" | "best" }, see Deals below
+let dealRules = null;
 let dealsDoc = null;
 // Section B state (Favourites tab, stock counts, diet filter), declared early: the menu draws before
 // the code that uses them further down.
@@ -1104,6 +1113,7 @@ const PERSISTED_KEYS = [
   { key: LS_CUSTOM, set: v => { customProducts = v; customProducts.forEach(p => { BY_ID[p.id] = hydrateCustomProduct(p); }); renderCustomCategories(); }, live: true },
   { key: LS_HH_OVERRIDE, set: v => { hhOverride = v; }, live: true },
   { key: LS_DEALS, set: v => { dealsDoc = v; }, live: true },
+  { key: LS_DEAL_RULES, set: v => { dealRules = v; }, live: true },
   { key: LS_FAVS, set: v => { const next = Array.isArray(v) ? v : []; if (JSON.stringify(next) !== JSON.stringify(favNames)) { favNames = next; renderMenuSections(); renderQtys(); applyVisibility(); } }, live: true },
 ];
 
@@ -1127,7 +1137,7 @@ async function connectDb(){
   } catch (e) { dbNs = null; supabaseClient = null; }
   if (!dbNs) return;
   await restoreSession();
-  setInterval(() => { if (currentVenue) { pullState(PERSISTED_KEYS.filter(i => i.live)); pullRowStores(); checkLockdown(); } }, 1000);
+  setInterval(() => { if (currentVenue) { pullState(PERSISTED_KEYS.filter(i => i.live)); pullRowStores(); checkLockdown(); refreshIfDealsChanged(); } }, 1000);
   setInterval(() => { if (currentVenue) { loadCatalogueFromDb(); refreshCurrentVenue(); } }, 15000); // the catalogue rarely changes, no need to poll it every second
   setInterval(() => { if (currentVenue && currentUser) sendHeartbeat(currentUserId, currentUser.name); }, 45000);
 }
@@ -1269,15 +1279,27 @@ function removeProductFromCart(id){
 function cartTotalPence(){ return Object.entries(cart).reduce((s,[key,qty]) => s + lineInfo(key).pence * qty, 0); }
 function cartCount(){ return Object.values(cart).reduce((s,q) => s+q, 0); }
 
-// --- Deals (Backend > Discounts, per venue). Each deal: a name, when it's on, which categories count,
-// what makes a pair (any two from the selection, or two of the same product; optionally only when both
-// cost the same), which of the pair gets money off (the cheaper or the dearer one) and how much, plus
-// how each discount button behaves while it's on. Until a venue saves its own deals it gets the
-// original Happy Hour: cocktails, 3-6pm and 9.30pm-close, the cheaper of each two half price, and
-// Owner's 10% not on the cocktails.
+// --- Deals (Backend > Discounts, per venue). Each deal has a name, its times, a switch, how each
+// discount button behaves while it's on, and one of five types:
+//   pair      buy two: the cheaper or dearer one % off, both for a set price, or both at the cheaper
+//             one's price, or of two at the same price one gets % off (optionally only two of the same
+//             product, or only two at the same price)
+//   price     a set price for each one (e.g. Carling pint £3.50)
+//   multibuy  so many for a set price (e.g. 3 Jägerbombs for £10)
+//   bundle    one from each part for a set price (e.g. a burger and a pint for £12)
+//   percent   % off each one
+// What a deal covers: whole categories and/or chosen items ("Name" for any size, "Name|Pint" for one).
+// A pair deal with nothing chosen covers Cocktails, as the original Happy Hour did. Mixers and pint
+// extras are never discounted: a deal prices the drink and they're added on top. Until a venue saves
+// A deal with stack: false applies once per order (one pair, one set, one item); otherwise it repeats
+// for every pair or set in the order. Until a venue saves
+// its own deals it gets the original Happy Hour: cocktails, 3-6pm and 9.30pm-close, the cheaper of each
+// two half price, and Owner's 10% not on the cocktails.
 const DEFAULT_DEALS = [{ id: "happyhour", name: "Happy Hour", enabled: true,
   windows: [{ days: [], from: "15:00", to: "18:00" }, { days: [], from: "21:30", to: "close" }],
   categories: [], pairFrom: "selection", samePrice: false, discounted: "cheaper", pct: 50, buttons: { owner10: "notOnDeal" } }];
+// When more than one deal could take the same drink: "order" (the first deal in the list wins, as
+// before) or "best" (whichever way gives the customer the lowest total). Set on Backend's Discounts page.
 function venueDeals(){ return Array.isArray(dealsDoc) ? dealsDoc : DEFAULT_DEALS; }
 function dealInWindow(d){
   const now = new Date(), day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
@@ -1293,46 +1315,125 @@ function activeDeals(){
   return venueDeals().filter(d => d.enabled !== false && (forced === true || dealInWindow(d)));
 }
 function isHappyHourNow(){ return activeDeals().length > 0; }
-function dealItemIds(d){
-  if (!d.categories || !d.categories.length) return COCKTAIL_IDS;
-  const names = new Set(d.categories);
-  return new Set(CAT.filter(c => names.has(c.name)).flatMap(c => c.items.map(i => i.id)));
+// A deal switched off in Backend, or one whose times have ended, leaves the till straight away: the
+// "pricing is on" banner, the prices and the discount buttons are redrawn when the deals in force change.
+let dealsShown = null;
+function refreshIfDealsChanged(){
+  const now = JSON.stringify(activeDeals().map(d => [d.id, d.name, dealDescription(d)]));
+  if (dealsShown === null) { dealsShown = now; return; }
+  if (now === dealsShown) return;
+  dealsShown = now;
+  renderCartBar();
+  if (document.getElementById("cartSheet").classList.contains("show")) renderCartSheet();
+}
+const dealType = d => ["price", "multibuy", "bundle", "percent"].includes(d.type) ? d.type : "pair";
+const dealMoney = p => fmt(Math.max(0, Number(p) || 0));
+// An order line as a deal sees it: the product, its size or measure, the drink's own price (what a deal
+// works on) and what's added on top (mixers, cordials), which always stays full price.
+function lineForDeals(key){
+  const parts = key.split("::"), product = BY_ID[parts[0]];
+  if (!product) return null;
+  const cat = CAT.find(c => c.items.includes(product));
+  let variant = null, drink = product.pence;
+  if (parts[1] === "beer" || parts[1] === "sized") { const z = product.sizes ? product.sizes[Number(parts[2])] : null; if (z) { variant = z.label; drink = z.pence; } }
+  else if (parts.length > 1) { variant = parts[1] === "double" ? "Double" : "Single"; drink = parts[1] === "double" ? (product.doublePence != null ? product.doublePence : product.pence * 2) : product.pence; }
+  return { key, id: product.id, name: product.name, variant, category: cat ? cat.name : "", drink, extras: Math.max(0, lineInfo(key).pence - drink) };
+}
+function dealCovers(t, cover, legacyCocktails){
+  const cats = cover.categories || [], items = cover.items || [];
+  if (!cats.length && !items.length) return !!legacyCocktails && COCKTAIL_IDS.has(t.id) && !t.variant;
+  return cats.includes(t.category) || items.some(it => { const [n, v] = String(it).split("|"); return n === t.name && (!v || v === t.variant); });
 }
 function dealDescription(d){
-  const what = !d.categories || !d.categories.length ? "Cocktails" : d.categories.map(n => splitCatName(n).title).join(", ");
-  const pct = Number(d.pct) || 0, off = pct >= 100 ? "free" : pct === 50 ? "half price" : `${pct}% off`;
-  return `${what}: buy 2${d.pairFrom === "sameProduct" ? " of the same" : ""}${d.samePrice ? " at the same price" : ""}, the ${d.discounted === "dearer" ? "dearer" : "cheaper"} one ${off}`;
+  const what = [...(d.categories || []).map(n => splitCatName(n).title), ...(d.items || []).map(x => x.replace("|", " "))].join(", ") || (dealType(d) === "pair" ? "Cocktails" : "nothing chosen yet");
+  const pct = Number(d.pct) || 0, off = pct >= 100 ? "free" : pct === 50 ? "half price" : `${pct}% off`, once = d.stack === false ? ", once per order" : "";
+  switch (dealType(d)) {
+    case "price": return `${what}: ${dealMoney(d.pricePence)} each${once ? ", one per order" : ""}`;
+    case "percent": return `${what}: ${off}${once ? ", one per order" : ""}`;
+    case "multibuy": return `${what}: ${Number(d.buyQty) || 2} for ${dealMoney(d.forPence)}${once}`;
+    case "bundle": return `${(d.parts || []).map(pt => [...(pt.categories || []), ...(pt.items || []).map(x => x.replace("|", " "))].join(" or ") || "?").join(" + ")} for ${dealMoney(d.bundlePence)}${once}`;
+  }
+  const pair = `buy 2${d.pairFrom === "sameProduct" ? " of the same" : ""}${d.samePrice ? " at the same price" : ""}`;
+  if (d.discounted === "fixed") return `${what}: ${pair} for ${dealMoney(d.pairPence)}${once}`;
+  if (d.discounted === "matchCheaper") return `${what}: ${pair}, both at the cheaper price${once}`;
+  if (d.discounted === "samePriceOne") return `${what}: buy 2${d.pairFrom === "sameProduct" ? " of the same" : ""} at the same price, one ${off}${once}`;
+  return `${what}: ${pair}, the ${d.discounted === "dearer" ? "dearer" : "cheaper"} one ${off}${once}`;
 }
-// Splits the order into deal items (with each active deal's money off) and everything else.
-function priceBreakdown(){
-  const remaining = { ...cart };
-  let cocktailPence = 0;
-  const savings = [];
-  activeDeals().forEach(d => {
-    const ids = dealItemIds(d), pct = Math.max(0, Math.min(100, Number(d.pct) || 0));
-    const groups = new Map();
-    Object.keys(remaining).forEach(key => {
-      if (!ids.has(key) || !remaining[key]) return; // plain items only, as before (not ones with options)
-      const price = BY_ID[key].pence;
-      const g = (d.pairFrom === "sameProduct" ? key : "*") + (d.samePrice ? "|" + price : "");
+// One deal over the drinks not yet taken by another deal. Returns how much it takes off and which
+// drinks it used (a drink it can't save anything on stays free for the next deal).
+function applyDeal(d, pool){
+  const type = dealType(d), pct = Math.max(0, Math.min(100, Number(d.pct) || 0)), used = new Set(), once = d.stack === false;
+  let saved = 0;
+  const free = pool.filter(u => !u.used);
+  const byPrice = list => list.slice().sort((a, b) => b.drink - a.drink);
+  const take = (units, off) => { if (off <= 0 || (once && saved > 0)) return false; units.forEach(u => used.add(u)); saved += off; return true; };
+  if (type === "price" || type === "percent") {
+    // Once per order: the one with the most off.
+    const offFor = u => type === "price" ? u.drink - Math.max(0, Number(d.pricePence) || 0) : Math.round(u.drink * pct / 100);
+    free.filter(u => dealCovers(u, d)).sort((a, b) => offFor(b) - offFor(a)).forEach(u => take([u], offFor(u)));
+  } else if (type === "pair" || type === "multibuy") {
+    const n = type === "pair" ? 2 : Math.max(2, Number(d.buyQty) || 2), groups = new Map();
+    free.filter(u => dealCovers(u, d, type === "pair")).forEach(u => {
+      const g = (d.pairFrom === "sameProduct" ? u.id + "|" + (u.variant || "") : "*") + (type === "pair" && (d.samePrice || d.discounted === "samePriceOne") ? "|" + u.drink : "");
       if (!groups.has(g)) groups.set(g, []);
-      for (let i = 0; i < remaining[key]; i++) groups.get(g).push(price);
-      delete remaining[key];
+      groups.get(g).push(u);
     });
-    let saved = 0;
-    groups.forEach(prices => {
-      prices.sort((a, b) => b - a);
-      for (let i = 0; i < prices.length; i += 2) {
-        if (i + 1 >= prices.length) { cocktailPence += prices[i]; continue; }
-        const dear = prices[i], cheap = prices[i + 1];
-        const off = d.discounted === "dearer" ? Math.round(dear * pct / 100) : Math.round(cheap * pct / 100);
-        cocktailPence += dear + cheap - off; saved += off;
+    const sets = [];
+    groups.forEach(list => {
+      const sorted = byPrice(list);
+      for (let i = 0; i + n <= sorted.length; i += n) {
+        const set = sorted.slice(i, i + n), sum = set.reduce((t, u) => t + u.drink, 0);
+        let off;
+        if (type === "multibuy") off = sum - Math.max(0, Number(d.forPence) || 0);
+        else if (d.discounted === "fixed") off = sum - Math.max(0, Number(d.pairPence) || 0);
+        else if (d.discounted === "matchCheaper") off = set[0].drink - set[1].drink;
+        else off = Math.round((d.discounted === "dearer" ? set[0].drink : set[1].drink) * pct / 100);
+        sets.push({ set, off });
       }
     });
-    if (saved) savings.push({ deal: d, saved });
-  });
-  const otherPence = Object.entries(remaining).reduce((sum, [key, qty]) => sum + lineInfo(key).pence * qty, 0);
-  return { cocktailPence, otherPence, total: cocktailPence + otherPence, savings };
+    // Once per order: the pair or set with the most off.
+    if (once) sets.sort((a, b) => b.off - a.off);
+    sets.forEach(x => take(x.set, x.off));
+  } else if (type === "bundle") {
+    const parts = (d.parts || []).filter(pt => (pt.categories || []).length || (pt.items || []).length);
+    if (parts.length) {
+      for (;;) {
+        const set = [];
+        for (const pt of parts) { const u = byPrice(free.filter(x => !used.has(x) && !set.includes(x) && dealCovers(x, pt)))[0]; if (!u) break; set.push(u); }
+        if (set.length < parts.length || !take(set, set.reduce((t, u) => t + u.drink, 0) - Math.max(0, Number(d.bundlePence) || 0))) break;
+      }
+    }
+  }
+  return { saved, used };
+}
+function runDeals(order, pool){
+  pool.forEach(u => { u.used = false; });
+  const savings = [];
+  order.forEach(d => { const r = applyDeal(d, pool); r.used.forEach(u => { u.used = true; }); if (r.saved) savings.push({ deal: d, saved: r.saved }); });
+  return { savings, saved: savings.reduce((t, x) => t + x.saved, 0), usedKeys: pool.filter(u => u.used) };
+}
+const permutations = a => a.length <= 1 ? [a] : a.flatMap((x, i) => permutations(a.slice(0, i).concat(a.slice(i + 1))).map(r => [x].concat(r)));
+// Splits the order into deal drinks (after each active deal's money off) and everything else.
+let dealsCache = { key: null, value: null };
+function priceBreakdown(){
+  const deals = activeDeals(), mode = dealRules && dealRules.overlap === "best" ? "best" : "order";
+  const cacheKey = JSON.stringify([cart, deals, mode]);
+  if (dealsCache.key === cacheKey) return dealsCache.value;
+  const pool = [];
+  Object.entries(cart).forEach(([key, qty]) => { const t = lineForDeals(key); if (t) for (let i = 0; i < qty; i++) pool.push({ ...t }); });
+  let best = runDeals(deals, pool);
+  // Best price for the customer: try the deals in every order (up to 6 at once) and keep the lowest.
+  if (mode === "best" && deals.length > 1 && deals.length <= 6) {
+    permutations(deals).forEach(order => { const r = runDeals(order, pool); if (r.saved > best.saved) best = r; });
+    best = runDeals(best.savings.map(x => x.deal).concat(deals.filter(d => !best.savings.some(x => x.deal === d))), pool);
+  }
+  const list = cartTotalPence();
+  const covered = u => u.used || deals.some(d => dealType(d) === "bundle" ? (d.parts || []).some(pt => dealCovers(u, pt)) : dealCovers(u, d, dealType(d) === "pair"));
+  const dealUnits = pool.filter(covered), dealList = dealUnits.reduce((t, u) => t + u.drink + u.extras, 0);
+  const savings = best.savings.map(x => ({ ...x, name: x.deal.name || "Deal" }));
+  const value = { cocktailPence: dealList - best.saved, otherPence: list - dealList, total: list - best.saved, savings, listPence: list };
+  dealsCache = { key: cacheKey, value };
+  return value;
 }
 
 // Stock counts: each sale takes its items off; anything that hits 0 goes on stop (done in the database).
@@ -1404,7 +1505,15 @@ function computeTotals(){
       discountLabel = `${btn ? btn.label : "Discount"} (${discount.pct}% off)`;
     }
   }
-  return { base, discountAmount, discountLabel, total: Math.max(0, base - discountAmount) };
+  const pb = priceBreakdown();
+  return { base, discountAmount, discountLabel, total: Math.max(0, base - discountAmount), listPence: pb.listPence, deals: pb.savings.map(x => ({ name: x.name, saved: x.saved })) };
+}
+// Subtotal, each deal's money off, any discount, as shown on the payment screen and the receipt.
+function moneyOffLinesHTML(listPence, deals, discountLabel, discountAmount, cls){
+  if (!(deals && deals.length) && !discountAmount) return "";
+  return `<div class="${cls}"><span>Subtotal</span><span>${fmt(listPence)}</span></div>`
+    + (deals || []).map(d => `<div class="${cls} off"><span>${esc(d.name)}</span><span>−${fmt(d.saved)}</span></div>`).join("")
+    + (discountAmount ? `<div class="${cls} off"><span>${esc(discountLabel || "Discount")}</span><span>−${fmt(discountAmount)}</span></div>` : "");
 }
 
 /* ---------- modal (replaces prompt/confirm/alert, which don't work in iOS home-screen apps) ---------- */
@@ -2332,9 +2441,12 @@ let chargeShownTotal = null; // the amount on the payment screen, so a changed o
 function openCharge(method){
   if (cartCount() === 0) return;
   pendingMethod = method;
-  const { total } = computeTotals();
+  const { total, listPence, deals, discountLabel, discountAmount } = computeTotals();
   chargeShownTotal = total;
   document.getElementById("chargeAmount").textContent = fmt(total);
+  const offs = document.getElementById("chargeOffs");
+  offs.innerHTML = moneyOffLinesHTML(listPence, deals, discountLabel, discountAmount, "co-line");
+  offs.hidden = !offs.innerHTML;
   const hint = document.getElementById("chargeHint");
   const confirmBtn = document.getElementById("chargeConfirm");
   const cashHelper = document.getElementById("cashHelper");
@@ -2477,12 +2589,12 @@ document.getElementById("chargeConfirm").addEventListener("click", async () => {
 // carrying the items and the rest marked as parts of it. Paying a tab doesn't send the order to the bar
 // again - that happened as it went on the tab.
 function completeSale(payments){
-  const { base, discountAmount, discountLabel, total } = computeTotals();
+  const { base, discountAmount, discountLabel, total, listPence, deals } = computeTotals();
   const items = Object.entries(cart).map(([key, qty]) => { const info = lineInfo(key); return { name: info.name, pence: info.pence, qty }; });
   const now = Date.now(), group = payments.length > 1 ? "split" + now.toString(36) : null, tab = payingTab;
   const share = (x, p, i) => i === payments.length - 1 ? x - payments.slice(0, -1).reduce((n, q) => n + Math.round(x * q.pence / (total || 1)), 0) : Math.round(x * p.pence / (total || 1));
   const sales = payments.map((p, i) => {
-    const sale = { id: "s" + (now + i) + Math.random().toString(36).slice(2, 6), ts: now + i, items: i === 0 ? items : [], base: group ? share(base, p, i) : base, discountAmount: group ? share(discountAmount, p, i) : discountAmount, discountLabel, happyHour: isHappyHourNow(), method: p.method, total: p.pence, table: currentTable.trim() || null, notes: currentNotes.trim() || null };
+    const sale = { id: "s" + (now + i) + Math.random().toString(36).slice(2, 6), ts: now + i, items: i === 0 ? items : [], base: group ? share(base, p, i) : base, discountAmount: group ? share(discountAmount, p, i) : discountAmount, discountLabel, happyHour: isHappyHourNow(), listTotal: i === 0 ? listPence : null, deals: i === 0 ? deals : [], method: p.method, total: p.pence, table: currentTable.trim() || null, notes: currentNotes.trim() || null };
     if (p.method === "cash" && p.cashGiven != null) { sale.cashGiven = p.cashGiven; sale.change = Math.max(0, p.cashGiven - p.pence); }
     if (group) { sale.splitGroup = group; sale.splitPart = i + 1; sale.splitOf = payments.length; }
     if (tab) sale.tabId = tab.id;
@@ -2665,7 +2777,7 @@ function receiptHTML(sale){
     <div class="r-head"><strong>${esc(h.name || (currentVenue ? currentVenue.name : ""))}</strong>${h.address ? `<div>${esc(h.address).replace(/\n/g, "<br>")}</div>` : ""}${h.phone ? `<div>${esc(h.phone)}</div>` : ""}</div>
     <div class="r-meta">${new Date(sale.ts).toLocaleDateString("en-GB")} ${fmtTime(sale.ts)}${sale.table ? " · Table " + esc(sale.table) : ""}</div>
     ${(sale.items || []).map(i => `<div class="r-line"><span>${i.qty} × ${esc(i.name)}</span><span>${fmt(i.pence * i.qty)}</span></div>`).join("")}
-    ${sale.discountAmount ? `<div class="r-line"><span>Subtotal</span><span>${fmt(sale.base)}</span></div><div class="r-line"><span>${esc(sale.discountLabel || "Discount")}</span><span>−${fmt(sale.discountAmount)}</span></div>` : ""}
+    ${moneyOffLinesHTML(sale.listTotal != null ? sale.listTotal : sale.base, sale.deals, sale.discountLabel, sale.discountAmount, "r-line")}
     <div class="r-line r-total"><span>Total${sale.splitOf ? ` (part ${sale.splitPart} of ${sale.splitOf})` : ""}</span><span>${fmt(sale.total)}</span></div>
     <div class="r-line"><span>Paid by ${sale.method === "cash" ? "cash" : "card"}</span><span></span></div>
     ${sale.method === "cash" && sale.cashGiven != null ? `<div class="r-line"><span>Cash given</span><span>${fmt(sale.cashGiven)}</span></div><div class="r-line"><span>Change</span><span>${fmt(sale.change || 0)}</span></div>` : ""}

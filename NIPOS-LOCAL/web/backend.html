@@ -8,6 +8,12 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!-- Added to the Home Screen from here, Backend installs as the NIPOS app (its start screen). -->
+<link rel="manifest" href="manifest-app.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="NIPOS">
 <link rel="stylesheet" href="vendor/fonts/fonts.css">
 <style>
 :root{
@@ -81,6 +87,57 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .nav-item{min-height:44px;font-size:14.5px;color:var(--text);}
 .nav-item:hover{background:var(--surface-2);}
 .nav-item.active{background:var(--sel-bg);color:var(--sel-ink);}
+.report-types{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:0 0 14px;}
+.report-type{display:flex;flex-direction:column;gap:4px;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;color:var(--text);font:inherit;cursor:pointer;min-height:44px;}
+.report-type strong{font-size:15px;}
+.report-type span{font-size:13px;color:var(--text-muted);line-height:1.35;}
+.report-type.on{border-color:var(--text);box-shadow:inset 0 0 0 2px var(--text);}
+.report-controls .check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;}
+.report-controls .check input{width:22px;height:22px;}
+.report-doc{display:grid;gap:16px;margin-top:16px;}
+.rp-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;}
+.rp-head h2{margin:0;font-size:22px;}
+.rp-head p{margin:2px 0 0;}
+.rp-tiles{margin:0;}
+.rp-sec{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;min-width:0;}
+.rp-sec h3{margin:0 0 8px;font-size:15px;}
+.rp-table th[scope="row"]{text-align:left;font-weight:700;}
+.rp-table td,.rp-table th{font-variant-numeric:tabular-nums;vertical-align:middle;}
+.rp-muted{color:var(--text-muted);}
+.rp-chg{font-weight:800;white-space:nowrap;}
+.rp-chg.up{color:var(--success);}
+.rp-chg.down{color:var(--danger);}
+.rp-share{display:inline-block;width:60px;height:8px;border-radius:4px;background:var(--surface-2);margin-right:8px;vertical-align:middle;overflow:hidden;}
+.rp-share.wide{width:140px;}
+.rp-share span{display:block;height:100%;background:var(--text-muted);}
+.rp-heat{display:inline-flex;flex-direction:column;align-items:center;gap:3px;min-width:52px;font-weight:700;}
+.rp-heat::after{content:"";display:block;height:6px;width:calc(var(--a) * 100%);min-width:4px;border-radius:3px;background:var(--accent);}
+.rp-table tbody th{text-transform:none;letter-spacing:0;font-size:13.5px;color:var(--text);font-weight:700;}
+.rp-wide td{text-align:center;}
+@media print{
+  .sidebar,.mobile-band,#sidebarBackdrop,.page-header,.report-types,.report-controls,#page-reports > .note,.status,[aria-label="Install NIPOS"]{display:none !important;}
+  .app-shell{display:block !important;}
+  .main-content{padding:0 !important;}
+  .page{display:none !important;}
+  #page-reports{display:block !important;}
+  .rp-sec{break-inside:avoid;border-color:#999;}
+  body{background:#fff !important;color:#000 !important;}
+  .rp-sec,.kpi-tile{background:#fff !important;color:#000 !important;}
+}
+.nav-group{margin:0 0 10px;}
+.nav-group:not(:has(.nav-item:not([hidden]))){display:none;}
+.nav-group-title{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);padding:6px 12px 4px;}
+.nav-find{position:relative;padding:0 10px 8px;}
+.nav-find input{width:100%;font-size:14px;}
+.nav-find-results{position:absolute;left:10px;right:10px;top:calc(100% - 4px);z-index:45;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:6px;max-height:60vh;overflow-y:auto;}
+.nav-find-results button{display:block;width:100%;text-align:left;background:transparent;border:0;border-radius:8px;color:var(--text);font:inherit;font-size:14px;font-weight:700;padding:8px 10px;min-height:44px;cursor:pointer;}
+.nav-find-results button span{display:block;font-weight:500;font-size:12.5px;color:var(--text-muted);}
+.nav-find-results button:hover,.nav-find-results button[aria-selected="true"]{background:var(--surface-2);}
+.nav-find-results .none{padding:10px;color:var(--text-muted);font-size:13.5px;}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+.find-flash{animation:findflash 1.6s ease-out 1;border-radius:12px;}
+@keyframes findflash{0%,40%{box-shadow:0 0 0 4px var(--focus);}100%{box-shadow:0 0 0 0 transparent;}}
+@media (prefers-reduced-motion: reduce){.find-flash{animation:none;outline:3px solid var(--focus);}}
 .nav-item.active::before{content:"";width:4px;align-self:stretch;border-radius:2px;background:currentColor;margin:-4px 2px -4px -4px;}
 .sidebar .venue-band{border-radius:0;}
 .sidebar .venue-band .grow{flex-direction:column;align-items:flex-start;gap:0;}
@@ -205,12 +262,29 @@ input[type="text"],input[type="password"],input[type="number"],select{width:100%
 .feature-body input[type="color"]{width:44px;height:44px;padding:0;border:1px solid var(--border);background:none;cursor:pointer;}
 .feature-body label.field textarea,.feature-body label.field input{display:block;margin-top:4px;}
 .deal-card{max-width:860px;}
+.deal-modal{max-width:760px;}
+.deal-modal .modal-actions{position:sticky;bottom:-22px;background:var(--surface);margin:14px -22px -22px;padding:12px 22px 22px;border-top:1px solid var(--border);flex-wrap:wrap;}
+.deal-modal .modal-actions .note{flex:1 0 100%;margin:0;}
+.deal-modal .modal-actions .note:empty{display:none;}
+.deal-modal .deal-card{background:none;border:0;padding:0;box-shadow:none;margin:0;}
+.deals-bar{display:flex;align-items:center;gap:12px 16px;flex-wrap:wrap;}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:24px 0 10px;}
+.section-head .section-title{margin:0;}
+.deal-row .btn{min-height:44px;}
+.deal-row .switch{margin:0 4px;}
 .deal-head{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 16px;}
 .deal-head input[type="text"]{max-width:320px;}
 .deal-choice{border:1px solid var(--border);border-radius:10px;padding:6px 12px 8px;margin:10px 0 0;max-width:520px;}
 .deal-choice legend{font-weight:700;font-size:13.5px;padding:0 4px;}
 .deal-card label.check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;cursor:pointer;}
 .deal-card input[type="checkbox"],.deal-card input[type="radio"]{width:22px;height:22px;}
+.deal-card [hidden]{display:none !important;}
+.deal-items{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;}
+.deal-cats summary{cursor:pointer;font-weight:700;font-size:14px;min-height:44px;display:flex;align-items:center;}
+.deal-chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:4px 6px 4px 12px;font-size:14px;font-weight:600;}
+.deal-chip button{border:0;background:transparent;color:var(--text);font-size:18px;line-height:1;min-width:32px;min-height:32px;cursor:pointer;border-radius:50%;}
+.deal-item-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 4px;}
+.deal-item-add input{flex:1 1 240px;max-width:420px;}
 .hh-window{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 0;border-bottom:1px solid var(--border);}
 .hh-days{display:flex;flex-wrap:wrap;gap:4px 10px;}
 .hh-days label{display:inline-flex;align-items:center;gap:4px;min-height:44px;font-size:14px;}
@@ -283,13 +357,10 @@ table.data-table tr:last-child td{border-bottom:0;}
 .product-row{padding:12px 0;border-bottom:1px solid var(--border);}
 .product-row:last-child{border-bottom:0;}
 .product-row-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.mixer-label{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;color:var(--text);cursor:pointer;min-height:44px;}
 .stop-btn{min-height:44px;min-width:120px;padding:0 12px;font-weight:800;font-size:13.5px;border-radius:10px;cursor:pointer;background:var(--surface-2);color:var(--text);border:2px solid var(--text-muted);}
 .stop-btn.on{background:transparent;border-color:var(--danger);}
 .stop-tag{display:inline-block;margin-left:6px;font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--danger);color:#2a0703;vertical-align:1px;}
 :root[data-theme="light"] .stop-tag{background:#b3261e;color:#fff;}
-.product-edit-panel{padding:12px 0 4px;display:none;}
-.product-edit-panel.open{display:block;}
 .size-edit-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
 .size-edit-row label{font-size:12px;color:var(--text-muted);width:110px;flex:0 0 auto;}
 .category-group{margin-bottom:18px;}
@@ -336,7 +407,7 @@ table.data-table tr:last-child td{border-bottom:0;}
   .kpi-row{grid-template-columns:1fr 1fr;}
 }
 </style>
-<link rel="stylesheet" href="nipos.css?v=20261024c">
+<link rel="stylesheet" href="nipos.css?v=20261115d">
 </head>
 <body>
 <div class="login-gate" id="loginGate">
@@ -345,6 +416,7 @@ table.data-table tr:last-child td{border-bottom:0;}
     <p id="loginMessage">Enter your PIN for Backend Access.</p>
     <input type="password" inputmode="numeric" id="loginPinInput" placeholder="PIN" aria-label="PIN" autocomplete="off">
     <button class="btn btn-accent btn-block" id="loginSubmitBtn">Sign in</button>
+    <a class="start-link" href="app.html">Open the NIPOS start screen</a>
   </div>
 </div>
 <div class="login-gate" id="systemGate" hidden>
@@ -378,21 +450,40 @@ table.data-table tr:last-child td{border-bottom:0;}
       <div class="grow"><span class="venue-name" data-venue-name></span><span class="staff-name" data-staff-name></span></div>
     </div>
     <div class="sidebar-brand"><span class="brand-name">Backend</span></div>
-    <nav class="sidebar-nav">
-      <button class="nav-item active" data-page="dashboard" aria-current="page">Takings</button>
-      <button class="nav-item" data-page="products">Products</button>
-      <button class="nav-item" data-page="discounts">Discounts</button>
-      <button class="nav-item" data-page="users">Users</button>
-      <button class="nav-item" data-page="notifications" id="navNotifications" hidden>Notifications</button>
-      <button class="nav-item" data-page="venues" id="navVenues" hidden>Venues</button>
-      <button class="nav-item" data-page="kitchens" id="navKitchens" hidden>Kitchens</button>
-      <button class="nav-item" data-page="openorders" id="navOpenOrders" hidden>Open orders</button>
-      <button class="nav-item" data-page="zreads" id="navZReads" hidden>Z Reads</button>
-      <button class="nav-item" data-page="testdata" id="navTestData" hidden>Test Data</button>
-      <button class="nav-item" data-page="settings" id="navSettings" hidden>Settings</button>
-      <button class="nav-item" data-page="hours" id="navHours" hidden>Hours</button>
-      <button class="nav-item" data-page="activity" id="navActivity" hidden>Activity log</button>
-      <button class="nav-item" data-page="themes" id="navThemes" hidden>Master settings</button>
+    <div class="nav-find">
+      <label class="sr-only" for="navFind">Find a page or setting</label>
+      <input type="search" id="navFind" placeholder="Find… e.g. deals, stop, PIN" autocomplete="off" aria-controls="navFindResults" aria-describedby="navFindHint">
+      <span class="sr-only" id="navFindHint">Type to see matching pages and settings, then pick one.</span>
+      <div class="nav-find-results" id="navFindResults" role="listbox" hidden></div>
+    </div>
+    <nav class="sidebar-nav" aria-label="Backend">
+      <div class="nav-group"><div class="nav-group-title">Money</div>
+        <button class="nav-item active" data-page="dashboard" aria-current="page">Takings</button>
+        <button class="nav-item" data-page="reports" id="navReports">Reports</button>
+        <button class="nav-item" data-page="zreads" id="navZReads" hidden>Z Reads</button>
+      </div>
+      <div class="nav-group"><div class="nav-group-title">During service</div>
+        <button class="nav-item" data-page="openorders" id="navOpenOrders" hidden>Open orders</button>
+        <button class="nav-item" data-page="notifications" id="navNotifications" hidden>Messages and pausing</button>
+      </div>
+      <div class="nav-group"><div class="nav-group-title">Menu</div>
+        <button class="nav-item" data-page="products">Products and stops</button>
+        <button class="nav-item" data-page="discounts">Deals and discounts</button>
+      </div>
+      <div class="nav-group"><div class="nav-group-title">Team</div>
+        <button class="nav-item" data-page="users">Staff</button>
+        <button class="nav-item" data-page="hours" id="navHours" hidden>Hours</button>
+      </div>
+      <div class="nav-group"><div class="nav-group-title">Places</div>
+        <button class="nav-item" data-page="venues" id="navVenues" hidden>Venues</button>
+        <button class="nav-item" data-page="kitchens" id="navKitchens" hidden>Kitchens</button>
+      </div>
+      <div class="nav-group"><div class="nav-group-title">System</div>
+        <button class="nav-item" data-page="settings" id="navSettings" hidden>Settings</button>
+        <button class="nav-item" data-page="activity" id="navActivity" hidden>Activity log</button>
+        <button class="nav-item" data-page="themes" id="navThemes" hidden>Master settings</button>
+        <button class="nav-item" data-page="testdata" id="navTestData" hidden>Test Data</button>
+      </div>
       <button class="nav-item nav-notify" id="navNotify" type="button" hidden><span data-icon="bell"></span>Notify</button>
     </nav>
     <div class="sidebar-footer">
@@ -401,7 +492,10 @@ table.data-table tr:last-child td{border-bottom:0;}
         <span class="account-name">Theme</span>
         <button class="icon-btn" id="themeToggleBtn" type="button" aria-label="Switch to light theme"></button>
       </div>
-      <button class="btn btn-ghost btn-block" id="accountSignOutBtn">Sign out</button>
+      <div style="display:flex;gap:8px;">
+        <a class="btn btn-ghost" href="app.html" data-app-home hidden style="text-decoration:none;flex:1;display:inline-flex;align-items:center;justify-content:center;">All apps</a>
+        <button class="btn btn-ghost" id="accountSignOutBtn" style="flex:1;">Sign out</button>
+      </div>
     </div>
   </aside>
 
@@ -455,9 +549,33 @@ table.data-table tr:last-child td{border-bottom:0;}
       </div>
     </section>
 
+    <section class="page" id="page-reports">
+      <div class="page-header"><h1>Reports</h1></div>
+      <p class="note">Pick a report, the dates and the venue, then press Make report. You can download any report as a spreadsheet, or print it (or save it as a PDF from the print window).</p>
+      <div class="report-types" id="reportTypes" role="radiogroup" aria-label="Report"></div>
+      <div class="card report-controls">
+        <div class="edit-row">
+          <label>Period <select id="reportPeriod">
+            <option value="today">Today</option><option value="yesterday">Yesterday</option>
+            <option value="thisweek">This week (from Monday)</option><option value="lastweek">Last week</option>
+            <option value="thismonth">This month</option><option value="lastmonth">Last month</option>
+            <option value="last7" selected>Last 7 days</option><option value="last30">Last 30 days</option>
+            <option value="custom">Pick dates…</option></select></label>
+          <span id="reportCustom" class="edit-row" hidden><label>From <input type="date" id="reportFrom"></label><label>To <input type="date" id="reportTo"></label></span>
+          <label>Venue <select id="reportVenue"></select></label>
+        </div>
+        <label class="check"><input type="checkbox" id="reportTrading" checked>Trading days: count sales before 6am with the night before</label>
+        <label class="check"><input type="checkbox" id="reportCompare" checked>KPI report: compare with the period before</label>
+        <div class="feature-actions"><button type="button" class="btn btn-accent" id="reportRun">Make report</button>
+          <span id="reportActions" hidden><button type="button" class="btn btn-ghost" id="reportCsv">Download as spreadsheet</button><button type="button" class="btn btn-ghost" id="reportPrint">Print or save as PDF</button></span></div>
+        <p class="note" id="reportMsg" role="status"></p>
+      </div>
+      <div id="reportOut"></div>
+    </section>
+
     <section class="page" id="page-products">
       <div class="page-header">
-        <h1>Products</h1>
+        <h1>Products and stops</h1>
         <label class="page-venue" data-page-venue-wrap hidden><span>Venue</span><select data-page-venue aria-label="Venue for Products"></select></label>
         <div class="tab-row">
           <button class="tab-btn active" data-tab="catalogue">Catalogue</button>
@@ -471,7 +589,9 @@ table.data-table tr:last-child td{border-bottom:0;}
           <select id="productCategoryFilter" aria-label="Show one category"><option value="">All categories</option></select>
           <button class="btn btn-accent" id="toggleAddProductBtn">+ Add product</button>
         </div>
-        <div class="card" id="addProductCard" hidden>
+        <div class="modal-overlay" id="addProductCard" hidden>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="addProductTitle" style="max-width:520px;">
+          <h3 id="addProductTitle">Add a product</h3>
           <label class="field">Name</label>
           <input type="text" id="newName" placeholder="e.g. Bacardi">
           <label class="field" for="newProductCategory">Category</label>
@@ -517,60 +637,56 @@ table.data-table tr:last-child td{border-bottom:0;}
             <span class="info"><span class="name">Also usable as a mixer</span></span>
             <span class="switch"><input type="checkbox" id="newIsMixer"><span class="slider"></span></span>
           </label>
-          <button class="btn btn-accent" id="addBtn" style="margin-top:12px;">Add product</button>
+          <div class="modal-actions"><button type="button" class="btn btn-ghost" id="addProductCancel">Cancel</button><button class="btn btn-accent" id="addBtn">Add product</button></div>
+        </div>
         </div>
         <div id="productsList"><div class="empty">Loading…</div></div>
       </div>
 
       <div class="tab-panel" id="tab-categories">
-        <div class="card">
+        <div class="toolbar"><button type="button" class="btn btn-accent" id="openAddCategoryBtn">+ Add category</button></div>
+        <div class="modal-overlay" id="addCategoryModal" hidden>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="addCategoryTitle">
+          <h3 id="addCategoryTitle">Add a category</h3>
           <label class="field">Name</label>
           <input type="text" id="newCategoryName" placeholder="e.g. Botanical Gins">
           <label class="field" for="newCategoryMode">Menu</label>
           <select id="newCategoryMode"><option value="drink">Drinks</option><option value="food">Food</option></select>
           <label class="row" style="border:0;padding:8px 0 0;"><span class="info"><span class="name">Spirit (single/double pricing)</span></span><span class="switch"><input type="checkbox" id="newCategoryIsSpirit"><span class="slider"></span></span></label>
           <label class="row" style="border:0;padding:8px 0 0;"><span class="info"><span class="name">Draught-style</span></span><span class="switch"><input type="checkbox" id="newCategoryIsBeer"><span class="slider"></span></span></label>
-          <button class="btn btn-accent" id="addCategoryBtn" style="margin-top:12px;">Add category</button>
+          <div class="modal-actions"><button type="button" class="btn btn-ghost" id="addCategoryCancel">Cancel</button><button class="btn btn-accent" id="addCategoryBtn">Add category</button></div>
+        </div>
         </div>
         <div id="categoriesList"><div class="empty">Loading…</div></div>
       </div>
     </section>
 
     <section class="page" id="page-discounts">
-      <div class="page-header"><h1>Discounts</h1><label class="page-venue" data-page-venue-wrap hidden><span>Venue</span><select data-page-venue aria-label="Venue for Discounts"></select></label></div>
-      <div class="section-title">Deals</div>
-      <p class="note">Money off when someone buys two, like Happy Hour. Each deal has its own times, the categories it covers, what makes a pair, which one gets money off, and which discount buttons can be used with it.</p>
-      <div class="card" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <div class="page-header"><h1>Deals and discounts</h1><label class="page-venue" data-page-venue-wrap hidden><span>Venue</span><select data-page-venue aria-label="Venue for Discounts"></select></label></div>
+      <div class="card deals-bar">
         <label for="hhMode" style="font-weight:700;font-size:13.5px;">Deals right now</label>
         <select id="hhMode" style="max-width:320px;">
           <option value="auto">Follow each deal's times</option>
           <option value="on">All switched-on deals on now (until 6am)</option>
           <option value="off">All deals off now (until 6am)</option>
         </select>
+        <button type="button" class="btn btn-ghost btn-sm" id="dealRulesBtn">When deals overlap</button>
       </div>
+      <div class="section-head"><div class="section-title">Deals</div><button type="button" class="btn btn-accent btn-sm" id="dealAdd">+ Add a deal</button></div>
       <p class="note" id="dealsScopeNote"></p>
-      <div id="dealsList"></div>
-      <div class="feature-actions"><button type="button" class="btn btn-ghost" id="dealAdd">Add a deal</button><button type="button" class="btn btn-accent" id="dealsSave">Save deals</button></div>
+      <div class="card" id="dealsList"></div>
       <p class="note" id="dealsMsg" role="status"></p>
-      <div class="section-title">Add a Custom Offer</div>
-      <div class="card">
-        <label class="field">Name</label>
-        <input type="text" id="offerName" placeholder="e.g. Bank Holiday 15%">
-        <label class="field">Discount (%)</label>
-        <input type="number" id="offerPct" step="1" placeholder="e.g. 15">
-        <button class="btn btn-accent" id="addOfferBtn" style="margin-top:12px;">Add offer</button>
-      </div>
-      <div class="section-title">Custom Offers</div>
+      <div class="section-head"><div class="section-title">Custom offers</div><button type="button" class="btn btn-accent btn-sm" id="openAddOfferBtn">+ Add offer</button></div>
       <p class="note">Shows up as a tap-to-apply chip on the till.</p>
       <div class="card" id="offerList"><div class="empty">None added yet.</div></div>
     </section>
 
     <section class="page" id="page-users">
       <div class="page-header">
-        <h1>Users</h1>
+        <h1>Staff</h1>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-ghost btn-sm" id="manageGroupsBtn">Manage groups</button>
-          <button class="btn btn-accent btn-sm" id="openAddUserBtn">+ Add user</button>
+          <button class="btn btn-accent btn-sm" id="openAddUserBtn">+ Add staff member</button>
         </div>
       </div>
       <p class="note">Each user signs in with their PIN. Permissions control what they can do.</p>
@@ -604,7 +720,7 @@ table.data-table tr:last-child td{border-bottom:0;}
         <h1>Kitchens</h1>
         <button class="btn btn-accent btn-sm" id="addKitchenBtn">+ Add kitchen</button>
       </div>
-      <p class="note">Each kitchen cooks for the venues you tick, and its screen (keystonegd.github.io/NIPOS/kitchen) shows all their food orders together. The account signed in on that screen needs the Order screen permission and every one of those venues (Users).</p>
+      <p class="note">Each kitchen cooks for the venues you tick, and its screen (nipos.github.io/production/kitchen) shows all their food orders together. The account signed in on that screen needs the Order screen permission and every one of those venues (Users).</p>
       <p class="note" id="kitchenMsg" role="status"></p>
       <div id="kitchenList"><div class="card"><div class="empty">Loading…</div></div></div>
     </section>
@@ -629,7 +745,7 @@ table.data-table tr:last-child td{border-bottom:0;}
     </section>
 
     <section class="page" id="page-notifications">
-      <div class="page-header"><h1>Notifications</h1></div>
+      <div class="page-header"><h1>Messages and pausing</h1></div>
       <div class="section-title">Send</div>
       <div class="card">
         <p class="note">The same Notify as on the till: a message to one person, or to everyone at a venue as a banner or a pop-up.</p>
@@ -652,19 +768,17 @@ table.data-table tr:last-child td{border-bottom:0;}
       <p class="note">Leave a person on <b>Let them choose</b> to let them pick their own sounds on their till or order screen. Pick a sound and press Save to lock them to it on every screen; set it back to Let them choose to give them their own pick again. A sound set for an alert in Master settings › Alert settings still plays for that alert.</p>
       <p class="note" id="ntSoundMsg" role="status"></p>
       <div class="card" id="ntSoundList"><div class="empty">Loading…</div></div>
+      <div class="modal-overlay" id="ntSoundModal" hidden>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="ntSoundTitle">
+          <h3 id="ntSoundTitle">Notification sound</h3>
+          <div id="ntSoundBody"></div>
+          <div class="modal-actions"><button type="button" class="btn btn-ghost" id="ntSoundClose">Close</button></div>
+        </div>
+      </div>
     </section>
 
     <section class="page" id="page-settings">
       <div class="page-header"><h1>Settings</h1></div>
-      <div class="section-title">Lockdown</div>
-      <div class="card">
-        <p class="note">Blocks staff from placing new orders on the till until you turn it back off. You pick which venues each time.</p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn btn-danger" id="toggleSuspendBtn">Suspend Orders</button>
-          <button class="btn btn-ghost" id="toggleServiceBreakBtn">Service Break</button>
-        </div>
-        <p class="note" id="lockdownStatus" role="status" style="margin-top:10px;"></p>
-      </div>
       <div class="section-title">Session</div>
       <div class="card">
         <label class="row" style="border:0;padding:0 0 10px;">
@@ -677,11 +791,12 @@ table.data-table tr:last-child td{border-bottom:0;}
       </div>
       <div class="section-title">Notification Sounds</div>
       <p class="note">Staff pick their own sound from this list (Order Screen &gt; Notifications). The built-in tones always work with no setup; upload a file here to add more options.</p>
-      <div class="card" id="soundsList"><div class="empty">Loading…</div></div>
       <div class="card">
         <label class="field">Upload a sound (MP3/WAV/OGG/M4A, under 2MB)</label>
         <input type="file" id="soundUploadInput" accept=".mp3,.wav,.ogg,.m4a,audio/*" multiple>
         <p class="note" id="soundUploadMsg" role="status" style="margin-top:8px;"></p>
+        <details class="mini-menu"><summary>Every sound, to listen to or delete</summary>
+          <div class="mini-menu-body" id="soundsList"><div class="empty">Loading…</div></div></details>
       </div>
     </section>
 
@@ -701,7 +816,7 @@ table.data-table tr:last-child td{border-bottom:0;}
     </section>
     <section class="page" id="page-activity">
       <div class="page-header"><h1>Activity log</h1></div>
-      <p class="note">Everything people do on the tills, the order screens and Backend: signing in and out, sales and money, refunds, stops, menu and price changes, discounts, staff and settings. Untick what you don't want to see.</p>
+      <p class="note">Everything people do on the tills, the order screens and Backend: signing in and out, sales and money, refunds, stops, menu and price changes, discounts, staff and settings. Open Filters to narrow it down.</p>
       <div class="act-viewer" data-act-root="pg"></div>
     </section>
     <section class="page" id="page-themes">
@@ -781,6 +896,52 @@ table.data-table tr:last-child td{border-bottom:0;}
   </main>
 </div>
 
+<div class="modal-overlay" id="productModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="productModalTitle" style="max-width:560px;">
+    <h3 id="productModalTitle">Edit product</h3>
+    <div id="productModalBody"></div>
+    <button type="button" class="btn btn-ghost btn-block" id="productModalClose" style="margin-top:10px;">Cancel</button>
+  </div>
+</div>
+<div class="modal-overlay" id="dealModal" hidden>
+  <div class="modal-card deal-modal" role="dialog" aria-modal="true" aria-labelledby="dealModalTitle">
+    <h3 id="dealModalTitle">Edit deal</h3>
+    <datalist id="dealItemOptions"></datalist>
+    <div id="dealEditor"></div>
+    <button type="button" class="btn btn-danger btn-sm" id="dealModalRemove" style="margin-top:14px;">Remove this deal</button>
+    <div class="modal-actions">
+      <p class="note" id="dealModalMsg" role="status"></p>
+      <button type="button" class="btn btn-ghost" id="dealModalCancel">Cancel</button>
+      <button type="button" class="btn btn-accent" id="dealModalSave">Save deal</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="dealRulesModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="dealRulesTitle">
+    <h3 id="dealRulesTitle">When deals overlap</h3>
+    <p class="note">When more than one deal could apply to the same drink.</p>
+    <fieldset class="deal-choice deal-card" style="max-width:none;"><legend>Which deal it gets</legend>
+      <label class="check"><input type="radio" name="dealOverlap" value="order">The first deal in the list wins</label>
+      <label class="check"><input type="radio" name="dealOverlap" value="best">Whichever gives the customer the best price</label></fieldset>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="dealRulesCancel">Cancel</button>
+      <button type="button" class="btn btn-accent" id="dealRulesSave">Save</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="offerModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="offerModalTitle">
+    <h3 id="offerModalTitle">Add a custom offer</h3>
+    <label class="field" for="offerName">Name</label>
+    <input type="text" id="offerName" placeholder="e.g. Bank Holiday 15%">
+    <label class="field" for="offerPct">Discount (%)</label>
+    <input type="number" id="offerPct" step="1" placeholder="e.g. 15">
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="offerModalCancel">Cancel</button>
+      <button type="button" class="btn btn-accent" id="addOfferBtn">Add offer</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="userModal" hidden>
   <div class="modal-card">
     <h3 id="userModalTitle">Add a user</h3>
@@ -867,7 +1028,8 @@ table.data-table tr:last-child td{border-bottom:0;}
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="db.js?v=20261024c"></script>
+<script src="db.js?v=20261115d"></script>
+<script src="nipos-app.js?v=20261115d"></script>
 <script src="vendor/chart.umd.min.js"></script>
 <script>
 initTheme();
@@ -997,6 +1159,7 @@ async function loadVenueData(){
 
   hhOverride = await loadDoc(LS_HH_OVERRIDE, null);
   venueDeals = await loadDoc(LS_DEALS, null);
+  venueDealRules = await loadDoc(LS_DEAL_RULES, null);
   const forced = effectiveDealsOverride(hhOverride);
   document.getElementById("hhMode").value = forced === true ? "on" : forced === false ? "off" : "auto";
 
@@ -1389,7 +1552,7 @@ async function copyVenueSetup(){
       if (mx.length) await supabaseClient.from("mixer_overrides").insert(mx.map(r => { const id = to + ":" + r.data.name; return { id, ts: r.ts, venue_id: to, data: { ...r.data, id } }; }));
       done.push(`${mx.length} mixer settings`);
     }
-    for (const [k, key, label] of [["deals", LS_DEALS, "deals"], ["deals", LS_HH_OVERRIDE, null], ["favourites", LS_FAVS, "favourites"]]) {
+    for (const [k, key, label] of [["deals", LS_DEALS, "deals"], ["deals", LS_DEAL_RULES, null], ["deals", LS_HH_OVERRIDE, null], ["favourites", LS_FAVS, "favourites"]]) {
       if (!what.has(k)) continue;
       const { data } = await supabaseClient.from("app_state").select("value").eq("key", from + ":state/" + key).maybeSingle();
       if (data) await saveDocFor(to, key, data.value); else await supabaseClient.from("app_state").delete().eq("key", to + ":state/" + key);
@@ -1638,8 +1801,8 @@ const FEATURES = [
   { key: "managerApproval", name: "Manager approval", about: "A manager's PIN for big refunds and discounts, and for clearing an order or logging a walk-out. Give people the Manager approval permission on the Users page." },
   { key: "reasons", name: "Editable reasons", about: "The reasons for Report a problem (order screen), refunds and clearing an order, so they match how you work. Refund and clear reasons are asked for while this is on." },
   { key: "resendOrder", name: "Resend to the bar", about: "Send a past order to the order screen again (Past Orders and Receipts on the till), if it went missing." },
-  { key: "customerDisplay", name: "Customer display", about: "A screen facing the customer showing their order and total. Open keystonegd.github.io/NIPOS/display on it and enter the till's code (shown in the till's Settings)." },
-  { key: "kitchenScreen", name: "Kitchen screen", about: "A screen for the kitchen at /kitchen (keystonegd.github.io/NIPOS/kitchen) showing only food. The bar and the kitchen each accept and finish their own part of an order; the order is ready to take out once every part is done. The order screen can also be set to show only drinks." },
+  { key: "customerDisplay", name: "Customer display", about: "A screen facing the customer showing their order and total. Open nipos.github.io/production/display on it and enter the till's code (shown in the till's Settings)." },
+  { key: "kitchenScreen", name: "Kitchen screen", about: "A screen for the kitchen at /kitchen (nipos.github.io/production/kitchen) showing only food. The bar and the kitchen each accept and finish their own part of an order; the order is ready to take out once every part is done. The order screen can also be set to show only drinks." },
   { key: "receipts", name: "Receipts", about: "A Receipts option in the till's menu to find any sale and show or print its receipt (with your report header details)." },
   { key: "openingHours", name: "Opening hours", about: "Each venue's opening hours. Outside them, taking an order needs a manager's PIN (Manager approval permission)." },
   { key: "takingsTarget", name: "Takings target", about: "A daily target per venue, with progress on the Takings page (a week or month is the daily target times the days)." },
@@ -2096,7 +2259,8 @@ function activityViewerHTML(k){
       <label>To <input type="date" id="${k}To"></label>
       <label class="act-search">Search <input type="text" id="${k}Search" placeholder="e.g. refund, Zombie, Sam"></label>
     </div>
-    <div class="act-filters" id="${k}Filters"></div>
+    <details class="mini-menu act-filter-menu"><summary>Filters<span style="font-weight:600;margin-left:6px;" id="${k}FilterSum">showing everything</span></summary>
+      <div class="mini-menu-body"><div class="act-filters" id="${k}Filters"></div></div></details>
     <div class="feature-actions"><button type="button" class="btn btn-solid" id="${k}Load">Show activity</button><button type="button" class="btn btn-ghost" id="${k}Csv">Download as spreadsheet</button>
       <label class="check act-live"><input type="checkbox" id="${k}Live" checked><span class="live-dot" aria-hidden="true"></span>Live: add new activity as it happens</label></div>
     <p class="note" id="${k}Count" role="status"></p>
@@ -2134,15 +2298,23 @@ function renderActivityFilters(k){
   const people = users.slice().sort((a, b) => a.name.localeCompare(b.name)).map(u => ({ value: u.id, label: u.name }));
   const venueList = (venues.length ? venues : myVenues).map(v => ({ value: v.id, label: v.name })).concat([{ value: "__backend", label: "NIPOS Backend" }]);
   wrap.innerHTML = actGroupHTML(k, "type", "What", ACTIVITY_TYPES.map(t => ({ value: t.key, label: t.name, hint: t.hint })))
-    + actGroupHTML(k, "screen", "Where it was done", [{ value: "Till", label: "Till" }, { value: "Order screen", label: "Order screen" }, { value: "Backend", label: "Backend" }])
+    + actGroupHTML(k, "screen", "Where it was done", [{ value: "Till", label: "Till" }, { value: "Order screen", label: "Order screen" }, { value: "Backend", label: "Backend" }, { value: "Start screen", label: "NIPOS start screen" }])
     + actGroupHTML(k, "venue", "Venue", venueList)
     + actGroupHTML(k, "person", "Who", people);
-  wrap.querySelectorAll("[data-act-check]").forEach(c => { const b = before[c.dataset.actCheck]; if (b && c.value in b) c.checked = b[c.value]; c.addEventListener("change", () => showActivity(k)); });
+  wrap.querySelectorAll("[data-act-check]").forEach(c => { const b = before[c.dataset.actCheck]; if (b && c.value in b) c.checked = b[c.value]; c.addEventListener("change", () => { actFilterSummary(k); showActivity(k); }); });
   wrap.querySelectorAll("[data-act-all],[data-act-none]").forEach(btn => btn.addEventListener("click", () => {
     const g = btn.dataset.actAll || btn.dataset.actNone, on = !!btn.dataset.actAll;
     wrap.querySelectorAll(`[data-act-check="${g}"]`).forEach(c => { c.checked = on; });
-    showActivity(k);
+    actFilterSummary(k); showActivity(k);
   }));
+  actFilterSummary(k);
+}
+// The closed Filters menu says which groups have something unticked.
+function actFilterSummary(k){
+  const wrap = document.getElementById(k + "Filters"), out = document.getElementById(k + "FilterSum");
+  if (!wrap || !out) return;
+  const narrowed = [...wrap.querySelectorAll("[data-act-group]")].filter(g => [...g.querySelectorAll("[data-act-check]")].some(c => !c.checked)).map(g => g.querySelector("legend").textContent);
+  out.textContent = narrowed.length ? "narrowed by " + narrowed.join(", ") : "showing everything";
 }
 async function loadActivity(k){
   const list = document.getElementById(k + "List");
@@ -2735,6 +2907,7 @@ function showPage(page){
   setTimeout(refreshCornerIdentity, 0);
   document.querySelectorAll(".page").forEach(el => el.classList.remove("active"));
   document.getElementById("page-" + page).classList.add("active");
+  if (page === "reports" && typeof renderReportControls === "function") renderReportControls();
   document.querySelectorAll(".nav-item").forEach(el => {
     el.classList.toggle("active", el.dataset.page === page);
     if (el.dataset.page === page) el.setAttribute("aria-current", "page"); else el.removeAttribute("aria-current");
@@ -2742,6 +2915,105 @@ function showPage(page){
   closeSidebar();
 }
 document.querySelectorAll(".nav-item[data-page]").forEach(el => el.addEventListener("click", () => showPage(el.dataset.page)));
+
+/* ---------- Find: type what you're after and jump straight to it ----------
+   Each entry: what people call it, other words they might type, the page it's on, and optionally a
+   tab to open, a part of the page to bring into view, or a button to press (Add ..., Notify ...).
+   Only pages this person can open are offered. */
+const FIND_INDEX = [
+  ["Takings", "today sales money charts top sellers cash card target", "dashboard"],
+  ["KPI report", "kpi headline numbers average order spend per head compare report", "reports", { report: "kpi" }],
+  ["Full sales breakdown", "report category product hour day staff payment venue discounts refunds breakdown", "reports", { report: "breakdown" }],
+  ["Product performance", "report best sellers worst sellers slow items product mix", "reports", { report: "products" }],
+  ["Staff report", "report staff people who sold tips refunds discounts given", "reports", { report: "staff" }],
+  ["Busy times", "report busiest hour day heatmap staffing rota", "reports", { report: "busy" }],
+  ["Z Read now", "z read close shift end of day zread", "zreads", { target: "#backendZReadBtn" }],
+  ["Past Z Reads", "z read history archive", "zreads", { target: "#zreadsList" }],
+  ["Open orders", "orders not delivered stuck problem refund status", "openorders"],
+  ["Notify someone", "message send private message staff notify", "notifications", { press: "#ntNotifyBtn" }],
+  ["Announce to everyone", "announcement banner pop-up message all staff", "notifications", { press: "#ntAnnounceBtn" }],
+  ["Suspend orders", "pause stop orders lockdown suspend", "notifications", { target: "#ntSuspendBtn" }],
+  ["Service break", "pause break lockdown", "notifications", { target: "#ntBreakBtn" }],
+  ["Staff notification sounds", "sound alert tone lock sound staff", "notifications", { target: "#ntSoundList" }],
+  ["Products", "menu items prices edit product", "products"],
+  ["Add a product", "new product item drink food", "products", { press: "#toggleAddProductBtn" }],
+  ["Put something on stop", "stop out of stock 86 sold out back on sale", "products"],
+  ["Mixers", "mixer spirit dash", "products"],
+  ["Categories", "category menu section order rename stop all", "products", { tab: "categories" }],
+  ["Add a category", "new category section", "products", { tab: "categories", press: "#openAddCategoryBtn" }],
+  ["Deals", "deals happy hour offer pair 2 for 1 multibuy bundle price", "discounts", { target: "#dealsList" }],
+  ["Add a deal", "new deal happy hour offer", "discounts", { press: "#dealAdd" }],
+  ["Deals right now", "force deals on off happy hour now override", "discounts", { target: "#hhMode" }],
+  ["When deals overlap", "overlap best price first deal wins rule", "discounts", { press: "#dealRulesBtn" }],
+  ["Custom offers", "discount percent offer chip till", "discounts", { target: "#offerList" }],
+  ["Staff", "users people accounts permissions pin", "users"],
+  ["Add a staff member", "new user person account pin", "users", { press: "#openAddUserBtn" }],
+  ["Staff groups", "groups roles bar staff manager", "users", { press: "#manageGroupsBtn" }],
+  ["Hours", "clock in out shifts hours worked timesheet rota", "hours"],
+  ["Venues", "venue site bar colour open closed", "venues"],
+  ["Add a venue", "new venue site", "venues", { press: "#openAddVenueBtn" }],
+  ["Discord", "discord webhook channel posts", "venues"],
+  ["Kitchens", "kitchen screen food cooks", "kitchens"],
+  ["Session timeout", "idle sign out minutes session", "settings", { target: "#sessionTimeoutEnabled" }],
+  ["Upload a sound", "sound upload mp3 notification tone", "settings", { target: "#soundUploadInput" }],
+  ["Activity log", "log history who did what audit", "activity"],
+  ["Features", "master settings features switches", "themes", { tab: "ms-features" }],
+  ["Themes", "theme colours look dark mode master theme", "themes", { tab: "ms-looks", target: "#themeGrid" }],
+  ["Till layout", "layout till screen tiles dock", "themes", { tab: "ms-looks", target: "#layoutGrid" }],
+  ["Reset for service", "wipe clear reset sales test night", "themes", { tab: "ms-wipe" }],
+  ["Test data", "maintenance test data clear", "testdata"]
+].map(([label, words, page, opt]) => ({ label, words, page, ...(opt || {}) }));
+function pageOpenable(page){ const nav = document.querySelector(`.nav-item[data-page="${page}"]`); return !!nav && !nav.hidden; }
+function findMatches(q){
+  const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return [];
+  return FIND_INDEX.filter(e => pageOpenable(e.page)).map(e => {
+    const label = e.label.toLowerCase(), hay = label + " " + e.words;
+    if (!terms.every(t => hay.includes(t))) return null;
+    return { e, score: (label.startsWith(terms[0]) ? 3 : 0) + (label.includes(terms[0]) ? 2 : 0) };
+  }).filter(Boolean).sort((a, b) => b.score - a.score).slice(0, 8).map(x => x.e);
+}
+function pageName(page){ const nav = document.querySelector(`.nav-item[data-page="${page}"]`); return nav ? nav.textContent.trim() : ""; }
+function goToFound(e){
+  showPage(e.page);
+  const page = document.getElementById("page-" + e.page);
+  if (e.tab) { const t = page.querySelector(`[data-tab="${e.tab}"]`); if (t) t.click(); }
+  if (e.report && typeof pickReport === "function") pickReport(e.report);
+  setTimeout(() => {
+    if (e.press) { const b = document.querySelector(e.press); if (b && !b.disabled) { b.click(); return; } }
+    const el = e.target ? document.querySelector(e.target) : null;
+    if (el && el.offsetParent) { el.scrollIntoView({ block: "center", behavior: "smooth" }); const box = el.closest(".card") || el; box.classList.remove("find-flash"); void box.offsetWidth; box.classList.add("find-flash"); }
+  }, 60);
+}
+(function(){
+  const input = document.getElementById("navFind"), list = document.getElementById("navFindResults");
+  let shown = [], at = 0;
+  function draw(){
+    const q = input.value.trim();
+    shown = findMatches(q); at = 0;
+    if (!q) { list.hidden = true; return; }
+    const featureHit = pageOpenable("themes") ? `<button type="button" role="option" data-find-feature><strong>Search Master settings features</strong><span>for "${esc(q)}"</span></button>` : "";
+    list.innerHTML = shown.map((e, i) => `<button type="button" role="option" data-find="${i}" aria-selected="${i === 0}">${esc(e.label)}<span>${esc(pageName(e.page))}</span></button>`).join("")
+      + (shown.length ? "" : `<div class="none">Nothing called that.</div>`) + featureHit;
+    list.hidden = false;
+  }
+  function pick(i){ const e = shown[i]; if (!e) return; input.value = ""; list.hidden = true; goToFound(e); }
+  input.addEventListener("input", draw);
+  input.addEventListener("keydown", ev => {
+    if (ev.key === "ArrowDown" || ev.key === "ArrowUp") { ev.preventDefault(); if (!shown.length) return; at = (at + (ev.key === "ArrowDown" ? 1 : shown.length - 1)) % shown.length; list.querySelectorAll("[data-find]").forEach((b, i) => b.setAttribute("aria-selected", i === at)); }
+    if (ev.key === "Enter") { ev.preventDefault(); if (shown.length) pick(at); else { const f = list.querySelector("[data-find-feature]"); if (f) f.click(); } }
+    if (ev.key === "Escape") { input.value = ""; list.hidden = true; }
+  });
+  list.addEventListener("click", ev => {
+    const b = ev.target.closest("[data-find]"); if (b) { pick(Number(b.dataset.find)); return; }
+    if (ev.target.closest("[data-find-feature]")) {
+      const q = input.value.trim(); input.value = ""; list.hidden = true;
+      goToFound({ page: "themes", tab: "ms-features" });
+      const fs = document.getElementById("featureSearch"); if (fs) { fs.value = q; fs.dispatchEvent(new Event("input", { bubbles: true })); }
+    }
+  });
+  document.addEventListener("click", ev => { if (!ev.target.closest(".nav-find")) list.hidden = true; });
+})();
 
 function openSidebar(){ document.getElementById("sidebar").classList.add("open"); document.getElementById("sidebarBackdrop").classList.add("show"); }
 function closeSidebar(){ document.getElementById("sidebar").classList.remove("open"); document.getElementById("sidebarBackdrop").classList.remove("show"); }
@@ -3032,9 +3304,15 @@ document.getElementById("newProductCategory").addEventListener("change", e => {
   document.getElementById("newCategoryFields").hidden = e.target.value !== "__new";
 });
 document.getElementById("toggleAddProductBtn").addEventListener("click", () => {
-  const card = document.getElementById("addProductCard");
-  card.hidden = !card.hidden;
+  document.getElementById("addProductCard").hidden = false;
+  document.getElementById("newName").focus();
 });
+document.getElementById("addProductCancel").addEventListener("click", () => { document.getElementById("addProductCard").hidden = true; });
+document.getElementById("openAddCategoryBtn").addEventListener("click", () => { document.getElementById("addCategoryModal").hidden = false; document.getElementById("newCategoryName").focus(); });
+document.getElementById("addCategoryCancel").addEventListener("click", () => { document.getElementById("addCategoryModal").hidden = true; });
+document.getElementById("productModalClose").addEventListener("click", () => { document.getElementById("productModal").hidden = true; });
+// Escape closes the Products pop-ups without saving.
+document.addEventListener("keydown", e => { if (e.key === "Escape") ["addProductCard", "addCategoryModal", "productModal"].forEach(id => { document.getElementById(id).hidden = true; }); });
 document.getElementById("productSearch").addEventListener("input", renderProductsList);
 document.getElementById("productCategoryFilter").addEventListener("change", renderProductsList);
 
@@ -3149,11 +3427,8 @@ function renderProductRow(it, cat){
       <div class="info"><div class="name">${esc(it.name)}${stops.has(it.name) ? `<span class="stop-tag">On stop</span>` : it.__copies && stopCountFor(it.name) ? `<span class="stop-tag">On stop at ${stopCountFor(it.name)} of ${myVenues.length}</span>` : ""}</div><div class="price">${it.__varies ? "Prices differ by venue" : summary}${it.__copies ? ` · at ${it.__copies.length} of ${myVenues.length} venues` : ""}${productExtrasText(it)}</div></div>
       ${featureOn("favourites") ? `<button type="button" class="btn btn-ghost btn-sm fav-btn${isFavourite(it.name) ? " on" : ""}" aria-pressed="${isFavourite(it.name)}" aria-label="Favourite: ${esc(it.name)}">${isFavourite(it.name) ? "★" : "☆"}</button>` : ""}
       <button type="button" class="stop-btn${stops.has(it.name) ? " on" : ""}" aria-label="${stops.has(it.name) ? "Put " + esc(it.name) + " back on sale" : "Put " + esc(it.name) + " on stop"}">${stops.has(it.name) ? "Back on sale" : "Put on stop"}</button>
-      <label class="mixer-label" title="Offer this as a mixer when someone orders a spirit"><span>Mixer</span><span class="switch"><input type="checkbox" class="mixer-toggle" aria-label="${esc(it.name)} can be a mixer" ${mixerOverrides.has(it.name) ? "checked" : ""}><span class="slider"></span></span></label>
       <button type="button" class="btn btn-ghost btn-sm edit-product-btn">Edit</button>
-      <button type="button" class="btn btn-danger btn-sm delete-product-btn">Delete</button>
-    </div>
-    <div class="product-edit-panel"></div>`;
+    </div>`;
 
   row.querySelector(".stop-btn").addEventListener("click", async () => {
     await setStopsForNames([it.name], !stops.has(it.name));
@@ -3161,7 +3436,8 @@ function renderProductRow(it, cat){
   });
   const favBtn = row.querySelector(".fav-btn");
   if (favBtn) favBtn.addEventListener("click", async () => { favBtn.disabled = true; await toggleFavourite(it.name); renderProductsList(); });
-  row.querySelector(".mixer-toggle").addEventListener("change", async e => {
+  const bindMixerAndDelete = panel => {
+  panel.querySelector(".mixer-toggle").addEventListener("change", async e => {
     for (const v of scopeVenueIds()) {
       const id = v + ":" + it.name; // per venue, like stops
       if (e.target.checked) await upsertFor("mixer_overrides", v, { id, ts: Date.now(), name: it.name }); else { await removeRowById("mixer_overrides", id); await removeRowById("mixer_overrides", it.name); }
@@ -3169,18 +3445,20 @@ function renderProductRow(it, cat){
     if (e.target.checked) mixerOverrides.add(it.name); else mixerOverrides.delete(it.name);
     logActivity(e.target.checked ? "Made it a mixer" : "No longer a mixer", it.name, productsAllVenues ? null : undefined);
   });
-  row.querySelector(".delete-product-btn").addEventListener("click", async () => {
+  panel.querySelector(".delete-product-btn").addEventListener("click", async () => {
     if (!confirm(`Delete "${it.name}"?`)) return;
+    document.getElementById("productModal").hidden = true;
     if (it.__copies) { for (const c of it.__copies) await removeRowById("catalogue_items", c.item.id); }
     else await catalogueItemsStore.remove(it.id);
     logActivity("Deleted a product", it.name + (it.__copies ? " (every venue)" : ""), it.__copies ? null : undefined);
     realItems = realItems.filter(x => x.id !== it.id);
     renderProductsList();
   });
-  const panel = row.querySelector(".product-edit-panel");
+  };
   row.querySelector(".edit-product-btn").addEventListener("click", () => {
-    if (panel.classList.contains("open")) { panel.classList.remove("open"); panel.innerHTML = ""; return; }
-    panel.classList.add("open");
+    const panel = document.getElementById("productModalBody");
+    document.getElementById("productModalTitle").textContent = "Edit " + it.name;
+    document.getElementById("productModal").hidden = false;
     panel.innerHTML = `
       <label class="field">Name</label>
       <input type="text" class="edit-name" aria-label="Name" value="${it.name.replace(/"/g,"&quot;")}">
@@ -3188,7 +3466,10 @@ function renderProductRow(it, cat){
       <select class="edit-category" aria-label="Category">${realCategories.slice().sort((a,b)=>a.order-b.order).map(c => `<option value="${c.id}" ${c.id===it.categoryId?"selected":""}>${c.name}</option>`).join("")}</select>
       <div class="edit-sizes"></div>
       <div class="edit-extras"></div>
-      <button type="button" class="btn btn-accent btn-sm save-product-btn" style="margin-top:10px;">Save</button>`;
+      <label class="row" style="border:0;padding:10px 0 0;" title="Offer this as a mixer when someone orders a spirit"><span class="info"><span class="name" style="display:block;">Also usable as a mixer</span><span class="sub" style="display:block;">Saves straight away.</span></span><span class="switch"><input type="checkbox" class="mixer-toggle" aria-label="${esc(it.name)} can be a mixer" ${mixerOverrides.has(it.name) ? "checked" : ""}><span class="slider"></span></span></label>
+      <button type="button" class="btn btn-accent btn-block save-product-btn" style="margin-top:14px;">Save</button>
+      <button type="button" class="btn btn-danger btn-block delete-product-btn" style="margin-top:10px;">Delete this product</button>`;
+    bindMixerAndDelete(panel);
     panel.querySelector(".edit-extras").innerHTML = productExtrasEditorHTML(it, cat);
     const sizesWrap = panel.querySelector(".edit-sizes");
     if (it.sizes && it.sizes.length) {
@@ -3240,8 +3521,8 @@ function renderProductRow(it, cat){
       const stockNow = stockFor(it.name);
       logActivity("Changed a product", `${was.name}: ${[was.name !== now.name ? `name ${was.name} → ${now.name}` : "", was.price !== now.price ? `price ${was.price} → ${now.price}` : "", was.cat !== now.cat ? `category ${was.cat} → ${now.cat}` : "",
         was.tags !== now.tags ? `tags ${was.tags || "none"} → ${now.tags || "none"}` : "", was.pc !== now.pc ? `price change ${was.pc || "none"} → ${now.pc || "none"}` : "", extras.stock !== undefined && extras.stock !== stockWas ? `stock left ${stockWas == null ? "not counted" : stockWas} → ${stockNow == null ? "not counted" : stockNow}` : ""].filter(Boolean).join("; ") || "nothing changed"}${it.__copies ? " (every venue)" : ""}`, it.__copies ? null : undefined);
-      e.target.textContent = "Saved";
-      setTimeout(() => { renderProductsList(); }, 700);
+      document.getElementById("productModal").hidden = true;
+      renderProductsList();
     });
   });
   return row;
@@ -3408,6 +3689,7 @@ document.getElementById("addCategoryBtn").addEventListener("click", async () => 
   document.getElementById("newCategoryName").value = "";
   document.getElementById("newCategoryIsSpirit").checked = false;
   document.getElementById("newCategoryIsBeer").checked = false;
+  document.getElementById("addCategoryModal").hidden = true;
   renderCategoriesList(); renderCategoryFilterOptions(); renderNewProductCategoryOptions();
 });
 function renderCategoriesList(){
@@ -3501,12 +3783,41 @@ function dealButtonList(){
     .concat(customDiscounts.map(o => ({ key: "offer:" + o.label, label: o.label + " (custom offer)" })))
     .concat([{ key: "customPct", label: "Custom %" }, { key: "customOffer", label: "Custom price" }]);
 }
+// Every item a deal can name: "Name" (any size) or "Name|Pint" (one size, or Single/Double for spirits).
+function dealItemChoices(){
+  const catById = new Map(realCategories.map(c => [c.id, c])), out = [];
+  realItems.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(it => {
+    const cat = catById.get(it.categoryId), sizes = (it.sizes || []).map(z => z.label).filter(Boolean);
+    const variants = sizes.length ? sizes : cat && cat.isSpirit ? ["Single", "Double"] : [];
+    out.push({ value: it.name, label: variants.length ? `${it.name} (any)` : it.name });
+    variants.forEach(v => out.push({ value: `${it.name}|${v}`, label: `${it.name} (${v})` }));
+  });
+  return out.filter((x, i, a) => a.findIndex(y => y.value === x.value) === i);
+}
+const dealItemLabel = v => { const [n, z] = String(v).split("|"); return z ? `${n} (${z})` : n; };
+const penceToPounds = p => p != null && p !== "" ? (Number(p) / 100).toFixed(2) : "";
+const poundsToPence = v => { const n = parseFloat(v); return isFinite(n) && n >= 0 ? Math.round(n * 100) : null; };
+// What a deal (or one part of a bundle) covers: categories, and a list of chosen items with an add box.
+function dealCoverHTML(cover, key, legend){
+  const chosen = new Set(cover.categories || []);
+  return `<fieldset class="deal-choice deal-cover" data-cover="${key}"><legend>${legend}</legend>
+    <details class="deal-cats"><summary>Categories: ${chosen.size ? esc([...chosen].join(", ")) : "none ticked"}</summary>
+    <div class="feature-people">${allCategoryNames().map(n => `<label><input type="checkbox" data-deal-cat="${esc(n)}" ${chosen.has(n) ? "checked" : ""}>${esc(n)}</label>`).join("") || `<span class="note">No categories at this venue yet.</span>`}</div></details>
+    <span class="field">Items</span>
+    <div class="deal-items" data-deal-items>${(cover.items || []).map(v => `<span class="deal-chip" data-item="${esc(v)}">${esc(dealItemLabel(v))}<button type="button" data-deal-item-remove aria-label="Take ${esc(dealItemLabel(v))} off">×</button></span>`).join("")}</div>
+    <div class="deal-item-add"><input type="text" list="dealItemOptions" data-deal-item-input placeholder="Add an item, e.g. Carling (Pint)" aria-label="Add an item"><button type="button" class="btn btn-ghost btn-sm" data-deal-item-add>Add item</button></div>
+  </fieldset>`;
+}
+const DEAL_TYPES = [["pair", "Buy two (a pair)"], ["price", "Set price each"], ["multibuy", "Multi-buy (so many for a price)"], ["bundle", "Bundle (one from each part for a price)"], ["percent", "Percentage off each"]];
 function dealCardHTML(d, i){
-  const cats = drinkCategoryNames(), chosen = new Set(d.categories || []);
-  const windows = d.windows || [];
-  return `<div class="card deal-card" data-deal="${i}" data-id="${esc(d.id)}">
+  const windows = d.windows || [], type = ["price", "multibuy", "bundle", "percent"].includes(d.type) ? d.type : "pair";
+  const which = ["dearer", "fixed", "matchCheaper", "samePriceOne"].includes(d.discounted) ? d.discounted : "cheaper";
+  const parts = d.parts && d.parts.length ? d.parts : [{ categories: [], items: [] }, { categories: [], items: [] }];
+  return `<div class="card deal-card" data-deal="${i}" data-id="${esc(d.id)}" data-type="${type}">
     <div class="deal-head"><label class="field" for="dealName${i}">Deal name</label><input type="text" id="dealName${i}" data-deal-name value="${esc(d.name || "")}" maxlength="30">
       <label class="check"><input type="checkbox" data-deal-on ${d.enabled !== false ? "checked" : ""}>Switched on</label></div>
+    <label class="field" for="dealType${i}">Type of deal</label>
+    <select id="dealType${i}" data-deal-type style="max-width:360px;">${DEAL_TYPES.map(([v, l]) => `<option value="${v}" ${v === type ? "selected" : ""}>${l}</option>`).join("")}</select>
     <span class="field">When it's on (no times = all day)</span>
     ${windows.map((w, wi) => `<div class="hh-window" data-deal-window>
       <div class="hh-days" role="group" aria-label="Days">${DAY_NAMES.map((dn, di) => `<label><input type="checkbox" data-day="${di}" ${!w.days || !w.days.length || w.days.includes(di) ? "checked" : ""}>${dn}</label>`).join("")}</div>
@@ -3514,75 +3825,238 @@ function dealCardHTML(d, i){
       <label>Until <input type="time" data-to value="${w.to === "close" || w.to === "24:00" || !w.to ? "" : esc(w.to)}"></label><span class="note">(empty = close)</span>
       <button type="button" class="btn btn-ghost btn-sm" data-deal-act="window-remove" data-i="${i}" data-w="${wi}">Remove</button></div>`).join("")}
     <div class="feature-actions"><button type="button" class="btn btn-ghost btn-sm" data-deal-act="window-add" data-i="${i}">Add a time</button></div>
-    <span class="field">Which categories count (none ticked = Cocktails)</span>
-    <div class="feature-people">${cats.map(n => `<label><input type="checkbox" data-deal-cat="${esc(n)}" ${chosen.has(n) ? "checked" : ""}>${esc(n)}</label>`).join("") || `<span class="note">No categories at this venue yet.</span>`}</div>
-    <fieldset class="deal-choice"><legend>What makes a pair</legend>
-      <label class="check"><input type="radio" name="dealPair${i}" value="selection" ${d.pairFrom !== "sameProduct" ? "checked" : ""}>Any two from the categories above</label>
-      <label class="check"><input type="radio" name="dealPair${i}" value="sameProduct" ${d.pairFrom === "sameProduct" ? "checked" : ""}>Two of the same product</label>
-      <label class="check"><input type="checkbox" data-deal-same-price ${d.samePrice ? "checked" : ""}>Only when both cost the same</label></fieldset>
-    <fieldset class="deal-choice"><legend>Which one gets money off</legend>
-      <label class="check"><input type="radio" name="dealWhich${i}" value="cheaper" ${d.discounted !== "dearer" ? "checked" : ""}>The cheaper one</label>
-      <label class="check"><input type="radio" name="dealWhich${i}" value="dearer" ${d.discounted === "dearer" ? "checked" : ""}>The more expensive one</label></fieldset>
-    <label class="field" for="dealPct${i}">How much off it (%)</label><input type="number" id="dealPct${i}" data-deal-pct min="1" max="100" step="5" value="${Number(d.pct) || 50}" style="max-width:120px;">
+    <div data-for-type="pair price multibuy percent">${dealCoverHTML(d, "main", "What it covers: tick categories and/or add items (a buy-two deal with nothing chosen covers Cocktails)")}</div>
+    <div data-for-type="pair">
+      <fieldset class="deal-choice"><legend>What makes a pair</legend>
+        <label class="check"><input type="radio" name="dealPair${i}" value="selection" ${d.pairFrom !== "sameProduct" ? "checked" : ""}>Any two of what it covers</label>
+        <label class="check"><input type="radio" name="dealPair${i}" value="sameProduct" ${d.pairFrom === "sameProduct" ? "checked" : ""}>Two of the same product</label>
+        <label class="check"><input type="checkbox" data-deal-same-price ${d.samePrice ? "checked" : ""}>Only when both cost the same</label></fieldset>
+      <fieldset class="deal-choice"><legend>The pair's price</legend>
+        <label class="check"><input type="radio" name="dealWhich${i}" value="cheaper" ${which === "cheaper" ? "checked" : ""}>The cheaper one gets money off</label>
+        <label class="check"><input type="radio" name="dealWhich${i}" value="dearer" ${which === "dearer" ? "checked" : ""}>The more expensive one gets money off</label>
+        <label class="check"><input type="radio" name="dealWhich${i}" value="matchCheaper" ${which === "matchCheaper" ? "checked" : ""}>Both at the cheaper one's price</label>
+        <label class="check"><input type="radio" name="dealWhich${i}" value="samePriceOne" ${which === "samePriceOne" ? "checked" : ""}>Two the same price: one of them gets money off</label>
+        <label class="check"><input type="radio" name="dealWhich${i}" value="fixed" ${which === "fixed" ? "checked" : ""}>Both together for a set price</label></fieldset>
+      <div data-pair-pct><label class="field" for="dealPct${i}">How much off it (%)</label><input type="number" id="dealPct${i}" data-deal-pct min="1" max="100" step="5" value="${Number(d.pct) || 50}" style="max-width:120px;"></div>
+      <div data-pair-fixed><label class="field" for="dealPairPrice${i}">Price for the two (£)</label><input type="number" id="dealPairPrice${i}" data-deal-pair-price min="0" step="0.05" value="${penceToPounds(d.pairPence)}" style="max-width:140px;"></div>
+    </div>
+    <div data-for-type="price"><label class="field" for="dealPrice${i}">Price each (£)</label><input type="number" id="dealPrice${i}" data-deal-price min="0" step="0.05" value="${penceToPounds(d.pricePence)}" style="max-width:140px;"></div>
+    <div data-for-type="percent"><label class="field" for="dealPctEach${i}">How much off each (%)</label><input type="number" id="dealPctEach${i}" data-deal-pct-each min="1" max="100" step="5" value="${Number(d.pct) || 20}" style="max-width:120px;"></div>
+    <div data-for-type="multibuy">
+      <div class="deal-head"><label class="field" for="dealBuy${i}">How many</label><input type="number" id="dealBuy${i}" data-deal-buy min="2" max="20" step="1" value="${Number(d.buyQty) || 3}" style="max-width:100px;">
+        <label class="field" for="dealFor${i}">for (£)</label><input type="number" id="dealFor${i}" data-deal-for min="0" step="0.05" value="${penceToPounds(d.forPence)}" style="max-width:140px;"></div>
+      <fieldset class="deal-choice"><legend>Which ones count together</legend>
+        <label class="check"><input type="radio" name="dealMix${i}" value="selection" ${d.pairFrom !== "sameProduct" ? "checked" : ""}>Mix and match anything it covers</label>
+        <label class="check"><input type="radio" name="dealMix${i}" value="sameProduct" ${d.pairFrom === "sameProduct" ? "checked" : ""}>Only the same product</label></fieldset>
+    </div>
+    <div data-for-type="bundle">
+      ${parts.map((pt, pi) => `<div data-bundle-part>${dealCoverHTML(pt, "part" + pi, `Part ${pi + 1}: one of these`)}${parts.length > 2 ? `<button type="button" class="btn btn-ghost btn-sm" data-deal-act="part-remove" data-i="${i}" data-p="${pi}">Remove part ${pi + 1}</button>` : ""}</div>`).join("")}
+      <div class="feature-actions"><button type="button" class="btn btn-ghost btn-sm" data-deal-act="part-add" data-i="${i}">Add another part</button></div>
+      <label class="field" for="dealBundle${i}">Bundle price (£)</label><input type="number" id="dealBundle${i}" data-deal-bundle min="0" step="0.05" value="${penceToPounds(d.bundlePence)}" style="max-width:140px;">
+    </div>
+    <label class="check"><input type="checkbox" data-deal-stack ${d.stack !== false ? "checked" : ""}>Stacks: applies to every pair or set in one order (untick for once per order)</label>
+    <p class="note">Mixers, cordials and Lemonade Top are added on at full price; the deal prices the drink itself.</p>
     <span class="field">Discount buttons while this deal is on</span>
     <table class="feature-table"><tbody>${dealButtonList().map(b => { const v = (d.buttons || {})[b.key] || "allowed"; return `<tr><th scope="row">${esc(b.label)}</th><td><select data-deal-button="${esc(b.key)}" aria-label="${esc(b.label)} during ${esc(d.name || "this deal")}">
       <option value="allowed" ${v === "allowed" ? "selected" : ""}>Allowed</option><option value="notOnDeal" ${v === "notOnDeal" ? "selected" : ""}>Not on this deal's items</option><option value="off" ${v === "off" ? "selected" : ""}>Switched off</option></select></td></tr>`; }).join("")}</tbody></table>
-    <div class="feature-actions"><button type="button" class="btn btn-danger btn-sm" data-deal-act="remove" data-i="${i}">Remove this deal</button></div>
   </div>`;
 }
-function renderDeals(list){
-  const deals = list || venueDeals || DEFAULT_DEALS;
-  document.getElementById("dealsList").innerHTML = deals.map(dealCardHTML).join("") || `<div class="empty">No deals. Add one below.</div>`;
-  document.getElementById("dealsScopeNote").textContent = productsAllVenues ? `Showing ${currentVenue ? currentVenue.name : "this venue"}'s deals. Saving copies them to every venue.` : (venueDeals ? "" : "These are the original Happy Hour settings. Nothing is saved for this venue yet.");
-  document.getElementById("dealsList").querySelectorAll("[data-deal-act]").forEach(b => b.addEventListener("click", () => dealAction(b)));
+// Shows only the settings for the deal's type, and the % or £ box for the pair's price.
+function syncDealCard(card){
+  const type = card.querySelector("[data-deal-type]").value;
+  card.dataset.type = type;
+  card.querySelectorAll("[data-for-type]").forEach(el => { el.hidden = !el.dataset.forType.split(" ").includes(type); });
+  const which = (card.querySelector(`input[name="dealWhich${card.dataset.deal}"]:checked`) || {}).value;
+  card.querySelector("[data-pair-pct]").hidden = which === "fixed" || which === "matchCheaper";
+  card.querySelector("[data-pair-fixed]").hidden = which !== "fixed";
 }
-function readDeals(){
-  return [...document.querySelectorAll("#dealsList [data-deal]")].map(card => {
-    const i = card.dataset.deal, buttons = {};
+const LS_DEAL_RULES = "starlightTill.dealRules.v1";
+let venueDealRules = null;
+// One line for a deal: what it does, and when.
+function dealSummary(d){
+  const type = ["price", "multibuy", "bundle", "percent"].includes(d.type) ? d.type : "pair";
+  const what = [...(d.categories || []), ...(d.items || []).map(dealItemLabel)].join(", ") || (type === "pair" ? "Cocktails" : "nothing chosen yet");
+  const pct = Number(d.pct) || 0, off = pct >= 100 ? "free" : pct === 50 ? "half price" : `${pct}% off`, money = p => p == null ? "£?" : fmt(p);
+  let text;
+  if (type === "price") text = `${what}: ${money(d.pricePence)} each`;
+  else if (type === "percent") text = `${what}: ${off}`;
+  else if (type === "multibuy") text = `${what}: ${Number(d.buyQty) || 2} for ${money(d.forPence)}`;
+  else if (type === "bundle") text = `${(d.parts || []).map(pt => [...(pt.categories || []), ...(pt.items || []).map(dealItemLabel)].join(" or ") || "?").join(" + ")} for ${money(d.bundlePence)}`;
+  else {
+    const pair = `buy 2${d.pairFrom === "sameProduct" ? " of the same" : ""}${d.samePrice || d.discounted === "samePriceOne" ? " at the same price" : ""}`;
+    text = d.discounted === "fixed" ? `${what}: ${pair} for ${money(d.pairPence)}` : d.discounted === "matchCheaper" ? `${what}: ${pair}, both at the cheaper price`
+      : d.discounted === "samePriceOne" ? `${what}: ${pair}, one ${off}` : `${what}: ${pair}, the ${d.discounted === "dearer" ? "dearer" : "cheaper"} one ${off}`;
+  }
+  return text + (d.stack === false ? ", once per order" : "");
+}
+function dealTimes(d){
+  const t = x => !x || x === "close" || x === "24:00" ? "close" : x;
+  return (d.windows || []).map(w => `${w.days && w.days.length && w.days.length < 7 ? w.days.map(x => DAY_NAMES[x]).join(" ") + " " : ""}${w.from}-${t(w.to)}`).join(", ") || "All day";
+}
+// The list: each deal with its switch and an Edit button; the deal itself is edited in a pop-up.
+function renderDeals(){
+  const deals = venueDeals || DEFAULT_DEALS;
+  const wrap = document.getElementById("dealsList");
+  wrap.innerHTML = deals.map((d, i) => `<div class="row deal-row">
+      <div class="info"><div class="name">${esc(d.name || "Deal")}</div><div class="sub">${esc(dealSummary(d))}</div><div class="sub">${esc(dealTimes(d))}</div></div>
+      ${deals.length > 1 ? `<button type="button" class="btn btn-ghost btn-sm" data-deal-up="${i}" ${i === 0 ? "disabled" : ""} aria-label="Move ${esc(d.name || "deal")} up the list">↑</button>` : ""}
+      <label class="switch" title="Switched on"><input type="checkbox" data-deal-toggle="${i}" ${d.enabled !== false ? "checked" : ""} aria-label="${esc(d.name || "Deal")} switched on"><span class="slider"></span></label>
+      <button type="button" class="btn btn-ghost btn-sm" data-deal-edit="${i}">Edit</button></div>`).join("") || `<div class="empty">No deals yet.</div>`;
+  document.getElementById("dealsScopeNote").textContent = productsAllVenues ? `Showing ${currentVenue ? currentVenue.name : "this venue"}'s deals. Changes are copied to every venue.` : (venueDeals ? (deals.length > 1 ? "When deals overlap, the order of this list can matter (see When deals overlap)." : "") : "These are the original Happy Hour settings. Nothing is saved for this venue yet.");
+}
+// Saves the whole list (and the overlap rule) for this venue, or every venue on All venues.
+async function saveDeals(deals, rules){
+  const dealsBefore = venueDeals || DEFAULT_DEALS, msg = document.getElementById("dealsMsg");
+  rules = rules || { overlap: venueDealRules && venueDealRules.overlap === "best" ? "best" : "order" };
+  const rulesBefore = venueDealRules && venueDealRules.overlap === "best" ? "best" : "order";
+  if (productsAllVenues) { for (const v of scopeVenueIds()) { await saveDocFor(v, LS_DEALS, deals); await saveDocFor(v, LS_DEAL_RULES, rules); } }
+  else { await saveDoc(LS_DEALS, deals); await saveDoc(LS_DEAL_RULES, rules); }
+  venueDeals = deals; venueDealRules = rules;
+  renderDeals();
+  msg.textContent = `Deals saved${productsAllVenues ? " at every venue" : ""}. Tills pick them up within a few seconds.`;
+  const ruleNote = rulesBefore !== rules.overlap ? `when deals overlap: ${rules.overlap === "best" ? "best price for the customer" : "first deal in the list wins"}` : "";
+  const changes = dealChanges(dealsBefore, deals);
+  logActivity("Changed deals", (changes === "nothing changed" && ruleNote ? ruleNote : changes + (ruleNote ? "; " + ruleNote : "")) + (productsAllVenues ? " (every venue)" : ""), productsAllVenues ? null : undefined);
+}
+const currentDeals = () => (venueDeals || DEFAULT_DEALS).map(d => JSON.parse(JSON.stringify(d)));
+document.getElementById("dealsList").addEventListener("change", async e => {
+  const t = e.target.closest("[data-deal-toggle]"); if (!t) return;
+  const deals = currentDeals(), d = deals[Number(t.dataset.dealToggle)];
+  d.enabled = t.checked;
+  const problems = t.checked ? dealProblems(deals.filter(x => x === d)) : [];
+  if (problems.length) { t.checked = false; document.getElementById("dealsMsg").textContent = "Not switched on. " + problems.join(". ") + ". Press Edit to fix it."; return; }
+  await saveDeals(deals);
+});
+document.getElementById("dealsList").addEventListener("click", async e => {
+  const up = e.target.closest("[data-deal-up]");
+  if (up) { const deals = currentDeals(), i = Number(up.dataset.dealUp); if (i > 0) { [deals[i - 1], deals[i]] = [deals[i], deals[i - 1]]; await saveDeals(deals); } return; }
+  const ed = e.target.closest("[data-deal-edit]"); if (ed) openDealEditor(Number(ed.dataset.dealEdit));
+});
+// The pop-up: one deal's card. dealEditIndex is its place in the list, or -1 for a new one.
+let dealEditIndex = -1;
+function renderDealEditor(d){
+  document.getElementById("dealItemOptions").innerHTML = dealItemChoices().map(c => `<option value="${esc(c.label)}"></option>`).join("");
+  const box = document.getElementById("dealEditor");
+  box.innerHTML = dealCardHTML(d, 0);
+  box.querySelectorAll("[data-deal-act]").forEach(b => b.addEventListener("click", () => dealAction(b)));
+  syncDealCard(box.querySelector("[data-deal]"));
+}
+function openDealEditor(i){
+  dealEditIndex = i;
+  const d = i >= 0 ? currentDeals()[i] : { id: "deal" + Date.now().toString(36), name: "New deal", enabled: false, type: "pair", windows: [], categories: [], items: [], pairFrom: "selection", samePrice: false, discounted: "cheaper", pct: 50, stack: true, buttons: {} };
+  document.getElementById("dealModalTitle").textContent = i >= 0 ? `Edit ${d.name || "deal"}` : "Add a deal";
+  document.getElementById("dealModalRemove").hidden = i < 0;
+  document.getElementById("dealModalMsg").textContent = i >= 0 ? "" : "New deals start switched off.";
+  renderDealEditor(d);
+  document.getElementById("dealModal").hidden = false;
+  document.getElementById("dealEditor").querySelector("[data-deal-name]").focus();
+}
+function closeDealEditor(){ document.getElementById("dealModal").hidden = true; document.getElementById("dealEditor").innerHTML = ""; }
+document.getElementById("dealAdd").addEventListener("click", () => openDealEditor(-1));
+document.getElementById("dealModalCancel").addEventListener("click", closeDealEditor);
+document.getElementById("dealModalSave").addEventListener("click", async () => {
+  const d = readDealCard(document.querySelector("#dealEditor [data-deal]")), problems = dealProblems([d]);
+  if (problems.length) { document.getElementById("dealModalMsg").textContent = "Not saved. " + problems.join(". ") + "."; return; }
+  const deals = currentDeals();
+  if (dealEditIndex >= 0) deals[dealEditIndex] = d; else deals.push(d);
+  await saveDeals(deals);
+  closeDealEditor();
+});
+document.getElementById("dealModalRemove").addEventListener("click", async () => {
+  const deals = currentDeals(), d = deals[dealEditIndex];
+  if (!d || !confirm(`Remove ${d.name}?`)) return;
+  deals.splice(dealEditIndex, 1);
+  await saveDeals(deals);
+  closeDealEditor();
+});
+document.getElementById("dealRulesBtn").addEventListener("click", () => {
+  const best = venueDealRules && venueDealRules.overlap === "best";
+  document.querySelectorAll('input[name="dealOverlap"]').forEach(x => { x.checked = x.value === (best ? "best" : "order"); });
+  document.getElementById("dealRulesModal").hidden = false;
+});
+document.getElementById("dealRulesCancel").addEventListener("click", () => { document.getElementById("dealRulesModal").hidden = true; });
+document.getElementById("dealRulesSave").addEventListener("click", async () => {
+  await saveDeals(currentDeals(), { overlap: (document.querySelector('input[name="dealOverlap"]:checked') || {}).value || "order" });
+  document.getElementById("dealRulesModal").hidden = true;
+});
+// Typing or picking an item's label adds it; the label is matched back to its "Name|Size" value.
+function addDealItem(cover){
+  const input = cover.querySelector("[data-deal-item-input]"), text = input.value.trim();
+  if (!text) return;
+  const choice = dealItemChoices().find(c => c.label.toLowerCase() === text.toLowerCase() || c.value.toLowerCase() === text.toLowerCase());
+  if (!choice) { document.getElementById("dealModalMsg").textContent = `"${text}" isn't on this venue's menu. Pick it from the list as you type.`; return; }
+  const box = cover.querySelector("[data-deal-items]");
+  if (![...box.querySelectorAll("[data-item]")].some(x => x.dataset.item === choice.value))
+    box.insertAdjacentHTML("beforeend", `<span class="deal-chip" data-item="${esc(choice.value)}">${esc(dealItemLabel(choice.value))}<button type="button" data-deal-item-remove aria-label="Take ${esc(dealItemLabel(choice.value))} off">×</button></span>`);
+  input.value = "";
+  document.getElementById("dealModalMsg").textContent = "";
+}
+document.getElementById("dealEditor").addEventListener("click", e => {
+  const add = e.target.closest("[data-deal-item-add]"); if (add) { addDealItem(add.closest("[data-cover]")); return; }
+  const rm = e.target.closest("[data-deal-item-remove]"); if (rm) rm.closest("[data-item]").remove();
+});
+document.getElementById("dealEditor").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("[data-deal-item-input]")) { e.preventDefault(); addDealItem(e.target.closest("[data-cover]")); } });
+document.getElementById("dealEditor").addEventListener("change", e => { const card = e.target.closest("[data-deal]"); if (card) syncDealCard(card); });
+function readCover(el){
+  return { categories: [...el.querySelectorAll("[data-deal-cat]")].filter(x => x.checked).map(x => x.dataset.dealCat), items: [...el.querySelectorAll("[data-item]")].map(x => x.dataset.item) };
+}
+function readDealCard(card){
+  {
+    const i = card.dataset.deal, buttons = {}, q = sel => card.querySelector(sel), type = q("[data-deal-type]").value;
     card.querySelectorAll("[data-deal-button]").forEach(sel => { if (sel.value !== "allowed") buttons[sel.dataset.dealButton] = sel.value; });
-    return {
-      id: card.dataset.id, name: card.querySelector("[data-deal-name]").value.trim() || "Deal", enabled: card.querySelector("[data-deal-on]").checked,
+    const main = readCover(q('[data-cover="main"]'));
+    const d = {
+      id: card.dataset.id, name: q("[data-deal-name]").value.trim() || "Deal", enabled: q("[data-deal-on]").checked, type,
       windows: [...card.querySelectorAll("[data-deal-window]")].map(w => { const days = [...w.querySelectorAll("[data-day]")].filter(x => x.checked).map(x => Number(x.dataset.day)); return { days: days.length === 7 ? [] : days, from: w.querySelector("[data-from]").value || "00:00", to: w.querySelector("[data-to]").value || "close" }; }),
-      categories: [...card.querySelectorAll("[data-deal-cat]")].filter(x => x.checked).map(x => x.dataset.dealCat),
-      pairFrom: card.querySelector(`input[name="dealPair${i}"]:checked`).value, samePrice: card.querySelector("[data-deal-same-price]").checked,
-      discounted: card.querySelector(`input[name="dealWhich${i}"]:checked`).value, pct: Math.max(1, Math.min(100, Number(card.querySelector("[data-deal-pct]").value) || 50)), buttons
+      categories: main.categories, items: main.items,
+      pairFrom: (q(`input[name="${type === "multibuy" ? "dealMix" : "dealPair"}${i}"]:checked`) || {}).value || "selection", samePrice: q("[data-deal-same-price]").checked,
+      discounted: (q(`input[name="dealWhich${i}"]:checked`) || {}).value || "cheaper",
+      pct: Math.max(1, Math.min(100, Number(q(type === "percent" ? "[data-deal-pct-each]" : "[data-deal-pct]").value) || 50)),
+      pairPence: poundsToPence(q("[data-deal-pair-price]").value), pricePence: poundsToPence(q("[data-deal-price]").value),
+      buyQty: Math.max(2, Math.min(20, Number(q("[data-deal-buy]").value) || 3)), forPence: poundsToPence(q("[data-deal-for]").value),
+      parts: [...card.querySelectorAll("[data-bundle-part]")].map(pt => readCover(pt.querySelector("[data-cover]"))), bundlePence: poundsToPence(q("[data-deal-bundle]").value),
+      stack: q("[data-deal-stack]").checked, buttons
     };
+    return d;
+  }
+}
+// A deal that needs a price says so before it's saved, rather than doing nothing on the till.
+function dealProblems(deals){
+  const out = [];
+  deals.forEach(d => {
+    if (d.type === "price" && d.pricePence == null) out.push(`${d.name}: enter the price each`);
+    if (d.type === "multibuy" && d.forPence == null) out.push(`${d.name}: enter the multi-buy price`);
+    if (d.type === "bundle" && d.bundlePence == null) out.push(`${d.name}: enter the bundle price`);
+    if (d.type === "bundle" && d.parts.filter(p => p.categories.length || p.items.length).length < 2) out.push(`${d.name}: a bundle needs at least two parts with something in them`);
+    if (d.type === "pair" && d.discounted === "fixed" && d.pairPence == null) out.push(`${d.name}: enter the price for the two`);
+    if (d.type !== "pair" && d.type !== "bundle" && !d.categories.length && !d.items.length) out.push(`${d.name}: choose what it covers`);
   });
+  return out;
 }
 function dealAction(btn){
-  const deals = readDeals(), i = Number(btn.dataset.i);
-  if (btn.dataset.dealAct === "window-add") deals[i].windows.push({ days: [], from: "17:00", to: "19:00" });
-  if (btn.dataset.dealAct === "window-remove") deals[i].windows.splice(Number(btn.dataset.w), 1);
-  if (btn.dataset.dealAct === "remove") { if (!confirm(`Remove ${deals[i].name}?`)) return; deals.splice(i, 1); }
-  renderDeals(deals);
-  document.getElementById("dealsMsg").textContent = "Not saved yet.";
+  const d = readDealCard(document.querySelector("#dealEditor [data-deal]"));
+  if (btn.dataset.dealAct === "window-add") d.windows.push({ days: [], from: "17:00", to: "19:00" });
+  if (btn.dataset.dealAct === "window-remove") d.windows.splice(Number(btn.dataset.w), 1);
+  if (btn.dataset.dealAct === "part-add") d.parts.push({ categories: [], items: [] });
+  if (btn.dataset.dealAct === "part-remove") d.parts.splice(Number(btn.dataset.p), 1);
+  renderDealEditor(d);
 }
-document.getElementById("dealAdd").addEventListener("click", () => {
-  const deals = readDeals();
-  deals.push({ id: "deal" + Date.now().toString(36), name: "New deal", enabled: false, windows: [], categories: [], pairFrom: "selection", samePrice: false, discounted: "cheaper", pct: 50, buttons: {} });
-  renderDeals(deals);
-  document.getElementById("dealsMsg").textContent = "Not saved yet. New deals start switched off.";
-});
 function dealChanges(before, after){
-  const desc = d => ({ name: d.name, "switched on": d.enabled !== false ? "yes" : "no", times: (d.windows || []).map(w => `${w.days && w.days.length ? w.days.map(x => DAY_NAMES[x]).join("/") + " " : ""}${w.from}-${w.to}`).join(", ") || "all day",
-    categories: (d.categories || []).join(", ") || "Cocktails", pair: d.pairFrom === "sameProduct" ? "same product" : "any two", "same price only": d.samePrice ? "yes" : "no",
-    "money off": `${d.discounted === "dearer" ? "dearer" : "cheaper"} one ${d.pct}%`, buttons: Object.entries(d.buttons || {}).map(([k, v]) => `${k} ${v}`).join(", ") || "all allowed" });
+  const typeName = d => (DEAL_TYPES.find(t => t[0] === (d.type || "pair")) || DEAL_TYPES[0])[1];
+  const money = p => p == null ? "-" : fmt(p);
+  const desc = d => ({ name: d.name, type: typeName(d), "switched on": d.enabled !== false ? "yes" : "no", times: (d.windows || []).map(w => `${w.days && w.days.length ? w.days.map(x => DAY_NAMES[x]).join("/") + " " : ""}${w.from}-${w.to}`).join(", ") || "all day",
+    covers: [...(d.categories || []), ...(d.items || []).map(dealItemLabel)].join(", ") || ((d.type || "pair") === "pair" ? "Cocktails" : "nothing"),
+    pair: d.pairFrom === "sameProduct" ? "same product" : "any", "same price only": d.samePrice ? "yes" : "no",
+    "money off": (d.type || "pair") === "pair" ? (d.discounted === "fixed" ? `both for ${money(d.pairPence)}` : d.discounted === "matchCheaper" ? "both at the cheaper price" : d.discounted === "samePriceOne" ? `two the same price, one ${d.pct}%` : `${d.discounted === "dearer" ? "dearer" : "cheaper"} one ${d.pct}%`)
+      : d.type === "price" ? `${money(d.pricePence)} each` : d.type === "percent" ? `${d.pct}% off` : d.type === "multibuy" ? `${d.buyQty} for ${money(d.forPence)}` : `bundle ${money(d.bundlePence)}: ${(d.parts || []).map(p => [...p.categories, ...p.items.map(dealItemLabel)].join("/")).join(" + ")}`,
+    stacks: d.stack === false ? "once per order" : "yes",
+    buttons: Object.entries(d.buttons || {}).map(([k, v]) => `${k} ${v}`).join(", ") || "all allowed" });
   const b = new Map((before || []).map(d => [d.id, d])), a = new Map(after.map(d => [d.id, d])), out = [];
   after.forEach(d => { if (!b.has(d.id)) out.push(`added ${d.name}`); });
   (before || []).forEach(d => { if (!a.has(d.id)) out.push(`removed ${d.name}`); });
   after.forEach(d => { const old = b.get(d.id); if (!old) return; const x = desc(old), y = desc(d); const ch = Object.keys(y).filter(k => x[k] !== y[k]).map(k => `${k} ${x[k]} → ${y[k]}`); if (ch.length) out.push(`${old.name}: ${ch.join(", ")}`); });
   return out.join("; ") || "nothing changed";
 }
-document.getElementById("dealsSave").addEventListener("click", async () => {
-  const deals = readDeals(), dealsBefore = venueDeals || DEFAULT_DEALS;
-  if (productsAllVenues) { for (const v of scopeVenueIds()) await saveDocFor(v, LS_DEALS, deals); }
-  else await saveDoc(LS_DEALS, deals);
-  venueDeals = deals;
-  renderDeals();
-  document.getElementById("dealsMsg").textContent = `Deals saved${productsAllVenues ? " at every venue" : ""}. Tills pick them up within a few seconds.`;
-  logActivity("Changed deals", dealChanges(dealsBefore, deals) + (productsAllVenues ? " (every venue)" : ""), productsAllVenues ? null : undefined);
-});
-
 /* ---------- Discounts ---------- */
 function renderOfferList(){
   const wrap = document.getElementById("offerList");
@@ -3621,7 +4095,17 @@ document.getElementById("addOfferBtn").addEventListener("click", async () => {
   }
   logActivity("Added an offer", `${label} (${pct}%)`);
   document.getElementById("offerName").value = ""; document.getElementById("offerPct").value = "";
+  document.getElementById("offerModal").hidden = true;
   renderOfferList();
+});
+
+document.getElementById("openAddOfferBtn").addEventListener("click", () => { document.getElementById("offerModal").hidden = false; document.getElementById("offerName").focus(); });
+document.getElementById("offerModalCancel").addEventListener("click", () => { document.getElementById("offerModal").hidden = true; });
+// Escape closes the Discounts pop-ups without saving.
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (!document.getElementById("dealModal").hidden) closeDealEditor();
+  ["dealRulesModal", "offerModal"].forEach(id => { document.getElementById(id).hidden = true; });
 });
 
 /* ---------- Users ---------- */
@@ -3930,10 +4414,11 @@ function renderKitchens(){
   const editable = k => all || ((k.venueIds || []).length > 0 && (k.venueIds || []).every(id => mineIds.has(id))) || !(k.venueIds || []).length;
   const pickVenues = all ? venues : myVenues;
   wrap.innerHTML = kitchens.filter(k => all || (k.venueIds || []).some(id => mineIds.has(id)) || !(k.venueIds || []).length).map(k => !editable(k)
-    ? `<div class="card" style="margin-bottom:12px;max-width:640px;"><strong>${esc(k.name)}</strong><p class="note">Cooks for ${esc(kitchenVenueNames(k.venueIds || []))}. It also cooks for a venue you don't work at, so only a Global Admin can change it.</p></div>`
+    ? `<div class="card" style="margin-bottom:12px;max-width:640px;"><strong>${esc(k.name)}</strong>${k.active === false ? ` <span class="note" style="margin:0;">(closed)</span>` : ""}<p class="note">Cooks for ${esc(kitchenVenueNames(k.venueIds || []))}. It also cooks for a venue you don't work at, so only a Global Admin can change it.</p></div>`
     : `<div class="card kitchen-card" data-kitchen="${esc(k.id)}" style="margin-bottom:12px;max-width:640px;">
       <label class="field" for="kn-${esc(k.id)}">Name</label>
       <input type="text" id="kn-${esc(k.id)}" data-k-name value="${esc(k.name)}" maxlength="60" autocomplete="off">
+      <label class="row" style="border:0;padding:10px 0 0;"><span class="info"><span class="name" style="display:block;">Kitchen open</span><span class="sub" style="display:block;">Off hides this kitchen from the NIPOS start screen and the kitchen screen's list.</span></span><span class="switch"><input type="checkbox" data-k-active ${k.active !== false ? "checked" : ""} aria-label="${esc(k.name)} open"><span class="slider"></span></span></label>
       <fieldset class="kitchen-venues"><legend class="field">Cooks for</legend>
         ${pickVenues.map(v => `<label class="check"><input type="checkbox" data-k-venue="${esc(v.id)}" ${(k.venueIds || []).includes(v.id) ? "checked" : ""}><span class="venue-swatch" style="display:inline-block;vertical-align:-3px;margin-right:6px;background:${VENUE_ACCENTS[venueAccentKey(v)].color}"></span>${esc(v.name)}${taken(v.id) > 1 && (k.venueIds || []).includes(v.id) ? ` <span class="note" style="margin:0;">(also another kitchen)</span>` : ""}</label>`).join("")}
       </fieldset>
@@ -3953,11 +4438,12 @@ async function saveKitchen(k, card){
   const name = card.querySelector("[data-k-name]").value.trim() || "Kitchen";
   const venueIds = [...card.querySelectorAll("[data-k-venue]:checked")].map(i => i.dataset.kVenue);
   if (!canManageAllVenues() && !venueIds.length) { msg.textContent = "Tick at least one of your venues."; return; }
-  const data = { name, venueIds };
+  const active = card.querySelector("[data-k-active]").checked;
+  const data = { name, venueIds, active };
   const { error } = await supabaseClient.from("kitchens").upsert({ id: k.id, ts: k.ts || Date.now(), data });
   if (error) { msg.textContent = "Couldn't save: " + error.message; return; }
   const was = kitchens.find(x => x.id === k.id) || {};
-  const changes = [was.name !== name ? `name ${was.name || "(new)"} → ${name}` : "", JSON.stringify(was.venueIds || []) !== JSON.stringify(venueIds) ? `cooks for ${kitchenVenueNames(was.venueIds || [])} → ${kitchenVenueNames(venueIds)}` : ""].filter(Boolean).join("; ");
+  const changes = [was.name !== name ? `name ${was.name || "(new)"} → ${name}` : "", JSON.stringify(was.venueIds || []) !== JSON.stringify(venueIds) ? `cooks for ${kitchenVenueNames(was.venueIds || [])} → ${kitchenVenueNames(venueIds)}` : "", (was.active !== false) !== active ? (active ? "opened" : "closed") : ""].filter(Boolean).join("; ");
   logActivity("Kitchen saved", `${name}: ${changes || "nothing changed"}`, null);
   Object.assign(was, data);
   msg.textContent = `${name} saved.`;
@@ -4220,7 +4706,7 @@ function renderLockdownButtons(){
       btn.className = ids.length ? "btn btn-accent" : kind === "suspend" ? "btn btn-danger" : "btn btn-ghost"; });
     if (ids.length) status.push(`${L.verb}: ${ids.length === myVenues.length && myVenues.length > 1 ? "every venue" : ids.map(venueName).join(", ")}.`);
   });
-  ["lockdownStatus", "ntLockStatus"].forEach(id => { document.getElementById(id).textContent = status.join(" ") || "Every till is taking orders."; });
+  ["lockdownStatus", "ntLockStatus"].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = status.join(" ") || "Every till is taking orders."; });
 }
 function openLockdownPicker(kind){
   const L = LOCKDOWNS[kind], on = new Set(lockdownVenues(kind));
@@ -4267,8 +4753,7 @@ function openLockdownPicker(kind){
   el.hidden = false;
   (all || boxes[0]).focus();
 }
-document.getElementById("toggleSuspendBtn").addEventListener("click", () => openLockdownPicker("suspend"));
-document.getElementById("toggleServiceBreakBtn").addEventListener("click", () => openLockdownPicker("break"));
+// Suspend Orders and Service Break live on Messages and pausing (they used to be on Settings too).
 document.getElementById("ntSuspendBtn").addEventListener("click", () => openLockdownPicker("suspend"));
 document.getElementById("ntBreakBtn").addEventListener("click", () => openLockdownPicker("break"));
 
@@ -4344,11 +4829,20 @@ async function loadNotificationsPage(){
     const current = u.managerSound || "";
     const ownPick = () => `Their own pick: ${soundLabel(u.notificationSound)}`;
     row.innerHTML = `<div class="info"><div class="name">${esc(u.name)}</div><div class="sub" data-sub>${esc(u.managerSound ? "Locked by a manager" : ownPick())}</div></div>
-      <div class="actions" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button type="button" class="btn btn-ghost btn-sm" data-change>Change</button>
+      <div class="actions" hidden style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <select aria-label="Notification sound for ${esc(u.name)}"><option value="">Let them choose</option>${options.map(([id, label]) => `<option value="${esc(id)}" ${id === current ? "selected" : ""}>${esc(label)}</option>`).join("")}</select>
         <button type="button" class="btn btn-ghost btn-sm" data-play>Play</button>
         <button type="button" class="btn btn-solid btn-sm" data-save disabled>Save</button></div>`;
-    const sel = row.querySelector("select"), saveBtn = row.querySelector("[data-save]");
+    const sel = row.querySelector("select"), saveBtn = row.querySelector("[data-save]"), actions = row.querySelector(".actions");
+    // Change opens the sound picker in a pop-up; closing it puts the picker back, hidden.
+    row.querySelector("[data-change]").addEventListener("click", () => {
+      document.getElementById("ntSoundTitle").textContent = `${u.name}'s notification sound`;
+      actions.hidden = false;
+      document.getElementById("ntSoundBody").replaceChildren(actions);
+      ntSoundClose = () => { actions.hidden = true; row.appendChild(actions); };
+      document.getElementById("ntSoundModal").hidden = false;
+    });
     sel.addEventListener("change", () => { saveBtn.disabled = sel.value === (u.managerSound || ""); });
     row.querySelector("[data-play]").addEventListener("click", () => {
       if (!ntPreviewCtx) { try { ntPreviewCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
@@ -4367,11 +4861,16 @@ async function loadNotificationsPage(){
       row.querySelector("[data-sub]").textContent = value ? "Locked by a manager" : ownPick();
       msg.textContent = value ? `Saved: ${u.name} now hears ${soundLabel(value)} and can't change it.` : `Saved: ${u.name} chooses again, back to ${soundLabel(u.notificationSound)}.`;
       logActivity("Changed a notification sound", `${u.name}: ${value ? soundLabel(value) + " (locked)" : "let them choose"}`, null);
+      closeNtSoundModal();
     });
     wrap.appendChild(row);
   });
 }
 document.getElementById("navNotifications").addEventListener("click", loadNotificationsPage);
+let ntSoundClose = null;
+function closeNtSoundModal(){ document.getElementById("ntSoundModal").hidden = true; if (ntSoundClose) ntSoundClose(); ntSoundClose = null; }
+document.getElementById("ntSoundClose").addEventListener("click", closeNtSoundModal);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !document.getElementById("ntSoundModal").hidden) closeNtSoundModal(); });
 
 async function renderSoundsList(){
   const wrap = document.getElementById("soundsList");
@@ -4411,6 +4910,264 @@ document.getElementById("soundUploadInput").addEventListener("change", async (e)
   msg.textContent = (done.length ? `Added ${done.length}: ${done.join(", ")}.` : "") + (failed.length ? ` Not added: ${failed.join(" ")}` : "");
   renderSoundsList();
 });
+
+/* ---------- Reports: KPI, full sales breakdown, products, staff and busy times ----------
+   Built from the same sales, refunds and tips as Takings, for any period and any of your venues.
+   Bars trade past midnight, so by default a sale before 6am counts towards the night before
+   ("trading day"); untick it to use calendar days. Every report can be downloaded as a spreadsheet
+   or printed (or saved as a PDF from the print window). */
+const REPORT_TYPES = {
+  kpi: { name: "KPI report", about: "The headline numbers, compared with the period before." },
+  breakdown: { name: "Full sales breakdown", about: "Every way of slicing the takings: payments, categories, products, hours, days, staff, venues, discounts, deals and refunds." },
+  products: { name: "Product performance", about: "Every product: how many sold, takings at menu price, share, and what didn't sell." },
+  staff: { name: "Staff report", about: "Each person's orders, takings, average order, discounts, refunds and tips." },
+  busy: { name: "Busy times", about: "Takings by day of the week and hour, to plan staffing." }
+};
+let reportType = "kpi", lastReport = null;
+const TRADING_CUTOFF_H = 6;
+function pickReport(type){
+  if (!REPORT_TYPES[type]) return;
+  reportType = type;
+  document.querySelectorAll("[data-report-type]").forEach(b => { const on = b.dataset.reportType === type; b.setAttribute("aria-checked", on); b.classList.toggle("on", on); });
+  document.getElementById("reportOut").innerHTML = "";
+  document.getElementById("reportActions").hidden = true;
+}
+function renderReportControls(){
+  document.getElementById("reportTypes").innerHTML = Object.entries(REPORT_TYPES).map(([k, t]) =>
+    `<button type="button" role="radio" class="report-type${k === reportType ? " on" : ""}" aria-checked="${k === reportType}" data-report-type="${k}"><strong>${esc(t.name)}</strong><span>${esc(t.about)}</span></button>`).join("");
+  const sel = document.getElementById("reportVenue"), was = sel.value;
+  sel.innerHTML = (myVenues.length > 1 ? `<option value="">All my venues</option>` : "") + myVenues.map(v => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join("");
+  if ([...sel.options].some(o => o.value === was)) sel.value = was;
+}
+document.getElementById("reportTypes").addEventListener("click", e => { const b = e.target.closest("[data-report-type]"); if (b) pickReport(b.dataset.reportType); });
+document.getElementById("reportPeriod").addEventListener("change", e => { document.getElementById("reportCustom").hidden = e.target.value !== "custom"; });
+document.getElementById("reportRun").addEventListener("click", runReport);
+document.getElementById("reportCsv").addEventListener("click", () => {
+  if (!lastReport) return;
+  const rows = [];
+  lastReport.sections.forEach(sec => { rows.push([sec.title]); rows.push(sec.header); sec.rows.forEach(r => rows.push(r.map(c => c && typeof c === "object" ? c.csv : c))); rows.push([]); });
+  downloadCsv(`${lastReport.file}.csv`, [lastReport.title, lastReport.period], rows);
+});
+document.getElementById("reportPrint").addEventListener("click", () => window.print());
+
+// The period as [start, end) in ms, plus a label. Days are trading days (6am to 6am) unless unticked.
+function reportPeriod(){
+  const kind = document.getElementById("reportPeriod").value, trading = document.getElementById("reportTrading").checked;
+  const now = new Date(), cut = trading ? TRADING_CUTOFF_H : 0;
+  // "Today" while it's still before 6am is the night that's still going.
+  const today = new Date(now); if (trading && now.getHours() < cut) today.setDate(today.getDate() - 1); today.setHours(0, 0, 0, 0);
+  const day = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  let from, to; // first and last day, inclusive
+  if (kind === "today") { from = today; to = today; }
+  else if (kind === "yesterday") { from = day(today, -1); to = from; }
+  else if (kind === "thisweek") { from = day(today, -((today.getDay() + 6) % 7)); to = today; }
+  else if (kind === "lastweek") { to = day(today, -((today.getDay() + 6) % 7) - 1); from = day(to, -6); }
+  else if (kind === "thismonth") { from = new Date(today.getFullYear(), today.getMonth(), 1); to = today; }
+  else if (kind === "lastmonth") { from = new Date(today.getFullYear(), today.getMonth() - 1, 1); to = new Date(today.getFullYear(), today.getMonth(), 0); }
+  else if (kind === "last7") { from = day(today, -6); to = today; }
+  else if (kind === "last30") { from = day(today, -29); to = today; }
+  else {
+    const f = document.getElementById("reportFrom").value, t = document.getElementById("reportTo").value;
+    if (!f || !t) return { error: "Pick both dates." };
+    from = new Date(f + "T00:00:00"); to = new Date(t + "T00:00:00");
+    if (to < from) return { error: "The end date is before the start date." };
+  }
+  const startMs = new Date(from).setHours(cut, 0, 0, 0), endMs = Math.min(day(to, 1).setHours(cut, 0, 0, 0), Date.now()) - 1;
+  const days = Math.round((day(to, 1) - from) / 864e5);
+  const dfmt = d => d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  const label = days === 1 ? dfmt(from) : `${dfmt(from)} to ${dfmt(to)}`;
+  // One day is compared with the same day a week before; longer periods with the same length just before.
+  const back = days === 1 ? 7 * 864e5 : days * 864e5;
+  return { startMs, endMs, days, label, cut, prev: { startMs: startMs - back, endMs: endMs - back, label: days === 1 ? "the same day last week" : `the ${days} days before` } };
+}
+// The day (YYYY-MM-DD) and hour a sale counts towards.
+function tradingDay(ts, cut){ return localDayKey(ts - cut * 3600e3); }
+async function fetchReportRows(table, startMs, endMs, ids){
+  try {
+    const { data } = await supabaseClient.from(table).select("data,venue_id").in("venue_id", ids).gte("ts", startMs).lte("ts", endMs).limit(50000);
+    return (data || []).map(r => ({ ...r.data, venueId: r.venue_id })).filter(x => !x.isTest);
+  } catch (e) { return []; }
+}
+// Which category each product is in, per venue, read from the menu (sales only keep the name).
+async function reportCatalogue(ids){
+  const out = new Map(), names = new Map();
+  try {
+    const [{ data: cats }, { data: items }] = await Promise.all([
+      supabaseClient.from("categories").select("data,venue_id").in("venue_id", ids),
+      supabaseClient.from("catalogue_items").select("data,venue_id").in("venue_id", ids)]);
+    const catName = new Map((cats || []).map(r => [r.venue_id + "|" + r.data.id, r.data.name]));
+    (items || []).forEach(r => { const c = catName.get(r.venue_id + "|" + r.data.categoryId) || "Other"; out.set(r.venue_id + "|" + r.data.name, c); if (!names.has(r.data.name)) names.set(r.data.name, c); });
+  } catch (e) {}
+  return { byVenue: out, byName: names };
+}
+const isTipLine = n => /^Gratuity\b/i.test(n || "");
+// "Carling (4%) (Pint)" -> "Carling (4%)"; "Malibu (Double & Coke Dash)" -> "Malibu".
+const baseProductName = n => String(n || "").replace(/ \+ .*$/, "").replace(/ \([^)]*\)$/, "");
+function categoryOf(cat, venueId, name){
+  const b = baseProductName(name);
+  return cat.byVenue.get(venueId + "|" + name) || cat.byVenue.get(venueId + "|" + b) || cat.byName.get(name) || cat.byName.get(b) || "Other";
+}
+// Everything a report needs, worked out once from the raw rows.
+function reportFigures(sales, refunds, tips, abandoned, cut, cat){
+  const orders = sales.filter(s => !(s.items || []).length || !(s.items || []).every(i => isTipLine(i.name)));
+  const lines = [];
+  sales.forEach(s => (s.items || []).forEach(i => { if (!isTipLine(i.name)) lines.push({ ...i, venueId: s.venueId, sale: s, category: categoryOf(cat, s.venueId, i.name) }); }));
+  const paid = sales.reduce((n, s) => n + (s.total || 0), 0), refunded = refunds.reduce((n, r) => n + (r.pence || 0), 0);
+  const menu = lines.reduce((n, l) => n + l.pence * l.qty, 0);
+  const discounts = sales.reduce((n, s) => n + (s.discountAmount || 0), 0);
+  const dealSaved = sales.reduce((n, s) => n + (Array.isArray(s.deals) && s.deals.length ? s.deals.reduce((m, d) => m + (d.saved || 0), 0) : (s.listTotal != null ? Math.max(0, s.listTotal - (s.base || 0)) : 0)), 0);
+  const counted = orders.filter(s => !s.splitPart || s.splitPart === 1).length; // a split bill is one order
+  const items = lines.reduce((n, l) => n + l.qty, 0);
+  const net = paid - refunded, tipsTotal = tips.reduce((n, g) => n + (g.amount || 0), 0);
+  const by = (list, key, val) => { const m = new Map(); list.forEach(x => { const k = key(x); m.set(k, (m.get(k) || 0) + val(x)); }); return m; };
+  const hourOf = ts => new Date(ts).getHours();
+  const byHour = by(sales, s => hourOf(s.ts), s => s.total || 0); refunds.forEach(r => byHour.set(hourOf(r.ts), (byHour.get(hourOf(r.ts)) || 0) - (r.pence || 0)));
+  const byDay = by(sales, s => tradingDay(s.ts, cut), s => s.total || 0); refunds.forEach(r => { const k = tradingDay(r.ts, cut); byDay.set(k, (byDay.get(k) || 0) - (r.pence || 0)); });
+  const ordersByHour = by(orders.filter(s => !s.splitPart || s.splitPart === 1), s => hourOf(s.ts), () => 1);
+  const cash = sales.filter(s => (s.method || "card") === "cash").reduce((n, s) => n + (s.total || 0), 0);
+  const card = paid - cash;
+  const refundCash = refunds.filter(r => (r.method || "card") === "cash").reduce((n, r) => n + (r.pence || 0), 0);
+  const products = new Map();
+  lines.forEach(l => { const k = l.name; const p = products.get(k) || { name: k, category: l.category, qty: 0, menu: 0 }; p.qty += l.qty; p.menu += l.pence * l.qty; products.set(k, p); });
+  refunds.forEach(r => { const p = products.get(r.itemName); if (p) { p.refundQty = (p.refundQty || 0) + (r.qty || 0); p.refunded = (p.refunded || 0) + (r.pence || 0); } });
+  const categories = new Map();
+  lines.forEach(l => { const c = categories.get(l.category) || { name: l.category, qty: 0, menu: 0 }; c.qty += l.qty; c.menu += l.pence * l.qty; categories.set(l.category, c); });
+  const best = [...byHour.entries()].sort((a, b) => b[1] - a[1])[0], bestDay = [...byDay.entries()].sort((a, b) => b[1] - a[1])[0];
+  return { sales, refunds, tips, abandoned, orders, lines, paid, refunded, net, menu, discounts, dealSaved, counted, items, tipsTotal, cash, card, refundCash, refundCard: refunded - refundCash,
+    avg: counted ? Math.round(net / counted) : 0, perOrder: counted ? items / counted : 0, byHour, byDay, ordersByHour, products, categories, bestHour: best, bestDay,
+    abandonedValue: abandoned.reduce((n, a) => n + (a.total || 0), 0) };
+}
+const pctOf = (a, b) => b ? Math.round(a / b * 1000) / 10 : 0;
+const hourLabel = h => `${String(h).padStart(2, "0")}:00-${String((h + 1) % 24).padStart(2, "0")}:00`;
+const dayLabel = k => new Date(k + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+function changeCell(cur, prev, kind){
+  if (prev == null) return { html: "", csv: "" };
+  if (!prev) return { html: cur ? `<span class="rp-chg">new</span>` : "", csv: "" };
+  const d = (cur - prev) / Math.abs(prev) * 100, r = Math.round(d * 10) / 10;
+  const good = kind === "bad" ? d < 0 : d > 0;
+  return { html: `<span class="rp-chg ${r === 0 ? "" : good ? "up" : "down"}">${r > 0 ? "▲" : r < 0 ? "▼" : "="} ${Math.abs(r)}%</span>`, csv: (r > 0 ? "+" : "") + r + "%" };
+}
+const money = p => ({ html: fmt(p), csv: (p / 100).toFixed(2) });
+const share = (p, total) => ({ html: `<span class="rp-share"><span style="width:${Math.max(0, Math.min(100, pctOf(p, total)))}%"></span></span>${pctOf(p, total)}%`, csv: pctOf(p, total) + "%" });
+const num = n => ({ html: Number(n).toLocaleString("en-GB"), csv: String(n) });
+
+function kpiSections(f, p){
+  const rows = [
+    ["Net takings", money(f.net), p && changeCell(f.net, p.net), "Paid, less refunds. Tips not included."],
+    ["Orders", num(f.counted), p && changeCell(f.counted, p.counted), "A split bill counts once."],
+    ["Average order", money(f.avg), p && changeCell(f.avg, p.avg), "Net takings ÷ orders."],
+    ["Items sold", num(f.items), p && changeCell(f.items, p.items), ""],
+    ["Items per order", num(Math.round(f.perOrder * 10) / 10), p && changeCell(f.perOrder, p.perOrder), ""],
+    ["Sales at menu prices", money(f.menu), p && changeCell(f.menu, p.menu), "Before deals and discounts."],
+    ["Taken off by deals", money(f.dealSaved), p && changeCell(f.dealSaved, p.dealSaved, "bad"), `${pctOf(f.dealSaved, f.menu)}% of menu-price sales.`],
+    ["Discounts given", money(f.discounts), p && changeCell(f.discounts, p.discounts, "bad"), `${pctOf(f.discounts, f.menu)}% of menu-price sales.`],
+    ["Refunds", money(f.refunded), p && changeCell(f.refunded, p.refunded, "bad"), `${f.refunds.length} refund${f.refunds.length === 1 ? "" : "s"}, ${pctOf(f.refunded, f.paid)}% of takings.`],
+    ["Tips", money(f.tipsTotal), p && changeCell(f.tipsTotal, p.tipsTotal), ""],
+    ["Paid by card", share(f.card - f.refundCard, f.net), null, money(f.card - f.refundCard).html + " after refunds"],
+    ["Paid in cash", share(f.cash - f.refundCash, f.net), null, money(f.cash - f.refundCash).html + " after refunds"],
+    ["Busiest hour", { html: f.bestHour ? hourLabel(f.bestHour[0]) : "-", csv: f.bestHour ? hourLabel(f.bestHour[0]) : "" }, null, f.bestHour ? fmt(f.bestHour[1]) : ""],
+    ["Best night", { html: f.bestDay ? dayLabel(f.bestDay[0]) : "-", csv: f.bestDay ? dayLabel(f.bestDay[0]) : "" }, null, f.bestDay ? fmt(f.bestDay[1]) : ""],
+    ["Best seller", { html: esc(([...f.products.values()].sort((a, b) => b.qty - a.qty)[0] || {}).name || "-"), csv: ([...f.products.values()].sort((a, b) => b.qty - a.qty)[0] || {}).name || "" }, null, ""],
+    ["Top category", { html: esc(([...f.categories.values()].sort((a, b) => b.menu - a.menu)[0] || {}).name || "-"), csv: ([...f.categories.values()].sort((a, b) => b.menu - a.menu)[0] || {}).name || "" }, null, ""],
+    ["Orders not finished", num(f.abandoned.length), p && changeCell(f.abandoned.length, p.abandoned.length, "bad"), f.abandoned.length ? `Worth ${fmt(f.abandonedValue)} at menu price.` : ""]
+  ].map(r => [r[0], r[1], r[2] || { html: "", csv: "" }, { html: r[3], csv: String(r[3]).replace(/<[^>]+>/g, "") }]);
+  return [{ title: "Key numbers", header: ["Measure", "This period", p ? "Change" : "", "Notes"], rows, kpi: true }];
+}
+function breakdownSections(f){
+  const s = [];
+  s.push({ title: "Where the money went", header: ["", "Amount"], rows: [
+    ["Sales at menu prices", money(f.menu)], ["Taken off by deals", money(-f.dealSaved)], ["Discounts given", money(-f.discounts)],
+    ["Paid by customers", money(f.paid)], ["Refunds", money(-f.refunded)], ["Net takings", money(f.net)], ["Tips (on top)", money(f.tipsTotal)]] });
+  s.push({ title: "Payments", header: ["Method", "Sales", "Refunds", "Net", "Share"], rows: [
+    ["Card", money(f.card), money(f.refundCard), money(f.card - f.refundCard), share(f.card - f.refundCard, f.net)],
+    ["Cash", money(f.cash), money(f.refundCash), money(f.cash - f.refundCash), share(f.cash - f.refundCash, f.net)]] });
+  const cats = [...f.categories.values()].sort((a, b) => b.menu - a.menu);
+  s.push({ title: "Categories", header: ["Category", "Items", "Sales at menu price", "Share"], rows: cats.map(c => [esc(c.name), num(c.qty), money(c.menu), share(c.menu, f.menu)]) });
+  const prods = [...f.products.values()].sort((a, b) => b.menu - a.menu);
+  s.push({ title: "Products", header: ["Product", "Category", "Sold", "Sales at menu price", "Share", "Refunded"], rows: prods.map(p => [esc(p.name), esc(p.category), num(p.qty), money(p.menu), share(p.menu, f.menu), p.refundQty ? num(p.refundQty) : num(0)]) });
+  const hours = [...f.byHour.keys()].sort((a, b) => ((a - f.cut + 24) % 24) - ((b - f.cut + 24) % 24));
+  const maxH = Math.max(1, ...f.byHour.values());
+  s.push({ title: "By hour", header: ["Hour", "Orders", "Net takings", ""], rows: hours.map(h => { const v = f.byHour.get(h) || 0;
+    return [hourLabel(h), num(f.ordersByHour.get(h) || 0), money(v), { html: `<span class="rp-share wide"><span style="width:${Math.max(0, Math.round(v / maxH * 100))}%"></span></span>`, csv: "" }]; }) });
+  if (f.byDay.size > 1) s.push({ title: "By day", header: ["Day", "Net takings", "Share"], rows: [...f.byDay.entries()].sort().map(([k, v]) => [dayLabel(k), money(v), share(v, f.net)]) });
+  s.push(...staffSections(f).map(x => ({ ...x, title: "By person" })));
+  const venues = new Map(); f.sales.forEach(x => venues.set(x.venueId, (venues.get(x.venueId) || 0) + (x.total || 0))); f.refunds.forEach(r => venues.set(r.venueId, (venues.get(r.venueId) || 0) - (r.pence || 0)));
+  if (venues.size > 1) s.push({ title: "By venue", header: ["Venue", "Net takings", "Share"], rows: [...venues.entries()].sort((a, b) => b[1] - a[1]).map(([id, v]) => [esc(venueName(id)), money(v), share(v, f.net)]) });
+  const disc = new Map(); f.sales.filter(x => x.discountAmount).forEach(x => { const k = x.discountLabel || "Discount"; const d = disc.get(k) || { n: 0, p: 0 }; d.n++; d.p += x.discountAmount; disc.set(k, d); });
+  s.push({ title: "Discounts", header: ["Discount", "Times used", "Amount"], rows: [...disc.entries()].sort((a, b) => b[1].p - a[1].p).map(([k, d]) => [esc(k), num(d.n), money(d.p)]) });
+  const deals = new Map(); f.sales.forEach(x => (Array.isArray(x.deals) ? x.deals : []).forEach(d => { const e = deals.get(d.name) || { n: 0, p: 0 }; e.n++; e.p += d.saved || 0; deals.set(d.name, e); }));
+  if (!deals.size && f.dealSaved) deals.set("Deals (older sales don't say which)", { n: f.sales.filter(x => x.listTotal != null && x.listTotal > (x.base || 0)).length, p: f.dealSaved });
+  s.push({ title: "Deals", header: ["Deal", "Orders", "Taken off"], rows: [...deals.entries()].sort((a, b) => b[1].p - a[1].p).map(([k, d]) => [esc(k), num(d.n), money(d.p)]) });
+  s.push({ title: "Refunds", header: ["When", "Item", "Qty", "Method", "Amount"], rows: f.refunds.slice().sort((a, b) => a.ts - b.ts).map(r => [fmtDayTime(r.ts), esc(r.itemName || ""), num(r.qty || 0), r.method === "cash" ? "Cash" : "Card", money(r.pence || 0)]) });
+  return s;
+}
+function staffSections(f){
+  const rows = new Map();
+  const row = (id, name) => { const k = id || name || "__none"; if (!rows.has(k)) rows.set(k, { name: name || (users.find(u => u.id === id) || {}).name || "Not recorded", orders: 0, sales: 0, items: 0, disc: 0, discN: 0, refunds: 0, tips: 0 }); return rows.get(k); };
+  f.sales.forEach(x => { const r = row(x.byId, x.by); r.sales += x.total || 0; if ((!x.splitPart || x.splitPart === 1) && f.orders.includes(x)) r.orders++; r.items += (x.items || []).filter(i => !isTipLine(i.name)).reduce((n, i) => n + i.qty, 0); if (x.discountAmount) { r.disc += x.discountAmount; r.discN++; } });
+  f.refunds.forEach(x => { row(x.byId, x.by).refunds += x.pence || 0; });
+  f.tips.forEach(g => { row(g.byId, g.by).tips += g.amount || 0; });
+  const list = [...rows.values()].sort((a, b) => b.sales - a.sales);
+  return [{ title: "Staff", header: ["Person", "Orders", "Takings", "Average order", "Items", "Discounts given", "Refunds", "Tips"], rows: list.map(r => [esc(r.name), num(r.orders), money(r.sales), money(r.orders ? Math.round(r.sales / r.orders) : 0), num(r.items), { html: r.discN ? `${fmt(r.disc)} <span class="rp-muted">(${r.discN})</span>` : fmt(0), csv: (r.disc / 100).toFixed(2) }, money(r.refunds), money(r.tips)]) }];
+}
+async function productSections(f, ids){
+  const prods = [...f.products.values()].sort((a, b) => b.qty - a.qty);
+  const s = [{ title: "Every product sold", header: ["#", "Product", "Category", "Sold", "Sales at menu price", "Average price", "Share", "Refunded"],
+    rows: prods.map((p, i) => [num(i + 1), esc(p.name), esc(p.category), num(p.qty), money(p.menu), money(p.qty ? Math.round(p.menu / p.qty) : 0), share(p.menu, f.menu), num(p.refundQty || 0)]) }];
+  // On the menu but not sold at all in this period.
+  let menuItems = [];
+  try { const { data } = await supabaseClient.from("catalogue_items").select("data,venue_id").in("venue_id", ids); menuItems = data || []; } catch (e) {}
+  const soldBase = new Set(prods.map(p => baseProductName(p.name)).concat(prods.map(p => p.name)));
+  const unsold = [...new Set(menuItems.map(r => r.data.name))].filter(n => !soldBase.has(n)).sort();
+  s.push({ title: `Not sold at all (${unsold.length})`, header: ["Product"], rows: unsold.map(n => [esc(n)]) });
+  return s;
+}
+function busySections(f){
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], grid = new Map(), nights = new Map();
+  const add = (ts, p) => { const d = new Date(ts - f.cut * 3600e3), wd = (d.getDay() + 6) % 7, h = new Date(ts).getHours(), k = wd + "|" + h; grid.set(k, (grid.get(k) || 0) + p); };
+  f.sales.forEach(x => add(x.ts, x.total || 0)); f.refunds.forEach(r => add(r.ts, -(r.pence || 0)));
+  f.byDay.forEach((v, k) => { const wd = (new Date(k + "T12:00:00").getDay() + 6) % 7; nights.set(wd, (nights.get(wd) || 0) + 1); });
+  const hours = [...new Set([...grid.keys()].map(k => Number(k.split("|")[1])))].sort((a, b) => ((a - f.cut + 24) % 24) - ((b - f.cut + 24) % 24));
+  const max = Math.max(1, ...grid.values());
+  const cell = v => ({ html: v ? `<span class="rp-heat" style="--a:${Math.max(0.08, v / max).toFixed(2)}">${poundsShort(v)}</span>` : `<span class="rp-muted">-</span>`, csv: v ? (v / 100).toFixed(2) : "0" });
+  const s = [{ title: "Takings by day and hour (totals for the period)", header: ["Hour"].concat(days), rows: hours.map(h => [hourLabel(h)].concat(days.map((_, wd) => cell(grid.get(wd + "|" + h) || 0)))), wide: true }];
+  s.push({ title: "Average night by day of the week", header: ["Day", "Nights traded", "Average takings"], rows: days.map((d, wd) => { const tot = hours.reduce((n, h) => n + (grid.get(wd + "|" + h) || 0), 0), n = nights.get(wd) || 0; return [d, num(n), money(n ? Math.round(tot / n) : 0)]; }) });
+  return s;
+}
+function reportTableHTML(sec){
+  if (!sec.rows.length) return `<section class="rp-sec"><h3>${esc(sec.title)}</h3><p class="rp-muted">Nothing in this period.</p></section>`;
+  const cell = c => c && typeof c === "object" ? c.html : esc(String(c));
+  return `<section class="rp-sec${sec.kpi ? " rp-kpi" : ""}"><h3>${esc(sec.title)}</h3><div class="table-scroll"><table class="data-table rp-table${sec.wide ? " rp-wide" : ""}"><thead><tr>${sec.header.map(h => `<th scope="col">${esc(h)}</th>`).join("")}</tr></thead><tbody>${sec.rows.map(r => `<tr>${r.map((c, i) => i === 0 ? `<th scope="row">${cell(c)}</th>` : `<td>${cell(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></section>`;
+}
+async function runReport(){
+  const out = document.getElementById("reportOut"), msg = document.getElementById("reportMsg");
+  const period = reportPeriod();
+  if (period.error) { msg.textContent = period.error; return; }
+  msg.textContent = "";
+  const venueId = document.getElementById("reportVenue").value, ids = venueId ? [venueId] : myVenues.map(v => v.id);
+  if (!ids.length) { msg.textContent = "You don't have any venues."; return; }
+  const compare = document.getElementById("reportCompare").checked && reportType === "kpi";
+  out.innerHTML = `<div class="card"><div class="empty">Working it out…</div></div>`;
+  const load = (a, b) => Promise.all(["sales", "refunds", "gratuities", "abandoned"].map(t => fetchReportRows(t, a, b, ids)));
+  const [cur, prev, cat] = await Promise.all([load(period.startMs, period.endMs), compare ? load(period.prev.startMs, period.prev.endMs) : null, reportCatalogue(ids)]);
+  const f = reportFigures(...cur, period.cut, cat); f.cut = period.cut;
+  const p = prev ? reportFigures(...prev, period.cut, cat) : null;
+  const where = venueId ? venueName(venueId) : myVenues.length > 1 ? "All my venues" : (myVenues[0] || {}).name || "";
+  let sections;
+  if (reportType === "kpi") sections = kpiSections(f, p);
+  else if (reportType === "breakdown") sections = breakdownSections(f);
+  else if (reportType === "products") sections = await productSections(f, ids);
+  else if (reportType === "staff") sections = staffSections(f);
+  else sections = busySections(f);
+  const t = REPORT_TYPES[reportType];
+  const periodText = `${period.label}${period.cut ? " (trading days, 6am to 6am)" : ""}`;
+  lastReport = { title: `${t.name}: ${where}`, period: periodText, file: `${t.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}_${new Date(period.startMs).toISOString().slice(0, 10)}`, sections };
+  const head = `<div class="rp-head"><div><h2>${esc(t.name)}</h2><p>${esc(where)} · ${esc(periodText)}${compare ? ` · compared with ${esc(period.prev.label)}` : ""}</p></div><p class="rp-muted">Made ${fmtDayTime(Date.now())} by ${esc(currentUser ? currentUser.name : "")}</p></div>`;
+  const tiles = reportType === "kpi" || reportType === "breakdown" ? `<div class="kpi-row rp-tiles">${[["Net takings", fmt(f.net)], ["Orders", f.counted.toLocaleString("en-GB")], ["Average order", fmt(f.avg)], ["Tips", fmt(f.tipsTotal)]].map(([l, v]) => `<div class="kpi-tile"><div class="label">${l}</div><div class="kpi-value tabular">${v}</div></div>`).join("")}</div>` : "";
+  out.innerHTML = `<div class="report-doc">${head}${f.sales.length ? tiles + sections.map(reportTableHTML).join("") : `<div class="card"><div class="empty">No sales in this period.</div></div>`}</div>`;
+  document.getElementById("reportActions").hidden = !f.sales.length;
+  logActivity("Made a report", `${t.name}, ${where}, ${periodText}`, venueId || null);
+}
 
 /* ---------- live refresh ---------- */
 function dashShowsNow(){ const { endMs } = rangeToMs(currentRange); return endMs >= Date.now() - 60000; }
