@@ -53,9 +53,10 @@ sg docker -c "'$ROOT/scripts/start.sh'"
 cat <<EOF
 
 Setup complete. Next:
-  1. Create your first Global Admin:   scripts/create-admin.sh 123456 "Your Name"
-  2. Open http://localhost:$WEB_PORT/backend.html on the Chromebook and sign in with that PIN.
-  3. Let other devices connect - see "Connecting the tills" in README.md.
+  1. Create your first Global Admin (and first venue):   scripts/create-admin.sh 123456 "Your Name" "Main Bar"
+  2. Optional, a menu to test with:                     scripts/load-starter-menu.sh
+  3. Open http://localhost:$WEB_PORT/app.html on the Chromebook and sign in with that PIN.
+  4. Let other devices connect - see "Connecting the tills" in README.md.
 
 If 'docker' commands later say "permission denied", close and reopen the Terminal once.
 EOF
